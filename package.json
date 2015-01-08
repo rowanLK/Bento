@@ -1,0 +1,15 @@
+{
+    "name": "rice",
+    "version": "0.0.1",
+    "author": {
+        "name": "Hernan Zhou"
+    },
+    "devDependencies": {
+        "gulp-rename": "*",
+        "gulp-concat": "*",
+        "gulp-uglify": "*",
+        "gulp-jshint": "*",
+        "gulp-add-src": "*",
+        "gulp": "*"
+    }
+}
