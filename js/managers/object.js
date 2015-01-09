@@ -13,6 +13,7 @@ rice.define('rice/managers/object', [
         minimumFps = 30,
         lastFrameTime = new Date().getTime(),
         gameData,
+        debug,
         isRunning = false,
         useSort = true,
         isPaused = false,
@@ -40,6 +41,19 @@ rice.define('rice/managers/object', [
                 i,
                 currentTime = new Date().getTime(),
                 deltaT = currentTime - lastTime;
+
+            if (debug && debug.debugBar) {
+                debug.fps = Math.round(1000 / (window.performance.now() - debug.lastTime), 2);
+                debug.fpsAccumulator += debug.fps;
+                debug.fpsTicks += 1;
+                debug.avg = Math.round(debug.fpsAccumulator / debug.fpsTicks);
+                if (debug.fpsTicks > debug.fpsMaxAverage) {
+                    debug.fpsAccumulator = 0;
+                    debug.fpsTicks = 0;
+                }
+                debug.debugBar.innerHTML = 'fps: ' + debug.avg;
+                debug.lastTime = window.performance.now();
+            }
 
             lastTime = currentTime;
             cumulativeTime += deltaT;
@@ -80,9 +94,17 @@ rice.define('rice/managers/object', [
 
             requestAnimationFrame(cycle);
         };
+
+        if (!window.performance) {
+            window.performance = {
+                now: Date.now
+            }
+        }
+
     return {
-        init: function (data) {
+        init: function (data, debugObj) {
             gameData = data;
+            debug = debugObj;
         },
         add: function (object) {
             var i, type, family;

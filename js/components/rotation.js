@@ -3,14 +3,27 @@ rice.define('rice/components/rotation', [
 ], function (Sugar) {
     'use strict';
     return function (base) {
-        var angle = 0,
+        var angle,
             component = {
                 name: 'rotation',
                 draw: function (data) {
-                    data.context.rotate(angle);
+                    if (angle) {
+                        data.context.rotate(angle);
+                    }
                 },
                 postDraw: function (data) {
-                    data.context.rotate(angle);
+                },
+                addAngleDegree: function (value) {
+                    if (!angle) {
+                        angle = 0;
+                    }
+                    angle += value * Math.PI / 180;
+                },
+                addAngleRadian: function (value) {
+                    if (!angle) {
+                        angle = 0;
+                    }
+                    angle += value;
                 },
                 setAngleDegree: function (value) {
                     angle = value * Math.PI / 180;
@@ -19,9 +32,15 @@ rice.define('rice/components/rotation', [
                     angle = value;
                 },
                 getAngleDegree: function () {
+                    if (!angle) {
+                        return 0;
+                    }
                     return angle * 180 / Math.PI;
                 },
                 getAngleRadian: function () {
+                    if (!angle) {
+                        return 0;
+                    }
                     return angle;
                 }
             };

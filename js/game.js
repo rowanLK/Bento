@@ -34,9 +34,28 @@ rice.define('rice/game', [
             x: 1,
             y: 1
         },
+        debug = {
+            debugBar: null,
+            fps: 0,
+            fpsAccumulator: 0,
+            fpsTicks: 0,
+            fpsMaxAverage: 600,
+            avg: 0,
+            lastTime: 0
+        },
         gameData = {},
         viewport = Rectangle(0, 0, 640, 480),
-        setupCanvas = function (canvasId, smoothing) {
+        setupDebug = function () {
+            debug.debugBar = document.createElement('div');
+            debug.debugBar.style['font-family'] = 'Arial';
+            debug.debugBar.style.padding = '8px';
+            debug.debugBar.style.position = 'absolute';
+            debug.debugBar.style.right = '0px';
+            debug.debugBar.style.top = '0px';
+            debug.debugBar.innerHTML = 'fps: 0';
+            document.body.appendChild(debug.debugBar);
+        },
+        setupCanvas2D = function (canvasId, smoothing) {
             canvas = document.getElementById(canvasId);
 
             if (canvas) {
@@ -67,10 +86,6 @@ rice.define('rice/game', [
                 // no canvas, create it?
                 throw 'No canvas found';
             }
-
-            // window resize listeners
-            window.addEventListener('resize', onResize, false);
-            window.addEventListener('orientationchange', onResize, false);
         },
         onResize = function () {
             var width,
@@ -96,42 +111,56 @@ rice.define('rice/game', [
             }
             canvasScale.x = width / viewport.width;
             canvasScale.y = height / viewport.height;
-        };
-    return {
-        init: function (settings, callback) {
-            DomReady(function () {
-                var runGame = function () {
-                    ObjectManager.run();
-                    if (callback) {
-                        callback();
+        },
+        game = {
+            init: function (settings, callback) {
+                DomReady(function () {
+                    var runGame = function () {
+                        ObjectManager.run();
+                        if (callback) {
+                            callback();
+                        }
+                    };
+                    if (settings.debug) {
+                        setupDebug();
                     }
-                };
-                if (settings.canvasDimension) {
-                    if (settings.canvasDimension.isRectangle) {
-                        viewport = settings.canvasDimension || viewport;
-                    } else {
-                        throw 'settings.canvasDimension must be a rectangle';
+                    if (settings.canvasDimension) {
+                        if (settings.canvasDimension.isRectangle) {
+                            viewport = settings.canvasDimension || viewport;
+                        } else {
+                            throw 'settings.canvasDimension must be a rectangle';
+                        }
                     }
-                }
-                setupCanvas(settings.canvasId, settings.smoothing);
+                    if (!settings.renderer || settings.renderer = '2d') {
+                        setupCanvas2D(settings.canvasId, settings.smoothing);
+                    }
 
-                InputManager.init({
-                    canvas: canvas,
-                    canvasScale: canvasScale,
-                    viewport: viewport
+                    // window resize listeners
+                    window.addEventListener('resize', onResize, false);
+                    window.addEventListener('orientationchange', onResize, false);
+                    onResize();
+
+                    InputManager.init({
+                        canvas: canvas,
+                        canvasScale: canvasScale,
+                        viewport: viewport
+                    });
+                    ObjectManager.init(gameData, debug);
+                    if (settings.assetGroups) {
+                        AssetManager.loadAssetGroups(settings.assetGroups, runGame);
+                    } else {
+                        runGame();
+                    }
                 });
-                ObjectManager.init(gameData);
-                if (settings.assetGroups) {
-                    AssetManager.loadAssetGroups(settings.assetGroups, runGame);
-                } else {
-                    runGame();
-                }
-            });
-        },
-        getViewport: function () {
-            return viewport;
-        },
-        Assets: AssetManager,
-        Objects: ObjectManager
-    };
+            },
+            getViewport: function () {
+                return viewport;
+            },
+            Assets: AssetManager,
+            Objects: ObjectManager
+        };
+
+    // mix functions
+    Sugar.combine(game, ObjectManager);
+    return game;
 });

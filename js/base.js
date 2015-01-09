@@ -1,6 +1,5 @@
 /*
  * A base object to hold components
- * @base Base
  * @copyright (C) 1HandGaming
  */
 rice.define('rice/base', [
@@ -57,20 +56,11 @@ rice.define('rice/base', [
                     cleanComponents();
                 },
                 draw: function (data) {
-                    var scroll = data.viewport,
-                        context = data.context,
-                        i,
+                    var i,
                         l,
                         component;
                     if (!visible) {
                         return;
-                    }
-                    context.save();
-                    context.translate(Math.round(position.x), Math.round(position.y));
-
-                    // scroll (only applies to parent objects)
-                    if (parent === null) {
-                        context.translate(Math.round(-scroll.x), Math.round(-scroll.y));
                     }
                     // call components
                     for (i = 0, l = components.length; i < l; ++i) {
@@ -79,8 +69,13 @@ rice.define('rice/base', [
                             component.draw(data);
                         }
                     }
-
-                    context.restore();
+                    // post draw
+                    for (i = components.length - 1; i >= 0; i--) {
+                        component = components[i];
+                        if (component && component.postDraw) {
+                            component.postDraw(data);
+                        }
+                    }
                 },
                 addToFamily: function (name) {
                     family.push(name);

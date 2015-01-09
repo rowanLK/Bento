@@ -2068,7 +2068,6 @@ var requirejs, require, define;
 }());
 /*
  * A base object to hold components
- * @base Base
  * @copyright (C) 1HandGaming
  */
 rice.define('rice/base', [
@@ -2125,20 +2124,11 @@ rice.define('rice/base', [
                     cleanComponents();
                 },
                 draw: function (data) {
-                    var scroll = data.viewport,
-                        context = data.context,
-                        i,
+                    var i,
                         l,
                         component;
                     if (!visible) {
                         return;
-                    }
-                    context.save();
-                    context.translate(Math.round(position.x), Math.round(position.y));
-
-                    // scroll (only applies to parent objects)
-                    if (parent === null) {
-                        context.translate(Math.round(-scroll.x), Math.round(-scroll.y));
                     }
                     // call components
                     for (i = 0, l = components.length; i < l; ++i) {
@@ -2147,8 +2137,13 @@ rice.define('rice/base', [
                             component.draw(data);
                         }
                     }
-
-                    context.restore();
+                    // post draw
+                    for (i = components.length - 1; i >= 0; i--) {
+                        component = components[i];
+                        if (component && component.postDraw) {
+                            component.postDraw(data);
+                        }
+                    }
                 },
                 addToFamily: function (name) {
                     family.push(name);
@@ -2347,6 +2342,76 @@ rice.define('rice/base', [
         return base;
     };
 });
+/**
+ *  @copyright (C) 1HandGaming
+ */
+rice.define('glue/director', [
+    'rice/sugar',
+    'rice/game',
+    'rice/screen'
+], function (Sugar, Game, Screen) {
+    'use strict';
+    var screens = {},
+        activeScreen = null,
+        getScreen = function (name) {
+            return screens[name];
+        },
+        module = {
+            /**
+             * Add a screen to the Director
+             * @name addScreen
+             * @memberOf Director
+             * @function
+             */
+            addScreen: function (screen) {
+                if (!screen.getName()) {
+                    throw 'Add name property to screen';
+                }
+                screens[screen.getName()] = screen;
+            },
+            /**
+             * Show a screen
+             * @name showScreen
+             * @memberOf Director
+             * @function
+             */
+            showScreen: function (name, callback) {
+                if (activeScreen !== null) {
+                    this.hideScreen();
+                }
+                activeScreen = screens[name];
+                if (activeScreen) {
+                    activeScreen.onShow();
+                } else {
+                    throw 'Could not find screen';
+                }
+            },
+            /**
+             * Hides current screen
+             * @name hideScreen
+             * @memberOf Director
+             * @function
+             */
+            hideScreen: function () {
+                if (!activeScreen) {
+                    return;
+                }
+                activeScreen.onHide();
+                activeScreen = null;
+            },
+            /*
+             * Get the active screen
+             * @name getActiveScreen
+             * @memberOf Director
+             * @function
+             */
+            getActiveScreen: function () {
+                return activeScreen;
+            }
+        };
+
+    return module;
+});
 rice.define('rice/entity', [
     'rice/sugar',
     'rice/math/vector2',
@@ -2397,9 +2462,28 @@ rice.define('rice/game', [
             x: 1,
             y: 1
         },
+        debug = {
+            debugBar: null,
+            fps: 0,
+            fpsAccumulator: 0,
+            fpsTicks: 0,
+            fpsMaxAverage: 600,
+            avg: 0,
+            lastTime: 0
+        },
         gameData = {},
         viewport = Rectangle(0, 0, 640, 480),
-        setupCanvas = function (canvasId, smoothing) {
+        setupDebug = function () {
+            debug.debugBar = document.createElement('div');
+            debug.debugBar.style['font-family'] = 'Arial';
+            debug.debugBar.style.padding = '8px';
+            debug.debugBar.style.position = 'absolute';
+            debug.debugBar.style.right = '0px';
+            debug.debugBar.style.top = '0px';
+            debug.debugBar.innerHTML = 'fps: 0';
+            document.body.appendChild(debug.debugBar);
+        },
+        setupCanvas2D = function (canvasId, smoothing) {
             canvas = document.getElementById(canvasId);
 
             if (canvas) {
@@ -2430,10 +2514,6 @@ rice.define('rice/game', [
                 // no canvas, create it?
                 throw 'No canvas found';
             }
-
-            // window resize listeners
-            window.addEventListener('resize', onResize, false);
-            window.addEventListener('orientationchange', onResize, false);
         },
         onResize = function () {
             var width,
@@ -2459,43 +2539,118 @@ rice.define('rice/game', [
             }
             canvasScale.x = width / viewport.width;
             canvasScale.y = height / viewport.height;
-        };
-    return {
-        init: function (settings, callback) {
-            DomReady(function () {
-                var runGame = function () {
-                    ObjectManager.run();
-                    if (callback) {
-                        callback();
+        },
+        game = {
+            init: function (settings, callback) {
+                DomReady(function () {
+                    var runGame = function () {
+                        ObjectManager.run();
+                        if (callback) {
+                            callback();
+                        }
+                    };
+                    if (settings.debug) {
+                        setupDebug();
                     }
-                };
-                if (settings.canvasDimension) {
-                    if (settings.canvasDimension.isRectangle) {
-                        viewport = settings.canvasDimension || viewport;
-                    } else {
-                        throw 'settings.canvasDimension must be a rectangle';
+                    if (settings.canvasDimension) {
+                        if (settings.canvasDimension.isRectangle) {
+                            viewport = settings.canvasDimension || viewport;
+                        } else {
+                            throw 'settings.canvasDimension must be a rectangle';
+                        }
                     }
-                }
-                setupCanvas(settings.canvasId, settings.smoothing);
+                    if (!settings.renderer || settings.renderer = '2d') {
+                        setupCanvas2D(settings.canvasId, settings.smoothing);
+                    }
 
-                InputManager.init({
-                    canvas: canvas,
-                    canvasScale: canvasScale,
-                    viewport: viewport
+                    // window resize listeners
+                    window.addEventListener('resize', onResize, false);
+                    window.addEventListener('orientationchange', onResize, false);
+                    onResize();
+
+                    InputManager.init({
+                        canvas: canvas,
+                        canvasScale: canvasScale,
+                        viewport: viewport
+                    });
+                    ObjectManager.init(gameData, debug);
+                    if (settings.assetGroups) {
+                        AssetManager.loadAssetGroups(settings.assetGroups, runGame);
+                    } else {
+                        runGame();
+                    }
                 });
-                ObjectManager.init(gameData);
-                if (settings.assetGroups) {
-                    AssetManager.loadAssetGroups(settings.assetGroups, runGame);
-                } else {
-                    runGame();
+            },
+            getViewport: function () {
+                return viewport;
+            },
+            Assets: AssetManager,
+            Objects: ObjectManager
+        };
+
+    // mix functions
+    Sugar.combine(game, ObjectManager);
+    return game;
+});
+/**
+ *  @copyright (C) 1HandGaming
+ */
+rice.define('rice/screen', [
+    'rice',
+    'rice/game',
+    'rice/math/rectangle'
+], function (Glue, Game, Rectangle) {
+    'use strict';
+    return function (name) {
+        var viewport = Game.getViewport(),
+            dimension = Rectangle(0, 0, 0, 0),
+            isShown = false,
+            module = {
+                setDimension: function (rectangle) {
+                    dimension.width = rectangle.width;
+                    dimension.height = rectangle.height;
+                },
+                getDimension: function () {
+                    return dimension;
+                },
+                add: function (object) {
+                    return Sugar.combine(this, object);
+                },
+                /**
+                 * Get the name of the screen
+                 * @name getName
+                 * @memberOf screen
+                 * @function
+                 * @return Screen name as string
+                 */
+                getName: function () {
+                    return name;
+                },
+                /**
+                 * Set a boolean that defines if the screen is shown
+                 * @name setShown
+                 * @memberOf screen
+                 * @function
+                 */
+                setShown: function (bool) {
+                    if (!Sugar.isBoolean(bool)) {
+                        throw 'Argument is not a boolean';
+                    } else {
+                        isShown = bool;
+                    }
+                },
+                onShow: function () {},
+                onHide: function () {
+                    // remove all objects
+                    Game.removeAll();
+                    // reset viewport scroll when hiding screen
+                    viewport.x = 0;
+                    viewport.y = 0;
+
                 }
-            });
-        },
-        getViewport: function () {
-            return viewport;
-        },
-        Assets: AssetManager,
-        Objects: ObjectManager
+            };
+
+        return module;
     };
 });
 rice.define('rice/subimage', [
@@ -2709,6 +2864,298 @@ rice.define('rice/sugar', [], function () {
         stableSort: stableSort
     };
 
+});
+rice.define('rice/components/fill', [
+    'rice/sugar',
+    'rice/game'
+], function (Sugar, Game) {
+    'use strict';
+    return function (base, settings) {
+        var viewport = Game.getViewport(),
+            component = {
+                name: 'fill',
+                draw: function (data) {
+                    data.context.fillStyle = settings.color || '#000';
+                    data.context.fillRect(0, 0, viewport.width, viewport.height);
+                }
+            };
+        base.attach(component);
+        Sugar.combine(base, {
+            scale: component
+        });
+        return base;
+    };
+});
+rice.define('rice/components/rotation', [
+    'rice/sugar',
+], function (Sugar) {
+    'use strict';
+    return function (base) {
+        var angle,
+            component = {
+                name: 'rotation',
+                draw: function (data) {
+                    if (angle) {
+                        data.context.rotate(angle);
+                    }
+                },
+                postDraw: function (data) {
+                },
+                addAngleDegree: function (value) {
+                    if (!angle) {
+                        angle = 0;
+                    }
+                    angle += value * Math.PI / 180;
+                },
+                addAngleRadian: function (value) {
+                    if (!angle) {
+                        angle = 0;
+                    }
+                    angle += value;
+                },
+                setAngleDegree: function (value) {
+                    angle = value * Math.PI / 180;
+                },
+                setAngleRadian: function (value) {
+                    angle = value;
+                },
+                getAngleDegree: function () {
+                    if (!angle) {
+                        return 0;
+                    }
+                    return angle * 180 / Math.PI;
+                },
+                getAngleRadian: function () {
+                    if (!angle) {
+                        return 0;
+                    }
+                    return angle;
+                }
+            };
+        base.attach(component);
+        Sugar.combine(base, {
+            rotation: component
+        });
+        return base;
+    };
+});
+rice.define('rice/components/scale', [
+    'rice/sugar',
+    'rice/math/vector2'
+], function (Sugar, Vector2) {
+    'use strict';
+    return function (base) {
+        var set = false,
+            scale = Vector2(1, 1),
+            component = {
+                name: 'scale',
+                draw: function (data) {
+                    if (set) {
+                        data.context.scale(scale.x, scale.y);
+                    }
+                },
+                setScale: function (vector) {
+                    set = true;
+                    scale = vector;
+                },
+                getScale: function () {
+                    return scale;
+                },
+                setScaleX: function (value) {
+                    set = true;
+                    scale.x = value;
+                },
+                setScaleY: function (value) {
+                    set = true;
+                    scale.y = value;
+                }
+            };
+        base.attach(component);
+        Sugar.combine(base, {
+            scale: component
+        });
+        return base;
+    };
+});
+rice.define('rice/components/sprite', [
+    'rice/sugar',
+], function (Sugar) {
+    'use strict';
+    return function (base, settings) {
+        var image,
+            animationSettings,
+            animations = {},
+            currentAnimation = {
+                frames: [0]
+            },
+            currentFrame = 0,
+            frameCountX = 1,
+            frameCountY = 1,
+            frameWidth = 0,
+            frameHeight = 0,
+            onCompleteCallback,
+            origin = base.getOrigin(),
+            component = {
+                name: 'sprite',
+                setup: function (settings) {
+                    if (settings) {
+                        animationSettings = settings;
+                    } else {
+                        // create default animation
+                        animationSettings = {
+                            frameCountX: 1,
+                            frameCountY: 1
+                        };
+                    }
+                    // add default animation
+                    if (!animationSettings.animations) {
+                        animationSettings.animations = {};
+                    }
+                    if (!animationSettings.animations['default']) {
+                        animationSettings.animations['default'] = {
+                            frames: [0]
+                        };
+                    }
+                    image = settings.image;
+                    // use frameWidth if specified (overrides frameCountX and frameCountY)
+                    if (animationSettings.frameWidth && animationSettings.frameHeight) {
+                        frameWidth = animationSettings.frameWidth;
+                        frameHeight = animationSettings.frameHeight;
+                        frameCountX = Math.floor(image.width / frameWidth);
+                        frameCountY = Math.floor(image.height / frameHeight);
+                    } else {
+                        frameCountX = animationSettings.frameCountX || 1;
+                        frameCountY = animationSettings.frameCountY || 1;
+                        frameWidth = image.width / frameCountX;
+                        frameHeight = image.height / frameCountY;
+                    }
+                    // set dimension of base object
+                    base.getDimension().width = frameWidth;
+                    base.getDimension().height = frameHeight;
+                    // set to default
+                    animations = animationSettings.animations;
+                    currentAnimation = animations['default'];
+                },
+                setAnimation: function (name, callback, keepCurrentFrame) {
+                    var anim = animations[name];
+                    if (!anim) {
+                        console.log('Warning: animation ' + name + ' does not exist.');
+                        return;
+                    }
+                    if (anim && currentAnimation !== anim) {
+                        if (!Sugar.isDefined(anim.loop)) {
+                            anim.loop = true;
+                        }
+                        if (!Sugar.isDefined(anim.backTo)) {
+                            anim.backTo = 0;
+                        }
+                        // set even if there is no callback
+                        onCompleteCallback = callback;
+                        currentAnimation = anim;
+                        currentAnimation.name = name;
+                        if (!keepCurrentFrame) {
+                            currentFrame = 0;
+                        }
+                    }
+                },
+                getAnimation: function () {
+                    return currentAnimation ? currentAnimation.name : null;
+                },
+                setFrame: function (frameNumber) {
+                    currentFrame = frameNumber;
+                },
+                getCurrentFrame: function () {
+                    return currentFrame;
+                },
+                getFrameWidth: function () {
+                    return frameWidth;
+                },
+                update: function () {
+                    var reachedEnd;
+                    if (!currentAnimation) {
+                        return;
+                    }
+                    reachedEnd = false;
+                    currentFrame += currentAnimation.speed || 1;
+                    if (currentAnimation.loop) {
+                        while (currentFrame >= currentAnimation.frames.length) {
+                            currentFrame -= currentAnimation.frames.length - currentAnimation.backTo;
+                            reachedEnd = true;
+                        }
+                    } else {
+                        if (currentFrame >= currentAnimation.frames.length) {
+                            reachedEnd = true;
+                        }
+                    }
+                    if (reachedEnd && onCompleteCallback) {
+                        onCompleteCallback();
+                    }
+                },
+                draw: function (data) {
+                    var cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1),
+                        sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth,
+                        sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
+
+                    data.context.translate(Math.round(-origin.x), Math.round(-origin.y));
+                    data.context.drawImage(
+                        image,
+                        sx,
+                        sy,
+                        frameWidth,
+                        frameHeight,
+                        0,
+                        0,
+                        frameWidth,
+                        frameHeight
+                    );
+                }
+            };
+
+        // call setup 
+        if (settings && settings[component.name]) {
+            component.setup(settings[component.name]);
+        }
+
+        base.attach(component);
+        if (base) {
+            Sugar.combine(base, {
+                sprite: component
+            });
+        }
+        return base;
+    };
+});
+rice.define('rice/components/translation', [
+    'rice/sugar',
+    'rice/math/vector2'
+], function (Sugar, Vector2) {
+    'use strict';
+    return function (base) {
+        var set = false,
+            component = {
+                name: 'translation',
+                draw: function (data) {
+                    var parent = base.getParent(),
+                        position = base.getPosition(),
+                        scroll = data.viewport;
+                    data.context.save();
+                    data.context.translate(Math.round(position.x), Math.round(position.y));
+
+                    // scroll (only applies to parent objects)
+                    if (parent === null) {
+                        data.context.translate(Math.round(-scroll.x), Math.round(-scroll.y));
+                    }
+                },
+                postDraw: function (data) {
+                    data.context.restore();
+                }
+            };
+        base.attach(component);
+        Sugar.combine(base, {
+            translation: component
+        });
+        return base;
+    };
 });
 /**
  * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
@@ -3194,6 +3641,7 @@ rice.define('rice/managers/object', [
         minimumFps = 30,
         lastFrameTime = new Date().getTime(),
         gameData,
+        debug,
         isRunning = false,
         useSort = true,
         isPaused = false,
@@ -3221,6 +3669,19 @@ rice.define('rice/managers/object', [
                 i,
                 currentTime = new Date().getTime(),
                 deltaT = currentTime - lastTime;
+
+            if (debug && debug.debugBar) {
+                debug.fps = Math.round(1000 / (window.performance.now() - debug.lastTime), 2);
+                debug.fpsAccumulator += debug.fps;
+                debug.fpsTicks += 1;
+                debug.avg = Math.round(debug.fpsAccumulator / debug.fpsTicks);
+                if (debug.fpsTicks > debug.fpsMaxAverage) {
+                    debug.fpsAccumulator = 0;
+                    debug.fpsTicks = 0;
+                }
+                debug.debugBar.innerHTML = 'fps: ' + debug.avg;
+                debug.lastTime = window.performance.now();
+            }
 
             lastTime = currentTime;
             cumulativeTime += deltaT;
@@ -3261,9 +3722,17 @@ rice.define('rice/managers/object', [
 
             requestAnimationFrame(cycle);
         };
+
+        if (!window.performance) {
+            window.performance = {
+                now: Date.now
+            }
+        }
+
     return {
-        init: function (data) {
+        init: function (data, debugObj) {
             gameData = data;
+            debug = debugObj;
         },
         add: function (object) {
             var i, type, family;
@@ -3353,235 +3822,6 @@ rice.define('rice/managers/object', [
                 isRunning = true;
             }
         }
-    };
-});
-rice.define('rice/components/fill', [
-    'rice/sugar',
-    'rice/game'
-], function (Sugar, Game) {
-    'use strict';
-    return function (base, settings) {
-        var viewport = Game.getViewport(),
-            component = {
-                name: 'fill',
-                draw: function (data) {
-                    data.context.fillStyle = settings.color || '#000';
-                    data.context.fillRect(0, 0, viewport.width, viewport.height);
-                }
-            };
-        base.attach(component);
-        Sugar.combine(base, {
-            scale: component
-        });
-        return base;
-    };
-});
-rice.define('rice/components/rotation', [
-    'rice/sugar',
-], function (Sugar) {
-    'use strict';
-    return function (base) {
-        var angle = 0,
-            component = {
-                name: 'rotation',
-                draw: function (data) {
-                    data.context.rotate(angle);
-                },
-                postDraw: function (data) {
-                    data.context.rotate(angle);
-                },
-                setAngleDegree: function (value) {
-                    angle = value * Math.PI / 180;
-                },
-                setAngleRadian: function (value) {
-                    angle = value;
-                },
-                getAngleDegree: function () {
-                    return angle * 180 / Math.PI;
-                },
-                getAngleRadian: function () {
-                    return angle;
-                }
-            };
-        base.attach(component);
-        Sugar.combine(base, {
-            rotation: component
-        });
-        return base;
-    };
-});
-rice.define('rice/components/scale', [
-    'rice/sugar',
-    'rice/math/vector2'
-], function (Sugar, Vector2) {
-    'use strict';
-    return function (base) {
-        var scale = Vector(1, 1),
-            component = {
-                name: 'scale',
-                draw: function (data) {
-                    data.context.scale(scale.x, scale.y);
-                },
-                setScale: function (vector) {
-                    scale = vector;
-                },
-                getScale: function () {
-                    return scale;
-                }
-            };
-        base.attach(component);
-        Sugar.combine(base, {
-            scale: component
-        });
-        return base;
-    };
-});
-rice.define('rice/components/sprite', [
-    'rice/sugar',
-], function (Sugar) {
-    'use strict';
-    return function (base, settings) {
-        var image,
-            animationSettings,
-            animations = {},
-            currentAnimation = {
-                frames: [0]
-            },
-            currentFrame = 0,
-            frameCountX = 1,
-            frameCountY = 1,
-            frameWidth = 0,
-            frameHeight = 0,
-            onCompleteCallback,
-            origin = base.getOrigin(),
-            component = {
-                name: 'sprite',
-                setup: function (settings) {
-                    if (settings) {
-                        animationSettings = settings;
-                    } else {
-                        // create default animation
-                        animationSettings = {
-                            frameCountX: 1,
-                            frameCountY: 1
-                        };
-                    }
-                    // add default animation
-                    if (!animationSettings.animations) {
-                        animationSettings.animations = {};
-                    }
-                    if (!animationSettings.animations['default']) {
-                        animationSettings.animations['default'] = {
-                            frames: [0]
-                        };
-                    }
-                    image = settings.image;
-                    // use frameWidth if specified (overrides frameCountX and frameCountY)
-                    if (animationSettings.frameWidth && animationSettings.frameHeight) {
-                        frameWidth = animationSettings.frameWidth;
-                        frameHeight = animationSettings.frameHeight;
-                        frameCountX = Math.floor(image.width / frameWidth);
-                        frameCountY = Math.floor(image.height / frameHeight);
-                    } else {
-                        frameCountX = animationSettings.frameCountX || 1;
-                        frameCountY = animationSettings.frameCountY || 1;
-                        frameWidth = image.width / frameCountX;
-                        frameHeight = image.height / frameCountY;
-                    }
-                    // set dimension of base object
-                    base.getDimension().width = frameWidth;
-                    base.getDimension().height = frameHeight;
-                    // set to default
-                    animations = animationSettings.animations;
-                    currentAnimation = animations['default'];
-                },
-                setAnimation: function (name, callback, keepCurrentFrame) {
-                    var anim = animations[name];
-                    if (!anim) {
-                        console.log('Warning: animation ' + name + ' does not exist.');
-                        return;
-                    }
-                    if (anim && currentAnimation !== anim) {
-                        if (!Sugar.isDefined(anim.loop)) {
-                            anim.loop = true;
-                        }
-                        if (!Sugar.isDefined(anim.backTo)) {
-                            anim.backTo = 0;
-                        }
-                        // set even if there is no callback
-                        onCompleteCallback = callback;
-                        currentAnimation = anim;
-                        currentAnimation.name = name;
-                        if (!keepCurrentFrame) {
-                            currentFrame = 0;
-                        }
-                    }
-                },
-                getAnimation: function () {
-                    return currentAnimation ? currentAnimation.name : null;
-                },
-                setFrame: function (frameNumber) {
-                    currentFrame = frameNumber;
-                },
-                getCurrentFrame: function () {
-                    return currentFrame;
-                },
-                getFrameWidth: function () {
-                    return frameWidth;
-                },
-                update: function () {
-                    var reachedEnd;
-                    if (!currentAnimation) {
-                        return;
-                    }
-                    reachedEnd = false;
-                    currentFrame += currentAnimation.speed || 1;
-                    if (currentAnimation.loop) {
-                        while (currentFrame >= currentAnimation.frames.length) {
-                            currentFrame -= currentAnimation.frames.length - currentAnimation.backTo;
-                            reachedEnd = true;
-                        }
-                    } else {
-                        if (currentFrame >= currentAnimation.frames.length) {
-                            reachedEnd = true;
-                        }
-                    }
-                    if (reachedEnd && onCompleteCallback) {
-                        onCompleteCallback();
-                    }
-                },
-                draw: function (data) {
-                    var cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1),
-                        sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth,
-                        sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
-
-                    data.context.translate(Math.round(-origin.x), Math.round(-origin.y));
-                    data.context.drawImage(
-                        image,
-                        sx,
-                        sy,
-                        frameWidth,
-                        frameHeight,
-                        0,
-                        0,
-                        frameWidth,
-                        frameHeight
-                    );
-                }
-            };
-
-        // call setup 
-        if (settings && settings[component.name]) {
-            component.setup(settings[component.name]);
-        }
-
-        base.attach(component);
-        if (base) {
-            Sugar.combine(base, {
-                sprite: component
-            });
-        }
-        return base;
     };
 });
 /**

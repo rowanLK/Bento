@@ -4,17 +4,29 @@ rice.define('rice/components/scale', [
 ], function (Sugar, Vector2) {
     'use strict';
     return function (base) {
-        var scale = Vector(1, 1),
+        var set = false,
+            scale = Vector2(1, 1),
             component = {
                 name: 'scale',
                 draw: function (data) {
-                    data.context.scale(scale.x, scale.y);
+                    if (set) {
+                        data.context.scale(scale.x, scale.y);
+                    }
                 },
                 setScale: function (vector) {
+                    set = true;
                     scale = vector;
                 },
                 getScale: function () {
                     return scale;
+                },
+                setScaleX: function (value) {
+                    set = true;
+                    scale.x = value;
+                },
+                setScaleY: function (value) {
+                    set = true;
+                    scale.y = value;
                 }
             };
         base.attach(component);
