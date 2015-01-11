@@ -11,16 +11,16 @@ rice.define('rice/components/translation', [
                     var parent = base.getParent(),
                         position = base.getPosition(),
                         scroll = data.viewport;
-                    data.context.save();
-                    data.context.translate(Math.round(position.x), Math.round(position.y));
+                    data.renderer.save(base);
+                    data.renderer.translate(Math.round(position.x), Math.round(position.y));
 
                     // scroll (only applies to parent objects)
                     if (parent === null) {
-                        data.context.translate(Math.round(-scroll.x), Math.round(-scroll.y));
+                        data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
                     }
                 },
                 postDraw: function (data) {
-                    data.context.restore();
+                    data.renderer.restore();
                 }
             };
         base.attach(component);

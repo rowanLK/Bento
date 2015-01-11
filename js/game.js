@@ -11,7 +11,8 @@ rice.define('rice/game', [
     'rice/managers/input',
     'rice/managers/object',
     'rice/math/vector2',
-    'rice/math/rectangle'
+    'rice/math/rectangle',
+    'rice/renderer'
 ], function (
     Sugar,
     DomReady,
@@ -20,13 +21,15 @@ rice.define('rice/game', [
     InputManager,
     ObjectManager,
     Vector2,
-    Rectangle
+    Rectangle,
+    Renderer
 ) {
     'use strict';
     var lastTime = new Date().getTime(),
         cumulativeTime = 1000 / 60,
         canvas,
         context,
+        renderer,
         styleScaling = true,
         canvasRatio = 0,
         windowRatio,
@@ -55,33 +58,48 @@ rice.define('rice/game', [
             debug.debugBar.innerHTML = 'fps: 0';
             document.body.appendChild(debug.debugBar);
         },
-        setupCanvas2D = function (canvasId, smoothing) {
-            canvas = document.getElementById(canvasId);
+        setupCanvas = function (settings, callback) {
+            canvas = document.getElementById(settings.canvasId);
 
             if (canvas) {
-                context = canvas.getContext('2d');
-                if (!smoothing) {
-                    if (context.imageSmoothingEnabled) {
-                        context.imageSmoothingEnabled = false;
-                    }
-                    if (context.webkitImageSmoothingEnabled) {
-                        context.webkitImageSmoothingEnabled = false;
-                    }
-                    if (context.mozImageSmoothingEnabled) {
-                        context.mozImageSmoothingEnabled = false;
-                    }
-                }
-
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 canvasRatio = viewport.height / viewport.width;
 
-                gameData = {
-                    canvas: canvas,
-                    context: context,
-                    canvasScale: canvasScale,
-                    viewport: viewport
-                };
+                // setup canvas 2d
+                if (!settings.renderer || settings.renderer === '2d') {
+                    context = canvas.getContext('2d');
+                    if (!settings.smoothing) {
+                        if (context.imageSmoothingEnabled) {
+                            context.imageSmoothingEnabled = false;
+                        }
+                        if (context.webkitImageSmoothingEnabled) {
+                            context.webkitImageSmoothingEnabled = false;
+                        }
+                        if (context.mozImageSmoothingEnabled) {
+                            context.mozImageSmoothingEnabled = false;
+                        }
+                    }
+                    Renderer('canvas2d', canvas, context, function (renderer) {
+                        gameData = {
+                            canvas: canvas,
+                            renderer: renderer,
+                            canvasScale: canvasScale,
+                            viewport: viewport
+                        };
+                        callback();
+                    });
+                } else if (settings.renderer === 'pixi') {
+                    Renderer('pixi', canvas, context, function (renderer) {
+                        gameData = {
+                            canvas: canvas,
+                            renderer: renderer,
+                            canvasScale: canvasScale,
+                            viewport: viewport
+                        };
+                        callback();
+                    });
+                }
             } else {
                 // no canvas, create it?
                 throw 'No canvas found';
@@ -113,7 +131,7 @@ rice.define('rice/game', [
             canvasScale.y = height / viewport.height;
         },
         game = {
-            init: function (settings, callback) {
+            setup: function (settings, callback) {
                 DomReady(function () {
                     var runGame = function () {
                         ObjectManager.run();
@@ -131,26 +149,25 @@ rice.define('rice/game', [
                             throw 'settings.canvasDimension must be a rectangle';
                         }
                     }
-                    if (!settings.renderer || settings.renderer = '2d') {
-                        setupCanvas2D(settings.canvasId, settings.smoothing);
-                    }
+                    setupCanvas(settings, function () {
+                        // window resize listeners
+                        window.addEventListener('resize', onResize, false);
+                        window.addEventListener('orientationchange', onResize, false);
+                        onResize();
 
-                    // window resize listeners
-                    window.addEventListener('resize', onResize, false);
-                    window.addEventListener('orientationchange', onResize, false);
-                    onResize();
+                        InputManager.init({
+                            canvas: canvas,
+                            canvasScale: canvasScale,
+                            viewport: viewport
+                        });
+                        ObjectManager.init(gameData, debug);
+                        if (settings.assetGroups) {
+                            AssetManager.loadAssetGroups(settings.assetGroups, runGame);
+                        } else {
+                            runGame();
+                        }
 
-                    InputManager.init({
-                        canvas: canvas,
-                        canvasScale: canvasScale,
-                        viewport: viewport
                     });
-                    ObjectManager.init(gameData, debug);
-                    if (settings.assetGroups) {
-                        AssetManager.loadAssetGroups(settings.assetGroups, runGame);
-                    } else {
-                        runGame();
-                    }
                 });
             },
             getViewport: function () {

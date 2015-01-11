@@ -10,7 +10,7 @@ rice.define('rice/components/scale', [
                 name: 'scale',
                 draw: function (data) {
                     if (set) {
-                        data.context.scale(scale.x, scale.y);
+                        data.renderer.scale(scale.x, scale.y);
                     }
                 },
                 setScale: function (vector) {

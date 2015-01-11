@@ -38,17 +38,18 @@ rice.define('rice/sugar', [], function () {
                 }
             }
         },
-        combine = function (obj1, obj2) {
-            var prop;
+        combine = function (obj1, obj2) {                        
+            var prop, temp;
             for (prop in obj2) {
                 if (obj2.hasOwnProperty(prop)) {
                     if (obj1.hasOwnProperty(prop)) {
-                        // property already exists
-                        obj1.super = obj1.super || {};
-                        combine(obj1.super, {
-                            prop: obj1[prop]
-                        });
-                    } else if (isObject(obj2[prop])) {
+                        // property already exists, move it up
+                        obj1.base = obj1.base || {};
+                        temp = {};
+                        temp[prop] = obj1[prop];
+                        combine(obj1.base, temp);
+                    } 
+                    if (isObject(obj2[prop])) {
                         obj1[prop] = combine({}, obj2[prop]);
                     } else {
                         obj1[prop] = obj2[prop];

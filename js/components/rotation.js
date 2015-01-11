@@ -8,7 +8,7 @@ rice.define('rice/components/rotation', [
                 name: 'rotation',
                 draw: function (data) {
                     if (angle) {
-                        data.context.rotate(angle);
+                        data.renderer.rotate(angle);
                     }
                 },
                 postDraw: function (data) {

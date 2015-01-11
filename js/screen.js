@@ -2,10 +2,10 @@
  *  @copyright (C) 1HandGaming
  */
 rice.define('rice/screen', [
-    'rice',
+    'rice/sugar',
     'rice/game',
     'rice/math/rectangle'
-], function (Glue, Game, Rectangle) {
+], function (Sugar, Game, Rectangle) {
     'use strict';
     return function (name) {
         var viewport = Game.getViewport(),

@@ -1,68 +1,44 @@
 /**
  *  @copyright (C) 1HandGaming
  */
-rice.define('glue/director', [
+rice.define('rice/director', [
     'rice/sugar',
     'rice/game',
     'rice/screen'
 ], function (Sugar, Game, Screen) {
     'use strict';
     var screens = {},
-        activeScreen = null,
+        currentScreen = null,
         getScreen = function (name) {
             return screens[name];
         },
         module = {
-            /**
-             * Add a screen to the Director
-             * @name addScreen
-             * @memberOf Director
-             * @function
-             */
             addScreen: function (screen) {
                 if (!screen.getName()) {
                     throw 'Add name property to screen';
                 }
                 screens[screen.getName()] = screen;
             },
-            /**
-             * Show a screen
-             * @name showScreen
-             * @memberOf Director
-             * @function
-             */
             showScreen: function (name, callback) {
-                if (activeScreen !== null) {
+                if (currentScreen !== null) {
                     this.hideScreen();
                 }
-                activeScreen = screens[name];
-                if (activeScreen) {
-                    activeScreen.onShow();
+                currentScreen = screens[name];
+                if (currentScreen) {
+                    currentScreen.onShow();
                 } else {
                     throw 'Could not find screen';
                 }
             },
-            /**
-             * Hides current screen
-             * @name hideScreen
-             * @memberOf Director
-             * @function
-             */
             hideScreen: function () {
-                if (!activeScreen) {
+                if (!currentScreen) {
                     return;
                 }
-                activeScreen.onHide();
-                activeScreen = null;
+                currentScreen.onHide();
+                currentScreen = null;
             },
-            /*
-             * Get the active screen
-             * @name getActiveScreen
-             * @memberOf Director
-             * @function
-             */
-            getActiveScreen: function () {
-                return activeScreen;
+            getCurrentScreen: function () {
+                return currentScreen;
             }
         };
 

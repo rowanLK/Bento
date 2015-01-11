@@ -1,4 +1,4 @@
-rice.define('rice/components/sprite', [
+rice.define('rice/components/pixisprite', [
     'rice/sugar',
 ], function (Sugar) {
     'use strict';
@@ -56,6 +56,17 @@ rice.define('rice/components/sprite', [
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
+
+                    // pixi
+                    if (!image.pixiBaseTexture) {
+                        image.pixiBaseTexture = new PIXI.BaseTexture(image);
+                    }
+                    base.pixiTexture = new PIXI.Texture(image.pixiBaseTexture);
+                    if (!base.pixiSprite) {
+                        base.pixiSprite = new PIXI.Sprite(base.pixiTexture);
+                    }
+                    base.pixiSprite.setTexture(base.pixiTexture);
+
                 },
                 setAnimation: function (name, callback, keepCurrentFrame) {
                     var anim = animations[name];

@@ -90,6 +90,8 @@ rice.define('rice/managers/object', [
                     object.draw(gameData);
                 }
             }
+            gameData.renderer.flush();
+
             lastFrameTime = time;
 
             requestAnimationFrame(cycle);
@@ -98,7 +100,7 @@ rice.define('rice/managers/object', [
         if (!window.performance) {
             window.performance = {
                 now: Date.now
-            }
+            };
         }
 
     return {
@@ -134,7 +136,7 @@ rice.define('rice/managers/object', [
             if (index >= 0) {
                 objects[index] = null;
                 if (object.destroy) {
-                    object.destroy();
+                    object.destroy(gameData);
                 }
             }
             // remove from access pools

@@ -2,13 +2,13 @@ rice.require([
     'rice/game',
     'rice/math/vector2',
     'rice/math/rectangle',
-    'rice/base',
+    'rice/entity',
     'rice/components/sprite',
     'rice/components/translation',
     'rice/components/rotation',
     'rice/components/scale',
     'rice/components/fill'
-], function (Game, Vector2, Rectangle, Base, Sprite, Translation, Rotation, Scale, Fill) {
+], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Rotation, Scale, Fill) {
     Game.init({
         canvasId: 'canvas',
         canvasDimension: Rectangle(0, 0, 320, 480),
@@ -19,10 +19,10 @@ rice.require([
         console.log('ready');
         Game.Assets.load('assets', function (err) {
             var viewport = Game.getViewport(),
-                background = Base({
+                background = Entity({
                     components: [Fill]
                 }),
-                bunny1 = Base({
+                bunny1 = Entity({
                     components: [Translation, Sprite],
                     position: Vector2(16, 16),
                     originRelative: Vector2(0.5, 0.5),
@@ -41,7 +41,7 @@ rice.require([
                         this.sprite.setAnimation('idle');
                     }
                 }),
-                bunny2 = Base({
+                bunny2 = Entity({
                     components: [Translation, Scale, Sprite],
                     position: Vector2(16 + 32, 16),
                     originRelative: Vector2(0.5, 0.5),
@@ -61,7 +61,7 @@ rice.require([
                         this.scale.setScaleX(2);
                     }
                 }),
-                bunny3 = Base({
+                bunny3 = Entity({
                     components: [Translation, Rotation, Sprite],
                     position: Vector2(16 + 64, 16),
                     originRelative: Vector2(0.5, 0.5),

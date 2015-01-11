@@ -4,7 +4,7 @@
  *  @copyright (C) 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('puyojs/math/array2d', function () {
+rice.define('rice/math/array2d', function () {
     'use strict';
     return function (width, height) {
         var array = [],

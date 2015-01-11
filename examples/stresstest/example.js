@@ -2,31 +2,31 @@ rice.require([
     'rice/game',
     'rice/math/vector2',
     'rice/math/rectangle',
-    'rice/base',
+    'rice/entity',
     'rice/components/sprite',
     'rice/components/translation',
     'rice/components/fill'
-], function (Game, Vector2, Rectangle, Base, Sprite, Translation, Fill) {
-    Game.init({
+], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Fill) {
+    Game.setup({
         canvasId: 'canvas',
         debug: true,
         canvasDimension: Rectangle(0, 0, 320, 480),
         assetGroups: {
             'assets': 'assets/assets.json'
-        }
+        },
+        renderer: 'pixi'
     }, function () {
-        console.log('ready');
         Game.Assets.load('assets', function (err) {
             var viewport = Game.getViewport(),
                 bunnies = 0,
-                background = Base({
+                background = Entity({
                     components: [Fill]
                 }),
                 getRandom = function (val) {
                     return Math.floor(Math.random() * val);
                 },
                 addBunny = function () {
-                    var base = Base({
+                    var entity = Entity({
                         components: [Translation, Sprite],
                         position: Vector2(getRandom(320), getRandom(480)),
                         originRelative: Vector2(0.5, 0.5),
@@ -47,7 +47,7 @@ rice.require([
                     }).attach({
                         speed: Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
                         update: function () {
-                            var position = base.getPosition();
+                            var position = entity.getPosition();
                             position.y += this.speed.y;
                             position.x += this.speed.x;
                             this.speed.y += 0.1;
@@ -71,8 +71,8 @@ rice.require([
                         }
                     });
                     bunnies += 1;
-                    Game.Objects.add(base);
-                    return base;
+                    Game.Objects.add(entity);
+                    return entity;
                 };
             Game.add(background);
             addBunny();

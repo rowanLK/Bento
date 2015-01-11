@@ -8,13 +8,12 @@ rice.define('rice/components/fill', [
             component = {
                 name: 'fill',
                 draw: function (data) {
-                    data.context.fillStyle = settings.color || '#000';
-                    data.context.fillRect(0, 0, viewport.width, viewport.height);
+                    data.renderer.fillRect('#000', 0, 0, viewport.width, viewport.height);
                 }
             };
         base.attach(component);
         Sugar.combine(base, {
-            scale: component
+            fill: component
         });
         return base;
     };
