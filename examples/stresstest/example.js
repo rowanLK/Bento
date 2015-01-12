@@ -3,10 +3,11 @@ rice.require([
     'rice/math/vector2',
     'rice/math/rectangle',
     'rice/entity',
-    'rice/components/sprite',
+    'rice/components/pixisprite',
     'rice/components/translation',
-    'rice/components/fill'
-], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Fill) {
+    'rice/components/fill',
+    'rice/components/clickable'
+], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable) {
     Game.setup({
         canvasId: 'canvas',
         debug: true,
@@ -20,7 +21,16 @@ rice.require([
             var viewport = Game.getViewport(),
                 bunnies = 0,
                 background = Entity({
-                    components: [Fill]
+                    components: [Fill, Clickable],
+                    clickable: {
+                        pointerDown: function (evt) {
+                            var i;
+                            for (i = 0; i < 500; ++i) {
+                                addBunny();
+                            }
+                            console.log('Current bunnies:', bunnies);
+                        }
+                    },
                 }),
                 getRandom = function (val) {
                     return Math.floor(Math.random() * val);

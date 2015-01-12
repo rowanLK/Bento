@@ -27,6 +27,8 @@ rice.define('rice/renderers/canvas2d', [
                 context.drawImage(image, sx, sy, sw, sh, x, y, w, h);
             }
         };
+        console.log('using canvas2d as renderer');
+
         return renderer;
     };
 });

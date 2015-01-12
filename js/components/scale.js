@@ -6,6 +6,7 @@ rice.define('rice/components/scale', [
     return function (base) {
         var set = false,
             scale = Vector2(1, 1),
+            mixin = {},
             component = {
                 name: 'scale',
                 draw: function (data) {
@@ -30,9 +31,8 @@ rice.define('rice/components/scale', [
                 }
             };
         base.attach(component);
-        Sugar.combine(base, {
-            scale: component
-        });
+        mixin[component.name] = component;
+        Sugar.combine(base, mixin);
         return base;
     };
 });

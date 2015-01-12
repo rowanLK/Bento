@@ -1,0 +1,65 @@
+0 info it worked if it ends with ok
+1 verbose cli [ 'c:\\Program Files\\nodejs\\node.exe',
+1 verbose cli   'c:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
+1 verbose cli   'install' ]
+2 info using npm@1.3.24
+3 info using node@v0.10.25
+4 warn package.json rice@0.0.1 No description
+5 warn package.json rice@0.0.1 No repository field.
+6 warn package.json rice@0.0.1 No README data
+7 verbose readDependencies using package.json deps
+8 verbose install where, deps [ 'C:\\Users\\Hernan\\SkyDrive\\RiceEngine',
+8 verbose install   [ 'gulp-rename',
+8 verbose install     'gulp-concat',
+8 verbose install     'gulp-uglify',
+8 verbose install     'gulp-jshint',
+8 verbose install     'gulp-add-src',
+8 verbose install     'gulp',
+8 verbose install     'https://github.com/mattdesl/gl-sprites.git' ] ]
+9 info preinstall rice@0.0.1
+10 verbose readDependencies using package.json deps
+11 verbose already installed skipping gulp-rename@* C:\Users\Hernan\SkyDrive\RiceEngine
+12 verbose already installed skipping gulp-concat@* C:\Users\Hernan\SkyDrive\RiceEngine
+13 verbose already installed skipping gulp-uglify@* C:\Users\Hernan\SkyDrive\RiceEngine
+14 verbose already installed skipping gulp-jshint@* C:\Users\Hernan\SkyDrive\RiceEngine
+15 verbose already installed skipping gulp-add-src@* C:\Users\Hernan\SkyDrive\RiceEngine
+16 verbose already installed skipping gulp@* C:\Users\Hernan\SkyDrive\RiceEngine
+17 verbose cache add [ 'https://github.com/mattdesl/gl-sprites.git@*', null ]
+18 verbose cache add name=undefined spec="https://github.com/mattdesl/gl-sprites.git@*" args=["https://github.com/mattdesl/gl-sprites.git@*",null]
+19 verbose parsed url { protocol: 'https:',
+19 verbose parsed url   slashes: true,
+19 verbose parsed url   auth: null,
+19 verbose parsed url   host: 'github.com',
+19 verbose parsed url   port: null,
+19 verbose parsed url   hostname: 'github.com',
+19 verbose parsed url   hash: null,
+19 verbose parsed url   search: null,
+19 verbose parsed url   query: null,
+19 verbose parsed url   pathname: '/mattdesl/gl-sprites.git@*',
+19 verbose parsed url   path: '/mattdesl/gl-sprites.git@*',
+19 verbose parsed url   href: 'https://github.com/mattdesl/gl-sprites.git@*' }
+20 silly lockFile 811cef47-thub-com-mattdesl-gl-sprites-git https://github.com/mattdesl/gl-sprites.git@*
+21 verbose lock https://github.com/mattdesl/gl-sprites.git@* C:\Users\Hernan\AppData\Roaming\npm-cache\811cef47-thub-com-mattdesl-gl-sprites-git.lock
+22 verbose addRemoteTarball [ 'https://github.com/mattdesl/gl-sprites.git@*', null ]
+23 info retry fetch attempt 1 at 14:48:02
+24 verbose fetch to= C:\Users\Hernan\AppData\Local\Temp\npm-5764-4jSyTWRd\1421070482162-0.6121523811016232\tmp.tgz
+25 http GET https://github.com/mattdesl/gl-sprites.git@*
+26 http 404 https://github.com/mattdesl/gl-sprites.git@*
+27 error fetch failed https://github.com/mattdesl/gl-sprites.git@*
+28 silly lockFile 811cef47-thub-com-mattdesl-gl-sprites-git https://github.com/mattdesl/gl-sprites.git@*
+29 silly lockFile 811cef47-thub-com-mattdesl-gl-sprites-git https://github.com/mattdesl/gl-sprites.git@*
+30 error Error: 404 Not Found
+30 error     at WriteStream.<anonymous> (c:\Program Files\nodejs\node_modules\npm\lib\utils\fetch.js:57:12)
+30 error     at WriteStream.EventEmitter.emit (events.js:117:20)
+30 error     at fs.js:1596:14
+30 error     at c:\Program Files\nodejs\node_modules\npm\node_modules\graceful-fs\graceful-fs.js:103:5
+30 error     at Object.oncomplete (fs.js:107:15)
+31 error If you need help, you may report this *entire* log,
+31 error including the npm and node versions, at:
+31 error     <http://github.com/isaacs/npm/issues>
+32 error System Windows_NT 6.2.9200
+33 error command "c:\\Program Files\\nodejs\\node.exe" "c:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js" "install"
+34 error cwd C:\Users\Hernan\SkyDrive\RiceEngine
+35 error node -v v0.10.25
+36 error npm -v 1.3.24
+37 verbose exit [ 1, true ]

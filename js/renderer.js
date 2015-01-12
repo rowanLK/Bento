@@ -10,6 +10,7 @@ rice.define('rice/renderer', [
             rotate: function (angle) {},
             fillRect: function (color, x, y, w, h) {},
             drawImage: function (texture, sx, sy, sw, sh, x, y, w, h) {},
+            begin: function () {},
             flush: function () {}
         };
         require(['rice/renderers/' + type], function (renderer) {

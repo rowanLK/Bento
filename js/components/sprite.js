@@ -9,6 +9,7 @@ rice.define('rice/components/sprite', [
             currentAnimation = {
                 frames: [0]
             },
+            mixin = {},
             currentFrame = 0,
             frameCountX = 1,
             frameCountY = 1,
@@ -138,11 +139,8 @@ rice.define('rice/components/sprite', [
         }
 
         base.attach(component);
-        if (base) {
-            Sugar.combine(base, {
-                sprite: component
-            });
-        }
+        mixin[component.name] = component;
+        Sugar.combine(base, mixin);
         return base;
     };
 });

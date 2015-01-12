@@ -2,31 +2,43 @@ rice.require([
     'rice/game',
     'rice/math/vector2',
     'rice/math/rectangle',
-    'rice/base',
-    'rice/components/sprite',
-    'rice/components/fill'
-], function (Game, Vector2, Rectangle, Base, Sprite, Fill) {
-    Game.init({
+    'rice/entity',
+    'rice/components/pixisprite',
+    'rice/components/translation',
+    'rice/components/fill',
+    'rice/components/clickable'
+], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable) {
+    Game.setup({
         canvasId: 'canvas',
         canvasDimension: Rectangle(0, 0, 320, 480),
         assetGroups: {
             'assets': 'assets/assets.json'
-        }
+        },
+        renderer: 'pixi',
+        debug: true
     }, function () {
-        console.log('ready');
         Game.Assets.load('assets', function (err) {
             var viewport = Game.getViewport(),
                 bunnies = 0,
-                background = Base({
-                    components: [Fill]
+                background = Entity({
+                    components: [Fill, Clickable],
+                    clickable: {
+                        pointerDown: function (evt) {
+                            var i;
+                            for (i = 0; i < 100; ++i) {
+                                addBunny();
+                            }
+                            console.log('Current bunnies:', bunnies);
+                        }
+                    },
                 }),
                 getRandom = function (val) {
                     return Math.floor(Math.random() * val);
                 },
                 addBunny = function () {
-                    var base = Base({
-                        components: [Sprite],
-                        position: Vector2(0, 0),
+                    var entity = Entity({
+                        components: [Translation, Sprite],
+                        position: Vector2(getRandom(320), getRandom(480)),
                         originRelative: Vector2(0.5, 0.5),
                         sprite: {
                             image: Game.Assets.getImage('bunnygirlsmall'),
@@ -40,14 +52,12 @@ rice.require([
                             },
                         },
                         init: function () {
-                            console.log('object added');
                             this.sprite.setAnimation('idle');
                         }
                     }).attach({
-                        speed: Vector2(0, 0),
+                        speed: Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
                         update: function () {
-                            return;
-                            var position = base.getPosition();
+                            var position = entity.getPosition();
                             position.y += this.speed.y;
                             position.x += this.speed.x;
                             this.speed.y += 0.1;
@@ -71,12 +81,20 @@ rice.require([
                         }
                     });
                     bunnies += 1;
-                    Game.Objects.add(base);
-                    return base;
+                    Game.Objects.add(entity);
+                    return entity;
                 };
-            Game.Objects.add(background);
+            Game.add(background);
             addBunny();
-
+            window.add = function (val) {
+                var i;
+                val = val || 100;
+                for (i = 0; i < val; ++i) {
+                    addBunny();
+                }
+                // console.log('Current bunnies:', bunnies);
+                return bunnies;
+            };
         }, function (current, total) {
             console.log(current + '/' + total);
         });

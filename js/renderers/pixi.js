@@ -37,12 +37,10 @@ rice.define('rice/renderers/pixi', [
             };
         // init pixi
         pixiStage = new PIXI.Stage(0x000000);
-        pixiRenderer = new PIXI.CanvasRenderer(canvas.width, canvas.height, {
+        pixiRenderer = PIXI.autoDetectRenderer(canvas.width, canvas.height, {
             view: canvas
         });
-        /*pixiRenderer = PIXI.autoDetectRenderer(canvas.width, canvas.height, {
-            view: canvas
-        });*/
+        console.log('initialized pixi as renderer');
         return renderer;
     }
 });

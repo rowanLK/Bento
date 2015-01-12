@@ -16,6 +16,7 @@ rice.define('rice/components/pixisprite', [
             frameHeight = 0,
             onCompleteCallback,
             origin = base.getOrigin(),
+            mixin = {},
             component = {
                 name: 'sprite',
                 setup: function (settings) {
@@ -149,11 +150,8 @@ rice.define('rice/components/pixisprite', [
         }
 
         base.attach(component);
-        if (base) {
-            Sugar.combine(base, {
-                sprite: component
-            });
-        }
+        mixin[component.name] = component;
+        Sugar.combine(base, mixin);
         return base;
     };
 });

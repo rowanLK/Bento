@@ -3,60 +3,37 @@
  */
 rice.define('rice/lib/requestanimationframe', [], function () {
     'use strict';
-    var lastFrame, method, now, queue, requestAnimationFrame, timer, vendor, _i, _len, _ref, _ref1;
-    method = 'native';
-    now = Date.now || function () {
-        return new Date().getTime();
-    };
-    requestAnimationFrame = window.requestAnimationFrame;
-    _ref = ['webkit', 'moz', 'o', 'ms'];
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        vendor = _ref[_i];
-        if (requestAnimationFrame === null) {
-            requestAnimationFrame = window[vendor + "RequestAnimationFrame"];
+    // http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+    // http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+
+    // requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+
+    // MIT license
+
+    (function () {
+        var lastTime = 0;
+        var vendors = ['ms', 'moz', 'webkit', 'o'];
+        for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+            window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+            window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
         }
-    }
-    if (requestAnimationFrame === null) {
-        method = 'timer';
-        lastFrame = 0;
-        queue = timer = null;
-        requestAnimationFrame = function (callback) {
-            var fire, nextFrame, time;
-            if (queue !== null) {
-                queue.push(callback);
-                return;
-            }
-            time = now();
-            nextFrame = Math.max(0, 16.66 - (time - lastFrame));
-            queue = [callback];
-            lastFrame = time + nextFrame;
-            fire = function () {
-                var cb, q, _j, _len1;
-                q = queue;
-                queue = null;
-                for (_j = 0, _len1 = q.length; _j < _len1; _j++) {
-                    cb = q[_j];
-                    cb(lastFrame);
-                }
+
+        if (!window.requestAnimationFrame)
+            window.requestAnimationFrame = function (callback, element) {
+                var currTime = new Date().getTime();
+                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+                var id = window.setTimeout(function () {
+                        callback(currTime + timeToCall);
+                    },
+                    timeToCall);
+                lastTime = currTime + timeToCall;
+                return id;
             };
-            timer = setTimeout(fire, nextFrame);
-        };
-    }
-    requestAnimationFrame(function (time) {
-        var _ref1;
-        if ((((_ref1 = window.performance) !== null ? _ref1.now : void 0) !== null) && time < 1e12) {
-            requestAnimationFrame.now = function () {
-                return window.performance.now();
+
+        if (!window.cancelAnimationFrame)
+            window.cancelAnimationFrame = function (id) {
+                clearTimeout(id);
             };
-            requestAnimationFrame.method = 'native-highres';
-        } else {
-            requestAnimationFrame.now = now;
-        }
-    });
-    requestAnimationFrame.now = ((_ref1 = window.performance) !== null ? _ref1.now : void 0) !== null ? (function () {
-        return window.performance.now();
-    }) : now;
-    requestAnimationFrame.method = method;
-    window.requestAnimationFrame = requestAnimationFrame;
-    return requestAnimationFrame;
+    }());
+    return window.requestAnimationFrame;
 });

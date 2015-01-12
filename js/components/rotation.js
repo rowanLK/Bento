@@ -4,6 +4,7 @@ rice.define('rice/components/rotation', [
     'use strict';
     return function (base) {
         var angle,
+            mixin = {},
             component = {
                 name: 'rotation',
                 draw: function (data) {
@@ -45,9 +46,8 @@ rice.define('rice/components/rotation', [
                 }
             };
         base.attach(component);
-        Sugar.combine(base, {
-            rotation: component
-        });
+        mixin[component.name] = component;
+        Sugar.combine(base, mixin);
         return base;
     };
 });

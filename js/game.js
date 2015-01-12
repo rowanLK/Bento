@@ -55,6 +55,7 @@ rice.define('rice/game', [
             debug.debugBar.style.position = 'absolute';
             debug.debugBar.style.right = '0px';
             debug.debugBar.style.top = '0px';
+            debug.debugBar.style.color = 'white';
             debug.debugBar.innerHTML = 'fps: 0';
             document.body.appendChild(debug.debugBar);
         },
@@ -66,8 +67,10 @@ rice.define('rice/game', [
                 canvas.height = viewport.height;
                 canvasRatio = viewport.height / viewport.width;
 
+                settings.renderer = settings.renderer || 'canvas2d';
+
                 // setup canvas 2d
-                if (!settings.renderer || settings.renderer === '2d') {
+                if (settings.renderer === 'canvas2d') {
                     context = canvas.getContext('2d');
                     if (!settings.smoothing) {
                         if (context.imageSmoothingEnabled) {
@@ -80,26 +83,17 @@ rice.define('rice/game', [
                             context.mozImageSmoothingEnabled = false;
                         }
                     }
-                    Renderer('canvas2d', canvas, context, function (renderer) {
-                        gameData = {
-                            canvas: canvas,
-                            renderer: renderer,
-                            canvasScale: canvasScale,
-                            viewport: viewport
-                        };
-                        callback();
-                    });
-                } else if (settings.renderer === 'pixi') {
-                    Renderer('pixi', canvas, context, function (renderer) {
-                        gameData = {
-                            canvas: canvas,
-                            renderer: renderer,
-                            canvasScale: canvasScale,
-                            viewport: viewport
-                        };
-                        callback();
-                    });
                 }
+                Renderer(settings.renderer, canvas, context, function (renderer) {
+                    gameData = {
+                        canvas: canvas,
+                        renderer: renderer,
+                        canvasScale: canvasScale,
+                        viewport: viewport
+                    };
+                    callback();
+                });
+
             } else {
                 // no canvas, create it?
                 throw 'No canvas found';
@@ -155,11 +149,7 @@ rice.define('rice/game', [
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
 
-                        InputManager.init({
-                            canvas: canvas,
-                            canvasScale: canvasScale,
-                            viewport: viewport
-                        });
+                        InputManager.init(gameData);
                         ObjectManager.init(gameData, debug);
                         if (settings.assetGroups) {
                             AssetManager.loadAssetGroups(settings.assetGroups, runGame);

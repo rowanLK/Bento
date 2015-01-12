@@ -5,6 +5,7 @@ rice.define('rice/components/fill', [
     'use strict';
     return function (base, settings) {
         var viewport = Game.getViewport(),
+            mixin = {},
             component = {
                 name: 'fill',
                 draw: function (data) {
@@ -12,9 +13,8 @@ rice.define('rice/components/fill', [
                 }
             };
         base.attach(component);
-        Sugar.combine(base, {
-            fill: component
-        });
+        mixin[component.name] = component;
+        Sugar.combine(base, mixin);
         return base;
     };
 });

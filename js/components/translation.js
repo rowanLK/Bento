@@ -5,6 +5,7 @@ rice.define('rice/components/translation', [
     'use strict';
     return function (base) {
         var set = false,
+            mixin = {},
             component = {
                 name: 'translation',
                 draw: function (data) {
@@ -24,9 +25,8 @@ rice.define('rice/components/translation', [
                 }
             };
         base.attach(component);
-        Sugar.combine(base, {
-            translation: component
-        });
+        mixin[component.name] = component;
+        Sugar.combine(base, mixin);
         return base;
     };
 });

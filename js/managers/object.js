@@ -35,8 +35,7 @@ rice.define('rice/managers/object', [
                 }
             }
         },
-        predraw = function () {},
-        cycle = function (time) {
+        mainLoop = function (time) {
             var object,
                 i,
                 currentTime = new Date().getTime(),
@@ -80,7 +79,7 @@ rice.define('rice/managers/object', [
             if (useSort) {
                 sort();
             }
-            predraw();
+            gameData.renderer.begin();
             for (i = 0; i < objects.length; ++i) {
                 object = objects[i];
                 if (!object) {
@@ -94,7 +93,7 @@ rice.define('rice/managers/object', [
 
             lastFrameTime = time;
 
-            requestAnimationFrame(cycle);
+            requestAnimationFrame(mainLoop);
         };
 
         if (!window.performance) {
@@ -192,7 +191,7 @@ rice.define('rice/managers/object', [
         },
         run: function () {
             if (!isRunning) {
-                cycle();
+                mainLoop();
                 isRunning = true;
             }
         }

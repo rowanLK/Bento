@@ -5,8 +5,9 @@
  */
 rice.define('rice/managers/input', [
     'rice/sugar',
-    'rice/math/vector2'
-], function (Sugar, Vector2) {
+    'rice/math/vector2',
+    'rice/eventsystem'
+], function (Sugar, Vector2, EventSystem) {
     'use strict';
     var isPaused = false,
         canvas,
@@ -16,12 +17,17 @@ rice.define('rice/managers/input', [
         offsetLeft = 0,
         offsetTop = 0,
         pointerDown = function (evt) {
-
+            EventSystem.fire('pointerDown', evt);
         },
-        pointerMove = function () {},
-        pointerUp = function () {},
+        pointerMove = function (evt) {
+            EventSystem.fire('pointerMove', evt);
+        },
+        pointerUp = function (evt) {
+            EventSystem.fire('pointerUp', evt);
+        },
         touchStart = function (evt) {
             var id, i;
+            console.log('touchstart');
             evt.preventDefault();
             for (i = 0; i < evt.changedTouches.length; i += 1) {
                 addTouchPosition(evt, i);
@@ -45,6 +51,7 @@ rice.define('rice/managers/input', [
             pointerUp(evt);
         },
         mouseDown = function (evt) {
+            console.log('mousedown');
             evt.preventDefault();
             addMousePosition(evt);
             pointerDown(evt);
@@ -64,6 +71,7 @@ rice.define('rice/managers/input', [
                 x = (touch.pageX - offsetLeft) / canvasScale.x,
                 y = (touch.pageY - offsetTop) / canvasScale.y;
             evt.preventDefault();
+            evt.eventType = 'touch';
             evt.changedTouches[n].position = Vector2(x, y);
             evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
             evt.changedTouches[n].worldPosition.x += viewport.x;
@@ -75,6 +83,7 @@ rice.define('rice/managers/input', [
         addMousePosition = function (evt) {
             var x = (evt.clientX - offsetLeft) / canvasScale.x,
                 y = (evt.clientY - offsetTop) / canvasScale.y;
+            evt.eventType = 'mouse';
             evt.position = Vector2(x, y);
             evt.worldPosition = evt.position.clone();
             evt.worldPosition.x += viewport.x;
@@ -118,7 +127,8 @@ rice.define('rice/managers/input', [
                 }
                 return false;
             });
-
-        }
+        },
+        addListener: function () {},
+        removeListener: function () {}
     };
 });

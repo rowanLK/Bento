@@ -7,14 +7,16 @@ rice.require([
     'rice/components/translation',
     'rice/components/rotation',
     'rice/components/scale',
-    'rice/components/fill'
-], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Rotation, Scale, Fill) {
-    Game.init({
+    'rice/components/fill',
+    'rice/components/clickable'
+], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Rotation, Scale, Fill, Clickable) {
+    Game.setup({
         canvasId: 'canvas',
         canvasDimension: Rectangle(0, 0, 320, 480),
         assetGroups: {
             'assets': 'assets/assets.json'
-        }
+        },
+        renderer: 'webgl'
     }, function () {
         console.log('ready');
         Game.Assets.load('assets', function (err) {
@@ -23,7 +25,7 @@ rice.require([
                     components: [Fill]
                 }),
                 bunny1 = Entity({
-                    components: [Translation, Sprite],
+                    components: [Translation, Sprite, Clickable],
                     position: Vector2(16, 16),
                     originRelative: Vector2(0.5, 0.5),
                     sprite: {
@@ -36,6 +38,11 @@ rice.require([
                                 frames: [0, 10, 11, 12]
                             }
                         },
+                    },
+                    clickable: {
+                        pointerDown: function (evt) {
+                            console.log(evt)
+                        }
                     },
                     init: function () {
                         this.sprite.setAnimation('idle');
