@@ -12,22 +12,35 @@ rice.define('rice/director', [
         getScreen = function (name) {
             return screens[name];
         },
-        module = {
+        director = {
             addScreen: function (screen) {
-                if (!screen.getName()) {
+                if (!screen.name) {
                     throw 'Add name property to screen';
                 }
-                screens[screen.getName()] = screen;
+                screens[screen.name] = screen;
             },
             showScreen: function (name, callback) {
                 if (currentScreen !== null) {
-                    this.hideScreen();
+                    director.hideScreen();
                 }
                 currentScreen = screens[name];
                 if (currentScreen) {
-                    currentScreen.onShow();
+                    if (currentScreen.onShow) {
+                        currentScreen.onShow();
+                    }
+                    if (callback) {
+                        callback();
+                    }
                 } else {
-                    throw 'Could not find screen';
+                    // load asynchronously
+                    rice.require([name], function (screen) {
+                        if (!screen.name) {
+                            screen.name = name;
+                        }
+                        director.addScreen(screen);
+                        // try again
+                        director.showScreen(name, callback);
+                    });
                 }
             },
             hideScreen: function () {
@@ -42,5 +55,5 @@ rice.define('rice/director', [
             }
         };
 
-    return module;
+    return director;
 });

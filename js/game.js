@@ -49,6 +49,9 @@ rice.define('rice/game', [
         gameData = {},
         viewport = Rectangle(0, 0, 640, 480),
         setupDebug = function () {
+            if (navigator.isCocoonJS) {
+                return;
+            }
             debug.debugBar = document.createElement('div');
             debug.debugBar.style['font-family'] = 'Arial';
             debug.debugBar.style.padding = '8px';
@@ -60,44 +63,60 @@ rice.define('rice/game', [
             document.body.appendChild(debug.debugBar);
         },
         setupCanvas = function (settings, callback) {
+            var wrapper;
             canvas = document.getElementById(settings.canvasId);
 
-            if (canvas) {
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                canvasRatio = viewport.height / viewport.width;
+            if (!canvas) {
+                // no canvas, create it
+                wrapper = document.getElementById('wrapper');
+                if (!wrapper) {
+                    throw 'Supply a canvasId to settings or add a wrapper div';
+                }
+                canvas = document.createElement(navigator.isCocoonJS ? 'screencanvas' : 'canvas');
+                canvas.id = settings.canvasId;
+                wrapper.addChild(canvas);
+            }
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            canvasRatio = viewport.height / viewport.width;
 
-                settings.renderer = settings.renderer || 'canvas2d';
+            settings.renderer = settings.renderer || 'canvas2d';
 
-                // setup canvas 2d
-                if (settings.renderer === 'canvas2d') {
-                    context = canvas.getContext('2d');
-                    if (!settings.smoothing) {
-                        if (context.imageSmoothingEnabled) {
-                            context.imageSmoothingEnabled = false;
-                        }
-                        if (context.webkitImageSmoothingEnabled) {
-                            context.webkitImageSmoothingEnabled = false;
-                        }
-                        if (context.mozImageSmoothingEnabled) {
-                            context.mozImageSmoothingEnabled = false;
-                        }
+            if (settings.renderer === 'auto') {
+                settings.renderer = 'webgl';
+                // canvas is accelerated in cocoonJS
+                if (navigator.isCocoonJS) {
+                    settings.renderer = 'canvas2d';
+                }
+                // should also use canvas for android?
+            }
+
+            // setup canvas 2d
+            if (settings.renderer === 'canvas2d') {
+                context = canvas.getContext('2d');
+                if (!settings.smoothing) {
+                    if (context.imageSmoothingEnabled) {
+                        context.imageSmoothingEnabled = false;
+                    }
+                    if (context.webkitImageSmoothingEnabled) {
+                        context.webkitImageSmoothingEnabled = false;
+                    }
+                    if (context.mozImageSmoothingEnabled) {
+                        context.mozImageSmoothingEnabled = false;
                     }
                 }
-                Renderer(settings.renderer, canvas, context, function (renderer) {
-                    gameData = {
-                        canvas: canvas,
-                        renderer: renderer,
-                        canvasScale: canvasScale,
-                        viewport: viewport
-                    };
-                    callback();
-                });
-
-            } else {
-                // no canvas, create it?
-                throw 'No canvas found';
             }
+            // setup renderer
+            Renderer(settings.renderer, canvas, context, function (renderer) {
+                gameData = {
+                    canvas: canvas,
+                    renderer: renderer,
+                    canvasScale: canvasScale,
+                    viewport: viewport
+                };
+                callback();
+            });
+
         },
         onResize = function () {
             var width,
@@ -128,7 +147,7 @@ rice.define('rice/game', [
             setup: function (settings, callback) {
                 DomReady(function () {
                     var runGame = function () {
-                        ObjectManager.run();
+                        game.objects.run();
                         if (callback) {
                             callback();
                         }
@@ -149,10 +168,15 @@ rice.define('rice/game', [
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
 
-                        InputManager.init(gameData);
-                        ObjectManager.init(gameData, debug);
+                        game.input = InputManager(gameData);
+                        game.objects = ObjectManager(gameData, debug);
+                        game.assets = AssetManager();
+
+                        // mix functions
+                        Sugar.combine(game, game.objects);
+
                         if (settings.assetGroups) {
-                            AssetManager.loadAssetGroups(settings.assetGroups, runGame);
+                            game.assets.loadAssetGroups(settings.assetGroups, runGame);
                         } else {
                             runGame();
                         }
@@ -163,11 +187,9 @@ rice.define('rice/game', [
             getViewport: function () {
                 return viewport;
             },
-            Assets: AssetManager,
-            Objects: ObjectManager
+            assets: null,
+            objects: null,
+            input: null
         };
-
-    // mix functions
-    Sugar.combine(game, ObjectManager);
     return game;
 });

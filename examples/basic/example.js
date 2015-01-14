@@ -3,7 +3,7 @@ rice.require([
     'rice/math/vector2',
     'rice/math/rectangle',
     'rice/entity',
-    'rice/components/sprite',
+    'rice/components/animation',
     'rice/components/translation',
     'rice/components/rotation',
     'rice/components/scale',
@@ -19,17 +19,20 @@ rice.require([
         renderer: 'webgl'
     }, function () {
         console.log('ready');
-        Game.Assets.load('assets', function (err) {
+        Game.assets.load('assets', function (err) {
             var viewport = Game.getViewport(),
                 background = Entity({
-                    components: [Fill]
+                    components: [Fill],
+                    fill: {
+                        color: 'rgba(1, 0, 0, 1)'
+                    }
                 }),
                 bunny1 = Entity({
                     components: [Translation, Sprite, Clickable],
                     position: Vector2(16, 16),
                     originRelative: Vector2(0.5, 0.5),
                     sprite: {
-                        image: Game.Assets.getImage('bunnygirlsmall'),
+                        image: Game.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
                         animations: {
@@ -53,7 +56,7 @@ rice.require([
                     position: Vector2(16 + 32, 16),
                     originRelative: Vector2(0.5, 0.5),
                     sprite: {
-                        image: Game.Assets.getImage('bunnygirlsmall'),
+                        image: Game.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
                         animations: {
@@ -73,7 +76,7 @@ rice.require([
                     position: Vector2(16 + 64, 16),
                     originRelative: Vector2(0.5, 0.5),
                     sprite: {
-                        image: Game.Assets.getImage('bunnygirlsmall'),
+                        image: Game.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
                         animations: {
@@ -91,10 +94,10 @@ rice.require([
                         bunny3.rotation.addAngleDegree(1);
                     }
                 });
-            Game.Objects.add(background);
-            Game.Objects.add(bunny1);
-            Game.Objects.add(bunny2);
-            Game.Objects.add(bunny3);
+            Game.objects.add(background);
+            Game.objects.add(bunny1);
+            Game.objects.add(bunny2);
+            Game.objects.add(bunny3);
 
         }, function (current, total) {
             console.log(current + '/' + total);

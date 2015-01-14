@@ -2,7 +2,8 @@ rice.define('rice/renderers/pixi', [
     'rice/sugar'
 ], function (Sugar) {
     return function (canvas, context) {
-        var pixiStage,
+        var useBatch = false,
+            pixiStage,
             pixiRenderer,
             pixiBatch,
             currentObject,
@@ -14,7 +15,7 @@ rice.define('rice/renderers/pixi', [
                 destroy: function () {},
                 save: function (obj) {
                     currentObject = obj;
-                    pixiStage.addChild(obj.pixiSprite);
+                    pixiBatch.addChild(obj.pixiSprite);
                     currentObject.pixiSprite.position.x = 0;
                     currentObject.pixiSprite.position.y = 0;
                 },
@@ -28,11 +29,10 @@ rice.define('rice/renderers/pixi', [
                 fillRect: function (color, x, y, w, h) {},
                 drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
                     currentObject.pixiTexture.setFrame(new PIXI.Rectangle(sx, sy, sw, sh));
-
                 },
                 flush: function () {
                     pixiRenderer.render(pixiStage);
-                    pixiStage.removeChildren();
+                    pixiBatch.removeChildren();
                 }
             };
         // init pixi
@@ -40,7 +40,13 @@ rice.define('rice/renderers/pixi', [
         pixiRenderer = PIXI.autoDetectRenderer(canvas.width, canvas.height, {
             view: canvas
         });
-        console.log('initialized pixi as renderer');
+        if (useBatch) {
+            pixiBatch = new PIXI.SpriteBatch();
+            pixiStage.addChild(pixiBatch);
+        } else {
+            pixiBatch = pixiStage;
+        }
+        console.log('Init pixi as renderer');
         return renderer;
     }
 });

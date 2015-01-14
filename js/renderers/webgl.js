@@ -1,8 +1,10 @@
 rice.define('rice/renderers/webgl', [
-    'rice/sugar'
-], function (Sugar) {
+    'rice/sugar',
+    'rice/renderers/canvas2d'
+], function (Sugar, Canvas2d) {
     return function (canvas, context) {
-        var glRenderer,
+        var canWebGl,
+            glRenderer,
             renderer = {
                 name: 'webgl',
                 save: function () {
@@ -21,14 +23,16 @@ rice.define('rice/renderers/webgl', [
                     glRenderer.rotate(angle);
                 },
                 fillRect: function (color, x, y, w, h) {
-                    glRenderer.color = [0, 0, 0, 1.0];
+                    var oldColor = glRenderer.color;
+                    // 
+                    renderer.setColor(color);
                     glRenderer.fillRect(x, y, w, h);
+                    glRenderer.color = oldColor;
                 },
                 drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
                     if (!image.texture) {
                         image.texture = window.GlSprites.createTexture2D(context, image);
                     }
-                    glRenderer.color = [1, 1, 1, 1];
                     glRenderer.drawImage(image.texture, sx, sy, sw, sh, x, y, sw, sh);
                 },
                 begin: function () {
@@ -36,13 +40,30 @@ rice.define('rice/renderers/webgl', [
                 },
                 flush: function () {
                     glRenderer.end();
+                },
+                setColor: function (cssStr) {
+                    glRenderer.color = colorString.getRgba(cssStr);
                 }
             };
-        console.log('using webgl as renderer');
-        context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        console.log('Init webgl as renderer');
 
-        glRenderer = window.GlSprites.SpriteRenderer(context);
-        glRenderer.ortho(canvas.width, canvas.height);
-        return renderer;
+        // fallback
+        canWebGl = (function () {
+            try {
+                var canvas = document.createElement('canvas');
+                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+            } catch (e) {
+                return false;
+            }
+        })();
+        if (canWebGl) {
+            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+            glRenderer = window.GlSprites.SpriteRenderer(context);
+            glRenderer.ortho(canvas.width, canvas.height);
+            return renderer;
+        } else {
+            return Canvas2d(canvas, context);
+        }
     };
 });

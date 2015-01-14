@@ -3,7 +3,7 @@ rice.require([
     'rice/math/vector2',
     'rice/math/rectangle',
     'rice/entity',
-    'rice/components/sprite',
+    'rice/components/animation',
     'rice/components/translation',
     'rice/components/fill',
     'rice/components/clickable'
@@ -14,9 +14,9 @@ rice.require([
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        debug: true
+        debug: !navigator.isCocoonJS
     }, function () {
-        Game.Assets.load('assets', function (err) {
+        Game.assets.load('assets', function (err) {
             var viewport = Game.getViewport(),
                 bunnies = 0,
                 background = Entity({
@@ -40,7 +40,7 @@ rice.require([
                         position: Vector2(getRandom(320), getRandom(480)),
                         originRelative: Vector2(0.5, 0.5),
                         sprite: {
-                            image: Game.Assets.getImage('bunnygirlsmall'),
+                            image: Game.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
                             frameHeight: 32,
                             animations: {
@@ -80,7 +80,7 @@ rice.require([
                         }
                     });
                     bunnies += 1;
-                    Game.Objects.add(entity);
+                    Game.objects.add(entity);
                     return entity;
                 };
             Game.add(background);

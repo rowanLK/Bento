@@ -2,11 +2,9 @@ rice.define('rice/eventsystem', [
     'rice/sugar'
 ], function (Sugar) {
     var events = {};
-    /*
-    events = {
-        'eventName': [Array of listeners]
-    }
-    */
+    /*events = {
+        [String eventName]: [Array listeners]
+    }*/
     return {
         fire: function (eventName, eventData) {
             var i, l, listeners;

@@ -24,7 +24,6 @@ rice.define('rice/components/clickable', [
             if (settings.pointerMove) {
                 component.pointerMove = settings.pointerMove;
             }
-
         }
         EventSystem.addEventListener('pointerDown', component.pointerDown);
         EventSystem.addEventListener('pointerUp', component.pointerUp);

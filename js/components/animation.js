@@ -1,4 +1,4 @@
-rice.define('rice/components/pixisprite', [
+rice.define('rice/components/animation', [
     'rice/sugar',
 ], function (Sugar) {
     'use strict';
@@ -9,6 +9,7 @@ rice.define('rice/components/pixisprite', [
             currentAnimation = {
                 frames: [0]
             },
+            mixin = {},
             currentFrame = 0,
             frameCountX = 1,
             frameCountY = 1,
@@ -16,7 +17,6 @@ rice.define('rice/components/pixisprite', [
             frameHeight = 0,
             onCompleteCallback,
             origin = base.getOrigin(),
-            mixin = {},
             component = {
                 name: 'sprite',
                 setup: function (settings) {
@@ -57,17 +57,6 @@ rice.define('rice/components/pixisprite', [
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
-
-                    // pixi
-                    if (!image.pixiBaseTexture) {
-                        image.pixiBaseTexture = new PIXI.BaseTexture(image);
-                    }
-                    base.pixiTexture = new PIXI.Texture(image.pixiBaseTexture);
-                    if (!base.pixiSprite) {
-                        base.pixiSprite = new PIXI.Sprite(base.pixiTexture);
-                    }
-                    base.pixiSprite.setTexture(base.pixiTexture);
-
                 },
                 setAnimation: function (name, callback, keepCurrentFrame) {
                     var anim = animations[name];

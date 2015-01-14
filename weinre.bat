@@ -1,1 +1,0 @@
-weinre --boundHost 192.168.2.13
