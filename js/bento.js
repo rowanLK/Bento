@@ -1,22 +1,20 @@
 /**
- *  Rice game instance, controls managers and game loop
- *  @copyright (C) 2014 1HandGaming
+ *  Bento module, main entry point to game modules
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/game', [
-    'rice/sugar',
-    'rice/lib/domready',
-    'rice/lib/requestanimationframe',
-    'rice/managers/asset',
-    'rice/managers/input',
-    'rice/managers/object',
-    'rice/math/vector2',
-    'rice/math/rectangle',
-    'rice/renderer'
+bento.define('bento', [
+    'bento/utils',
+    'bento/lib/domready',
+    'bento/managers/asset',
+    'bento/managers/input',
+    'bento/managers/object',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/renderer'
 ], function (
-    Sugar,
+    Utils,
     DomReady,
-    RequestAnimationFrame,
     AssetManager,
     InputManager,
     ObjectManager,
@@ -143,11 +141,11 @@ rice.define('rice/game', [
             canvasScale.x = width / viewport.width;
             canvasScale.y = height / viewport.height;
         },
-        game = {
+        module = {
             setup: function (settings, callback) {
                 DomReady(function () {
                     var runGame = function () {
-                        game.objects.run();
+                        module.objects.run();
                         if (callback) {
                             callback();
                         }
@@ -168,15 +166,15 @@ rice.define('rice/game', [
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
 
-                        game.input = InputManager(gameData);
-                        game.objects = ObjectManager(gameData, debug);
-                        game.assets = AssetManager();
+                        module.input = InputManager(gameData);
+                        module.objects = ObjectManager(gameData, debug);
+                        module.assets = AssetManager();
 
                         // mix functions
-                        Sugar.combine(game, game.objects);
+                        Utils.combine(module, module.objects);
 
                         if (settings.assetGroups) {
-                            game.assets.loadAssetGroups(settings.assetGroups, runGame);
+                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
                         } else {
                             runGame();
                         }
@@ -189,7 +187,8 @@ rice.define('rice/game', [
             },
             assets: null,
             objects: null,
-            input: null
+            input: null,
+            utils: Utils
         };
-    return game;
+    return module;
 });

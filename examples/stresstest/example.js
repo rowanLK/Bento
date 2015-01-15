@@ -1,14 +1,14 @@
-rice.require([
-    'rice/game',
-    'rice/math/vector2',
-    'rice/math/rectangle',
-    'rice/entity',
-    'rice/components/animation',
-    'rice/components/translation',
-    'rice/components/fill',
-    'rice/components/clickable'
-], function (Game, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable) {
-    Game.setup({
+bento.require([
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/entity',
+    'bento/components/animation',
+    'bento/components/translation',
+    'bento/components/fill',
+    'bento/components/clickable'
+], function (Bento, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable) {
+    Bento.setup({
         canvasId: 'canvas',
         debug: true,
         canvasDimension: Rectangle(0, 0, 320, 480),
@@ -17,8 +17,8 @@ rice.require([
         },
         renderer: 'webgl'
     }, function () {
-        Game.assets.load('assets', function (err) {
-            var viewport = Game.getViewport(),
+        Bento.assets.load('assets', function (err) {
+            var viewport = Bento.getViewport(),
                 bunnies = 0,
                 background = Entity({
                     components: [Fill, Clickable],
@@ -41,7 +41,7 @@ rice.require([
                         position: Vector2(getRandom(320), getRandom(480)),
                         originRelative: Vector2(0.5, 0.5),
                         sprite: {
-                            image: Game.assets.getImage('bunnygirlsmall'),
+                            image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
                             frameHeight: 32,
                             animations: {
@@ -81,10 +81,10 @@ rice.require([
                         }
                     });
                     bunnies += 1;
-                    Game.objects.add(entity);
+                    Bento.objects.add(entity);
                     return entity;
                 };
-            Game.add(background);
+            Bento.add(background);
             addBunny();
             window.add = function (val) {
                 var i;

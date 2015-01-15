@@ -1,11 +1,9 @@
 /**
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  */
-rice.define('rice/director', [
-    'rice/sugar',
-    'rice/game',
-    'rice/screen'
-], function (Sugar, Game, Screen) {
+bento.define('bento/director', [
+    'bento/utils'
+], function (Utils) {
     'use strict';
     var screens = {},
         currentScreen = null,
@@ -33,7 +31,7 @@ rice.define('rice/director', [
                     }
                 } else {
                     // load asynchronously
-                    rice.require([name], function (screen) {
+                    bento.require([name], function (screen) {
                         if (!screen.name) {
                             screen.name = name;
                         }

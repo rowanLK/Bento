@@ -1,8 +1,8 @@
-rice.define('rice/components/clickable', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/eventsystem'
-], function (Sugar, Vector2, EventSystem) {
+bento.define('bento/components/clickable', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
     'use strict';
     return function (base, settings) {
         var mixin = {},
@@ -31,7 +31,7 @@ rice.define('rice/components/clickable', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });

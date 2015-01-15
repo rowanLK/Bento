@@ -1,13 +1,13 @@
 /**
  *  @module Polygon
  *  @desc Represents a polygon
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/polygon', [
-    'rice/sugar',
-    'rice/math/rectangle'
-], function (Sugar, Rectangle) {
+bento.define('bento/math/polygon', [
+    'bento/utils',
+    'bento/math/rectangle'
+], function (Utils, Rectangle) {
     'use strict';
     var isPolygon = function () {
             return true;

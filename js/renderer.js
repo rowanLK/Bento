@@ -1,6 +1,6 @@
-rice.define('rice/renderer', [
-    'rice/sugar'
-], function (Sugar, Canvas2D) {
+bento.define('bento/renderer', [
+    'bento/utils'
+], function (Utils, Canvas2D) {
     return function (type, canvas, context, callback) {
         var module = {
             save: function () {},
@@ -14,8 +14,8 @@ rice.define('rice/renderer', [
             flush: function () {},
             setColor: function () {}
         };
-        require(['rice/renderers/' + type], function (renderer) {
-            Sugar.combine(module, renderer(canvas, context));
+        require(['bento/renderers/' + type], function (renderer) {
+            Utils.combine(module, renderer(canvas, context));
             callback(module);
         });
     };

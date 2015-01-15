@@ -1,6 +1,6 @@
-rice.define('rice/components/rotation', [
-    'rice/sugar',
-], function (Sugar) {
+bento.define('bento/components/rotation', [
+    'bento/utils',
+], function (Utils) {
     'use strict';
     return function (base) {
         var angle,
@@ -47,7 +47,7 @@ rice.define('rice/components/rotation', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });

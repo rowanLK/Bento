@@ -9,7 +9,7 @@
   self: false, setInterval: false */
 
 
-rice.define('rice/lib/domready', [], function () {
+bento.define('bento/lib/domready', [], function () {
     'use strict';
 
     var isTop, testDiv, scrollIntervalId,

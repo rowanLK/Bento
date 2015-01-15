@@ -9683,428 +9683,35 @@ module.exports = {
 },{"./copy":5,"./mat4":7,"as-number":8}]},{},[6]);
 
 /**
- *  Main entry point for Rice engine
- *  @copyright (C) 2014 1HandGaming
+ *  Main entry point for Bento engine
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
 (function () {
     'use strict';
-    var rice = {
+    var bento = {
         require: window.require,
         define: window.define
     };
-    window.rice = window.rice || rice;
+    window.bento = window.bento || bento;
 }());
 /**
- *  @copyright (C) 1HandGaming
- */
-rice.define('rice/director', [
-    'rice/sugar',
-    'rice/game',
-    'rice/screen'
-], function (Sugar, Game, Screen) {
-    'use strict';
-    var screens = {},
-        currentScreen = null,
-        getScreen = function (name) {
-            return screens[name];
-        },
-        director = {
-            addScreen: function (screen) {
-                if (!screen.name) {
-                    throw 'Add name property to screen';
-                }
-                screens[screen.name] = screen;
-            },
-            showScreen: function (name, callback) {
-                if (currentScreen !== null) {
-                    director.hideScreen();
-                }
-                currentScreen = screens[name];
-                if (currentScreen) {
-                    if (currentScreen.onShow) {
-                        currentScreen.onShow();
-                    }
-                    if (callback) {
-                        callback();
-                    }
-                } else {
-                    // load asynchronously
-                    rice.require([name], function (screen) {
-                        if (!screen.name) {
-                            screen.name = name;
-                        }
-                        director.addScreen(screen);
-                        // try again
-                        director.showScreen(name, callback);
-                    });
-                }
-            },
-            hideScreen: function () {
-                if (!currentScreen) {
-                    return;
-                }
-                currentScreen.onHide();
-                currentScreen = null;
-            },
-            getCurrentScreen: function () {
-                return currentScreen;
-            }
-        };
-
-    return director;
-});
-/*
- * A base object to hold components
- * @copyright (C) 1HandGaming
- */
-rice.define('rice/entity', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/math/rectangle'
-], function (Sugar, Vector2, Rectangle) {
-    'use strict';
-    var globalId = 0;
-    return function (settings) {
-        var i,
-            name,
-            visible = true,
-            position = Vector2(0, 0),
-            origin = Vector2(0, 0),
-            dimension = Rectangle(0, 0, 0, 0),
-            rectangle,
-            components = [],
-            family = [],
-            removedComponents = [],
-            parent = null,
-            uniqueId = ++globalId,
-            cleanComponents = function () {
-                var i, component;
-                while (removedComponents.length) {
-                    component = removedComponents.pop();
-                    // should destroy be called?
-                    /*if (component.destroy) {
-                        component.destroy();
-                    }*/
-                    Sugar.removeObject(components, component);
-                }
-            },
-            entity = {
-                z: 0,
-                timer: 0,
-                global: false,
-                updateWhenPaused: false,
-                name: '',
-                destroy: function (data) {
-                    var i,
-                        l,
-                        component;
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.destroy) {
-                            component.destroy(data);
-                        }
-                    }
-                },
-                update: function (data) {
-                    var i,
-                        l,
-                        component;
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.update) {
-                            component.update(data);
-                        }
-                    }
-                    ++entity.timer;
-
-                    // clean up
-                    cleanComponents();
-                },
-                draw: function (data) {
-                    var i,
-                        l,
-                        component;
-                    if (!visible) {
-                        return;
-                    }
-                    // call components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.draw) {
-                            component.draw(data);
-                        }
-                    }
-                    // post draw
-                    for (i = components.length - 1; i >= 0; i--) {
-                        component = components[i];
-                        if (component && component.postDraw) {
-                            component.postDraw(data);
-                        }
-                    }
-                },
-                addToFamily: function (name) {
-                    family.push(name);
-                },
-                getFamily: function () {
-                    return family;
-                },
-                add: function (object) {
-                    return Sugar.combine(entity, object);
-                },
-                getPosition: function () {
-                    return position;
-                },
-                setPosition: function (value) {
-                    position.x = value.x;
-                    position.y = value.y;
-                },
-                getDimension: function () {
-                    return dimension;
-                },
-                setDimension: function (value) {
-                    if (Sugar.isDimension(value)) {
-                        dimension = value;
-                    }
-                },
-                getBoundingBox: function () {
-                    var scale, x1, x2, y1, y2, box;
-                    if (!rectangle) {
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
-                        x1 = position.x - origin.x * scale.x;
-                        y1 = position.y - origin.y * scale.y;
-                        x2 = position.x + (dimension.width - origin.x) * scale.x;
-                        y2 = position.y + (dimension.height - origin.y) * scale.y;
-                        // swap variables if scale is negative
-                        if (scale.x < 0) {
-                            x2 = [x1, x1 = x2][0];
-                        }
-                        if (scale.y < 0) {
-                            y2 = [y1, y1 = y2][0];
-                        }
-                        return Rectangle(x1, y1, x2 - x1, y2 - y1);
-                    } else {
-                        box = rectangle.clone();
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
-                        box.x *= Math.abs(scale.x);
-                        box.y *= Math.abs(scale.y);
-                        box.width *= Math.abs(scale.x);
-                        box.height *= Math.abs(scale.y);
-                        box.x += position.x;
-                        box.y += position.y;
-                        return box;
-                    }
-                },
-                setBoundingBox: function (value) {
-                    rectangle = value;
-                },
-                getRectangle: function () {
-                    return rectangle;
-                },
-                setOrigin: function (value) {
-                    origin.x = value.x;
-                    origin.y = value.y;
-                },
-                setOriginRelative: function (value) {
-                    origin.x = value.x * dimension.width;
-                    origin.y = value.y * dimension.height;
-                },
-                getOrigin: function () {
-                    return origin;
-                },
-                isVisible: function () {
-                    return visible;
-                },
-                setVisible: function (value) {
-                    visible = value;
-                },
-                attach: function (component, name) {
-                    var mixin = {};
-                    components.push(component);
-                    if (component.setParent) {
-                        component.setParent(entity);
-                    }
-                    if (component.init) {
-                        component.init();
-                    }
-                    if (name) {
-                        mixin[name] = component;
-                        Sugar.combine(entity, mixin);
-                    }
-                    return entity;
-                },
-                remove: function (component) {
-                    var i, type, index;
-                    if (!component) {
-                        return;
-                    }
-                    index = components.indexOf(component);
-                    if (index >= 0) {
-                        components[index] = null;
-                    }
-                    return entity;
-                },
-                getComponents: function () {
-                    return components;
-                },
-                getComponentByName: function (name) {
-                    var i, l, component;
-                    for (i = 0, i = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component.name === name) {
-                            return component;
-                        }
-                    }
-                },
-                setParent: function (obj) {
-                    parent = obj;
-                },
-                getParent: function () {
-                    return parent;
-                },
-                getId: function () {
-                    return uniqueId;
-                },
-                collidesWith: function (other, offset) {
-                    if (!Sugar.isDefined(offset)) {
-                        offset = Vector2(0, 0);
-                    }
-                    return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
-                },
-                collidesWithGroup: function (array, offset) {
-                    var i,
-                        obj,
-                        box;
-                    if (!Sugar.isDefined(offset)) {
-                        offset = Vector2(0, 0);
-                    }
-                    if (!Sugar.isArray(array)) {
-                        // throw 'Collision check must be with an Array of object';
-                        console.log('Collision check must be with an Array of object');
-                        return;
-                    }
-                    if (!array.length) {
-                        return null;
-                    }
-                    box = entity.getBoundingBox().offset(offset);
-                    for (i = 0; i < array.length; ++i) {
-                        obj = array[i];
-                        if (obj === entity) {
-                            continue;
-                        }
-                        if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
-                            return obj;
-                        }
-                    }
-                    return null;
-                }
-            };
-
-        // read settings
-        if (settings) {
-            if (settings.components) {
-                if (!Sugar.isArray(settings.components)) {
-                    settings.components = [settings.components];
-                }
-                for (i = 0; i < settings.components.length; ++i) {
-                    settings.components[i](entity, settings);
-                }
-            }
-            if (settings.position) {
-                entity.setPosition(settings.position);
-            }
-            if (settings.origin) {
-                entity.setOrigin(settings.origin);
-            }
-            if (settings.originRelative) {
-                entity.setOriginRelative(settings.originRelative);
-            }
-            if (settings.name) {
-                entity.setName(settings.name);
-            }
-            if (settings.family) {
-                if (!Sugar.isArray(settings.family)) {
-                    settings.family = [settings.family];
-                }
-                for (i = 0; i < settings.family.length; ++i) {
-                    entity.addToFamily(settings.family[i]);
-                }
-            }
-            if (settings.init) {
-                settings.init.apply(entity);
-            }
-
-            entity.updateWhenPaused = settings.updateWhenPaused || false;
-            entity.global = settings.global || false;
-        }
-        return entity;
-    };
-});
-rice.define('rice/eventsystem', [
-    'rice/sugar'
-], function (Sugar) {
-    var events = {};
-    /*
-    events = {
-        'eventName': [Array of listeners]
-    }
-    */
-    return {
-        fire: function (eventName, eventData) {
-            var i, l, listeners;
-            if (!Sugar.isString(eventName)) {
-                eventName = eventName.toString();
-            }
-            if (Sugar.isUndefined(events[eventName])) {
-                return;
-            }
-            listeners = events[eventName];
-            for (i = 0, l = listeners.length; i < l; ++i) {
-                listeners[i](eventData);
-            }
-        },
-        addEventListener: function (eventName, callback) {
-            if (Sugar.isUndefined(events[eventName])) {
-                events[eventName] = [];
-            }
-            events[eventName].push(callback);
-        },
-        removeEventListener: function (eventName, callback) {
-            var i, l, listener;
-            if (Sugar.isUndefined(events[eventName])) {
-                return;
-            }
-            listener = events[eventName];
-            for (i = 0, l = listener.length; i < l; ++i) {
-                if (listener[i] === callback) {
-                    listener.splice(i, 1);
-                    break;
-                }
-            }
-        }
-    };
-});
-/**
- *  Rice game instance, controls managers and game loop
- *  @copyright (C) 2014 1HandGaming
+ *  Bento module, main entry point to game modules
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/game', [
-    'rice/sugar',
-    'rice/lib/domready',
-    'rice/lib/requestanimationframe',
-    'rice/managers/asset',
-    'rice/managers/input',
-    'rice/managers/object',
-    'rice/math/vector2',
-    'rice/math/rectangle',
-    'rice/renderer'
+bento.define('bento', [
+    'bento/utils',
+    'bento/lib/domready',
+    'bento/managers/asset',
+    'bento/managers/input',
+    'bento/managers/object',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/renderer'
 ], function (
-    Sugar,
+    Utils,
     DomReady,
-    RequestAnimationFrame,
     AssetManager,
     InputManager,
     ObjectManager,
@@ -10137,6 +9744,9 @@ rice.define('rice/game', [
         gameData = {},
         viewport = Rectangle(0, 0, 640, 480),
         setupDebug = function () {
+            if (navigator.isCocoonJS) {
+                return;
+            }
             debug.debugBar = document.createElement('div');
             debug.debugBar.style['font-family'] = 'Arial';
             debug.debugBar.style.padding = '8px';
@@ -10228,11 +9838,11 @@ rice.define('rice/game', [
             canvasScale.x = width / viewport.width;
             canvasScale.y = height / viewport.height;
         },
-        game = {
+        module = {
             setup: function (settings, callback) {
                 DomReady(function () {
                     var runGame = function () {
-                        game.objects.run();
+                        module.objects.run();
                         if (callback) {
                             callback();
                         }
@@ -10253,15 +9863,15 @@ rice.define('rice/game', [
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
 
-                        game.input = InputManager(gameData);
-                        game.objects = ObjectManager(gameData, debug);
-                        game.assets = AssetManager();
+                        module.input = InputManager(gameData);
+                        module.objects = ObjectManager(gameData, debug);
+                        module.assets = AssetManager();
 
                         // mix functions
-                        Sugar.combine(game, game.objects);
+                        Utils.combine(module, module.objects);
 
                         if (settings.assetGroups) {
-                            game.assets.loadAssetGroups(settings.assetGroups, runGame);
+                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
                         } else {
                             runGame();
                         }
@@ -10274,13 +9884,402 @@ rice.define('rice/game', [
             },
             assets: null,
             objects: null,
-            input: null
+            input: null,
+            Utils: Utils
         };
-    return game;
+    return module;
 });
-rice.define('rice/renderer', [
-    'rice/sugar'
-], function (Sugar, Canvas2D) {
+/**
+ *  @copyright (C) HeiGames
+ */
+bento.define('bento/director', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var screens = {},
+        currentScreen = null,
+        getScreen = function (name) {
+            return screens[name];
+        },
+        director = {
+            addScreen: function (screen) {
+                if (!screen.name) {
+                    throw 'Add name property to screen';
+                }
+                screens[screen.name] = screen;
+            },
+            showScreen: function (name, callback) {
+                if (currentScreen !== null) {
+                    director.hideScreen();
+                }
+                currentScreen = screens[name];
+                if (currentScreen) {
+                    if (currentScreen.onShow) {
+                        currentScreen.onShow();
+                    }
+                    if (callback) {
+                        callback();
+                    }
+                } else {
+                    // load asynchronously
+                    bento.require([name], function (screen) {
+                        if (!screen.name) {
+                            screen.name = name;
+                        }
+                        director.addScreen(screen);
+                        // try again
+                        director.showScreen(name, callback);
+                    });
+                }
+            },
+            hideScreen: function () {
+                if (!currentScreen) {
+                    return;
+                }
+                currentScreen.onHide();
+                currentScreen = null;
+            },
+            getCurrentScreen: function () {
+                return currentScreen;
+            }
+        };
+
+    return director;
+});
+/*
+ * A base object to hold components
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/entity', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/math/rectangle'
+], function (Utils, Vector2, Rectangle) {
+    'use strict';
+    var globalId = 0;
+    return function (settings) {
+        var i,
+            name,
+            visible = true,
+            position = Vector2(0, 0),
+            origin = Vector2(0, 0),
+            dimension = Rectangle(0, 0, 0, 0),
+            rectangle,
+            components = [],
+            family = [],
+            removedComponents = [],
+            parent = null,
+            uniqueId = ++globalId,
+            cleanComponents = function () {
+                var i, component;
+                while (removedComponents.length) {
+                    component = removedComponents.pop();
+                    // should destroy be called?
+                    /*if (component.destroy) {
+                        component.destroy();
+                    }*/
+                    Utils.removeObject(components, component);
+                }
+            },
+            entity = {
+                z: 0,
+                timer: 0,
+                global: false,
+                updateWhenPaused: false,
+                name: '',
+                destroy: function (data) {
+                    var i,
+                        l,
+                        component;
+                    // update components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.destroy) {
+                            component.destroy(data);
+                        }
+                    }
+                },
+                update: function (data) {
+                    var i,
+                        l,
+                        component;
+                    // update components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.update) {
+                            component.update(data);
+                        }
+                    }
+                    ++entity.timer;
+
+                    // clean up
+                    cleanComponents();
+                },
+                draw: function (data) {
+                    var i,
+                        l,
+                        component;
+                    if (!visible) {
+                        return;
+                    }
+                    // call components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.draw) {
+                            component.draw(data);
+                        }
+                    }
+                    // post draw
+                    for (i = components.length - 1; i >= 0; i--) {
+                        component = components[i];
+                        if (component && component.postDraw) {
+                            component.postDraw(data);
+                        }
+                    }
+                },
+                addToFamily: function (name) {
+                    family.push(name);
+                },
+                getFamily: function () {
+                    return family;
+                },
+                add: function (object) {
+                    return Utils.combine(entity, object);
+                },
+                getPosition: function () {
+                    return position;
+                },
+                setPosition: function (value) {
+                    position.x = value.x;
+                    position.y = value.y;
+                },
+                getDimension: function () {
+                    return dimension;
+                },
+                setDimension: function (value) {
+                    if (Utils.isDimension(value)) {
+                        dimension = value;
+                    }
+                },
+                getBoundingBox: function () {
+                    var scale, x1, x2, y1, y2, box;
+                    if (!rectangle) {
+                        // TODO get rid of scale component dependency
+                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        x1 = position.x - origin.x * scale.x;
+                        y1 = position.y - origin.y * scale.y;
+                        x2 = position.x + (dimension.width - origin.x) * scale.x;
+                        y2 = position.y + (dimension.height - origin.y) * scale.y;
+                        // swap variables if scale is negative
+                        if (scale.x < 0) {
+                            x2 = [x1, x1 = x2][0];
+                        }
+                        if (scale.y < 0) {
+                            y2 = [y1, y1 = y2][0];
+                        }
+                        return Rectangle(x1, y1, x2 - x1, y2 - y1);
+                    } else {
+                        box = rectangle.clone();
+                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        box.x *= Math.abs(scale.x);
+                        box.y *= Math.abs(scale.y);
+                        box.width *= Math.abs(scale.x);
+                        box.height *= Math.abs(scale.y);
+                        box.x += position.x;
+                        box.y += position.y;
+                        return box;
+                    }
+                },
+                setBoundingBox: function (value) {
+                    rectangle = value;
+                },
+                getRectangle: function () {
+                    return rectangle;
+                },
+                setOrigin: function (value) {
+                    origin.x = value.x;
+                    origin.y = value.y;
+                },
+                setOriginRelative: function (value) {
+                    origin.x = value.x * dimension.width;
+                    origin.y = value.y * dimension.height;
+                },
+                getOrigin: function () {
+                    return origin;
+                },
+                isVisible: function () {
+                    return visible;
+                },
+                setVisible: function (value) {
+                    visible = value;
+                },
+                attach: function (component, name) {
+                    var mixin = {};
+                    components.push(component);
+                    if (component.setParent) {
+                        component.setParent(entity);
+                    }
+                    if (component.init) {
+                        component.init();
+                    }
+                    if (name) {
+                        mixin[name] = component;
+                        Utils.combine(entity, mixin);
+                    }
+                    return entity;
+                },
+                remove: function (component) {
+                    var i, type, index;
+                    if (!component) {
+                        return;
+                    }
+                    index = components.indexOf(component);
+                    if (index >= 0) {
+                        components[index] = null;
+                    }
+                    return entity;
+                },
+                getComponents: function () {
+                    return components;
+                },
+                getComponentByName: function (name) {
+                    var i, l, component;
+                    for (i = 0, i = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component.name === name) {
+                            return component;
+                        }
+                    }
+                },
+                setParent: function (obj) {
+                    parent = obj;
+                },
+                getParent: function () {
+                    return parent;
+                },
+                getId: function () {
+                    return uniqueId;
+                },
+                collidesWith: function (other, offset) {
+                    if (!Utils.isDefined(offset)) {
+                        offset = Vector2(0, 0);
+                    }
+                    return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
+                },
+                collidesWithGroup: function (array, offset) {
+                    var i,
+                        obj,
+                        box;
+                    if (!Utils.isDefined(offset)) {
+                        offset = Vector2(0, 0);
+                    }
+                    if (!Utils.isArray(array)) {
+                        // throw 'Collision check must be with an Array of object';
+                        console.log('Collision check must be with an Array of object');
+                        return;
+                    }
+                    if (!array.length) {
+                        return null;
+                    }
+                    box = entity.getBoundingBox().offset(offset);
+                    for (i = 0; i < array.length; ++i) {
+                        obj = array[i];
+                        if (obj === entity) {
+                            continue;
+                        }
+                        if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
+                            return obj;
+                        }
+                    }
+                    return null;
+                }
+            };
+
+        // read settings
+        if (settings) {
+            if (settings.components) {
+                if (!Utils.isArray(settings.components)) {
+                    settings.components = [settings.components];
+                }
+                for (i = 0; i < settings.components.length; ++i) {
+                    settings.components[i](entity, settings);
+                }
+            }
+            if (settings.position) {
+                entity.setPosition(settings.position);
+            }
+            if (settings.origin) {
+                entity.setOrigin(settings.origin);
+            }
+            if (settings.originRelative) {
+                entity.setOriginRelative(settings.originRelative);
+            }
+            if (settings.name) {
+                entity.setName(settings.name);
+            }
+            if (settings.family) {
+                if (!Utils.isArray(settings.family)) {
+                    settings.family = [settings.family];
+                }
+                for (i = 0; i < settings.family.length; ++i) {
+                    entity.addToFamily(settings.family[i]);
+                }
+            }
+            if (settings.init) {
+                settings.init.apply(entity);
+            }
+
+            entity.updateWhenPaused = settings.updateWhenPaused || false;
+            entity.global = settings.global || false;
+        }
+        return entity;
+    };
+});
+bento.define('bento/eventsystem', [
+    'bento/utils'
+], function (Utils) {
+    var events = {};
+    /*events = {
+        [String eventName]: [Array listeners]
+    }*/
+    return {
+        fire: function (eventName, eventData) {
+            var i, l, listeners;
+            if (!Utils.isString(eventName)) {
+                eventName = eventName.toString();
+            }
+            if (Utils.isUndefined(events[eventName])) {
+                return;
+            }
+            listeners = events[eventName];
+            for (i = 0, l = listeners.length; i < l; ++i) {
+                listeners[i](eventData);
+            }
+        },
+        addEventListener: function (eventName, callback) {
+            if (Utils.isUndefined(events[eventName])) {
+                events[eventName] = [];
+            }
+            events[eventName].push(callback);
+        },
+        removeEventListener: function (eventName, callback) {
+            var i, l, listener;
+            if (Utils.isUndefined(events[eventName])) {
+                return;
+            }
+            listener = events[eventName];
+            for (i = 0, l = listener.length; i < l; ++i) {
+                if (listener[i] === callback) {
+                    listener.splice(i, 1);
+                    break;
+                }
+            }
+        }
+    };
+});
+bento.define('bento/renderer', [
+    'bento/utils'
+], function (Utils, Canvas2D) {
     return function (type, canvas, context, callback) {
         var module = {
             save: function () {},
@@ -10294,63 +10293,14 @@ rice.define('rice/renderer', [
             flush: function () {},
             setColor: function () {}
         };
-        require(['rice/renderers/' + type], function (renderer) {
-            Sugar.combine(module, renderer(canvas, context));
+        require(['bento/renderers/' + type], function (renderer) {
+            Utils.combine(module, renderer(canvas, context));
             callback(module);
         });
     };
 });
-/**
- *  @copyright (C) 1HandGaming
- */
-rice.define('rice/screen', [
-    'rice/sugar',
-    'rice/game',
-    'rice/math/rectangle'
-], function (Sugar, Game, Rectangle) {
-    'use strict';
-    return function (settings) {
-        /*settings = {
-            dimension: Rectangle, [optional / overwritten by tmx size]
-            tiled: String
-        }*/
-        var viewport = Game.getViewport(),
-            dimension = settings.dimension || Rectangle(0, 0, 0, 0),
-            isShown = false,
-            module = {
-                setDimension: function (rectangle) {
-                    dimension.width = rectangle.width;
-                    dimension.height = rectangle.height;
-                },
-                getDimension: function () {
-                    return dimension;
-                },
-                add: function (object) {
-                    return Sugar.combine(this, object);
-                },
-                setShown: function (bool) {
-                    if (!Sugar.isBoolean(bool)) {
-                        throw 'Argument is not a boolean';
-                    } else {
-                        isShown = bool;
-                    }
-                },
-                onShow: function () {},
-                onHide: function () {
-                    // remove all objects
-                    Game.removeAll();
-                    // reset viewport scroll when hiding screen
-                    viewport.x = 0;
-                    viewport.y = 0;
-
-                }
-            };
-
-        return module;
-    };
-});
-rice.define('rice/subimage', [
-    'rice/math/rectangle'
+bento.define('bento/subimage', [
+    'bento/math/rectangle'
 ], function (Rectangle) {
     return function (image, frame) {
         var rectangle = Rectangle(frame.x, frame.y, frame.w, frame.h);
@@ -10358,7 +10308,7 @@ rice.define('rice/subimage', [
         return rectangle;
     };
 });
-rice.define('rice/sugar', [], function () {
+bento.define('bento/utils', [], function () {
     'use strict';
     var isString = function (value) {
             return typeof value === 'string' || value instanceof String;
@@ -10562,254 +10512,9 @@ rice.define('rice/sugar', [], function () {
     };
 
 });
-define('rice/tiled', [
-    'rice/game',
-    'rice/entity',
-    'rice/math/vector2',
-    'rice/math/rectangle',
-    'rice/math/polygon'
-], function (Game, Entity, Vector2, Rectangle, Polygon) {
-    'use strict';
-    return function (name) {
-        var json = Game.assets.getJSON(name),
-            i,
-            j,
-            k,
-            width = json.width,
-            height = json.height,
-            layers = json.layers.length,
-            tileWidth = json.tilewidth,
-            tileHeight = json.tileheight,
-            canvas = document.createElement('canvas'),
-            context = canvas.getContext('2d'),
-            image,
-            layer,
-            firstgid,
-            object,
-            points,
-            objects = [],
-            solids = [],
-            viewport = Game.getViewport(),
-            background = Entity().add({
-                z: 0,
-                draw: function (gameData) {
-                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
-                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0);
-
-                    if (w === 0 || h === 0) {
-                        return;
-                    }
-                    // only draw the part in the viewport
-                    gameData.renderer.drawImage(
-                        canvas,
-                        ~~(Math.max(Math.min(viewport.x, canvas.width), 0)),
-                        ~~(Math.max(Math.min(viewport.y, canvas.height), 0)),
-                        ~~w,
-                        ~~h,
-                        0,
-                        0,
-                        ~~w,
-                        ~~h
-                    );
-                }
-            }),
-            getTileset = function (gid) {
-                var l,
-                    tileset,
-                    current = null;
-                // loop through tilesets and find the highest firstgid that's
-                // still lower or equal to the gid
-                for (l = 0; l < json.tilesets.length; ++l) {
-                    tileset = json.tilesets[l];
-                    if (tileset.firstgid <= gid) {
-                        current = tileset;
-                    }
-                }
-                return current;
-            },
-            getTile = function (tileset, gid) {
-                var index,
-                    tilesetWidth,
-                    tilesetHeight;
-                if (tileset === null) {
-                    return null;
-                }
-                index = gid - tileset.firstgid;
-                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
-                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
-                return {
-                    // convention: the tileset name must be equal to the asset name!
-                    image: Game.assets.getImage(tileset.name),
-                    x: (index % tilesetWidth) * tileset.tilewidth,
-                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
-                    width: tileset.tilewidth,
-                    height: tileset.tileheight
-                };
-            },
-            drawTileLayer = function (x, y) {
-                var gid = layer.data[y * width + x],
-                    // get correct tileset and image
-                    tileset = getTileset(gid),
-                    tile = getTile(tileset, gid);
-                // draw background to offscreen canvas
-                if (tile) {
-                    context.drawImage(
-                        tile.image.image,
-                        tile.image.x + tile.x,
-                        tile.image.y + tile.y,
-                        tile.width,
-                        tile.height,
-                        x * tileWidth,
-                        y * tileHeight,
-                        tileWidth,
-                        tileHeight
-                    );
-                }
-            },
-            spawn = function (name, obj, tilesetProperties) {
-                var x = obj.x,
-                    y = obj.y,
-                    params = [],
-                    getParams = function (properties) {
-                        var prop;
-                        for (prop in properties) {
-                            if (!prop.match(/param\d+/)) {
-                                continue;
-                            }
-                            if (isNaN(properties[prop])) {
-                                params.push(properties[prop]);
-                            } else {
-                                params.push((+properties[prop]));
-                            }
-                        }
-                    };
-
-                // search params
-                getParams(tilesetProperties);
-                getParams(obj.properties);
-
-                require([name], function (Instance) {
-                    var instance = Instance.apply(this, params),
-                        origin = instance.getOrigin(),
-                        dimension = instance.getDimension(),
-                        prop,
-                        addProperties = function (properties) {
-                            var prop;
-                            for (prop in properties) {
-                                if (prop === 'module' || prop.match(/param\d+/)) {
-                                    continue;
-                                }
-                                if (properties.hasOwnProperty(prop)) {
-                                    // number or string?
-                                    if (isNaN(properties[prop])) {
-                                        instance[prop] = properties[prop];
-                                    } else {
-                                        instance[prop] = (+properties[prop]);
-                                    }
-                                }
-                            }
-                        };
-
-                    instance.setPosition({
-                        // tiled assumes origin (0, 1)
-                        x: x + (origin.x),
-                        y: y + (origin.y - dimension.height)
-                    });
-                    // add in tileset properties
-                    addProperties(tilesetProperties);
-                    // add tile properties
-                    addProperties(obj.properties);
-                    // add to game
-                    Game.objects.add(instance);
-                });
-            },
-            spawnObject = function (obj) {
-                var gid = obj.gid,
-                    // get tileset: should contain module name
-                    tileset = getTileset(gid),
-                    id = gid - tileset.firstgid,
-                    properties,
-                    moduleName;
-                if (tileset.tileproperties) {
-                    if (properties = tileset.tileproperties[id.toString()]) {
-                        moduleName = properties['module'];
-                    }
-                }
-                if (moduleName) {
-                    spawn(moduleName, obj, properties);
-                }
-            },
-            spawnShape = function (shape, type) {
-                var obj = Entity({
-                    z: 0,
-                    name: type,
-                    family: [type]
-                }).add({
-                    update: function () {},
-                    draw: function () {}
-                });
-                obj.setBoundingBox(shape);
-                Game.objects.add(obj);
-            };
-
-        // setup canvas
-        canvas.width = width * tileWidth;
-        canvas.height = height * tileHeight;
-
-        // loop through layers
-        for (k = 0; k < layers; ++k) {
-            layer = json.layers[k];
-            if (layer.type === 'tilelayer') {
-                // loop through tiles
-                for (j = 0; j < layer.height; ++j) {
-                    for (i = 0; i < layer.width; ++i) {
-                        drawTileLayer(i, j);
-                    }
-                }
-            } else if (layer.type === 'objectgroup') {
-                for (i = 0; i < layer.objects.length; ++i) {
-                    object = layer.objects[i];
-
-                    // default type is solid
-                    if (object.type === '') {
-                        object.type = 'solid';
-                    }
-
-                    if (object.gid) {
-                        // normal object
-                        spawnObject(object);
-                    } else if (object.polygon) {
-                        // polygon 
-                        points = [];
-                        for (j = 0; j < object.polygon.length; ++j) {
-                            points.push(object.polygon[j]);
-                            points[j].x += object.x;
-                            // shift polygons 1 pixel down?
-                            points[j].y += object.y + 1;
-                        }
-                        spawnShape(Polygon(points), object.type);
-                    } else {
-                        // rectangle
-                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
-                    }
-                }
-            }
-        }
-
-        // add background to game
-        Game.objects.add(background);
-
-        return {
-            background: background,
-            objects: objects,
-            solids: solids,
-            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
-        };
-    };
-});
-rice.define('rice/components/animation', [
-    'rice/sugar',
-], function (Sugar) {
+bento.define('bento/components/animation', [
+    'bento/utils',
+], function (Utils) {
     'use strict';
     return function (base, settings) {
         var image,
@@ -10874,10 +10579,10 @@ rice.define('rice/components/animation', [
                         return;
                     }
                     if (anim && currentAnimation !== anim) {
-                        if (!Sugar.isDefined(anim.loop)) {
+                        if (!Utils.isDefined(anim.loop)) {
                             anim.loop = true;
                         }
-                        if (!Sugar.isDefined(anim.backTo)) {
+                        if (!Utils.isDefined(anim.backTo)) {
                             anim.backTo = 0;
                         }
                         // set even if there is no callback
@@ -10949,15 +10654,15 @@ rice.define('rice/components/animation', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
-rice.define('rice/components/clickable', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/eventsystem'
-], function (Sugar, Vector2, EventSystem) {
+bento.define('bento/components/clickable', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
     'use strict';
     return function (base, settings) {
         var mixin = {},
@@ -10986,17 +10691,17 @@ rice.define('rice/components/clickable', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
-rice.define('rice/components/fill', [
-    'rice/sugar',
-    'rice/game'
-], function (Sugar, Game) {
+bento.define('bento/components/fill', [
+    'bento/utils',
+    'bento'
+], function (Utils, Bento) {
     'use strict';
     return function (base, settings) {
-        var viewport = Game.getViewport(),
+        var viewport = Bento.getViewport(),
             mixin = {},
             color = '#000',
             component = {
@@ -11015,13 +10720,13 @@ rice.define('rice/components/fill', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
-rice.define('rice/components/rotation', [
-    'rice/sugar',
-], function (Sugar) {
+bento.define('bento/components/rotation', [
+    'bento/utils',
+], function (Utils) {
     'use strict';
     return function (base) {
         var angle,
@@ -11068,14 +10773,14 @@ rice.define('rice/components/rotation', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
-rice.define('rice/components/scale', [
-    'rice/sugar',
-    'rice/math/vector2'
-], function (Sugar, Vector2) {
+bento.define('bento/components/scale', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
     'use strict';
     return function (base) {
         var set = false,
@@ -11106,17 +10811,17 @@ rice.define('rice/components/scale', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
-rice.define('rice/components/sprite', [
-    'rice/sugar',
-    'rice/components/translation',
-    'rice/components/rotation',
-    'rice/components/scale',
-    'rice/components/animation'
-], function (Sugar, Translation, Rotation, Scale, Animation) {
+bento.define('bento/components/sprite', [
+    'bento/utils',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/components/animation'
+], function (Utils, Translation, Rotation, Scale, Animation) {
     'use strict';
     return function (base, settings) {
         Translation(base, settings);
@@ -11126,10 +10831,10 @@ rice.define('rice/components/sprite', [
         return base;
     };
 });
-rice.define('rice/components/translation', [
-    'rice/sugar',
-    'rice/math/vector2'
-], function (Sugar, Vector2) {
+bento.define('bento/components/translation', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
     'use strict';
     return function (base) {
         var set = false,
@@ -11154,7 +10859,7 @@ rice.define('rice/components/translation', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
@@ -11169,7 +10874,7 @@ rice.define('rice/components/translation', [
   self: false, setInterval: false */
 
 
-rice.define('rice/lib/domready', [], function () {
+bento.define('bento/lib/domready', [], function () {
     'use strict';
 
     var isTop, testDiv, scrollIntervalId,
@@ -11291,7 +10996,7 @@ rice.define('rice/lib/domready', [], function () {
 /**
  * http://www.makeitgo.ws/articles/animationframe/
  */
-rice.define('rice/lib/requestanimationframe', [], function () {
+bento.define('bento/lib/requestanimationframe', [], function () {
     'use strict';
     // http://paulirish.com/2011/requestanimationframe-for-smart-animating/
     // http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
@@ -11329,12 +11034,12 @@ rice.define('rice/lib/requestanimationframe', [], function () {
 });
 /**
  *  Manager that controls all assets
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/asset', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/managers/asset', [
+    'bento/utils'
+], function (Utils) {
     'use strict';
     return function () {
         var assetGroups = {},
@@ -11382,7 +11087,7 @@ rice.define('rice/managers/asset', [
              */
             loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
                 var jsonName,
-                    keyCount = Sugar.getKeyLength(jsonFiles),
+                    keyCount = Utils.getKeyLength(jsonFiles),
                     loaded = 0,
                     callback = function (err, name, json) {
                         if (err) {
@@ -11391,10 +11096,10 @@ rice.define('rice/managers/asset', [
                         }
                         assetGroups[name] = json;
                         loaded += 1;
-                        if (Sugar.isDefined(onLoaded)) {
+                        if (Utils.isDefined(onLoaded)) {
                             onLoaded(loaded, keyCount);
                         }
-                        if (keyCount === loaded && Sugar.isDefined(onReady)) {
+                        if (keyCount === loaded && Utils.isDefined(onReady)) {
                             onReady(null);
                         }
                     };
@@ -11417,7 +11122,7 @@ rice.define('rice/managers/asset', [
                     path = '',
                     assetCount = 0,
                     checkLoaded = function () {
-                        if (assetsLoaded === assetCount && Sugar.isDefined(onReady)) {
+                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
                             onReady(null);
                         }
                     },
@@ -11428,23 +11133,23 @@ rice.define('rice/managers/asset', [
                         }
                         assets.images[name] = image;
                         assetsLoaded += 1;
-                        if (Sugar.isDefined(onLoaded)) {
+                        if (Utils.isDefined(onLoaded)) {
                             onLoaded(assetsLoaded, assetCount);
                         }
                         checkLoaded();
                     };
 
-                if (!Sugar.isDefined(group)) {
+                if (!Utils.isDefined(group)) {
                     onReady('Could not find asset group ' + groupName);
                     return;
                 }
                 // set path
-                if (Sugar.isDefined(group.path)) {
+                if (Utils.isDefined(group.path)) {
                     path += group.path;
                 }
                 // load images
-                if (Sugar.isDefined(group.images)) {
-                    assetCount += Sugar.getKeyLength(group.images);
+                if (Utils.isDefined(group.images)) {
+                    assetCount += Utils.getKeyLength(group.images);
                     for (asset in group.images) {
                         if (!group.images.hasOwnProperty(asset)) {
                             continue;
@@ -11453,19 +11158,19 @@ rice.define('rice/managers/asset', [
                     }
                 }
                 // load audio
-                if (Sugar.isDefined(group.audio)) {
-                    assetCount += Sugar.getKeyLength(group.audio);
+                if (Utils.isDefined(group.audio)) {
+                    assetCount += Utils.getKeyLength(group.audio);
                 }
                 // load json
-                if (Sugar.isDefined(group.json)) {
-                    assetCount += Sugar.getKeyLength(group.json);
+                if (Utils.isDefined(group.json)) {
+                    assetCount += Utils.getKeyLength(group.json);
                 }
 
             },
             unload = function () {},
             getImage = function (name) {
                 var asset = assets.images[name];
-                if (!Sugar.isDefined(asset)) {
+                if (!Utils.isDefined(asset)) {
                     throw ('Asset ' + name + ' could not be found');
                 }
                 return asset;
@@ -11484,14 +11189,14 @@ rice.define('rice/managers/asset', [
 });
 /**
  *  Manager that controls all events and input
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/input', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/eventsystem'
-], function (Sugar, Vector2, EventSystem) {
+bento.define('bento/managers/input', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
     'use strict';
     return function (settings) {
         var isPaused = false,
@@ -11619,12 +11324,12 @@ rice.define('rice/managers/input', [
 });
 /**
  *  Manager that controls all objects
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/object', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/managers/object', [
+    'bento/utils'
+], function (Utils) {
     'use strict';
     return function (settings, debugObj) {
         var objects = [],
@@ -11638,7 +11343,7 @@ rice.define('rice/managers/object', [
             useSort = true,
             isPaused = false,
             sort = function () {
-                Sugar.stableSort.inplace(objects, function (a, b) {
+                Utils.stableSort.inplace(objects, function (a, b) {
                     return a.z - b.z;
                 });
                 /*// default behavior
@@ -11761,7 +11466,7 @@ rice.define('rice/managers/object', [
                     family = object.getFamily();
                     for (i = 0; i < family.length; ++i) {
                         type = family[i];
-                        Sugar.removeObject(quickAccess[type], object);
+                        Utils.removeObject(quickAccess[type], object);
                     }
                 }
             },
@@ -11817,12 +11522,11 @@ rice.define('rice/managers/object', [
     };
 });
 /**
- *  @module Array2d
- *  @desc Represents a 2 dimensional array
- *  @copyright (C) 1HandGaming
+ *  Represents a 2 dimensional array
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/array2d', function () {
+bento.define('bento/math/array2d', function () {
     'use strict';
     return function (width, height) {
         var array = [],
@@ -11865,14 +11569,13 @@ rice.define('rice/math/array2d', function () {
     };
 });
 /**
- *  @module Matrix
- *  @desc Represents a matrix (a 2d array of Numbers)
- *  @copyright (C) 1HandGaming
+ *  Represents a matrix (a 2d array of Numbers)
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/matrix', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/math/matrix', [
+    'bento/utils'
+], function (Utils) {
     'use strict';
     var add = function (other) {
             var newMatrix = this.clone();
@@ -11982,7 +11685,7 @@ rice.define('rice/math/matrix', [
                     var i, j;
                     for (j = 0; j < m; ++j) {
                         for (i = 0; i < n; ++i) {
-                            if (!Sugar.isFunction(callback)) {
+                            if (!Utils.isFunction(callback)) {
                                 throw ('Please supply a callback function');
                             }
                             callback(i, j, get(i, j));
@@ -12045,7 +11748,7 @@ rice.define('rice/math/matrix', [
                     for (j = 0; j < newHeight; ++j) {
                         for (i = 0; i < newWidth; ++i) {
                             newValue = 0;
-                            // loop through matrices
+                            // loop through matbentos
                             for (k = 0; k < oldWidth; ++k) {
                                 newValue += matrix.get(k, j) * get(i, k);
                             }
@@ -12075,13 +11778,13 @@ rice.define('rice/math/matrix', [
 /**
  *  @module Polygon
  *  @desc Represents a polygon
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/polygon', [
-    'rice/sugar',
-    'rice/math/rectangle'
-], function (Sugar, Rectangle) {
+bento.define('bento/math/polygon', [
+    'bento/utils',
+    'bento/math/rectangle'
+], function (Utils, Rectangle) {
     'use strict';
     var isPolygon = function () {
             return true;
@@ -12249,10 +11952,10 @@ rice.define('rice/math/polygon', [
 /**
  *  @module Rectangle
  *  @desc Represents a rectangle
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/rectangle', ['rice/sugar'], function (Sugar) {
+bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';
     var isRectangle = function () {
             return true;
@@ -12333,10 +12036,10 @@ rice.define('rice/math/rectangle', ['rice/sugar'], function (Sugar) {
 /**
  *  @module Vector2
  *  @desc Represents a 2 dimensional vector
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/vector2', [], function () {
+bento.define('bento/math/vector2', [], function () {
     'use strict';
     var isVector2 = function () {
             return true;
@@ -12445,9 +12148,313 @@ rice.define('rice/math/vector2', [], function () {
         };
     return module;
 });
-rice.define('rice/renderers/canvas2d', [
-    'rice/sugar'
-], function (Sugar) {
+/**
+ *  @copyright (C) HeiGames
+ */
+bento.define('bento/screen', [
+    'bento/utils',
+    'bento',
+    'bento/math/rectangle'
+], function (Utils, Bento, Rectangle) {
+    'use strict';
+    return function (settings) {
+        /*settings = {
+            dimension: Rectangle, [optional / overwritten by tmx size]
+            tiled: String
+        }*/
+        var viewport = Bento.getViewport(),
+            dimension = settings.dimension || Rectangle(0, 0, 0, 0),
+            isShown = false,
+            module = {
+                setDimension: function (rectangle) {
+                    dimension.width = rectangle.width;
+                    dimension.height = rectangle.height;
+                },
+                getDimension: function () {
+                    return dimension;
+                },
+                add: function (object) {
+                    return Utils.combine(this, object);
+                },
+                setShown: function (bool) {
+                    if (!Utils.isBoolean(bool)) {
+                        throw 'Argument is not a boolean';
+                    } else {
+                        isShown = bool;
+                    }
+                },
+                onShow: function () {},
+                onHide: function () {
+                    // remove all objects
+                    Bento.removeAll();
+                    // reset viewport scroll when hiding screen
+                    viewport.x = 0;
+                    viewport.y = 0;
+
+                }
+            };
+
+        return module;
+    };
+});
+define('bento/tiled', [
+    'bento',
+    'bento/entity',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/math/polygon'
+], function (Bento, Entity, Vector2, Rectangle, Polygon) {
+    'use strict';
+    return function (settings, onReady) {
+        /*settings = {
+            name: String, // name of JSON file
+            background: Boolean // TODO false: splits tileLayer tile entities
+        }*/
+        var json = Bento.assets.getJSON(settings.name),
+            i,
+            j,
+            k,
+            width = json.width,
+            height = json.height,
+            layers = json.layers.length,
+            tileWidth = json.tilewidth,
+            tileHeight = json.tileheight,
+            canvas = document.createElement('canvas'),
+            context = canvas.getContext('2d'),
+            image,
+            layer,
+            firstgid,
+            object,
+            points,
+            objects = [],
+            shapes = [],
+            viewport = Bento.getViewport(),
+            background = Entity().add({
+                z: 0,
+                draw: function (gameData) {
+                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
+                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0);
+
+                    if (w === 0 || h === 0) {
+                        return;
+                    }
+                    // only draw the part in the viewport
+                    gameData.renderer.drawImage(
+                        canvas,
+                        ~~(Math.max(Math.min(viewport.x, canvas.width), 0)),
+                        ~~(Math.max(Math.min(viewport.y, canvas.height), 0)),
+                        ~~w,
+                        ~~h,
+                        0,
+                        0,
+                        ~~w,
+                        ~~h
+                    );
+                }
+            }),
+            getTileset = function (gid) {
+                var l,
+                    tileset,
+                    current = null;
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l < json.tilesets.length; ++l) {
+                    tileset = json.tilesets[l];
+                    if (tileset.firstgid <= gid) {
+                        current = tileset;
+                    }
+                }
+                return current;
+            },
+            getTile = function (tileset, gid) {
+                var index,
+                    tilesetWidth,
+                    tilesetHeight;
+                if (tileset === null) {
+                    return null;
+                }
+                index = gid - tileset.firstgid;
+                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
+                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
+                return {
+                    // convention: the tileset name must be equal to the asset name!
+                    image: Bento.assets.getImage(tileset.name),
+                    x: (index % tilesetWidth) * tileset.tilewidth,
+                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
+                    width: tileset.tilewidth,
+                    height: tileset.tileheight
+                };
+            },
+            drawTileLayer = function (x, y) {
+                var gid = layer.data[y * width + x],
+                    // get correct tileset and image
+                    tileset = getTileset(gid),
+                    tile = getTile(tileset, gid);
+                // draw background to offscreen canvas
+                if (tile) {
+                    context.drawImage(
+                        tile.image.image,
+                        tile.image.x + tile.x,
+                        tile.image.y + tile.y,
+                        tile.width,
+                        tile.height,
+                        x * tileWidth,
+                        y * tileHeight,
+                        tileWidth,
+                        tileHeight
+                    );
+                }
+            },
+            spawn = function (name, obj, tilesetProperties) {
+                var x = obj.x,
+                    y = obj.y,
+                    params = [],
+                    getParams = function (properties) {
+                        var prop;
+                        for (prop in properties) {
+                            if (!prop.match(/param\d+/)) {
+                                continue;
+                            }
+                            if (isNaN(properties[prop])) {
+                                params.push(properties[prop]);
+                            } else {
+                                params.push((+properties[prop]));
+                            }
+                        }
+                    };
+
+                // search params
+                getParams(tilesetProperties);
+                getParams(obj.properties);
+
+                require([name], function (Instance) {
+                    var instance = Instance.apply(this, params),
+                        origin = instance.getOrigin(),
+                        dimension = instance.getDimension(),
+                        prop,
+                        addProperties = function (properties) {
+                            var prop;
+                            for (prop in properties) {
+                                if (prop === 'module' || prop.match(/param\d+/)) {
+                                    continue;
+                                }
+                                if (properties.hasOwnProperty(prop)) {
+                                    // number or string?
+                                    if (isNaN(properties[prop])) {
+                                        instance[prop] = properties[prop];
+                                    } else {
+                                        instance[prop] = (+properties[prop]);
+                                    }
+                                }
+                            }
+                        };
+
+                    instance.setPosition({
+                        // tiled assumes origin (0, 1)
+                        x: x + (origin.x),
+                        y: y + (origin.y - dimension.height)
+                    });
+                    // add in tileset properties
+                    addProperties(tilesetProperties);
+                    // add tile properties
+                    addProperties(obj.properties);
+                    // add to game
+                    // Bento.objects.add(instance);
+                    objects.push(instance);
+                });
+            },
+            spawnObject = function (obj) {
+                var gid = obj.gid,
+                    // get tileset: should contain module name
+                    tileset = getTileset(gid),
+                    id = gid - tileset.firstgid,
+                    properties,
+                    moduleName;
+                if (tileset.tileproperties) {
+                    if (properties = tileset.tileproperties[id.toString()]) {
+                        moduleName = properties['module'];
+                    }
+                }
+                if (moduleName) {
+                    spawn(moduleName, obj, properties);
+                }
+            },
+            spawnShape = function (shape, type) {
+                /*var obj = Entity({
+                    z: 0,
+                    name: type,
+                    family: [type]
+                }).add({
+                    update: function () {},
+                    draw: function () {}
+                });
+                obj.setBoundingBox(shape);
+                Bento.objects.add(obj);*/
+                shape.type = type;
+                shapes.push(shape);
+            };
+
+        // setup canvas
+        // to do: split up in multiple canvas elements due to max
+        // size
+        canvas.width = width * tileWidth;
+        canvas.height = height * tileHeight;
+
+        // loop through layers
+        for (k = 0; k < layers; ++k) {
+            layer = json.layers[k];
+            if (layer.type === 'tilelayer') {
+                // loop through tiles
+                for (j = 0; j < layer.height; ++j) {
+                    for (i = 0; i < layer.width; ++i) {
+                        drawTileLayer(i, j);
+                    }
+                }
+            } else if (layer.type === 'objectgroup') {
+                for (i = 0; i < layer.objects.length; ++i) {
+                    object = layer.objects[i];
+
+                    // default type is solid
+                    if (object.type === '') {
+                        object.type = 'solid';
+                    }
+
+                    if (object.gid) {
+                        // normal object
+                        spawnObject(object);
+                    } else if (object.polygon) {
+                        // polygon 
+                        points = [];
+                        for (j = 0; j < object.polygon.length; ++j) {
+                            points.push(object.polygon[j]);
+                            points[j].x += object.x;
+                            // shift polygons 1 pixel down?
+                            // something might be wrong with polygon definition
+                            points[j].y += object.y + 1;
+                        }
+                        spawnShape(Polygon(points), object.type);
+                    } else {
+                        // rectangle
+                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
+                    }
+                }
+            }
+        }
+
+        // add background to game
+        // Bento.objects.add(background);
+
+        return {
+            tileLayer: background,
+            objects: objects,
+            shapes: shapes,
+            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
+        };
+    };
+});
+bento.define('bento/renderers/canvas2d', [
+    'bento/utils'
+], function (Utils) {
     return function (canvas, context) {
         var renderer = {
             name: 'canvas2d',
@@ -12479,9 +12486,9 @@ rice.define('rice/renderers/canvas2d', [
         return renderer;
     };
 });
-rice.define('rice/renderers/pixi', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/renderers/pixi', [
+    'bento/utils'
+], function (Utils) {
     return function (canvas, context) {
         var useBatch = false,
             pixiStage,
@@ -12531,10 +12538,10 @@ rice.define('rice/renderers/pixi', [
         return renderer;
     }
 });
-rice.define('rice/renderers/webgl', [
-    'rice/sugar',
-    'rice/renderers/canvas2d'
-], function (Sugar, Canvas2d) {
+bento.define('bento/renderers/webgl', [
+    'bento/utils',
+    'bento/renderers/canvas2d'
+], function (Utils, Canvas2d) {
     return function (canvas, context) {
         var canWebGl,
             glRenderer,

@@ -1,6 +1,6 @@
-rice.define('rice/eventsystem', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/eventsystem', [
+    'bento/utils'
+], function (Utils) {
     var events = {};
     /*events = {
         [String eventName]: [Array listeners]
@@ -8,10 +8,10 @@ rice.define('rice/eventsystem', [
     return {
         fire: function (eventName, eventData) {
             var i, l, listeners;
-            if (!Sugar.isString(eventName)) {
+            if (!Utils.isString(eventName)) {
                 eventName = eventName.toString();
             }
-            if (Sugar.isUndefined(events[eventName])) {
+            if (Utils.isUndefined(events[eventName])) {
                 return;
             }
             listeners = events[eventName];
@@ -20,14 +20,14 @@ rice.define('rice/eventsystem', [
             }
         },
         addEventListener: function (eventName, callback) {
-            if (Sugar.isUndefined(events[eventName])) {
+            if (Utils.isUndefined(events[eventName])) {
                 events[eventName] = [];
             }
             events[eventName].push(callback);
         },
         removeEventListener: function (eventName, callback) {
             var i, l, listener;
-            if (Sugar.isUndefined(events[eventName])) {
+            if (Utils.isUndefined(events[eventName])) {
                 return;
             }
             listener = events[eventName];

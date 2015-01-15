@@ -1,10 +1,9 @@
 /**
- *  @module Array2d
- *  @desc Represents a 2 dimensional array
- *  @copyright (C) 1HandGaming
+ *  Represents a 2 dimensional array
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/array2d', function () {
+bento.define('bento/math/array2d', function () {
     'use strict';
     return function (width, height) {
         var array = [],

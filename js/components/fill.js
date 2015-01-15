@@ -1,10 +1,10 @@
-rice.define('rice/components/fill', [
-    'rice/sugar',
-    'rice/game'
-], function (Sugar, Game) {
+bento.define('bento/components/fill', [
+    'bento/utils',
+    'bento'
+], function (Utils, Bento) {
     'use strict';
     return function (base, settings) {
-        var viewport = Game.getViewport(),
+        var viewport = Bento.getViewport(),
             mixin = {},
             color = '#000',
             component = {
@@ -23,7 +23,7 @@ rice.define('rice/components/fill', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });

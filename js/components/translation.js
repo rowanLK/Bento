@@ -1,7 +1,7 @@
-rice.define('rice/components/translation', [
-    'rice/sugar',
-    'rice/math/vector2'
-], function (Sugar, Vector2) {
+bento.define('bento/components/translation', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
     'use strict';
     return function (base) {
         var set = false,
@@ -26,7 +26,7 @@ rice.define('rice/components/translation', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });

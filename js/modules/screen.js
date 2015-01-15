@@ -1,18 +1,18 @@
 /**
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  */
-rice.define('rice/screen', [
-    'rice/sugar',
-    'rice/game',
-    'rice/math/rectangle'
-], function (Sugar, Game, Rectangle) {
+bento.define('bento/screen', [
+    'bento/utils',
+    'bento',
+    'bento/math/rectangle'
+], function (Utils, Bento, Rectangle) {
     'use strict';
     return function (settings) {
         /*settings = {
             dimension: Rectangle, [optional / overwritten by tmx size]
             tiled: String
         }*/
-        var viewport = Game.getViewport(),
+        var viewport = Bento.getViewport(),
             dimension = settings.dimension || Rectangle(0, 0, 0, 0),
             isShown = false,
             module = {
@@ -24,10 +24,10 @@ rice.define('rice/screen', [
                     return dimension;
                 },
                 add: function (object) {
-                    return Sugar.combine(this, object);
+                    return Utils.combine(this, object);
                 },
                 setShown: function (bool) {
-                    if (!Sugar.isBoolean(bool)) {
+                    if (!Utils.isBoolean(bool)) {
                         throw 'Argument is not a boolean';
                     } else {
                         isShown = bool;
@@ -36,7 +36,7 @@ rice.define('rice/screen', [
                 onShow: function () {},
                 onHide: function () {
                     // remove all objects
-                    Game.removeAll();
+                    Bento.removeAll();
                     // reset viewport scroll when hiding screen
                     viewport.x = 0;
                     viewport.y = 0;

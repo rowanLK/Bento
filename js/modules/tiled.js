@@ -1,17 +1,17 @@
-define('rice/tiled', [
-    'rice/game',
-    'rice/entity',
-    'rice/math/vector2',
-    'rice/math/rectangle',
-    'rice/math/polygon'
-], function (Game, Entity, Vector2, Rectangle, Polygon) {
+define('bento/tiled', [
+    'bento',
+    'bento/entity',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/math/polygon'
+], function (Bento, Entity, Vector2, Rectangle, Polygon) {
     'use strict';
     return function (settings, onReady) {
         /*settings = {
             name: String, // name of JSON file
             background: Boolean // TODO false: splits tileLayer tile entities
         }*/
-        var json = Game.assets.getJSON(settings.name),
+        var json = Bento.assets.getJSON(settings.name),
             i,
             j,
             k,
@@ -29,7 +29,7 @@ define('rice/tiled', [
             points,
             objects = [],
             shapes = [],
-            viewport = Game.getViewport(),
+            viewport = Bento.getViewport(),
             background = Entity().add({
                 z: 0,
                 draw: function (gameData) {
@@ -79,7 +79,7 @@ define('rice/tiled', [
                 tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
                 return {
                     // convention: the tileset name must be equal to the asset name!
-                    image: Game.assets.getImage(tileset.name),
+                    image: Bento.assets.getImage(tileset.name),
                     x: (index % tilesetWidth) * tileset.tilewidth,
                     y: Math.floor(index / tilesetWidth) * tileset.tileheight,
                     width: tileset.tilewidth,
@@ -160,7 +160,7 @@ define('rice/tiled', [
                     // add tile properties
                     addProperties(obj.properties);
                     // add to game
-                    // Game.objects.add(instance);
+                    // Bento.objects.add(instance);
                     objects.push(instance);
                 });
             },
@@ -190,7 +190,7 @@ define('rice/tiled', [
                     draw: function () {}
                 });
                 obj.setBoundingBox(shape);
-                Game.objects.add(obj);*/
+                Bento.objects.add(obj);*/
                 shape.type = type;
                 shapes.push(shape);
             };
@@ -243,7 +243,7 @@ define('rice/tiled', [
         }
 
         // add background to game
-        // Game.objects.add(background);
+        // Bento.objects.add(background);
 
         return {
             tileLayer: background,

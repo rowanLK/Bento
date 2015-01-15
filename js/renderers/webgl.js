@@ -1,7 +1,7 @@
-rice.define('rice/renderers/webgl', [
-    'rice/sugar',
-    'rice/renderers/canvas2d'
-], function (Sugar, Canvas2d) {
+bento.define('bento/renderers/webgl', [
+    'bento/utils',
+    'bento/renderers/canvas2d'
+], function (Utils, Canvas2d) {
     return function (canvas, context) {
         var canWebGl,
             glRenderer,

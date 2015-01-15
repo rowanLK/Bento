@@ -2077,20 +2077,20 @@ H.push(K-1)}},b.WebGLGraphics.buildComplexPoly=function(a,c){var d=a.points.slic
  */
 (function () {
     'use strict';
-    var rice = {
+    var bento = {
         require: window.require,
         define: window.define
     };
-    window.rice = window.rice || rice;
+    window.bento = window.bento || bento;
 }());
 /**
  *  @copyright (C) 1HandGaming
  */
-rice.define('rice/director', [
-    'rice/sugar',
-    'rice/game',
-    'rice/screen'
-], function (Sugar, Game, Screen) {
+bento.define('bento/director', [
+    'bento/sugar',
+    'bento',
+    'bento/screen'
+], function (Sugar, Bento, Screen) {
     'use strict';
     var screens = {},
         currentScreen = null,
@@ -2133,10 +2133,10 @@ rice.define('rice/director', [
  * A base object to hold components
  * @copyright (C) 1HandGaming
  */
-rice.define('rice/entity', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/math/rectangle'
+bento.define('bento/entity', [
+    'bento/sugar',
+    'bento/math/vector2',
+    'bento/math/rectangle'
 ], function (Sugar, Vector2, Rectangle) {
     'use strict';
     var globalId = 0;
@@ -2417,8 +2417,8 @@ rice.define('rice/entity', [
         return entity;
     };
 });
-rice.define('rice/eventsystem', [
-    'rice/sugar'
+bento.define('bento/eventsystem', [
+    'bento/sugar'
 ], function (Sugar) {
     var events = {};
     /*
@@ -2466,16 +2466,16 @@ rice.define('rice/eventsystem', [
  *  @copyright (C) 2014 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/game', [
-    'rice/sugar',
-    'rice/lib/domready',
-    'rice/lib/requestanimationframe',
-    'rice/managers/asset',
-    'rice/managers/input',
-    'rice/managers/object',
-    'rice/math/vector2',
-    'rice/math/rectangle',
-    'rice/renderer'
+bento.define('bento', [
+    'bento/sugar',
+    'bento/lib/domready',
+    'bento/lib/requestanimationframe',
+    'bento/managers/asset',
+    'bento/managers/input',
+    'bento/managers/object',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/renderer'
 ], function (
     Sugar,
     DomReady,
@@ -2640,8 +2640,8 @@ rice.define('rice/game', [
     Sugar.combine(game, ObjectManager);
     return game;
 });
-rice.define('rice/renderer', [
-    'rice/sugar'
+bento.define('bento/renderer', [
+    'bento/sugar'
 ], function (Sugar, Canvas2D) {
     return function (type, canvas, context, callback) {
         var module = {
@@ -2654,7 +2654,7 @@ rice.define('rice/renderer', [
             drawImage: function (texture, sx, sy, sw, sh, x, y, w, h) {},
             flush: function () {}
         };
-        require(['rice/renderers/' + type], function (renderer) {
+        require(['bento/renderers/' + type], function (renderer) {
             Sugar.combine(module, renderer(canvas, context));
             callback(module);
         });
@@ -2663,14 +2663,14 @@ rice.define('rice/renderer', [
 /**
  *  @copyright (C) 1HandGaming
  */
-rice.define('rice/screen', [
-    'rice/sugar',
-    'rice/game',
-    'rice/math/rectangle'
-], function (Sugar, Game, Rectangle) {
+bento.define('bento/screen', [
+    'bento/sugar',
+    'bento',
+    'bento/math/rectangle'
+], function (Sugar, Bento, Rectangle) {
     'use strict';
     return function (name) {
-        var viewport = Game.getViewport(),
+        var viewport = Bento.getViewport(),
             dimension = Rectangle(0, 0, 0, 0),
             isShown = false,
             module = {
@@ -2710,7 +2710,7 @@ rice.define('rice/screen', [
                 onShow: function () {},
                 onHide: function () {
                     // remove all objects
-                    Game.removeAll();
+                    Bento.removeAll();
                     // reset viewport scroll when hiding screen
                     viewport.x = 0;
                     viewport.y = 0;
@@ -2721,8 +2721,8 @@ rice.define('rice/screen', [
         return module;
     };
 });
-rice.define('rice/subimage', [
-    'rice/math/rectangle'
+bento.define('bento/subimage', [
+    'bento/math/rectangle'
 ], function (Rectangle) {
     return function (image, frame) {
         var rectangle = Rectangle(frame.x, frame.y, frame.w, frame.h);
@@ -2730,7 +2730,7 @@ rice.define('rice/subimage', [
         return rectangle;
     };
 });
-rice.define('rice/sugar', [], function () {
+bento.define('bento/sugar', [], function () {
     'use strict';
     var isString = function (value) {
             return typeof value === 'string' || value instanceof String;
@@ -2934,10 +2934,10 @@ rice.define('rice/sugar', [], function () {
     };
 
 });
-rice.define('rice/components/clickable', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/eventsystem'
+bento.define('bento/components/clickable', [
+    'bento/sugar',
+    'bento/math/vector2',
+    'bento/eventsystem'
 ], function (Sugar, Vector2, EventSystem) {
     'use strict';
     return function (base, settings) {
@@ -2972,13 +2972,13 @@ rice.define('rice/components/clickable', [
         return base;
     };
 });
-rice.define('rice/components/fill', [
-    'rice/sugar',
-    'rice/game'
-], function (Sugar, Game) {
+bento.define('bento/components/fill', [
+    'bento/sugar',
+    'bento'
+], function (Sugar, Bento) {
     'use strict';
     return function (base, settings) {
-        var viewport = Game.getViewport(),
+        var viewport = Bento.getViewport(),
             mixin = {},
             component = {
                 name: 'fill',
@@ -2992,8 +2992,8 @@ rice.define('rice/components/fill', [
         return base;
     };
 });
-rice.define('rice/components/pixisprite', [
-    'rice/sugar',
+bento.define('bento/components/pixisprite', [
+    'bento/sugar',
 ], function (Sugar) {
     'use strict';
     return function (base, settings) {
@@ -3149,8 +3149,8 @@ rice.define('rice/components/pixisprite', [
         return base;
     };
 });
-rice.define('rice/components/rotation', [
-    'rice/sugar',
+bento.define('bento/components/rotation', [
+    'bento/sugar',
 ], function (Sugar) {
     'use strict';
     return function (base) {
@@ -3202,9 +3202,9 @@ rice.define('rice/components/rotation', [
         return base;
     };
 });
-rice.define('rice/components/scale', [
-    'rice/sugar',
-    'rice/math/vector2'
+bento.define('bento/components/scale', [
+    'bento/sugar',
+    'bento/math/vector2'
 ], function (Sugar, Vector2) {
     'use strict';
     return function (base) {
@@ -3240,8 +3240,8 @@ rice.define('rice/components/scale', [
         return base;
     };
 });
-rice.define('rice/components/sprite', [
-    'rice/sugar',
+bento.define('bento/components/sprite', [
+    'bento/sugar',
 ], function (Sugar) {
     'use strict';
     return function (base, settings) {
@@ -3386,9 +3386,9 @@ rice.define('rice/components/sprite', [
         return base;
     };
 });
-rice.define('rice/components/translation', [
-    'rice/sugar',
-    'rice/math/vector2'
+bento.define('bento/components/translation', [
+    'bento/sugar',
+    'bento/math/vector2'
 ], function (Sugar, Vector2) {
     'use strict';
     return function (base) {
@@ -3429,7 +3429,7 @@ rice.define('rice/components/translation', [
   self: false, setInterval: false */
 
 
-rice.define('rice/lib/domready', [], function () {
+bento.define('bento/lib/domready', [], function () {
     'use strict';
 
     var isTop, testDiv, scrollIntervalId,
@@ -3551,7 +3551,7 @@ rice.define('rice/lib/domready', [], function () {
 /**
  * http://www.makeitgo.ws/articles/animationframe/
  */
-rice.define('rice/lib/requestanimationframe', [], function () {
+bento.define('bento/lib/requestanimationframe', [], function () {
     'use strict';
     // http://paulirish.com/2011/requestanimationframe-for-smart-animating/
     // http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
@@ -3592,8 +3592,8 @@ rice.define('rice/lib/requestanimationframe', [], function () {
  *  @copyright (C) 2014 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/asset', [
-    'rice/sugar'
+bento.define('bento/managers/asset', [
+    'bento/sugar'
 ], function (Sugar) {
     'use strict';
     var assetGroups = {},
@@ -3745,10 +3745,10 @@ rice.define('rice/managers/asset', [
  *  @copyright (C) 2014 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/input', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/eventsystem'
+bento.define('bento/managers/input', [
+    'bento/sugar',
+    'bento/math/vector2',
+    'bento/eventsystem'
 ], function (Sugar, Vector2, EventSystem) {
     'use strict';
     var isPaused = false,
@@ -3879,8 +3879,8 @@ rice.define('rice/managers/input', [
  *  @copyright (C) 2014 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/object', [
-    'rice/sugar'
+bento.define('bento/managers/object', [
+    'bento/sugar'
 ], function (Sugar) {
     'use strict';
     var objects = [],
@@ -4080,7 +4080,7 @@ rice.define('rice/managers/object', [
  *  @copyright (C) 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/math/array2d', function () {
+bento.define('bento/math/array2d', function () {
     'use strict';
     return function (width, height) {
         var array = [],
@@ -4128,8 +4128,8 @@ rice.define('rice/math/array2d', function () {
  *  @copyright (C) 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/math/matrix', [
-    'rice/sugar'
+bento.define('bento/math/matrix', [
+    'bento/sugar'
 ], function (Sugar) {
     'use strict';
     var add = function (other) {
@@ -4336,9 +4336,9 @@ rice.define('rice/math/matrix', [
  *  @copyright (C) 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/math/polygon', [
-    'rice/sugar',
-    'rice/math/rectangle'
+bento.define('bento/math/polygon', [
+    'bento/sugar',
+    'bento/math/rectangle'
 ], function (Sugar, Rectangle) {
     'use strict';
     var isPolygon = function () {
@@ -4510,7 +4510,7 @@ rice.define('rice/math/polygon', [
  *  @copyright (C) 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/math/rectangle', ['rice/sugar'], function (Sugar) {
+bento.define('bento/math/rectangle', ['bento/sugar'], function (Sugar) {
     'use strict';
     var isRectangle = function () {
             return true;
@@ -4594,7 +4594,7 @@ rice.define('rice/math/rectangle', ['rice/sugar'], function (Sugar) {
  *  @copyright (C) 1HandGaming
  *  @author Hernan Zhou
  */
-rice.define('rice/math/vector2', [], function () {
+bento.define('bento/math/vector2', [], function () {
     'use strict';
     var isVector2 = function () {
             return true;
@@ -4703,8 +4703,8 @@ rice.define('rice/math/vector2', [], function () {
         };
     return module;
 });
-rice.define('rice/renderers/canvas2d', [
-    'rice/sugar'
+bento.define('bento/renderers/canvas2d', [
+    'bento/sugar'
 ], function (Sugar) {
     return function (canvas, context) {
         var renderer = {
@@ -4737,8 +4737,8 @@ rice.define('rice/renderers/canvas2d', [
         return renderer;
     };
 });
-rice.define('rice/renderers/pixi', [
-    'rice/sugar'
+bento.define('bento/renderers/pixi', [
+    'bento/sugar'
 ], function (Sugar) {
     return function (canvas, context) {
         var pixiStage,

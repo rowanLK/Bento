@@ -1,12 +1,11 @@
 /**
- *  @module Matrix
- *  @desc Represents a matrix (a 2d array of Numbers)
- *  @copyright (C) 1HandGaming
+ *  Represents a matrix (a 2d array of Numbers)
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/matrix', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/math/matrix', [
+    'bento/utils'
+], function (Utils) {
     'use strict';
     var add = function (other) {
             var newMatrix = this.clone();
@@ -116,7 +115,7 @@ rice.define('rice/math/matrix', [
                     var i, j;
                     for (j = 0; j < m; ++j) {
                         for (i = 0; i < n; ++i) {
-                            if (!Sugar.isFunction(callback)) {
+                            if (!Utils.isFunction(callback)) {
                                 throw ('Please supply a callback function');
                             }
                             callback(i, j, get(i, j));
@@ -179,7 +178,7 @@ rice.define('rice/math/matrix', [
                     for (j = 0; j < newHeight; ++j) {
                         for (i = 0; i < newWidth; ++i) {
                             newValue = 0;
-                            // loop through matrices
+                            // loop through matbentos
                             for (k = 0; k < oldWidth; ++k) {
                                 newValue += matrix.get(k, j) * get(i, k);
                             }

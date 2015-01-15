@@ -1,6 +1,6 @@
-rice.define('rice/renderers/pixi', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/renderers/pixi', [
+    'bento/utils'
+], function (Utils) {
     return function (canvas, context) {
         var useBatch = false,
             pixiStage,

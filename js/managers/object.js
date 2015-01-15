@@ -1,11 +1,11 @@
 /**
  *  Manager that controls all objects
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/object', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/managers/object', [
+    'bento/utils'
+], function (Utils) {
     'use strict';
     return function (settings, debugObj) {
         var objects = [],
@@ -19,7 +19,7 @@ rice.define('rice/managers/object', [
             useSort = true,
             isPaused = false,
             sort = function () {
-                Sugar.stableSort.inplace(objects, function (a, b) {
+                Utils.stableSort.inplace(objects, function (a, b) {
                     return a.z - b.z;
                 });
                 /*// default behavior
@@ -142,7 +142,7 @@ rice.define('rice/managers/object', [
                     family = object.getFamily();
                     for (i = 0; i < family.length; ++i) {
                         type = family[i];
-                        Sugar.removeObject(quickAccess[type], object);
+                        Utils.removeObject(quickAccess[type], object);
                     }
                 }
             },

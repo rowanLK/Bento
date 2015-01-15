@@ -1,12 +1,12 @@
 /*
  * A base object to hold components
- * @copyright (C) 1HandGaming
+ * @copyright (C) HeiGames
  */
-rice.define('rice/entity', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/math/rectangle'
-], function (Sugar, Vector2, Rectangle) {
+bento.define('bento/entity', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/math/rectangle'
+], function (Utils, Vector2, Rectangle) {
     'use strict';
     var globalId = 0;
     return function (settings) {
@@ -30,7 +30,7 @@ rice.define('rice/entity', [
                     /*if (component.destroy) {
                         component.destroy();
                     }*/
-                    Sugar.removeObject(components, component);
+                    Utils.removeObject(components, component);
                 }
             },
             entity = {
@@ -96,7 +96,7 @@ rice.define('rice/entity', [
                     return family;
                 },
                 add: function (object) {
-                    return Sugar.combine(entity, object);
+                    return Utils.combine(entity, object);
                 },
                 getPosition: function () {
                     return position;
@@ -109,7 +109,7 @@ rice.define('rice/entity', [
                     return dimension;
                 },
                 setDimension: function (value) {
-                    if (Sugar.isDimension(value)) {
+                    if (Utils.isDimension(value)) {
                         dimension = value;
                     }
                 },
@@ -176,7 +176,7 @@ rice.define('rice/entity', [
                     }
                     if (name) {
                         mixin[name] = component;
-                        Sugar.combine(entity, mixin);
+                        Utils.combine(entity, mixin);
                     }
                     return entity;
                 },
@@ -213,7 +213,7 @@ rice.define('rice/entity', [
                     return uniqueId;
                 },
                 collidesWith: function (other, offset) {
-                    if (!Sugar.isDefined(offset)) {
+                    if (!Utils.isDefined(offset)) {
                         offset = Vector2(0, 0);
                     }
                     return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
@@ -222,10 +222,10 @@ rice.define('rice/entity', [
                     var i,
                         obj,
                         box;
-                    if (!Sugar.isDefined(offset)) {
+                    if (!Utils.isDefined(offset)) {
                         offset = Vector2(0, 0);
                     }
-                    if (!Sugar.isArray(array)) {
+                    if (!Utils.isArray(array)) {
                         // throw 'Collision check must be with an Array of object';
                         console.log('Collision check must be with an Array of object');
                         return;
@@ -250,7 +250,7 @@ rice.define('rice/entity', [
         // read settings
         if (settings) {
             if (settings.components) {
-                if (!Sugar.isArray(settings.components)) {
+                if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
                 }
                 for (i = 0; i < settings.components.length; ++i) {
@@ -270,7 +270,7 @@ rice.define('rice/entity', [
                 entity.setName(settings.name);
             }
             if (settings.family) {
-                if (!Sugar.isArray(settings.family)) {
+                if (!Utils.isArray(settings.family)) {
                     settings.family = [settings.family];
                 }
                 for (i = 0; i < settings.family.length; ++i) {

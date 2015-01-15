@@ -1,10 +1,10 @@
-rice.define('rice/components/sprite', [
-    'rice/sugar',
-    'rice/components/translation',
-    'rice/components/rotation',
-    'rice/components/scale',
-    'rice/components/animation'
-], function (Sugar, Translation, Rotation, Scale, Animation) {
+bento.define('bento/components/sprite', [
+    'bento/utils',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/components/animation'
+], function (Utils, Translation, Rotation, Scale, Animation) {
     'use strict';
     return function (base, settings) {
         Translation(base, settings);

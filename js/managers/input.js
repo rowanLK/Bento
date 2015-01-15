@@ -1,13 +1,13 @@
 /**
  *  Manager that controls all events and input
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/input', [
-    'rice/sugar',
-    'rice/math/vector2',
-    'rice/eventsystem'
-], function (Sugar, Vector2, EventSystem) {
+bento.define('bento/managers/input', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
     'use strict';
     return function (settings) {
         var isPaused = false,

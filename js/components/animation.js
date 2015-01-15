@@ -1,6 +1,6 @@
-rice.define('rice/components/animation', [
-    'rice/sugar',
-], function (Sugar) {
+bento.define('bento/components/animation', [
+    'bento/utils',
+], function (Utils) {
     'use strict';
     return function (base, settings) {
         var image,
@@ -65,10 +65,10 @@ rice.define('rice/components/animation', [
                         return;
                     }
                     if (anim && currentAnimation !== anim) {
-                        if (!Sugar.isDefined(anim.loop)) {
+                        if (!Utils.isDefined(anim.loop)) {
                             anim.loop = true;
                         }
-                        if (!Sugar.isDefined(anim.backTo)) {
+                        if (!Utils.isDefined(anim.backTo)) {
                             anim.backTo = 0;
                         }
                         // set even if there is no callback
@@ -140,7 +140,7 @@ rice.define('rice/components/animation', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });

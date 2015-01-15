@@ -1,10 +1,10 @@
 /**
  *  @module Vector2
  *  @desc Represents a 2 dimensional vector
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/vector2', [], function () {
+bento.define('bento/math/vector2', [], function () {
     'use strict';
     var isVector2 = function () {
             return true;

@@ -1,10 +1,10 @@
 /**
  *  @module Rectangle
  *  @desc Represents a rectangle
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/math/rectangle', ['rice/sugar'], function (Sugar) {
+bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';
     var isRectangle = function () {
             return true;

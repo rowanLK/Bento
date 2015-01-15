@@ -21,11 +21,11 @@ gulp.task('default', function () {
         // add bower components
         .pipe(addsrc.prepend('bower_components/requirejs/require.js'))
         // output rice.js
-        .pipe(concat('rice.js'))
+        .pipe(concat('bento.js'))
         .pipe(gulp.dest('build'))
         // output rice.min.js
         .pipe(uglify())
-        .pipe(rename('rice.min.js'))
+        .pipe(rename('bento.min.js'))
         .pipe(gulp.dest('build'));
 });
 

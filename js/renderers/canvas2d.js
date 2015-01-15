@@ -1,6 +1,6 @@
-rice.define('rice/renderers/canvas2d', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/renderers/canvas2d', [
+    'bento/utils'
+], function (Utils) {
     return function (canvas, context) {
         var renderer = {
             name: 'canvas2d',

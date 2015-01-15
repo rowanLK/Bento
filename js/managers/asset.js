@@ -1,11 +1,11 @@
 /**
  *  Manager that controls all assets
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
-rice.define('rice/managers/asset', [
-    'rice/sugar'
-], function (Sugar) {
+bento.define('bento/managers/asset', [
+    'bento/utils'
+], function (Utils) {
     'use strict';
     return function () {
         var assetGroups = {},
@@ -53,7 +53,7 @@ rice.define('rice/managers/asset', [
              */
             loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
                 var jsonName,
-                    keyCount = Sugar.getKeyLength(jsonFiles),
+                    keyCount = Utils.getKeyLength(jsonFiles),
                     loaded = 0,
                     callback = function (err, name, json) {
                         if (err) {
@@ -62,10 +62,10 @@ rice.define('rice/managers/asset', [
                         }
                         assetGroups[name] = json;
                         loaded += 1;
-                        if (Sugar.isDefined(onLoaded)) {
+                        if (Utils.isDefined(onLoaded)) {
                             onLoaded(loaded, keyCount);
                         }
-                        if (keyCount === loaded && Sugar.isDefined(onReady)) {
+                        if (keyCount === loaded && Utils.isDefined(onReady)) {
                             onReady(null);
                         }
                     };
@@ -88,7 +88,7 @@ rice.define('rice/managers/asset', [
                     path = '',
                     assetCount = 0,
                     checkLoaded = function () {
-                        if (assetsLoaded === assetCount && Sugar.isDefined(onReady)) {
+                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
                             onReady(null);
                         }
                     },
@@ -99,23 +99,23 @@ rice.define('rice/managers/asset', [
                         }
                         assets.images[name] = image;
                         assetsLoaded += 1;
-                        if (Sugar.isDefined(onLoaded)) {
+                        if (Utils.isDefined(onLoaded)) {
                             onLoaded(assetsLoaded, assetCount);
                         }
                         checkLoaded();
                     };
 
-                if (!Sugar.isDefined(group)) {
+                if (!Utils.isDefined(group)) {
                     onReady('Could not find asset group ' + groupName);
                     return;
                 }
                 // set path
-                if (Sugar.isDefined(group.path)) {
+                if (Utils.isDefined(group.path)) {
                     path += group.path;
                 }
                 // load images
-                if (Sugar.isDefined(group.images)) {
-                    assetCount += Sugar.getKeyLength(group.images);
+                if (Utils.isDefined(group.images)) {
+                    assetCount += Utils.getKeyLength(group.images);
                     for (asset in group.images) {
                         if (!group.images.hasOwnProperty(asset)) {
                             continue;
@@ -124,19 +124,19 @@ rice.define('rice/managers/asset', [
                     }
                 }
                 // load audio
-                if (Sugar.isDefined(group.audio)) {
-                    assetCount += Sugar.getKeyLength(group.audio);
+                if (Utils.isDefined(group.audio)) {
+                    assetCount += Utils.getKeyLength(group.audio);
                 }
                 // load json
-                if (Sugar.isDefined(group.json)) {
-                    assetCount += Sugar.getKeyLength(group.json);
+                if (Utils.isDefined(group.json)) {
+                    assetCount += Utils.getKeyLength(group.json);
                 }
 
             },
             unload = function () {},
             getImage = function (name) {
                 var asset = assets.images[name];
-                if (!Sugar.isDefined(asset)) {
+                if (!Utils.isDefined(asset)) {
                     throw ('Asset ' + name + ' could not be found');
                 }
                 return asset;

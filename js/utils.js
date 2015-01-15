@@ -1,4 +1,4 @@
-rice.define('rice/sugar', [], function () {
+bento.define('bento/utils', [], function () {
     'use strict';
     var isString = function (value) {
             return typeof value === 'string' || value instanceof String;
