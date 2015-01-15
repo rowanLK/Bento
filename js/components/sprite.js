@@ -7,6 +7,9 @@ bento.define('bento/components/sprite', [
 ], function (Utils, Translation, Rotation, Scale, Animation) {
     'use strict';
     return function (base, settings) {
+        if (settings.sprite) {
+            settings.animation = settings.sprite;
+        }
         Translation(base, settings);
         Scale(base, settings);
         Rotation(base, settings);

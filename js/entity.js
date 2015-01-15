@@ -3,10 +3,11 @@
  * @copyright (C) HeiGames
  */
 bento.define('bento/entity', [
+    'bento',
     'bento/utils',
     'bento/math/vector2',
     'bento/math/rectangle'
-], function (Utils, Vector2, Rectangle) {
+], function (Bento, Utils, Vector2, Rectangle) {
     'use strict';
     var globalId = 0;
     return function (settings) {
@@ -95,7 +96,7 @@ bento.define('bento/entity', [
                 getFamily: function () {
                     return family;
                 },
-                add: function (object) {
+                extend: function (object) {
                     return Utils.combine(entity, object);
                 },
                 getPosition: function () {
@@ -283,6 +284,11 @@ bento.define('bento/entity', [
 
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;
+
+            if (settings.addNow) {
+                Bento.objects.add(entity);
+            }
+
         }
         return entity;
     };

@@ -9,10 +9,29 @@ bento.define('bento/managers/asset', [
     'use strict';
     return function () {
         var assetGroups = {},
+            path = '',
             assets = {
                 audio: {},
                 json: {},
-                images: {}
+                images: {},
+                binary: {}
+            },
+            loadAudio = function (name, source, callback) {
+                var asset,
+                    i;
+                if (!Utils.isArray(source)) {
+                    source = [path + 'audio/' + source];
+                } else {
+                    // prepend asset paths
+                    for (i = 0; i < source.length; i += 1) {
+                        source[i] = path + 'audio/' + source[i];
+                    }
+                }
+                asset = new Howl({
+                    urls: source,
+                    onload: callback
+                });
+                assets.audio[name] = asset;
             },
             loadJSON = function (name, source, callback) {
                 var xhr = new XMLHttpRequest();
@@ -85,7 +104,6 @@ bento.define('bento/managers/asset', [
                 var group = assetGroups[groupName],
                     asset,
                     assetsLoaded = 0,
-                    path = '',
                     assetCount = 0,
                     checkLoaded = function () {
                         if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
@@ -98,6 +116,13 @@ bento.define('bento/managers/asset', [
                             return;
                         }
                         assets.images[name] = image;
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadAudio = function () {
                         assetsLoaded += 1;
                         if (Utils.isDefined(onLoaded)) {
                             onLoaded(assetsLoaded, assetCount);
@@ -120,12 +145,18 @@ bento.define('bento/managers/asset', [
                         if (!group.images.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadImage(asset, path + group.images[asset], onLoadImage);
+                        loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
                     }
                 }
                 // load audio
                 if (Utils.isDefined(group.audio)) {
                     assetCount += Utils.getKeyLength(group.audio);
+                    for (asset in group.audio) {
+                        if (!group.audio.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadAudio(asset, group.audio[asset], onLoadAudio);
+                    }
                 }
                 // load json
                 if (Utils.isDefined(group.json)) {
@@ -133,7 +164,7 @@ bento.define('bento/managers/asset', [
                 }
 
             },
-            unload = function () {},
+            unload = function (groupName) {},
             getImage = function (name) {
                 var asset = assets.images[name];
                 if (!Utils.isDefined(asset)) {
@@ -143,13 +174,33 @@ bento.define('bento/managers/asset', [
             },
             getSubImage = function (name) {
 
+            },
+            getJson = function (name) {
+                var asset = assets.json[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            getAudio = function (name) {
+                var asset = assets.audio[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            getAssets = function () {
+                return assets;
             };
         return {
             loadAssetGroups: loadAssetGroups,
             load: load,
             unload: unload,
             getImage: getImage,
-            getSubImage: getSubImage
+            getSubImage: getSubImage,
+            getJson: getJson,
+            getAudio: getAudio,
+            getAssets: getAssets
         };
     };
 });

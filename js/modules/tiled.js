@@ -185,7 +185,7 @@ define('bento/tiled', [
                     z: 0,
                     name: type,
                     family: [type]
-                }).add({
+                }).extend({
                     update: function () {},
                     draw: function () {}
                 });

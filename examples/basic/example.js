@@ -33,6 +33,7 @@ bento.require([
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
                 background = Entity({
+                    addNow: true,
                     components: [Fill],
                     fill: {
                         color: 'rgba(0, 0, 0, 1)'
@@ -42,7 +43,7 @@ bento.require([
                     components: [Translation, Animation, Clickable],
                     position: Vector2(16, 16),
                     originRelative: Vector2(0.5, 0.5),
-                    sprite: {
+                    animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
@@ -59,14 +60,14 @@ bento.require([
                         }
                     },
                     init: function () {
-                        this.sprite.setAnimation('idle');
+                        this.animation.setAnimation('idle');
                     }
                 }),
                 bunny2 = Entity({
                     components: [Translation, Scale, Animation],
                     position: Vector2(16 + 32, 16),
                     originRelative: Vector2(0.5, 0.5),
-                    sprite: {
+                    animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
@@ -78,7 +79,7 @@ bento.require([
                         },
                     },
                     init: function () {
-                        this.sprite.setAnimation('idle');
+                        this.animation.setAnimation('idle');
                         this.scale.setScaleX(2);
                     }
                 }),
@@ -86,7 +87,7 @@ bento.require([
                     components: [Translation, Rotation, Animation],
                     position: Vector2(16 + 64, 16),
                     originRelative: Vector2(0.5, 0.5),
-                    sprite: {
+                    animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
@@ -98,7 +99,7 @@ bento.require([
                         },
                     },
                     init: function () {
-                        this.sprite.setAnimation('idle');
+                        this.animation.setAnimation('idle');
                     }
                 }).attach({
                     update: function () {
@@ -109,7 +110,7 @@ bento.require([
                     components: [Translation, Rotation, Scale, Animation],
                     position: Vector2(16 + 96, 16),
                     originRelative: Vector2(0.5, 0.5),
-                    sprite: {
+                    animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
@@ -121,7 +122,7 @@ bento.require([
                         },
                     },
                     init: function () {
-                        this.sprite.setAnimation('idle');
+                        this.animation.setAnimation('idle');
                     }
                 }).attach({
                     update: function () {
@@ -129,7 +130,6 @@ bento.require([
                         bunny4.scale.setScaleX(Math.sin(bunny4.timer / 10));
                     }
                 });
-            Bento.objects.add(background);
             Bento.objects.add(bunny1);
             Bento.objects.add(bunny2);
             Bento.objects.add(bunny3);

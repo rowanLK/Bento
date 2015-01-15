@@ -19,6 +19,7 @@ gulp.task('default', function () {
         }))
         .pipe(jshint.reporter())*/
         // add bower components
+        .pipe(addsrc.prepend('bower_components/howler/howler.js'))
         .pipe(addsrc.prepend('bower_components/requirejs/require.js'))
         // output rice.js
         .pipe(concat('bento.js'))

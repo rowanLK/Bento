@@ -18,7 +18,7 @@ bento.define('bento/components/animation', [
             onCompleteCallback,
             origin = base.getOrigin(),
             component = {
-                name: 'sprite',
+                name: 'animation',
                 setup: function (settings) {
                     if (settings) {
                         animationSettings = settings;

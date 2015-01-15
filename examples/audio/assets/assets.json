@@ -1,0 +1,12 @@
+{
+    "path": "assets/",
+    "images": {
+        "bunnygirlsmall": "bunnygirlsmall.png"
+    },
+    "audio": {
+        "sfx_blip": ["blip.mp3", "blip.ogg", "blip.ac3"],
+        "sfx_jump": ["jump.mp3", "jump.ogg", "jump.ac3"],
+        "sfx_pickup": ["pickup.mp3", "pickup.ogg", "pickup.ac3"],
+        "sfx_powerup": ["powerup.mp3", "powerup.ogg", "powerup.ac3"]
+    }
+}

@@ -9,6 +9,7 @@ bento.define('bento', [
     'bento/managers/asset',
     'bento/managers/input',
     'bento/managers/object',
+    'bento/managers/audio',
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/renderer'
@@ -18,6 +19,7 @@ bento.define('bento', [
     AssetManager,
     InputManager,
     ObjectManager,
+    AudioManager,
     Vector2,
     Rectangle,
     Renderer
@@ -169,6 +171,7 @@ bento.define('bento', [
                         module.input = InputManager(gameData);
                         module.objects = ObjectManager(gameData, debug);
                         module.assets = AssetManager();
+                        module.audio = AudioManager(module);
 
                         // mix functions
                         Utils.combine(module, module.objects);
@@ -185,9 +188,13 @@ bento.define('bento', [
             getViewport: function () {
                 return viewport;
             },
+            getCanvas: function () {
+                return canvas;
+            },
             assets: null,
             objects: null,
             input: null,
+            audio: null,
             utils: Utils
         };
     return module;
