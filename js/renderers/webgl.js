@@ -29,11 +29,12 @@ bento.define('bento/renderers/webgl', [
                     glRenderer.fillRect(x, y, w, h);
                     glRenderer.color = oldColor;
                 },
-                drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    var image = packedImage.image;
                     if (!image.texture) {
                         image.texture = window.GlSprites.createTexture2D(context, image);
                     }
-                    glRenderer.drawImage(image.texture, sx, sy, sw, sh, x, y, sw, sh);
+                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
                 },
                 begin: function () {
                     glRenderer.begin();

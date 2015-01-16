@@ -74,7 +74,7 @@ bento.define('bento', [
                 }
                 canvas = document.createElement(navigator.isCocoonJS ? 'screencanvas' : 'canvas');
                 canvas.id = settings.canvasId;
-                wrapper.addChild(canvas);
+                wrapper.appendChild(canvas);
             }
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -152,9 +152,6 @@ bento.define('bento', [
                             callback();
                         }
                     };
-                    if (settings.debug) {
-                        setupDebug();
-                    }
                     if (settings.canvasDimension) {
                         if (settings.canvasDimension.isRectangle) {
                             viewport = settings.canvasDimension || viewport;
@@ -169,7 +166,7 @@ bento.define('bento', [
                         onResize();
 
                         module.input = InputManager(gameData);
-                        module.objects = ObjectManager(gameData, debug);
+                        module.objects = ObjectManager(gameData, settings.deltaT, settings.debug);
                         module.assets = AssetManager();
                         module.audio = AudioManager(module);
 

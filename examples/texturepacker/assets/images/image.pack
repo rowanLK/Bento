@@ -1,0 +1,530 @@
+
+image.png
+format: RGBA8888
+filter: Nearest,Nearest
+repeat: none
+paralax1
+  rotate: false
+  xy: 1, 687
+  size: 480, 336
+  orig: 480, 336
+  offset: 0, 0
+  index: -1
+paralax0
+  rotate: false
+  xy: 1, 445
+  size: 480, 240
+  orig: 480, 240
+  offset: 0, 0
+  index: -1
+tiles
+  rotate: false
+  xy: 483, 767
+  size: 256, 256
+  orig: 256, 256
+  offset: 0, 0
+  index: -1
+title
+  rotate: false
+  xy: 1, 323
+  size: 320, 120
+  orig: 320, 120
+  offset: 0, 0
+  index: -1
+title_zh
+  rotate: false
+  xy: 1, 201
+  size: 320, 120
+  orig: 320, 120
+  offset: 0, 0
+  index: -1
+plant
+  rotate: false
+  xy: 483, 573
+  size: 192, 192
+  orig: 192, 192
+  offset: 0, 0
+  index: -1
+logo
+  rotate: false
+  xy: 741, 945
+  size: 270, 78
+  orig: 270, 78
+  offset: 0, 0
+  index: -1
+numberslarge
+  rotate: false
+  xy: 1, 103
+  size: 240, 96
+  orig: 240, 96
+  offset: 0, 0
+  index: -1
+readygo
+  rotate: false
+  xy: 741, 799
+  size: 160, 144
+  orig: 160, 144
+  offset: 0, 0
+  index: -1
+bunnyfire
+  rotate: false
+  xy: 323, 283
+  size: 128, 160
+  orig: 128, 160
+  offset: 0, 0
+  index: -1
+stomp
+  rotate: false
+  xy: 483, 427
+  size: 144, 144
+  orig: 144, 144
+  offset: 0, 0
+  index: -1
+yourscore
+  rotate: false
+  xy: 1, 53
+  size: 192, 48
+  orig: 192, 48
+  offset: 0, 0
+  index: -1
+bunnygirlfire
+  rotate: false
+  xy: 453, 297
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+bunnygirllarge
+  rotate: false
+  xy: 323, 153
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+bunnygirlsmall
+  rotate: false
+  xy: 453, 167
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+controls
+  rotate: false
+  xy: 1, 3
+  size: 160, 48
+  orig: 160, 48
+  offset: 0, 0
+  index: -1
+numberssmall
+  rotate: false
+  xy: 903, 895
+  size: 120, 48
+  orig: 120, 48
+  offset: 0, 0
+  index: -1
+bunnylarge
+  rotate: false
+  xy: 677, 637
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+buttonmoregames
+  rotate: false
+  xy: 677, 539
+  size: 128, 96
+  orig: 128, 96
+  offset: 0, 0
+  index: -1
+fire
+  rotate: false
+  xy: 807, 669
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+flower
+  rotate: false
+  xy: 807, 539
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+water
+  rotate: false
+  xy: 629, 409
+  size: 128, 128
+  orig: 128, 128
+  offset: 0, 0
+  index: -1
+buttonmoregames_zh
+  rotate: false
+  xy: 759, 441
+  size: 128, 96
+  orig: 128, 96
+  offset: 0, 0
+  index: -1
+buttonplay
+  rotate: false
+  xy: 583, 311
+  size: 128, 96
+  orig: 128, 96
+  offset: 0, 0
+  index: -1
+buttonshare
+  rotate: false
+  xy: 583, 213
+  size: 128, 96
+  orig: 128, 96
+  offset: 0, 0
+  index: -1
+bunny
+  rotate: false
+  xy: 583, 163
+  size: 128, 48
+  orig: 128, 48
+  offset: 0, 0
+  index: -1
+coineffect
+  rotate: false
+  xy: 903, 829
+  size: 96, 64
+  orig: 96, 64
+  offset: 0, 0
+  index: -1
+objects32
+  rotate: false
+  xy: 713, 279
+  size: 32, 128
+  orig: 32, 128
+  offset: 0, 0
+  index: -1
+rat
+  rotate: false
+  xy: 759, 375
+  size: 128, 64
+  orig: 128, 64
+  offset: 0, 0
+  index: -1
+frog
+  rotate: false
+  xy: 747, 277
+  size: 96, 96
+  orig: 96, 96
+  offset: 0, 0
+  index: -1
+house
+  rotate: false
+  xy: 713, 179
+  size: 96, 96
+  orig: 96, 96
+  offset: 0, 0
+  index: -1
+buttonachievements
+  rotate: false
+  xy: 243, 103
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+touchtostart
+  rotate: false
+  xy: 293, 127
+  size: 163, 24
+  orig: 163, 24
+  offset: 0, 0
+  index: -1
+touchtostart_zh
+  rotate: false
+  xy: 293, 101
+  size: 163, 24
+  orig: 163, 24
+  offset: 0, 0
+  index: -1
+best
+  rotate: false
+  xy: 195, 53
+  size: 96, 48
+  orig: 96, 48
+  offset: 0, 0
+  index: -1
+pause
+  rotate: false
+  xy: 458, 69
+  size: 96, 96
+  orig: 96, 96
+  offset: 0, 0
+  index: -1
+splashdown
+  rotate: false
+  xy: 556, 65
+  size: 96, 96
+  orig: 96, 96
+  offset: 0, 0
+  index: -1
+splashup
+  rotate: false
+  xy: 654, 65
+  size: 96, 96
+  orig: 96, 96
+  offset: 0, 0
+  index: -1
+achievement
+  rotate: false
+  xy: 163, 18
+  size: 111, 33
+  orig: 111, 33
+  offset: 0, 0
+  index: -1
+buttonclayio
+  rotate: false
+  xy: 889, 441
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+ray
+  rotate: false
+  xy: 293, 35
+  size: 96, 64
+  orig: 96, 64
+  offset: 0, 0
+  index: -1
+buttoncredits
+  rotate: false
+  xy: 845, 277
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+speed
+  rotate: false
+  xy: 811, 195
+  size: 80, 80
+  orig: 80, 80
+  offset: 0, 0
+  index: -1
+bird
+  rotate: false
+  xy: 391, 35
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+buttonfacebook
+  rotate: false
+  xy: 752, 81
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+fish
+  rotate: false
+  xy: 276, 1
+  size: 64, 32
+  orig: 64, 32
+  offset: 0, 0
+  index: -1
+carroteffect
+  rotate: false
+  xy: 342, 1
+  size: 48, 32
+  orig: 48, 32
+  offset: 0, 0
+  index: -1
+dust
+  rotate: false
+  xy: 392, 1
+  size: 48, 32
+  orig: 48, 32
+  offset: 0, 0
+  index: -1
+buttona
+  rotate: false
+  xy: 889, 375
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+buttongamecenter
+  rotate: false
+  xy: 895, 277
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttongoogleplaygames
+  rotate: false
+  xy: 893, 179
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttonleaderboards
+  rotate: false
+  xy: 937, 731
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttonmusic
+  rotate: false
+  xy: 937, 633
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttonb
+  rotate: false
+  xy: 937, 567
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+buttonsound
+  rotate: false
+  xy: 939, 469
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttontouch
+  rotate: false
+  xy: 945, 277
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttontwitter
+  rotate: false
+  xy: 943, 179
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttonweibo
+  rotate: false
+  xy: 802, 81
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+pausebutton
+  rotate: false
+  xy: 852, 81
+  size: 48, 96
+  orig: 48, 96
+  offset: 0, 0
+  index: -1
+buttonl
+  rotate: false
+  xy: 902, 113
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+deadplant
+  rotate: false
+  xy: 629, 539
+  size: 32, 32
+  orig: 32, 32
+  offset: 0, 0
+  index: -1
+buttonr
+  rotate: false
+  xy: 457, 3
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+carrot
+  rotate: false
+  xy: 902, 47
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+halo
+  rotate: false
+  xy: 752, 15
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+pig
+  rotate: false
+  xy: 818, 15
+  size: 64, 64
+  orig: 64, 64
+  offset: 0, 0
+  index: -1
+boost
+  rotate: false
+  xy: 968, 129
+  size: 48, 48
+  orig: 48, 48
+  offset: 0, 0
+  index: -1
+boost2
+  rotate: false
+  xy: 968, 79
+  size: 48, 48
+  orig: 48, 48
+  offset: 0, 0
+  index: -1
+star
+  rotate: false
+  xy: 968, 37
+  size: 40, 40
+  orig: 40, 40
+  offset: 0, 0
+  index: -1
+fireball
+  rotate: false
+  xy: 939, 441
+  size: 26, 26
+  orig: 26, 26
+  offset: 0, 0
+  index: -1
+treeplatform
+  rotate: false
+  xy: 741, 781
+  size: 48, 16
+  orig: 48, 16
+  offset: 0, 0
+  index: -1
+fullscreen
+  rotate: false
+  xy: 987, 779
+  size: 32, 48
+  orig: 32, 48
+  offset: 0, 0
+  index: -1
+spark
+  rotate: false
+  xy: 987, 745
+  size: 32, 32
+  orig: 32, 32
+  offset: 0, 0
+  index: -1
+stars
+  rotate: false
+  xy: 884, 5
+  size: 40, 40
+  orig: 40, 40
+  offset: 0, 0
+  index: -1
+black
+  rotate: false
+  xy: 453, 435
+  size: 8, 8
+  orig: 8, 8
+  offset: 0, 0
+  index: -1
+wait
+  rotate: false
+  xy: 1013, 1015
+  size: 8, 8
+  orig: 8, 8
+  offset: 0, 0
+  index: -1

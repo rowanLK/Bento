@@ -1,10 +1,10 @@
 {
     "path": "assets/",
     "images": {
-        "bunnygirlsmall": "images/bunnygirlsmall.png",
-        "buttona": "images/buttona.png",
-        "buttonb": "images/buttonb.png",
-        "buttonl": "images/buttonl.png",
-        "buttonr": "images/buttonr.png"
+        "bunnygirlsmall": "bunnygirlsmall.png",
+        "buttona": "buttona.png",
+        "buttonb": "buttonb.png",
+        "buttonl": "buttonl.png",
+        "buttonr": "buttonr.png"
     }
 }

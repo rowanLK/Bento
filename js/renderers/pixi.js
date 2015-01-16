@@ -48,5 +48,5 @@ bento.define('bento/renderers/pixi', [
         }
         console.log('Init pixi as renderer');
         return renderer;
-    }
+    };
 });

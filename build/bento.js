@@ -3307,6 +3307,888 @@ var requirejs, require, define;
 
 })();
 
+/*!
+ * FPSMeter 0.3.1 - 9th May 2013
+ * https://github.com/Darsain/fpsmeter
+ *
+ * Licensed under the MIT license.
+ * http://opensource.org/licenses/MIT
+ */
+;(function (w, undefined) {
+    'use strict';
+
+    /**
+     * Create a new element.
+     *
+     * @param  {String} name Element type name.
+     *
+     * @return {Element}
+     */
+    function newEl(name) {
+        return document.createElement(name);
+    }
+
+    /**
+     * Apply theme CSS properties to element.
+     *
+     * @param  {Element} element DOM element.
+     * @param  {Object}  theme   Theme object.
+     *
+     * @return {Element}
+     */
+    function applyTheme(element, theme) {
+        for (var name in theme) {
+            try {
+                element.style[name] = theme[name];
+            } catch (e) {}
+        }
+        return element;
+    }
+
+    /**
+     * Return type of the value.
+     *
+     * @param  {Mixed} value
+     *
+     * @return {String}
+     */
+    function type(value) {
+        if (value == null) {
+            return String(value);
+        }
+
+        if (typeof value === 'object' || typeof value === 'function') {
+            return Object.prototype.toString.call(value).match(/\s([a-z]+)/i)[1].toLowerCase() || 'object';
+        }
+
+        return typeof value;
+    }
+
+    /**
+     * Check whether the value is in an array.
+     *
+     * @param  {Mixed} value
+     * @param  {Array} array
+     *
+     * @return {Integer} Array index or -1 when not found.
+     */
+    function inArray(value, array) {
+        if (type(array) !== 'array') {
+            return -1;
+        }
+        if (array.indexOf) {
+            return array.indexOf(value);
+        }
+        for (var i = 0, l = array.length; i < l; i++) {
+            if (array[i] === value) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Poor man's deep object extend.
+     *
+     * Example:
+     *   extend({}, defaults, options);
+     *
+     * @return {Void}
+     */
+    function extend() {
+        var args = arguments;
+        for (var key in args[1]) {
+            if (args[1].hasOwnProperty(key)) {
+                switch (type(args[1][key])) {
+                    case 'object':
+                        args[0][key] = extend({}, args[0][key], args[1][key]);
+                        break;
+
+                    case 'array':
+                        args[0][key] = args[1][key].slice(0);
+                        break;
+
+                    default:
+                        args[0][key] = args[1][key];
+                }
+            }
+        }
+        return args.length > 2 ?
+            extend.apply(null, [args[0]].concat(Array.prototype.slice.call(args, 2))) :
+            args[0];
+    }
+
+    /**
+     * Convert HSL color to HEX string.
+     *
+     * @param  {Array} hsl Array with [hue, saturation, lightness].
+     *
+     * @return {Array} Array with [red, green, blue].
+     */
+    function hslToHex(h, s, l) {
+        var r, g, b;
+        var v, min, sv, sextant, fract, vsf;
+
+        if (l <= 0.5) {
+            v = l * (1 + s);
+        } else {
+            v = l + s - l * s;
+        }
+
+        if (v === 0) {
+            return '#000';
+        } else {
+            min = 2 * l - v;
+            sv = (v - min) / v;
+            h = 6 * h;
+            sextant = Math.floor(h);
+            fract = h - sextant;
+            vsf = v * sv * fract;
+            if (sextant === 0 || sextant === 6) {
+                r = v;
+                g = min + vsf;
+                b = min;
+            } else if (sextant === 1) {
+                r = v - vsf;
+                g = v;
+                b = min;
+            } else if (sextant === 2) {
+                r = min;
+                g = v;
+                b = min + vsf;
+            } else if (sextant === 3) {
+                r = min;
+                g = v - vsf;
+                b = v;
+            } else if (sextant === 4) {
+                r = min + vsf;
+                g = min;
+                b = v;
+            } else {
+                r = v;
+                g = min;
+                b = v - vsf;
+            }
+            return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
+        }
+    }
+
+    /**
+     * Helper function for hslToHex.
+     */
+    function componentToHex(c) {
+        c = Math.round(c * 255).toString(16);
+        return c.length === 1 ? '0' + c : c;
+    }
+
+    /**
+     * Manage element event listeners.
+     *
+     * @param  {Node}     element
+     * @param  {Event}    eventName
+     * @param  {Function} handler
+     * @param  {Bool}     remove
+     *
+     * @return {Void}
+     */
+    function listener(element, eventName, handler, remove) {
+        if (element.addEventListener) {
+            element[remove ? 'removeEventListener' : 'addEventListener'](eventName, handler, false);
+        } else if (element.attachEvent) {
+            element[remove ? 'detachEvent' : 'attachEvent']('on' + eventName, handler);
+        }
+    }
+
+    // Preferred timing funtion
+    var getTime;
+    (function () {
+        var perf = w.performance;
+        if (perf && (perf.now || perf.webkitNow)) {
+            var perfNow = perf.now ? 'now' : 'webkitNow';
+            getTime = perf[perfNow].bind(perf);
+        } else {
+            getTime = function () {
+                return +new Date();
+            };
+        }
+    }());
+
+    // Local WindowAnimationTiming interface polyfill
+    var cAF = w.cancelAnimationFrame || w.cancelRequestAnimationFrame;
+    var rAF = w.requestAnimationFrame;
+    (function () {
+        var vendors = ['moz', 'webkit', 'o'];
+        var lastTime = 0;
+
+        // For a more accurate WindowAnimationTiming interface implementation, ditch the native
+        // requestAnimationFrame when cancelAnimationFrame is not present (older versions of Firefox)
+        for (var i = 0, l = vendors.length; i < l && !cAF; ++i) {
+            cAF = w[vendors[i]+'CancelAnimationFrame'] || w[vendors[i]+'CancelRequestAnimationFrame'];
+            rAF = cAF && w[vendors[i]+'RequestAnimationFrame'];
+        }
+
+        if (!cAF) {
+            rAF = function (callback) {
+                var currTime = getTime();
+                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+                lastTime = currTime + timeToCall;
+                return w.setTimeout(function () { callback(currTime + timeToCall); }, timeToCall);
+            };
+
+            cAF = function (id) {
+                clearTimeout(id);
+            };
+        }
+    }());
+
+    // Property name for assigning element text content
+    var textProp = type(document.createElement('div').textContent) === 'string' ? 'textContent' : 'innerText';
+
+    /**
+     * FPSMeter class.
+     *
+     * @param {Element} anchor  Element to append the meter to. Default is document.body.
+     * @param {Object}  options Object with options.
+     */
+    function FPSMeter(anchor, options) {
+        // Optional arguments
+        if (type(anchor) === 'object' && anchor.nodeType === undefined) {
+            options = anchor;
+            anchor = document.body;
+        }
+        if (!anchor) {
+            anchor = document.body;
+        }
+
+        // Private properties
+        var self = this;
+        var o = extend({}, FPSMeter.defaults, options || {});
+
+        var el = {};
+        var cols = [];
+        var theme, heatmaps;
+        var heatDepth = 100;
+        var heating = [];
+
+        var thisFrameTime = 0;
+        var frameTime = o.threshold;
+        var frameStart = 0;
+        var lastLoop = getTime() - frameTime;
+        var time;
+
+        var fpsHistory = [];
+        var durationHistory = [];
+
+        var frameID, renderID;
+        var showFps = o.show === 'fps';
+        var graphHeight, count, i, j;
+
+        // Exposed properties
+        self.options = o;
+        self.fps = 0;
+        self.duration = 0;
+        self.isPaused = 0;
+
+        /**
+         * Tick start for measuring the actual rendering duration.
+         *
+         * @return {Void}
+         */
+        self.tickStart = function () {
+            frameStart = getTime();
+        };
+
+        /**
+         * FPS tick.
+         *
+         * @return {Void}
+         */
+        self.tick = function () {
+            time = getTime();
+            thisFrameTime = time - lastLoop;
+            frameTime += (thisFrameTime - frameTime) / o.smoothing;
+            self.fps = 1000 / frameTime;
+            self.duration = frameStart < lastLoop ? frameTime : time - frameStart;
+            lastLoop = time;
+        };
+
+        /**
+         * Pause display rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.pause = function () {
+            if (frameID) {
+                self.isPaused = 1;
+                clearTimeout(frameID);
+                cAF(frameID);
+                cAF(renderID);
+                frameID = renderID = 0;
+            }
+            return self;
+        };
+
+        /**
+         * Resume display rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.resume = function () {
+            if (!frameID) {
+                self.isPaused = 0;
+                requestRender();
+            }
+            return self;
+        };
+
+        /**
+         * Update options.
+         *
+         * @param {String} name  Option name.
+         * @param {Mixed}  value New value.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.set = function (name, value) {
+            o[name] = value;
+            showFps = o.show === 'fps';
+
+            // Rebuild or reposition elements when specific option has been updated
+            if (inArray(name, rebuilders) !== -1) {
+                createMeter();
+            }
+            if (inArray(name, repositioners) !== -1) {
+                positionMeter();
+            }
+            return self;
+        };
+
+        /**
+         * Change meter into rendering duration mode.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.showDuration = function () {
+            self.set('show', 'ms');
+            return self;
+        };
+
+        /**
+         * Change meter into FPS mode.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.showFps = function () {
+            self.set('show', 'fps');
+            return self;
+        };
+
+        /**
+         * Toggles between show: 'fps' and show: 'duration'.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.toggle = function () {
+            self.set('show', showFps ? 'ms' : 'fps');
+            return self;
+        };
+
+        /**
+         * Hide the FPSMeter. Also pauses the rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.hide = function () {
+            self.pause();
+            el.container.style.display = 'none';
+            return self;
+        };
+
+        /**
+         * Show the FPSMeter. Also resumes the rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.show = function () {
+            self.resume();
+            el.container.style.display = 'block';
+            return self;
+        };
+
+        /**
+         * Check the current FPS and save it in history.
+         *
+         * @return {Void}
+         */
+        function historyTick() {
+            for (i = o.history; i--;) {
+                fpsHistory[i] = i === 0 ? self.fps : fpsHistory[i-1];
+                durationHistory[i] = i === 0 ? self.duration : durationHistory[i-1];
+            }
+        }
+
+        /**
+         * Returns heat hex color based on values passed.
+         *
+         * @param  {Integer} heatmap
+         * @param  {Integer} value
+         * @param  {Integer} min
+         * @param  {Integer} max
+         *
+         * @return {Integer}
+         */
+        function getHeat(heatmap, value, min, max) {
+            return heatmaps[0|heatmap][Math.round(Math.min((value - min) / (max - min) * heatDepth, heatDepth))];
+        }
+
+        /**
+         * Update counter number and legend.
+         *
+         * @return {Void}
+         */
+        function updateCounter() {
+            // Update legend only when changed
+            if (el.legend.fps !== showFps) {
+                el.legend.fps = showFps;
+                el.legend[textProp] = showFps ? 'FPS' : 'ms';
+            }
+            // Update counter with a nicely formated & readable number
+            count = showFps ? self.fps : self.duration;
+            el.count[textProp] = count > 999 ? '999+' : count.toFixed(count > 99 ? 0 : o.decimals);
+        }
+
+        /**
+         * Render current FPS state.
+         *
+         * @return {Void}
+         */
+        function render() {
+            time = getTime();
+            // If renderer stopped reporting, do a simulated drop to 0 fps
+            if (lastLoop < time - o.threshold) {
+                self.fps -= self.fps / Math.max(1, o.smoothing * 60 / o.interval);
+                self.duration = 1000 / self.fps;
+            }
+
+            historyTick();
+            updateCounter();
+
+            // Apply heat to elements
+            if (o.heat) {
+                if (heating.length) {
+                    for (i = heating.length; i--;) {
+                        heating[i].el.style[theme[heating[i].name].heatOn] = showFps ?
+                            getHeat(theme[heating[i].name].heatmap, self.fps, 0, o.maxFps) :
+                            getHeat(theme[heating[i].name].heatmap, self.duration, o.threshold, 0);
+                    }
+                }
+
+                if (el.graph && theme.column.heatOn) {
+                    for (i = cols.length; i--;) {
+                        cols[i].style[theme.column.heatOn] = showFps ?
+                            getHeat(theme.column.heatmap, fpsHistory[i], 0, o.maxFps) :
+                            getHeat(theme.column.heatmap, durationHistory[i], o.threshold, 0);
+                    }
+                }
+            }
+
+            // Update graph columns height
+            if (el.graph) {
+                for (j = 0; j < o.history; j++) {
+                    cols[j].style.height = (showFps ?
+                        (fpsHistory[j] ? Math.round(graphHeight / o.maxFps * Math.min(fpsHistory[j], o.maxFps)) : 0) :
+                        (durationHistory[j] ? Math.round(graphHeight / o.threshold * Math.min(durationHistory[j], o.threshold)) : 0)
+                    ) + 'px';
+                }
+            }
+        }
+
+        /**
+         * Request rendering loop.
+         *
+         * @return {Int} Animation frame index.
+         */
+        function requestRender() {
+            if (o.interval < 20) {
+                frameID = rAF(requestRender);
+                render();
+            } else {
+                frameID = setTimeout(requestRender, o.interval);
+                renderID = rAF(render);
+            }
+        }
+
+        /**
+         * Meter events handler.
+         *
+         * @return {Void}
+         */
+        function eventHandler(event) {
+            event = event || window.event;
+            if (event.preventDefault) {
+                event.preventDefault();
+                event.stopPropagation();
+            } else {
+                event.returnValue = false;
+                event.cancelBubble = true;
+            }
+            self.toggle();
+        }
+
+        /**
+         * Destroys the current FPSMeter instance.
+         *
+         * @return {Void}
+         */
+        self.destroy = function () {
+            // Stop rendering
+            self.pause();
+            // Remove elements
+            removeMeter();
+            // Stop listening
+            self.tick = self.tickStart = function () {};
+        };
+
+        /**
+         * Remove meter element.
+         *
+         * @return {Void}
+         */
+        function removeMeter() {
+            // Unbind listeners
+            if (o.toggleOn) {
+                listener(el.container, o.toggleOn, eventHandler, 1);
+            }
+            // Detach element
+            anchor.removeChild(el.container);
+        }
+
+        /**
+         * Sets the theme, and generates heatmaps when needed.
+         */
+        function setTheme() {
+            theme = FPSMeter.theme[o.theme];
+
+            // Generate heatmaps
+            heatmaps = theme.compiledHeatmaps || [];
+            if (!heatmaps.length && theme.heatmaps.length) {
+                for (j = 0; j < theme.heatmaps.length; j++) {
+                    heatmaps[j] = [];
+                    for (i = 0; i <= heatDepth; i++) {
+                        heatmaps[j][i] = hslToHex(0.33 / heatDepth * i, theme.heatmaps[j].saturation, theme.heatmaps[j].lightness);
+                    }
+                }
+                theme.compiledHeatmaps = heatmaps;
+            }
+        }
+
+        /**
+         * Creates and attaches the meter element.
+         *
+         * @return {Void}
+         */
+        function createMeter() {
+            // Remove old meter if present
+            if (el.container) {
+                removeMeter();
+            }
+
+            // Set theme
+            setTheme();
+
+            // Create elements
+            el.container = applyTheme(newEl('div'), theme.container);
+            el.count = el.container.appendChild(applyTheme(newEl('div'), theme.count));
+            el.legend = el.container.appendChild(applyTheme(newEl('div'), theme.legend));
+            el.graph = o.graph ? el.container.appendChild(applyTheme(newEl('div'), theme.graph)) : 0;
+
+            // Add elements to heating array
+            heating.length = 0;
+            for (var key in el) {
+                if (el[key] && theme[key].heatOn) {
+                    heating.push({
+                        name: key,
+                        el: el[key]
+                    });
+                }
+            }
+
+            // Graph
+            cols.length = 0;
+            if (el.graph) {
+                // Create graph
+                el.graph.style.width = (o.history * theme.column.width + (o.history - 1) * theme.column.spacing) + 'px';
+
+                // Add columns
+                for (i = 0; i < o.history; i++) {
+                    cols[i] = el.graph.appendChild(applyTheme(newEl('div'), theme.column));
+                    cols[i].style.position = 'absolute';
+                    cols[i].style.bottom = 0;
+                    cols[i].style.right = (i * theme.column.width + i * theme.column.spacing) + 'px';
+                    cols[i].style.width = theme.column.width + 'px';
+                    cols[i].style.height = '0px';
+                }
+            }
+
+            // Set the initial state
+            positionMeter();
+            updateCounter();
+
+            // Append container to anchor
+            anchor.appendChild(el.container);
+
+            // Retrieve graph height after it was appended to DOM
+            if (el.graph) {
+                graphHeight = el.graph.clientHeight;
+            }
+
+            // Add event listeners
+            if (o.toggleOn) {
+                if (o.toggleOn === 'click') {
+                    el.container.style.cursor = 'pointer';
+                }
+                listener(el.container, o.toggleOn, eventHandler);
+            }
+        }
+
+        /**
+         * Positions the meter based on options.
+         *
+         * @return {Void}
+         */
+        function positionMeter() {
+            applyTheme(el.container, o);
+        }
+
+        /**
+         * Construct.
+         */
+        (function () {
+            // Create meter element
+            createMeter();
+            // Start rendering
+            requestRender();
+        }());
+    }
+
+    // Expose the extend function
+    FPSMeter.extend = extend;
+
+    // Expose the FPSMeter class
+    window.FPSMeter = FPSMeter;
+
+    // Default options
+    FPSMeter.defaults = {
+        interval:  100,     // Update interval in milliseconds.
+        smoothing: 10,      // Spike smoothing strength. 1 means no smoothing.
+        show:      'fps',   // Whether to show 'fps', or 'ms' = frame duration in milliseconds.
+        toggleOn:  'click', // Toggle between show 'fps' and 'ms' on this event.
+        decimals:  1,       // Number of decimals in FPS number. 1 = 59.9, 2 = 59.94, ...
+        maxFps:    60,      // Max expected FPS value.
+        threshold: 100,     // Minimal tick reporting interval in milliseconds.
+
+        // Meter position
+        position: 'absolute', // Meter position.
+        zIndex:   10,         // Meter Z index.
+        left:     '5px',      // Meter left offset.
+        top:      '5px',      // Meter top offset.
+        right:    'auto',     // Meter right offset.
+        bottom:   'auto',     // Meter bottom offset.
+        margin:   '0 0 0 0',  // Meter margin. Helps with centering the counter when left: 50%;
+
+        // Theme
+        theme: 'dark', // Meter theme. Build in: 'dark', 'light', 'transparent', 'colorful'.
+        heat:  0,      // Allow themes to use coloring by FPS heat. 0 FPS = red, maxFps = green.
+
+        // Graph
+        graph:   0, // Whether to show history graph.
+        history: 20 // How many history states to show in a graph.
+    };
+
+    // Option names that trigger FPSMeter rebuild or reposition when modified
+    var rebuilders = [
+        'toggleOn',
+        'theme',
+        'heat',
+        'graph',
+        'history'
+    ];
+    var repositioners = [
+        'position',
+        'zIndex',
+        'left',
+        'top',
+        'right',
+        'bottom',
+        'margin'
+    ];
+}(window));
+;(function (w, FPSMeter, undefined) {
+    'use strict';
+
+    // Themes object
+    FPSMeter.theme = {};
+
+    // Base theme with layout, no colors
+    var base = FPSMeter.theme.base = {
+        heatmaps: [],
+        container: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            padding: '5px',
+            minWidth: '95px',
+            height: '30px',
+            lineHeight: '30px',
+            textAlign: 'right',
+            textShadow: 'none'
+        },
+        count: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            padding: '5px 10px',
+            height: '30px',
+            fontSize: '24px',
+            fontFamily: 'Consolas, Andale Mono, monospace',
+            zIndex: 2
+        },
+        legend: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            padding: '5px 10px',
+            height: '30px',
+            fontSize: '12px',
+            lineHeight: '32px',
+            fontFamily: 'sans-serif',
+            textAlign: 'left',
+            zIndex: 2
+        },
+        graph: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            position: 'relative',
+            boxSizing: 'padding-box',
+            MozBoxSizing: 'padding-box',
+            height: '100%',
+            zIndex: 1
+        },
+        column: {
+            // Settings
+            width: 4,
+            spacing: 1,
+            heatOn: null,
+            heatmap: null
+        }
+    };
+
+    // Dark theme
+    FPSMeter.theme.dark = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.8,
+            lightness: 0.8
+        }],
+        container: {
+            background: '#222',
+            color: '#fff',
+            border: '1px solid #1a1a1a',
+            textShadow: '1px 1px 0 #222'
+        },
+        count: {
+            heatOn: 'color'
+        },
+        column: {
+            background: '#3f3f3f'
+        }
+    });
+
+    // Light theme
+    FPSMeter.theme.light = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.5,
+            lightness: 0.5
+        }],
+        container: {
+            color: '#666',
+            background: '#fff',
+            textShadow: '1px 1px 0 rgba(255,255,255,.5), -1px -1px 0 rgba(255,255,255,.5)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
+        },
+        count: {
+            heatOn: 'color'
+        },
+        column: {
+            background: '#eaeaea'
+        }
+    });
+
+    // Colorful theme
+    FPSMeter.theme.colorful = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.5,
+            lightness: 0.6
+        }],
+        container: {
+            heatOn: 'backgroundColor',
+            background: '#888',
+            color: '#fff',
+            textShadow: '1px 1px 0 rgba(0,0,0,.2)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
+        },
+        column: {
+            background: '#777',
+            backgroundColor: 'rgba(0,0,0,.2)'
+        }
+    });
+
+    // Transparent theme
+    FPSMeter.theme.transparent = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.8,
+            lightness: 0.5
+        }],
+        container: {
+            padding: 0,
+            color: '#fff',
+            textShadow: '1px 1px 0 rgba(0,0,0,.5)'
+        },
+        count: {
+            padding: '0 5px',
+            height: '40px',
+            lineHeight: '40px'
+        },
+        legend: {
+            padding: '0 5px',
+            height: '40px',
+            lineHeight: '42px'
+        },
+        graph: {
+            height: '40px'
+        },
+        column: {
+            width: 5,
+            background: '#999',
+            heatOn: 'backgroundColor',
+            opacity: 0.5
+        }
+    });
+}(window, FPSMeter));
 // https://github.com/harthur/color-string
 
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
@@ -11025,7 +11907,7 @@ bento.define('bento', [
                 }
                 canvas = document.createElement(navigator.isCocoonJS ? 'screencanvas' : 'canvas');
                 canvas.id = settings.canvasId;
-                wrapper.addChild(canvas);
+                wrapper.appendChild(canvas);
             }
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -11103,9 +11985,6 @@ bento.define('bento', [
                             callback();
                         }
                     };
-                    if (settings.debug) {
-                        setupDebug();
-                    }
                     if (settings.canvasDimension) {
                         if (settings.canvasDimension.isRectangle) {
                             viewport = settings.canvasDimension || viewport;
@@ -11120,7 +11999,7 @@ bento.define('bento', [
                         onResize();
 
                         module.input = InputManager(gameData);
-                        module.objects = ObjectManager(gameData, debug);
+                        module.objects = ObjectManager(gameData, settings.deltaT, settings.debug);
                         module.assets = AssetManager();
                         module.audio = AudioManager(module);
 
@@ -11544,6 +12423,16 @@ bento.define('bento/eventsystem', [
         }
     };
 });
+bento.define('bento/packedimage', [
+    'bento/math/rectangle'
+], function (Rectangle) {
+    return function (image, frame) {
+        var rectangle = frame ? Rectangle(frame.x, frame.y, frame.w, frame.h) :
+            Rectangle(0, 0, image.width, image.height);
+        rectangle.image = image;
+        return rectangle;
+    };
+});
 bento.define('bento/renderer', [
     'bento/utils'
 ], function (Utils, Canvas2D) {
@@ -11555,7 +12444,7 @@ bento.define('bento/renderer', [
             scale: function (x, y) {},
             rotate: function (angle) {},
             fillRect: function (color, x, y, w, h) {},
-            drawImage: function (texture, sx, sy, sw, sh, x, y, w, h) {},
+            drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
             flush: function () {},
             setColor: function () {}
@@ -11564,15 +12453,6 @@ bento.define('bento/renderer', [
             Utils.combine(module, renderer(canvas, context));
             callback(module);
         });
-    };
-});
-bento.define('bento/subimage', [
-    'bento/math/rectangle'
-], function (Rectangle) {
-    return function (image, frame) {
-        var rectangle = Rectangle(frame.x, frame.y, frame.w, frame.h);
-        rectangle.image = image;
-        return rectangle;
     };
 });
 bento.define('bento/utils', [], function () {
@@ -11784,7 +12664,7 @@ bento.define('bento/components/animation', [
 ], function (Utils) {
     'use strict';
     return function (base, settings) {
-        var image,
+        var spriteImage,
             animationSettings,
             animations = {},
             currentAnimation = {
@@ -11819,18 +12699,18 @@ bento.define('bento/components/animation', [
                             frames: [0]
                         };
                     }
-                    image = settings.image;
+                    spriteImage = settings.image;
                     // use frameWidth if specified (overrides frameCountX and frameCountY)
                     if (animationSettings.frameWidth && animationSettings.frameHeight) {
                         frameWidth = animationSettings.frameWidth;
                         frameHeight = animationSettings.frameHeight;
-                        frameCountX = Math.floor(image.width / frameWidth);
-                        frameCountY = Math.floor(image.height / frameHeight);
+                        frameCountX = Math.floor(spriteImage.width / frameWidth);
+                        frameCountY = Math.floor(spriteImage.height / frameHeight);
                     } else {
                         frameCountX = animationSettings.frameCountX || 1;
                         frameCountY = animationSettings.frameCountY || 1;
-                        frameWidth = image.width / frameCountX;
-                        frameHeight = image.height / frameCountY;
+                        frameWidth = spriteImage.width / frameCountX;
+                        frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of base object
                     base.getDimension().width = frameWidth;
@@ -11901,7 +12781,7 @@ bento.define('bento/components/animation', [
 
                     data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
                     data.renderer.drawImage(
-                        image,
+                        spriteImage,
                         sx,
                         sy,
                         frameWidth,
@@ -12097,7 +12977,7 @@ bento.define('bento/components/sprite', [
         Translation(base, settings);
         Scale(base, settings);
         Rotation(base, settings);
-        Animation(base, settings)
+        Animation(base, settings);
         return base;
     };
 });
@@ -12935,8 +13815,9 @@ bento.define('bento/math/vector2', [], function () {
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/asset', [
+    'bento/packedimage',
     'bento/utils'
-], function (Utils) {
+], function (PackedImage, Utils) {
     'use strict';
     return function () {
         var assetGroups = {},
@@ -12947,6 +13828,8 @@ bento.define('bento/managers/asset', [
                 images: {},
                 binary: {}
             },
+            texturePacker = {},
+            packs = [],
             loadAudio = function (name, source, callback) {
                 var asset,
                     i;
@@ -12986,6 +13869,34 @@ bento.define('bento/managers/asset', [
                     }
                 };
                 xhr.send(null);
+            },
+            loadBinary = function (name, source, success, failure) {
+                var xhr = new XMLHttpRequest(),
+                    arrayBuffer,
+                    byteArray,
+                    buffer,
+                    i = 0;
+
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + name);
+                };
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function (e) {
+                    var binary;
+                    arrayBuffer = xhr.response;
+                    if (arrayBuffer) {
+                        byteArray = new Uint8Array(arrayBuffer);
+                        buffer = [];
+                        for (i; i < byteArray.byteLength; ++i) {
+                            buffer[i] = String.fromCharCode(byteArray[i]);
+                        }
+                        // loadedAssets.binary[name] = buffer.join('');
+                        binary = buffer.join('');
+                        callback(null, name, binary);
+                    }
+                };
+                xhr.send();
             },
             loadImage = function (name, source, callback) {
                 // TODO: Implement failure
@@ -13038,6 +13949,7 @@ bento.define('bento/managers/asset', [
                     assetCount = 0,
                     checkLoaded = function () {
                         if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
+                            initPackedImages();
                             onReady(null);
                         }
                     },
@@ -13052,6 +13964,15 @@ bento.define('bento/managers/asset', [
                             onLoaded(assetsLoaded, assetCount);
                         }
                         checkLoaded();
+                    },
+                    onLoadPack = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        packs.push(name);
+                        assetsLoaded += 1;
                     },
                     onLoadAudio = function () {
                         assetsLoaded += 1;
@@ -13079,6 +14000,16 @@ bento.define('bento/managers/asset', [
                         loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
                     }
                 }
+                // load packed images
+                if (Utils.isDefined(group.texturePacker)) {
+                    assetCount += Utils.getKeyLength(group.texturePacker);
+                    for (asset in group.texturePacker) {
+                        if (!group.texturePacker.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadJSON(asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                    }
+                }
                 // load audio
                 if (Utils.isDefined(group.audio)) {
                     assetCount += Utils.getKeyLength(group.audio);
@@ -13097,14 +14028,23 @@ bento.define('bento/managers/asset', [
             },
             unload = function (groupName) {},
             getImage = function (name) {
+                var image, packedImage = texturePacker[name];
+                if (!packedImage) {
+                    image = getImageElement(name);
+                    if (!image) {
+                        throw 'Can not find ' + name;
+                    }
+                    packedImage = PackedImage(image);
+                    texturePacker[name] = packedImage;
+                }
+                return packedImage;
+            },
+            getImageElement = function (name) {
                 var asset = assets.images[name];
                 if (!Utils.isDefined(asset)) {
                     throw ('Asset ' + name + ' could not be found');
                 }
                 return asset;
-            },
-            getSubImage = function (name) {
-
             },
             getJson = function (name) {
                 var asset = assets.json[name];
@@ -13122,13 +14062,30 @@ bento.define('bento/managers/asset', [
             },
             getAssets = function () {
                 return assets;
+            },
+            initPackedImages = function () {
+                var frame, pack, i, image, json;
+                while (packs.length) {
+                    pack = packs.pop();
+                    image = getImageElement(pack);
+                    json = getJson(pack);
+
+                    // parse json
+                    for (i = 0; i < json.frames.length; ++i) {
+                        name = json.frames[i].filename;
+                        name = name.substring(0, name.length - 4);
+                        frame = json.frames[i].frame;
+                        texturePacker[name] = PackedImage(image, frame);
+                    }
+                    console.log(texturePacker);
+                }
             };
         return {
             loadAssetGroups: loadAssetGroups,
             load: load,
             unload: unload,
             getImage: getImage,
-            getSubImage: getSubImage,
+            getImageElement: getImageElement,
             getJson: getJson,
             getAudio: getAudio,
             getAssets: getAssets
@@ -13495,25 +14452,28 @@ bento.define('bento/managers/object', [
     'bento/utils'
 ], function (Utils) {
     'use strict';
-    return function (settings, debugObj) {
+    return function (settings, useDeltaT, debug) {
         var objects = [],
             lastTime = new Date().getTime(),
             cumulativeTime = 0,
             minimumFps = 30,
             lastFrameTime = new Date().getTime(),
             gameData,
-            debug,
             isRunning = false,
             useSort = true,
             isPaused = false,
+            fpsMeter,
             sort = function () {
-                Utils.stableSort.inplace(objects, function (a, b) {
-                    return a.z - b.z;
-                });
-                /*// default behavior
-                objects.sort(function (a, b) {
-                    return a.z - b.z;
-                });*/
+                if (!settings.defaultSort) {
+                    Utils.stableSort.inplace(objects, function (a, b) {
+                        return a.z - b.z;
+                    });
+                } else {
+                    // default behavior
+                    objects.sort(function (a, b) {
+                        return a.z - b.z;
+                    });
+                }
             },
             cleanObjects = function () {
                 var i;
@@ -13530,22 +14490,16 @@ bento.define('bento/managers/object', [
                     currentTime = new Date().getTime(),
                     deltaT = currentTime - lastTime;
 
-                if (debug && debug.debugBar) {
-                    debug.fps = Math.round(1000 / (window.performance.now() - debug.lastTime), 2);
-                    debug.fpsAccumulator += debug.fps;
-                    debug.fpsTicks += 1;
-                    debug.avg = Math.round(debug.fpsAccumulator / debug.fpsTicks);
-                    if (debug.fpsTicks > debug.fpsMaxAverage) {
-                        debug.fpsAccumulator = 0;
-                        debug.fpsTicks = 0;
-                    }
-                    debug.debugBar.innerHTML = 'fps: ' + debug.avg;
-                    debug.lastTime = window.performance.now();
+                if (debug) {
+                    fpsMeter.tickStart();
                 }
 
                 lastTime = currentTime;
                 cumulativeTime += deltaT;
                 gameData.deltaT = deltaT;
+                if (useDeltaT) {
+                    cumulativeTime = 1000 / 60;
+                }
                 while (cumulativeTime >= 1000 / 60) {
                     cumulativeTime -= 1000 / 60;
                     if (cumulativeTime > 1000 / minimumFps) {
@@ -13553,6 +14507,9 @@ bento.define('bento/managers/object', [
                         while (cumulativeTime >= 1000 / 60) {
                             cumulativeTime -= 1000 / 60;
                         }
+                    }
+                    if (useDeltaT) {
+                        cumulativeTime = 0;
                     }
                     for (i = 0; i < objects.length; ++i) {
                         object = objects[i];
@@ -13581,6 +14538,9 @@ bento.define('bento/managers/object', [
                 gameData.renderer.flush();
 
                 lastFrameTime = time;
+                if (debug) {
+                    fpsMeter.tick();
+                }
 
                 requestAnimationFrame(mainLoop);
             };
@@ -13591,7 +14551,10 @@ bento.define('bento/managers/object', [
             };
         }
         gameData = settings;
-        debug = debugObj;
+        if (debug) {
+            FPSMeter.defaults.graph = 1;
+            fpsMeter = new FPSMeter();
+        }
 
         return {
             add: function (object) {
@@ -13815,7 +14778,7 @@ define('bento/tiled', [
                 tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
                 return {
                     // convention: the tileset name must be equal to the asset name!
-                    image: Bento.assets.getImage(tileset.name),
+                    subimage: Bento.assets.getImage(tileset.name),
                     x: (index % tilesetWidth) * tileset.tilewidth,
                     y: Math.floor(index / tilesetWidth) * tileset.tileheight,
                     width: tileset.tilewidth,
@@ -13830,9 +14793,9 @@ define('bento/tiled', [
                 // draw background to offscreen canvas
                 if (tile) {
                     context.drawImage(
-                        tile.image.image,
-                        tile.image.x + tile.x,
-                        tile.image.y + tile.y,
+                        tile.subimage.image,
+                        tile.subimage.x + tile.x,
+                        tile.subimage.y + tile.y,
                         tile.width,
                         tile.height,
                         x * tileWidth,
@@ -13908,8 +14871,9 @@ define('bento/tiled', [
                     properties,
                     moduleName;
                 if (tileset.tileproperties) {
-                    if (properties = tileset.tileproperties[id.toString()]) {
-                        moduleName = properties['module'];
+                    properties = tileset.tileproperties[id.toString()];
+                    if (properties) {
+                        moduleName = properties.module;
                     }
                 }
                 if (moduleName) {
@@ -14014,8 +14978,8 @@ bento.define('bento/renderers/canvas2d', [
                 context.fillStyle = color;
                 context.fillRect(x, y, w, h);
             },
-            drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
-                context.drawImage(image, sx, sy, sw, sh, x, y, w, h);
+            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
             }
         };
         console.log('Init canvas2d as renderer');
@@ -14073,7 +15037,7 @@ bento.define('bento/renderers/pixi', [
         }
         console.log('Init pixi as renderer');
         return renderer;
-    }
+    };
 });
 bento.define('bento/renderers/webgl', [
     'bento/utils',
@@ -14106,11 +15070,12 @@ bento.define('bento/renderers/webgl', [
                     glRenderer.fillRect(x, y, w, h);
                     glRenderer.color = oldColor;
                 },
-                drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    var image = packedImage.image;
                     if (!image.texture) {
                         image.texture = window.GlSprites.createTexture2D(context, image);
                     }
-                    glRenderer.drawImage(image.texture, sx, sy, sw, sh, x, y, sw, sh);
+                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
                 },
                 begin: function () {
                     glRenderer.begin();

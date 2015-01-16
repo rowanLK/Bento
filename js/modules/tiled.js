@@ -79,7 +79,7 @@ define('bento/tiled', [
                 tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
                 return {
                     // convention: the tileset name must be equal to the asset name!
-                    image: Bento.assets.getImage(tileset.name),
+                    subimage: Bento.assets.getImage(tileset.name),
                     x: (index % tilesetWidth) * tileset.tilewidth,
                     y: Math.floor(index / tilesetWidth) * tileset.tileheight,
                     width: tileset.tilewidth,
@@ -94,9 +94,9 @@ define('bento/tiled', [
                 // draw background to offscreen canvas
                 if (tile) {
                     context.drawImage(
-                        tile.image.image,
-                        tile.image.x + tile.x,
-                        tile.image.y + tile.y,
+                        tile.subimage.image,
+                        tile.subimage.x + tile.x,
+                        tile.subimage.y + tile.y,
                         tile.width,
                         tile.height,
                         x * tileWidth,
@@ -172,8 +172,9 @@ define('bento/tiled', [
                     properties,
                     moduleName;
                 if (tileset.tileproperties) {
-                    if (properties = tileset.tileproperties[id.toString()]) {
-                        moduleName = properties['module'];
+                    properties = tileset.tileproperties[id.toString()];
+                    if (properties) {
+                        moduleName = properties.module;
                     }
                 }
                 if (moduleName) {

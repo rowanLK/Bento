@@ -23,8 +23,8 @@ bento.define('bento/renderers/canvas2d', [
                 context.fillStyle = color;
                 context.fillRect(x, y, w, h);
             },
-            drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
-                context.drawImage(image, sx, sy, sw, sh, x, y, w, h);
+            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
             }
         };
         console.log('Init canvas2d as renderer');

@@ -9,7 +9,7 @@ bento.define('bento/renderer', [
             scale: function (x, y) {},
             rotate: function (angle) {},
             fillRect: function (color, x, y, w, h) {},
-            drawImage: function (texture, sx, sy, sw, sh, x, y, w, h) {},
+            drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
             flush: function () {},
             setColor: function () {}

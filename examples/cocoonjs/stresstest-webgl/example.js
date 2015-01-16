@@ -7,15 +7,21 @@ bento.require([
     'bento/components/translation',
     'bento/components/fill',
     'bento/components/clickable'
-], function (Bento, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable) {
+], function (Bento, Vector2, Rectangle, Entity, Animation, Translation, Fill, Clickable) {
+    var hash = window.location ? window.location.hash : '',
+        renderer = 'webgl';
+    if (hash && hash === '#canvas2d') {
+        renderer = 'canvas2d';
+    }
     Bento.setup({
         canvasId: 'canvas',
+        debug: true,
         canvasDimension: Rectangle(0, 0, 320, 480),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: 'webgl',
-        debug: !navigator.isCocoonJS
+        renderer: renderer,
+        deltaT: true
     }, function () {
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
@@ -37,10 +43,10 @@ bento.require([
                 },
                 addBunny = function () {
                     var entity = Entity({
-                        components: [Translation, Sprite],
+                        components: [Translation, Animation],
                         position: Vector2(getRandom(320), getRandom(480)),
                         originRelative: Vector2(0.5, 0.5),
-                        sprite: {
+                        animation: {
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
                             frameHeight: 32,
@@ -52,7 +58,7 @@ bento.require([
                             },
                         },
                         init: function () {
-                            this.sprite.setAnimation('idle');
+                            this.animation.setAnimation('idle');
                         }
                     }).attach({
                         speed: Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
@@ -64,17 +70,13 @@ bento.require([
 
                             if (position.y > viewport.height) {
                                 position.y = viewport.height;
-                                this.speed.y *= -1;
+                                this.speed.y = -getRandom(100) / 10;
                             }
-                            if (position.y < 0) {
-                                position.y = 0;
-                                this.speed.y *= -1;
-                            }
-                            if (position.x > viewport.width) {
+                            if (position.x >= viewport.width) {
                                 position.x = viewport.width;
                                 this.speed.x *= -1;
                             }
-                            if (position.x < 0) {
+                            if (position.x <= 0) {
                                 position.x = 0;
                                 this.speed.x *= -1;
                             }
@@ -94,7 +96,7 @@ bento.require([
                 }
                 // console.log('Current bunnies:', bunnies);
                 return bunnies;
-            };
+            }
         }, function (current, total) {
             console.log(current + '/' + total);
         });

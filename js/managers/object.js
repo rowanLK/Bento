@@ -7,25 +7,28 @@ bento.define('bento/managers/object', [
     'bento/utils'
 ], function (Utils) {
     'use strict';
-    return function (settings, debugObj) {
+    return function (settings, useDeltaT, debug) {
         var objects = [],
             lastTime = new Date().getTime(),
             cumulativeTime = 0,
             minimumFps = 30,
             lastFrameTime = new Date().getTime(),
             gameData,
-            debug,
             isRunning = false,
             useSort = true,
             isPaused = false,
+            fpsMeter,
             sort = function () {
-                Utils.stableSort.inplace(objects, function (a, b) {
-                    return a.z - b.z;
-                });
-                /*// default behavior
-                objects.sort(function (a, b) {
-                    return a.z - b.z;
-                });*/
+                if (!settings.defaultSort) {
+                    Utils.stableSort.inplace(objects, function (a, b) {
+                        return a.z - b.z;
+                    });
+                } else {
+                    // default behavior
+                    objects.sort(function (a, b) {
+                        return a.z - b.z;
+                    });
+                }
             },
             cleanObjects = function () {
                 var i;
@@ -42,22 +45,16 @@ bento.define('bento/managers/object', [
                     currentTime = new Date().getTime(),
                     deltaT = currentTime - lastTime;
 
-                if (debug && debug.debugBar) {
-                    debug.fps = Math.round(1000 / (window.performance.now() - debug.lastTime), 2);
-                    debug.fpsAccumulator += debug.fps;
-                    debug.fpsTicks += 1;
-                    debug.avg = Math.round(debug.fpsAccumulator / debug.fpsTicks);
-                    if (debug.fpsTicks > debug.fpsMaxAverage) {
-                        debug.fpsAccumulator = 0;
-                        debug.fpsTicks = 0;
-                    }
-                    debug.debugBar.innerHTML = 'fps: ' + debug.avg;
-                    debug.lastTime = window.performance.now();
+                if (debug) {
+                    fpsMeter.tickStart();
                 }
 
                 lastTime = currentTime;
                 cumulativeTime += deltaT;
                 gameData.deltaT = deltaT;
+                if (useDeltaT) {
+                    cumulativeTime = 1000 / 60;
+                }
                 while (cumulativeTime >= 1000 / 60) {
                     cumulativeTime -= 1000 / 60;
                     if (cumulativeTime > 1000 / minimumFps) {
@@ -65,6 +62,9 @@ bento.define('bento/managers/object', [
                         while (cumulativeTime >= 1000 / 60) {
                             cumulativeTime -= 1000 / 60;
                         }
+                    }
+                    if (useDeltaT) {
+                        cumulativeTime = 0;
                     }
                     for (i = 0; i < objects.length; ++i) {
                         object = objects[i];
@@ -93,6 +93,9 @@ bento.define('bento/managers/object', [
                 gameData.renderer.flush();
 
                 lastFrameTime = time;
+                if (debug) {
+                    fpsMeter.tick();
+                }
 
                 requestAnimationFrame(mainLoop);
             };
@@ -103,7 +106,10 @@ bento.define('bento/managers/object', [
             };
         }
         gameData = settings;
-        debug = debugObj;
+        if (debug) {
+            FPSMeter.defaults.graph = 1;
+            fpsMeter = new FPSMeter();
+        }
 
         return {
             add: function (object) {

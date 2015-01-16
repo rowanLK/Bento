@@ -3,7 +3,7 @@ bento.define('bento/components/animation', [
 ], function (Utils) {
     'use strict';
     return function (base, settings) {
-        var image,
+        var spriteImage,
             animationSettings,
             animations = {},
             currentAnimation = {
@@ -38,18 +38,18 @@ bento.define('bento/components/animation', [
                             frames: [0]
                         };
                     }
-                    image = settings.image;
+                    spriteImage = settings.image;
                     // use frameWidth if specified (overrides frameCountX and frameCountY)
                     if (animationSettings.frameWidth && animationSettings.frameHeight) {
                         frameWidth = animationSettings.frameWidth;
                         frameHeight = animationSettings.frameHeight;
-                        frameCountX = Math.floor(image.width / frameWidth);
-                        frameCountY = Math.floor(image.height / frameHeight);
+                        frameCountX = Math.floor(spriteImage.width / frameWidth);
+                        frameCountY = Math.floor(spriteImage.height / frameHeight);
                     } else {
                         frameCountX = animationSettings.frameCountX || 1;
                         frameCountY = animationSettings.frameCountY || 1;
-                        frameWidth = image.width / frameCountX;
-                        frameHeight = image.height / frameCountY;
+                        frameWidth = spriteImage.width / frameCountX;
+                        frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of base object
                     base.getDimension().width = frameWidth;
@@ -120,7 +120,7 @@ bento.define('bento/components/animation', [
 
                     data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
                     data.renderer.drawImage(
-                        image,
+                        spriteImage,
                         sx,
                         sy,
                         frameWidth,

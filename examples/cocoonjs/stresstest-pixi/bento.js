@@ -2053,6 +2053,2083 @@ var requirejs, require, define;
     req(cfg);
 }(this));
 
+/*!
+ *  howler.js v1.1.21
+ *  howlerjs.com
+ *
+ *  (c) 2013-2014, James Simpson of GoldFire Studios
+ *  goldfirestudios.com
+ *
+ *  MIT License
+ */
+
+(function() {
+  // setup
+  var cache = {};
+
+  // setup the audio context
+  var ctx = null,
+    usingWebAudio = true,
+    noAudio = false;
+  try {
+    if (typeof AudioContext !== 'undefined') {
+      ctx = new AudioContext();
+    } else if (typeof webkitAudioContext !== 'undefined') {
+      ctx = new webkitAudioContext();
+    } else {
+      usingWebAudio = false;
+    }
+  } catch(e) {
+    usingWebAudio = false;
+  }
+
+  if (!usingWebAudio) {
+    if (typeof Audio !== 'undefined') {
+      try {
+        new Audio();
+      } catch(e) {
+        noAudio = true;
+      }
+    } else {
+      noAudio = true;
+    }
+  }
+
+  // create a master gain node
+  if (usingWebAudio) {
+    var masterGain = (typeof ctx.createGain === 'undefined') ? ctx.createGainNode() : ctx.createGain();
+    masterGain.gain.value = 1;
+    masterGain.connect(ctx.destination);
+  }
+
+  // create global controller
+  var HowlerGlobal = function() {
+    this._volume = 1;
+    this._muted = false;
+    this.usingWebAudio = usingWebAudio;
+    this.noAudio = noAudio;
+    this._howls = [];
+  };
+  HowlerGlobal.prototype = {
+    /**
+     * Get/set the global volume for all sounds.
+     * @param  {Float} vol Volume from 0.0 to 1.0.
+     * @return {Howler/Float}     Returns self or current volume.
+     */
+    volume: function(vol) {
+      var self = this;
+
+      // make sure volume is a number
+      vol = parseFloat(vol);
+
+      if (vol >= 0 && vol <= 1) {
+        self._volume = vol;
+
+        if (usingWebAudio) {
+          masterGain.gain.value = vol;
+        }
+
+        // loop through cache and change volume of all nodes that are using HTML5 Audio
+        for (var key in self._howls) {
+          if (self._howls.hasOwnProperty(key) && self._howls[key]._webAudio === false) {
+            // loop through the audio nodes
+            for (var i=0; i<self._howls[key]._audioNode.length; i++) {
+              self._howls[key]._audioNode[i].volume = self._howls[key]._volume * self._volume;
+            }
+          }
+        }
+
+        return self;
+      }
+
+      // return the current global volume
+      return (usingWebAudio) ? masterGain.gain.value : self._volume;
+    },
+
+    /**
+     * Mute all sounds.
+     * @return {Howler}
+     */
+    mute: function() {
+      this._setMuted(true);
+
+      return this;
+    },
+
+    /**
+     * Unmute all sounds.
+     * @return {Howler}
+     */
+    unmute: function() {
+      this._setMuted(false);
+
+      return this;
+    },
+
+    /**
+     * Handle muting and unmuting globally.
+     * @param  {Boolean} muted Is muted or not.
+     */
+    _setMuted: function(muted) {
+      var self = this;
+
+      self._muted = muted;
+
+      if (usingWebAudio) {
+        masterGain.gain.value = muted ? 0 : self._volume;
+      }
+
+      for (var key in self._howls) {
+        if (self._howls.hasOwnProperty(key) && self._howls[key]._webAudio === false) {
+          // loop through the audio nodes
+          for (var i=0; i<self._howls[key]._audioNode.length; i++) {
+            self._howls[key]._audioNode[i].muted = muted;
+          }
+        }
+      }
+    }
+  };
+
+  // allow access to the global audio controls
+  var Howler = new HowlerGlobal();
+
+  // check for browser codec support
+  var audioTest = null;
+  if (!noAudio) {
+    audioTest = new Audio();
+    var codecs = {
+      mp3: !!audioTest.canPlayType('audio/mpeg;').replace(/^no$/, ''),
+      opus: !!audioTest.canPlayType('audio/ogg; codecs="opus"').replace(/^no$/, ''),
+      ogg: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"').replace(/^no$/, ''),
+      wav: !!audioTest.canPlayType('audio/wav; codecs="1"').replace(/^no$/, ''),
+      aac: !!audioTest.canPlayType('audio/aac;').replace(/^no$/, ''),
+      m4a: !!(audioTest.canPlayType('audio/x-m4a;') || audioTest.canPlayType('audio/m4a;') || audioTest.canPlayType('audio/aac;')).replace(/^no$/, ''),
+      mp4: !!(audioTest.canPlayType('audio/x-mp4;') || audioTest.canPlayType('audio/mp4;') || audioTest.canPlayType('audio/aac;')).replace(/^no$/, ''),
+      weba: !!audioTest.canPlayType('audio/webm; codecs="vorbis"').replace(/^no$/, '')
+    };
+  }
+
+  // setup the audio object
+  var Howl = function(o) {
+    var self = this;
+
+    // setup the defaults
+    self._autoplay = o.autoplay || false;
+    self._buffer = o.buffer || false;
+    self._duration = o.duration || 0;
+    self._format = o.format || null;
+    self._loop = o.loop || false;
+    self._loaded = false;
+    self._sprite = o.sprite || {};
+    self._src = o.src || '';
+    self._pos3d = o.pos3d || [0, 0, -0.5];
+    self._volume = o.volume !== undefined ? o.volume : 1;
+    self._urls = o.urls || [];
+    self._rate = o.rate || 1;
+
+    // allow forcing of a specific panningModel ('equalpower' or 'HRTF'),
+    // if none is specified, defaults to 'equalpower' and switches to 'HRTF'
+    // if 3d sound is used
+    self._model = o.model || null;
+
+    // setup event functions
+    self._onload = [o.onload || function() {}];
+    self._onloaderror = [o.onloaderror || function() {}];
+    self._onend = [o.onend || function() {}];
+    self._onpause = [o.onpause || function() {}];
+    self._onplay = [o.onplay || function() {}];
+
+    self._onendTimer = [];
+
+    // Web Audio or HTML5 Audio?
+    self._webAudio = usingWebAudio && !self._buffer;
+
+    // check if we need to fall back to HTML5 Audio
+    self._audioNode = [];
+    if (self._webAudio) {
+      self._setupAudioNode();
+    }
+
+    // add this to an array of Howl's to allow global control
+    Howler._howls.push(self);
+
+    // load the track
+    self.load();
+  };
+
+  // setup all of the methods
+  Howl.prototype = {
+    /**
+     * Load an audio file.
+     * @return {Howl}
+     */
+    load: function() {
+      var self = this,
+        url = null;
+
+      // if no audio is available, quit immediately
+      if (noAudio) {
+        self.on('loaderror');
+        return;
+      }
+
+      // loop through source URLs and pick the first one that is compatible
+      for (var i=0; i<self._urls.length; i++) {
+        var ext, urlItem;
+
+        if (self._format) {
+          // use specified audio format if available
+          ext = self._format;
+        } else {
+          // figure out the filetype (whether an extension or base64 data)
+          urlItem = self._urls[i].toLowerCase().split('?')[0];
+          ext = urlItem.match(/.+\.([^?]+)(\?|$)/);
+          ext = (ext && ext.length >= 2) ? ext : urlItem.match(/data\:audio\/([^?]+);/);
+
+          if (ext) {
+            ext = ext[1];
+          } else {
+            self.on('loaderror');
+            return;
+          }
+        }
+
+        if (codecs[ext]) {
+          url = self._urls[i];
+          break;
+        }
+      }
+
+      if (!url) {
+        self.on('loaderror');
+        return;
+      }
+
+      self._src = url;
+
+      if (self._webAudio) {
+        loadBuffer(self, url);
+      } else {
+        var newNode = new Audio();
+
+        // listen for errors with HTML5 audio (http://dev.w3.org/html5/spec-author-view/spec.html#mediaerror)
+        newNode.addEventListener('error', function () {
+          if (newNode.error && newNode.error.code === 4) {
+            HowlerGlobal.noAudio = true;
+          }
+
+          self.on('loaderror', {type: newNode.error ? newNode.error.code : 0});
+        }, false);
+
+        self._audioNode.push(newNode);
+
+        // setup the new audio node
+        newNode.src = url;
+        newNode._pos = 0;
+        newNode.preload = 'auto';
+        newNode.volume = (Howler._muted) ? 0 : self._volume * Howler.volume();
+
+        // add this sound to the cache
+        cache[url] = self;
+
+        // setup the event listener to start playing the sound
+        // as soon as it has buffered enough
+        var listener = function() {
+          // round up the duration when using HTML5 Audio to account for the lower precision
+          self._duration = Math.ceil(newNode.duration * 10) / 10;
+
+          // setup a sprite if none is defined
+          if (Object.getOwnPropertyNames(self._sprite).length === 0) {
+            self._sprite = {_default: [0, self._duration * 1000]};
+          }
+
+          if (!self._loaded) {
+            self._loaded = true;
+            self.on('load');
+          }
+
+          if (self._autoplay) {
+            self.play();
+          }
+
+          // clear the event listener
+          newNode.removeEventListener('canplaythrough', listener, false);
+        };
+        newNode.addEventListener('canplaythrough', listener, false);
+        newNode.load();
+      }
+
+      return self;
+    },
+
+    /**
+     * Get/set the URLs to be pulled from to play in this source.
+     * @param  {Array} urls  Arry of URLs to load from
+     * @return {Howl}        Returns self or the current URLs
+     */
+    urls: function(urls) {
+      var self = this;
+
+      if (urls) {
+        self.stop();
+        self._urls = (typeof urls === 'string') ? [urls] : urls;
+        self._loaded = false;
+        self.load();
+
+        return self;
+      } else {
+        return self._urls;
+      }
+    },
+
+    /**
+     * Play a sound from the current time (0 by default).
+     * @param  {String}   sprite   (optional) Plays from the specified position in the sound sprite definition.
+     * @param  {Function} callback (optional) Returns the unique playback id for this sound instance.
+     * @return {Howl}
+     */
+    play: function(sprite, callback) {
+      var self = this;
+
+      // if no sprite was passed but a callback was, update the variables
+      if (typeof sprite === 'function') {
+        callback = sprite;
+      }
+
+      // use the default sprite if none is passed
+      if (!sprite || typeof sprite === 'function') {
+        sprite = '_default';
+      }
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('load', function() {
+          self.play(sprite, callback);
+        });
+
+        return self;
+      }
+
+      // if the sprite doesn't exist, play nothing
+      if (!self._sprite[sprite]) {
+        if (typeof callback === 'function') callback();
+        return self;
+      }
+
+      // get the node to playback
+      self._inactiveNode(function(node) {
+        // persist the sprite being played
+        node._sprite = sprite;
+
+        // determine where to start playing from
+        var pos = (node._pos > 0) ? node._pos : self._sprite[sprite][0] / 1000;
+
+        // determine how long to play for
+        var duration = 0;
+        if (self._webAudio) {
+          duration = self._sprite[sprite][1] / 1000 - node._pos;
+          if (node._pos > 0) {
+            pos = self._sprite[sprite][0] / 1000 + pos;
+          }
+        } else {
+          duration = self._sprite[sprite][1] / 1000 - (pos - self._sprite[sprite][0] / 1000);
+        }
+
+        // determine if this sound should be looped
+        var loop = !!(self._loop || self._sprite[sprite][2]);
+
+        // set timer to fire the 'onend' event
+        var soundId = (typeof callback === 'string') ? callback : Math.round(Date.now() * Math.random()) + '',
+          timerId;
+        (function() {
+          var data = {
+            id: soundId,
+            sprite: sprite,
+            loop: loop
+          };
+          timerId = setTimeout(function() {
+            // if looping, restart the track
+            if (!self._webAudio && loop) {
+              self.stop(data.id).play(sprite, data.id);
+            }
+
+            // set web audio node to paused at end
+            if (self._webAudio && !loop) {
+              self._nodeById(data.id).paused = true;
+              self._nodeById(data.id)._pos = 0;
+            }
+
+            // end the track if it is HTML audio and a sprite
+            if (!self._webAudio && !loop) {
+              self.stop(data.id);
+            }
+
+            // fire ended event
+            self.on('end', soundId);
+          }, duration * 1000);
+
+          // store the reference to the timer
+          self._onendTimer.push({timer: timerId, id: data.id});
+        })();
+
+        if (self._webAudio) {
+          var loopStart = self._sprite[sprite][0] / 1000,
+            loopEnd = self._sprite[sprite][1] / 1000;
+
+          // set the play id to this node and load into context
+          node.id = soundId;
+          node.paused = false;
+          refreshBuffer(self, [loop, loopStart, loopEnd], soundId);
+          self._playStart = ctx.currentTime;
+          node.gain.value = self._volume;
+
+          if (typeof node.bufferSource.start === 'undefined') {
+            node.bufferSource.noteGrainOn(0, pos, duration);
+          } else {
+            node.bufferSource.start(0, pos, duration);
+          }
+        } else {
+          if (node.readyState === 4 || !node.readyState && navigator.isCocoonJS) {
+            node.readyState = 4;
+            node.id = soundId;
+            node.currentTime = pos;
+            node.muted = Howler._muted || node.muted;
+            node.volume = self._volume * Howler.volume();
+            setTimeout(function() { node.play(); }, 0);
+          } else {
+            self._clearEndTimer(soundId);
+
+            (function(){
+              var sound = self,
+                playSprite = sprite,
+                fn = callback,
+                newNode = node;
+              var listener = function() {
+                sound.play(playSprite, fn);
+
+                // clear the event listener
+                newNode.removeEventListener('canplaythrough', listener, false);
+              };
+              newNode.addEventListener('canplaythrough', listener, false);
+            })();
+
+            return self;
+          }
+        }
+
+        // fire the play event and send the soundId back in the callback
+        self.on('play');
+        if (typeof callback === 'function') callback(soundId);
+
+        return self;
+      });
+
+      return self;
+    },
+
+    /**
+     * Pause playback and save the current position.
+     * @param {String} id (optional) The play instance ID.
+     * @return {Howl}
+     */
+    pause: function(id) {
+      var self = this;
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('play', function() {
+          self.pause(id);
+        });
+
+        return self;
+      }
+
+      // clear 'onend' timer
+      self._clearEndTimer(id);
+
+      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
+      if (activeNode) {
+        activeNode._pos = self.pos(null, id);
+
+        if (self._webAudio) {
+          // make sure the sound has been created
+          if (!activeNode.bufferSource || activeNode.paused) {
+            return self;
+          }
+
+          activeNode.paused = true;
+          if (typeof activeNode.bufferSource.stop === 'undefined') {
+            activeNode.bufferSource.noteOff(0);
+          } else {
+            activeNode.bufferSource.stop(0);
+          }
+        } else {
+          activeNode.pause();
+        }
+      }
+
+      self.on('pause');
+
+      return self;
+    },
+
+    /**
+     * Stop playback and reset to start.
+     * @param  {String} id  (optional) The play instance ID.
+     * @return {Howl}
+     */
+    stop: function(id) {
+      var self = this;
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('play', function() {
+          self.stop(id);
+        });
+
+        return self;
+      }
+
+      // clear 'onend' timer
+      self._clearEndTimer(id);
+
+      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
+      if (activeNode) {
+        activeNode._pos = 0;
+
+        if (self._webAudio) {
+          // make sure the sound has been created
+          if (!activeNode.bufferSource || activeNode.paused) {
+            return self;
+          }
+
+          activeNode.paused = true;
+
+          if (typeof activeNode.bufferSource.stop === 'undefined') {
+            activeNode.bufferSource.noteOff(0);
+          } else {
+            activeNode.bufferSource.stop(0);
+          }
+        } else if (!isNaN(activeNode.duration)) {
+          activeNode.pause();
+          activeNode.currentTime = 0;
+        }
+      }
+
+      return self;
+    },
+
+    /**
+     * Mute this sound.
+     * @param  {String} id (optional) The play instance ID.
+     * @return {Howl}
+     */
+    mute: function(id) {
+      var self = this;
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('play', function() {
+          self.mute(id);
+        });
+
+        return self;
+      }
+
+      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
+      if (activeNode) {
+        if (self._webAudio) {
+          activeNode.gain.value = 0;
+        } else {
+          activeNode.muted = true;
+        }
+      }
+
+      return self;
+    },
+
+    /**
+     * Unmute this sound.
+     * @param  {String} id (optional) The play instance ID.
+     * @return {Howl}
+     */
+    unmute: function(id) {
+      var self = this;
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('play', function() {
+          self.unmute(id);
+        });
+
+        return self;
+      }
+
+      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
+      if (activeNode) {
+        if (self._webAudio) {
+          activeNode.gain.value = self._volume;
+        } else {
+          activeNode.muted = false;
+        }
+      }
+
+      return self;
+    },
+
+    /**
+     * Get/set volume of this sound.
+     * @param  {Float}  vol Volume from 0.0 to 1.0.
+     * @param  {String} id  (optional) The play instance ID.
+     * @return {Howl/Float}     Returns self or current volume.
+     */
+    volume: function(vol, id) {
+      var self = this;
+
+      // make sure volume is a number
+      vol = parseFloat(vol);
+
+      if (vol >= 0 && vol <= 1) {
+        self._volume = vol;
+
+        // if the sound hasn't been loaded, add it to the event queue
+        if (!self._loaded) {
+          self.on('play', function() {
+            self.volume(vol, id);
+          });
+
+          return self;
+        }
+
+        var activeNode = (id) ? self._nodeById(id) : self._activeNode();
+        if (activeNode) {
+          if (self._webAudio) {
+            activeNode.gain.value = vol;
+          } else {
+            activeNode.volume = vol * Howler.volume();
+          }
+        }
+
+        return self;
+      } else {
+        return self._volume;
+      }
+    },
+
+    /**
+     * Get/set whether to loop the sound.
+     * @param  {Boolean} loop To loop or not to loop, that is the question.
+     * @return {Howl/Boolean}      Returns self or current looping value.
+     */
+    loop: function(loop) {
+      var self = this;
+
+      if (typeof loop === 'boolean') {
+        self._loop = loop;
+
+        return self;
+      } else {
+        return self._loop;
+      }
+    },
+
+    /**
+     * Get/set sound sprite definition.
+     * @param  {Object} sprite Example: {spriteName: [offset, duration, loop]}
+     *                @param {Integer} offset   Where to begin playback in milliseconds
+     *                @param {Integer} duration How long to play in milliseconds
+     *                @param {Boolean} loop     (optional) Set true to loop this sprite
+     * @return {Howl}        Returns current sprite sheet or self.
+     */
+    sprite: function(sprite) {
+      var self = this;
+
+      if (typeof sprite === 'object') {
+        self._sprite = sprite;
+
+        return self;
+      } else {
+        return self._sprite;
+      }
+    },
+
+    /**
+     * Get/set the position of playback.
+     * @param  {Float}  pos The position to move current playback to.
+     * @param  {String} id  (optional) The play instance ID.
+     * @return {Howl/Float}      Returns self or current playback position.
+     */
+    pos: function(pos, id) {
+      var self = this;
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('load', function() {
+          self.pos(pos);
+        });
+
+        return typeof pos === 'number' ? self : self._pos || 0;
+      }
+
+      // make sure we are dealing with a number for pos
+      pos = parseFloat(pos);
+
+      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
+      if (activeNode) {
+        if (pos >= 0) {
+          self.pause(id);
+          activeNode._pos = pos;
+          self.play(activeNode._sprite, id);
+
+          return self;
+        } else {
+          return self._webAudio ? activeNode._pos + (ctx.currentTime - self._playStart) : activeNode.currentTime;
+        }
+      } else if (pos >= 0) {
+        return self;
+      } else {
+        // find the first inactive node to return the pos for
+        for (var i=0; i<self._audioNode.length; i++) {
+          if (self._audioNode[i].paused && self._audioNode[i].readyState === 4) {
+            return (self._webAudio) ? self._audioNode[i]._pos : self._audioNode[i].currentTime;
+          }
+        }
+      }
+    },
+
+    /**
+     * Get/set the 3D position of the audio source.
+     * The most common usage is to set the 'x' position
+     * to affect the left/right ear panning. Setting any value higher than
+     * 1.0 will begin to decrease the volume of the sound as it moves further away.
+     * NOTE: This only works with Web Audio API, HTML5 Audio playback
+     * will not be affected.
+     * @param  {Float}  x  The x-position of the playback from -1000.0 to 1000.0
+     * @param  {Float}  y  The y-position of the playback from -1000.0 to 1000.0
+     * @param  {Float}  z  The z-position of the playback from -1000.0 to 1000.0
+     * @param  {String} id (optional) The play instance ID.
+     * @return {Howl/Array}   Returns self or the current 3D position: [x, y, z]
+     */
+    pos3d: function(x, y, z, id) {
+      var self = this;
+
+      // set a default for the optional 'y' & 'z'
+      y = (typeof y === 'undefined' || !y) ? 0 : y;
+      z = (typeof z === 'undefined' || !z) ? -0.5 : z;
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('play', function() {
+          self.pos3d(x, y, z, id);
+        });
+
+        return self;
+      }
+
+      if (x >= 0 || x < 0) {
+        if (self._webAudio) {
+          var activeNode = (id) ? self._nodeById(id) : self._activeNode();
+          if (activeNode) {
+            self._pos3d = [x, y, z];
+            activeNode.panner.setPosition(x, y, z);
+            activeNode.panner.panningModel = self._model || 'HRTF';
+          }
+        }
+      } else {
+        return self._pos3d;
+      }
+
+      return self;
+    },
+
+    /**
+     * Fade a currently playing sound between two volumes.
+     * @param  {Number}   from     The volume to fade from (0.0 to 1.0).
+     * @param  {Number}   to       The volume to fade to (0.0 to 1.0).
+     * @param  {Number}   len      Time in milliseconds to fade.
+     * @param  {Function} callback (optional) Fired when the fade is complete.
+     * @param  {String}   id       (optional) The play instance ID.
+     * @return {Howl}
+     */
+    fade: function(from, to, len, callback, id) {
+      var self = this,
+        diff = Math.abs(from - to),
+        dir = from > to ? 'down' : 'up',
+        steps = diff / 0.01,
+        stepTime = len / steps;
+
+      // if the sound hasn't been loaded, add it to the event queue
+      if (!self._loaded) {
+        self.on('load', function() {
+          self.fade(from, to, len, callback, id);
+        });
+
+        return self;
+      }
+
+      // set the volume to the start position
+      self.volume(from, id);
+
+      for (var i=1; i<=steps; i++) {
+        (function() {
+          var change = self._volume + (dir === 'up' ? 0.01 : -0.01) * i,
+            vol = Math.round(1000 * change) / 1000,
+            toVol = to;
+
+          setTimeout(function() {
+            self.volume(vol, id);
+
+            if (vol === toVol) {
+              if (callback) callback();
+            }
+          }, stepTime * i);
+        })();
+      }
+    },
+
+    /**
+     * [DEPRECATED] Fade in the current sound.
+     * @param  {Float}    to      Volume to fade to (0.0 to 1.0).
+     * @param  {Number}   len     Time in milliseconds to fade.
+     * @param  {Function} callback
+     * @return {Howl}
+     */
+    fadeIn: function(to, len, callback) {
+      return this.volume(0).play().fade(0, to, len, callback);
+    },
+
+    /**
+     * [DEPRECATED] Fade out the current sound and pause when finished.
+     * @param  {Float}    to       Volume to fade to (0.0 to 1.0).
+     * @param  {Number}   len      Time in milliseconds to fade.
+     * @param  {Function} callback
+     * @param  {String}   id       (optional) The play instance ID.
+     * @return {Howl}
+     */
+    fadeOut: function(to, len, callback, id) {
+      var self = this;
+
+      return self.fade(self._volume, to, len, function() {
+        if (callback) callback();
+        self.pause(id);
+
+        // fire ended event
+        self.on('end');
+      }, id);
+    },
+
+    /**
+     * Get an audio node by ID.
+     * @return {Howl} Audio node.
+     */
+    _nodeById: function(id) {
+      var self = this,
+        node = self._audioNode[0];
+
+      // find the node with this ID
+      for (var i=0; i<self._audioNode.length; i++) {
+        if (self._audioNode[i].id === id) {
+          node = self._audioNode[i];
+          break;
+        }
+      }
+
+      return node;
+    },
+
+    /**
+     * Get the first active audio node.
+     * @return {Howl} Audio node.
+     */
+    _activeNode: function() {
+      var self = this,
+        node = null;
+
+      // find the first playing node
+      for (var i=0; i<self._audioNode.length; i++) {
+        if (!self._audioNode[i].paused) {
+          node = self._audioNode[i];
+          break;
+        }
+      }
+
+      // remove excess inactive nodes
+      self._drainPool();
+
+      return node;
+    },
+
+    /**
+     * Get the first inactive audio node.
+     * If there is none, create a new one and add it to the pool.
+     * @param  {Function} callback Function to call when the audio node is ready.
+     */
+    _inactiveNode: function(callback) {
+      var self = this,
+        node = null;
+
+      // find first inactive node to recycle
+      for (var i=0; i<self._audioNode.length; i++) {
+        if (self._audioNode[i].paused && self._audioNode[i].readyState === 4) {
+          // send the node back for use by the new play instance
+          callback(self._audioNode[i]);
+          node = true;
+          break;
+        }
+      }
+
+      // remove excess inactive nodes
+      self._drainPool();
+
+      if (node) {
+        return;
+      }
+
+      // create new node if there are no inactives
+      var newNode;
+      if (self._webAudio) {
+        newNode = self._setupAudioNode();
+        callback(newNode);
+      } else {
+        self.load();
+        newNode = self._audioNode[self._audioNode.length - 1];
+
+        // listen for the correct load event and fire the callback
+        var listenerEvent = navigator.isCocoonJS ? 'canplaythrough' : 'loadedmetadata';
+        var listener = function() {
+          newNode.removeEventListener(listenerEvent, listener, false);
+          callback(newNode);
+        };
+        newNode.addEventListener(listenerEvent, listener, false);
+      }
+    },
+
+    /**
+     * If there are more than 5 inactive audio nodes in the pool, clear out the rest.
+     */
+    _drainPool: function() {
+      var self = this,
+        inactive = 0,
+        i;
+
+      // count the number of inactive nodes
+      for (i=0; i<self._audioNode.length; i++) {
+        if (self._audioNode[i].paused) {
+          inactive++;
+        }
+      }
+
+      // remove excess inactive nodes
+      for (i=self._audioNode.length-1; i>=0; i--) {
+        if (inactive <= 5) {
+          break;
+        }
+
+        if (self._audioNode[i].paused) {
+          // disconnect the audio source if using Web Audio
+          if (self._webAudio) {
+            self._audioNode[i].disconnect(0);
+          }
+
+          inactive--;
+          self._audioNode.splice(i, 1);
+        }
+      }
+    },
+
+    /**
+     * Clear 'onend' timeout before it ends.
+     * @param  {String} soundId  The play instance ID.
+     */
+    _clearEndTimer: function(soundId) {
+      var self = this,
+        index = 0;
+
+      // loop through the timers to find the one associated with this sound
+      for (var i=0; i<self._onendTimer.length; i++) {
+        if (self._onendTimer[i].id === soundId) {
+          index = i;
+          break;
+        }
+      }
+
+      var timer = self._onendTimer[index];
+      if (timer) {
+        clearTimeout(timer.timer);
+        self._onendTimer.splice(index, 1);
+      }
+    },
+
+    /**
+     * Setup the gain node and panner for a Web Audio instance.
+     * @return {Object} The new audio node.
+     */
+    _setupAudioNode: function() {
+      var self = this,
+        node = self._audioNode,
+        index = self._audioNode.length;
+
+      // create gain node
+      node[index] = (typeof ctx.createGain === 'undefined') ? ctx.createGainNode() : ctx.createGain();
+      node[index].gain.value = self._volume;
+      node[index].paused = true;
+      node[index]._pos = 0;
+      node[index].readyState = 4;
+      node[index].connect(masterGain);
+
+      // create the panner
+      node[index].panner = ctx.createPanner();
+      node[index].panner.panningModel = self._model || 'equalpower';
+      node[index].panner.setPosition(self._pos3d[0], self._pos3d[1], self._pos3d[2]);
+      node[index].panner.connect(node[index]);
+
+      return node[index];
+    },
+
+    /**
+     * Call/set custom events.
+     * @param  {String}   event Event type.
+     * @param  {Function} fn    Function to call.
+     * @return {Howl}
+     */
+    on: function(event, fn) {
+      var self = this,
+        events = self['_on' + event];
+
+      if (typeof fn === 'function') {
+        events.push(fn);
+      } else {
+        for (var i=0; i<events.length; i++) {
+          if (fn) {
+            events[i].call(self, fn);
+          } else {
+            events[i].call(self);
+          }
+        }
+      }
+
+      return self;
+    },
+
+    /**
+     * Remove a custom event.
+     * @param  {String}   event Event type.
+     * @param  {Function} fn    Listener to remove.
+     * @return {Howl}
+     */
+    off: function(event, fn) {
+      var self = this,
+        events = self['_on' + event],
+        fnString = fn.toString();
+
+      // loop through functions in the event for comparison
+      for (var i=0; i<events.length; i++) {
+        if (fnString === events[i].toString()) {
+          events.splice(i, 1);
+          break;
+        }
+      }
+
+      return self;
+    },
+
+    /**
+     * Unload and destroy the current Howl object.
+     * This will immediately stop all play instances attached to this sound.
+     */
+    unload: function() {
+      var self = this;
+
+      // stop playing any active nodes
+      var nodes = self._audioNode;
+      for (var i=0; i<self._audioNode.length; i++) {
+        // stop the sound if it is currently playing
+        if (!nodes[i].paused) {
+          self.stop(nodes[i].id);
+        }
+
+        if (!self._webAudio) {
+          // remove the source if using HTML5 Audio
+          nodes[i].src = '';
+        } else {
+          // disconnect the output from the master gain
+          nodes[i].disconnect(0);
+        }
+      }
+
+      // make sure all timeouts are cleared
+      for (i=0; i<self._onendTimer.length; i++) {
+        clearTimeout(self._onendTimer[i].timer);
+      }
+
+      // remove the reference in the global Howler object
+      var index = Howler._howls.indexOf(self);
+      if (index !== null && index >= 0) {
+        Howler._howls.splice(index, 1);
+      }
+
+      // delete this sound from the cache
+      delete cache[self._src];
+      self = null;
+    }
+
+  };
+
+  // only define these functions when using WebAudio
+  if (usingWebAudio) {
+
+    /**
+     * Buffer a sound from URL (or from cache) and decode to audio source (Web Audio API).
+     * @param  {Object} obj The Howl object for the sound to load.
+     * @param  {String} url The path to the sound file.
+     */
+    var loadBuffer = function(obj, url) {
+      // check if the buffer has already been cached
+      if (url in cache) {
+        // set the duration from the cache
+        obj._duration = cache[url].duration;
+
+        // load the sound into this object
+        loadSound(obj);
+      } else {
+        // load the buffer from the URL
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+          // decode the buffer into an audio source
+          ctx.decodeAudioData(
+            xhr.response,
+            function(buffer) {
+              if (buffer) {
+                cache[url] = buffer;
+                loadSound(obj, buffer);
+              }
+            },
+            function(err) {
+              obj.on('loaderror');
+            }
+          );
+        };
+        xhr.onerror = function() {
+          // if there is an error, switch the sound to HTML Audio
+          if (obj._webAudio) {
+            obj._buffer = true;
+            obj._webAudio = false;
+            obj._audioNode = [];
+            delete obj._gainNode;
+            obj.load();
+          }
+        };
+        try {
+          xhr.send();
+        } catch (e) {
+          xhr.onerror();
+        }
+      }
+    };
+
+    /**
+     * Finishes loading the Web Audio API sound and fires the loaded event
+     * @param  {Object}  obj    The Howl object for the sound to load.
+     * @param  {Objecct} buffer The decoded buffer sound source.
+     */
+    var loadSound = function(obj, buffer) {
+      // set the duration
+      obj._duration = (buffer) ? buffer.duration : obj._duration;
+
+      // setup a sprite if none is defined
+      if (Object.getOwnPropertyNames(obj._sprite).length === 0) {
+        obj._sprite = {_default: [0, obj._duration * 1000]};
+      }
+
+      // fire the loaded event
+      if (!obj._loaded) {
+        obj._loaded = true;
+        obj.on('load');
+      }
+
+      if (obj._autoplay) {
+        obj.play();
+      }
+    };
+
+    /**
+     * Load the sound back into the buffer source.
+     * @param  {Object} obj   The sound to load.
+     * @param  {Array}  loop  Loop boolean, pos, and duration.
+     * @param  {String} id    (optional) The play instance ID.
+     */
+    var refreshBuffer = function(obj, loop, id) {
+      // determine which node to connect to
+      var node = obj._nodeById(id);
+
+      // setup the buffer source for playback
+      node.bufferSource = ctx.createBufferSource();
+      node.bufferSource.buffer = cache[obj._src];
+      node.bufferSource.connect(node.panner);
+      node.bufferSource.loop = loop[0];
+      if (loop[0]) {
+        node.bufferSource.loopStart = loop[1];
+        node.bufferSource.loopEnd = loop[1] + loop[2];
+      }
+      node.bufferSource.playbackRate.value = obj._rate;
+    };
+
+  }
+
+  /**
+   * Add support for AMD (Asynchronous Module Definition) libraries such as require.js.
+   */
+  if (typeof define === 'function' && define.amd) {
+    define('howler', function() {
+      return {
+        Howler: Howler,
+        Howl: Howl
+      };
+    });
+  }
+
+  /**
+   * Add support for CommonJS libraries such as browserify.
+   */
+  if (typeof exports !== 'undefined') {
+    exports.Howler = Howler;
+    exports.Howl = Howl;
+  }
+
+  // define globally in case AMD is not available or available but not used
+
+  if (typeof window !== 'undefined') {
+    window.Howler = Howler;
+    window.Howl = Howl;
+  }
+
+})();
+
+// https://github.com/harthur/color-string
+
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+// this file is the entrypoint for building a browser file with browserify
+
+colorString = require("./color-string");
+},{"./color-string":2}],2:[function(require,module,exports){
+/* MIT license */
+var convert = require("color-convert");
+
+module.exports = {
+   getRgba: getRgba,
+   getHsla: getHsla,
+   getRgb: getRgb,
+   getHsl: getHsl,
+   getHwb: getHwb,
+   getAlpha: getAlpha,
+
+   hexString: hexString,
+   rgbString: rgbString,
+   rgbaString: rgbaString,
+   percentString: percentString,
+   percentaString: percentaString,
+   hslString: hslString,
+   hslaString: hslaString,
+   hwbString: hwbString,
+   keyword: keyword
+}
+
+function getRgba(string) {
+   if (!string) {
+      return;
+   }
+   var abbr =  /^#([a-fA-F0-9]{3})$/,
+       hex =  /^#([a-fA-F0-9]{6})$/,
+       rgba = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d\.]+)\s*)?\)$/,
+       per = /^rgba?\(\s*([\d\.]+)\%\s*,\s*([\d\.]+)\%\s*,\s*([\d\.]+)\%\s*(?:,\s*([\d\.]+)\s*)?\)$/,
+       keyword = /(\D+)/;
+
+   var rgb = [0, 0, 0],
+       a = 1,
+       match = string.match(abbr);
+   if (match) {
+      match = match[1];
+      for (var i = 0; i < rgb.length; i++) {
+         rgb[i] = parseInt(match[i] + match[i], 16);
+      }
+   }
+   else if (match = string.match(hex)) {
+      match = match[1];
+      for (var i = 0; i < rgb.length; i++) {
+         rgb[i] = parseInt(match.slice(i * 2, i * 2 + 2), 16);
+      }
+   }
+   else if (match = string.match(rgba)) {
+      for (var i = 0; i < rgb.length; i++) {
+         rgb[i] = parseInt(match[i + 1]);
+      }
+      a = parseFloat(match[4]);
+   }
+   else if (match = string.match(per)) {
+      for (var i = 0; i < rgb.length; i++) {
+         rgb[i] = Math.round(parseFloat(match[i + 1]) * 2.55);
+      }
+      a = parseFloat(match[4]);
+   }
+   else if (match = string.match(keyword)) {
+      if (match[1] == "transparent") {
+         return [0, 0, 0, 0];
+      }
+      rgb = convert.keyword2rgb(match[1]);
+      if (!rgb) {
+         return;
+      }
+   }
+
+   for (var i = 0; i < rgb.length; i++) {
+      rgb[i] = scale(rgb[i], 0, 255);
+   }
+   if (!a && a != 0) {
+      a = 1;
+   }
+   else {
+      a = scale(a, 0, 1);
+   }
+   rgb.push(a);
+   return rgb;
+}
+
+function getHsla(string) {
+   if (!string) {
+      return;
+   }
+   var hsl = /^hsla?\(\s*(\d+)(?:deg)?\s*,\s*([\d\.]+)%\s*,\s*([\d\.]+)%\s*(?:,\s*([\d\.]+)\s*)?\)/;
+   var match = string.match(hsl);
+   if (match) {
+      var h = scale(parseInt(match[1]), 0, 360),
+          s = scale(parseFloat(match[2]), 0, 100),
+          l = scale(parseFloat(match[3]), 0, 100),
+          a = scale(parseFloat(match[4]) || 1, 0, 1);
+      return [h, s, l, a];
+   }
+}
+
+function getHwb(string) {
+   if (!string) {
+      return;
+   }
+   var hwb = /^hwb\(\s*(\d+)(?:deg)?\s*,\s*([\d\.]+)%\s*,\s*([\d\.]+)%\s*(?:,\s*([\d\.]+)\s*)?\)/;
+   var match = string.match(hwb);
+   if (match) {
+      var h = scale(parseInt(match[1]), 0, 360),
+          w = scale(parseFloat(match[2]), 0, 100),
+          b = scale(parseFloat(match[3]), 0, 100),
+          a = scale(parseFloat(match[4]) || 1, 0, 1);
+      return [h, w, b, a];
+   }
+}
+
+function getRgb(string) {
+   var rgba = getRgba(string);
+   return rgba && rgba.slice(0, 3);
+}
+
+function getHsl(string) {
+  var hsla = getHsla(string);
+  return hsla && hsla.slice(0, 3);
+}
+
+function getAlpha(string) {
+   var vals = getRgba(string);
+   if (vals) {
+      return vals[3];
+   }
+   else if (vals = getHsla(string)) {
+      return vals[3];
+   }
+   else if (vals = getHwb(string)) {
+      return vals[3];
+   }
+}
+
+// generators
+function hexString(rgb) {
+   return "#" + hexDouble(rgb[0]) + hexDouble(rgb[1])
+              + hexDouble(rgb[2]);
+}
+
+function rgbString(rgba, alpha) {
+   if (alpha < 1 || (rgba[3] && rgba[3] < 1)) {
+      return rgbaString(rgba, alpha);
+   }
+   return "rgb(" + rgba[0] + ", " + rgba[1] + ", " + rgba[2] + ")";
+}
+
+function rgbaString(rgba, alpha) {
+   if (alpha === undefined) {
+      alpha = (rgba[3] !== undefined ? rgba[3] : 1);
+   }
+   return "rgba(" + rgba[0] + ", " + rgba[1] + ", " + rgba[2]
+           + ", " + alpha + ")";
+}
+
+function percentString(rgba, alpha) {
+   if (alpha < 1 || (rgba[3] && rgba[3] < 1)) {
+      return percentaString(rgba, alpha);
+   }
+   var r = Math.round(rgba[0]/255 * 100),
+       g = Math.round(rgba[1]/255 * 100),
+       b = Math.round(rgba[2]/255 * 100);
+
+   return "rgb(" + r + "%, " + g + "%, " + b + "%)";
+}
+
+function percentaString(rgba, alpha) {
+   var r = Math.round(rgba[0]/255 * 100),
+       g = Math.round(rgba[1]/255 * 100),
+       b = Math.round(rgba[2]/255 * 100);
+   return "rgba(" + r + "%, " + g + "%, " + b + "%, " + (alpha || rgba[3] || 1) + ")";
+}
+
+function hslString(hsla, alpha) {
+   if (alpha < 1 || (hsla[3] && hsla[3] < 1)) {
+      return hslaString(hsla, alpha);
+   }
+   return "hsl(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%)";
+}
+
+function hslaString(hsla, alpha) {
+   if (alpha === undefined) {
+      alpha = (hsla[3] !== undefined ? hsla[3] : 1);
+   }
+   return "hsla(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%, "
+           + alpha + ")";
+}
+
+// hwb is a bit different than rgb(a) & hsl(a) since there is no alpha specific syntax
+// (hwb have alpha optional & 1 is default value)
+function hwbString(hwb, alpha) {
+   if (alpha === undefined) {
+      alpha = (hwb[3] !== undefined ? hwb[3] : 1);
+   }
+   return "hwb(" + hwb[0] + ", " + hwb[1] + "%, " + hwb[2] + "%"
+           + (alpha !== undefined && alpha !== 1 ? ", " + alpha : "") + ")";
+}
+
+function keyword(rgb) {
+   return convert.rgb2keyword(rgb.slice(0, 3));
+}
+
+// helpers
+function scale(num, min, max) {
+   return Math.min(Math.max(min, num), max);
+}
+
+function hexDouble(num) {
+  var str = num.toString(16).toUpperCase();
+  return (str.length < 2) ? "0" + str : str;
+}
+
+},{"color-convert":4}],3:[function(require,module,exports){
+/* MIT license */
+
+module.exports = {
+  rgb2hsl: rgb2hsl,
+  rgb2hsv: rgb2hsv,
+  rgb2cmyk: rgb2cmyk,
+  rgb2keyword: rgb2keyword,
+  rgb2xyz: rgb2xyz,
+  rgb2lab: rgb2lab,
+
+  hsl2rgb: hsl2rgb,
+  hsl2hsv: hsl2hsv,
+  hsl2cmyk: hsl2cmyk,
+  hsl2keyword: hsl2keyword,
+
+  hsv2rgb: hsv2rgb,
+  hsv2hsl: hsv2hsl,
+  hsv2cmyk: hsv2cmyk,
+  hsv2keyword: hsv2keyword,
+
+  cmyk2rgb: cmyk2rgb,
+  cmyk2hsl: cmyk2hsl,
+  cmyk2hsv: cmyk2hsv,
+  cmyk2keyword: cmyk2keyword,
+  
+  keyword2rgb: keyword2rgb,
+  keyword2hsl: keyword2hsl,
+  keyword2hsv: keyword2hsv,
+  keyword2cmyk: keyword2cmyk,
+  
+  xyz2rgb: xyz2rgb,
+}
+
+
+function rgb2hsl(rgb) {
+  var r = rgb[0]/255,
+      g = rgb[1]/255,
+      b = rgb[2]/255,
+      min = Math.min(r, g, b),
+      max = Math.max(r, g, b),
+      delta = max - min,
+      h, s, l;
+
+  if (max == min)
+    h = 0;
+  else if (r == max) 
+    h = (g - b) / delta; 
+  else if (g == max)
+    h = 2 + (b - r) / delta; 
+  else if (b == max)
+    h = 4 + (r - g)/ delta;
+
+  h = Math.min(h * 60, 360);
+
+  if (h < 0)
+    h += 360;
+
+  l = (min + max) / 2;
+
+  if (max == min)
+    s = 0;
+  else if (l <= 0.5)
+    s = delta / (max + min);
+  else
+    s = delta / (2 - max - min);
+
+  return [h, s * 100, l * 100];
+}
+
+function rgb2hsv(rgb) {
+  var r = rgb[0],
+      g = rgb[1],
+      b = rgb[2],
+      min = Math.min(r, g, b),
+      max = Math.max(r, g, b),
+      delta = max - min,
+      h, s, l;
+
+  if (max == 0)
+    s = 0;
+  else
+    s = (delta/max * 1000)/10;
+
+  if (max == min)
+    h = 0;
+  else if (r == max) 
+    h = (g - b) / delta; 
+  else if (g == max)
+    h = 2 + (b - r) / delta; 
+  else if (b == max)
+    h = 4 + (r - g) / delta;
+
+  h = Math.min(h * 60, 360);
+
+  if (h < 0) 
+    h += 360;
+
+  v = ((max / 255) * 1000) / 10;
+
+  return [h, s, v];
+}
+
+function rgb2cmyk(rgb) {
+  var r = rgb[0] / 255,
+      g = rgb[1] / 255,
+      b = rgb[2] / 255,
+      c, m, y, k;
+      
+  k = Math.min(1 - r, 1 - g, 1 - b);
+  c = (1 - r - k) / (1 - k);
+  m = (1 - g - k) / (1 - k);
+  y = (1 - b - k) / (1 - k);
+  return [c * 100, m * 100, y * 100, k * 100];
+}
+
+function rgb2keyword(rgb) {
+  return reverseKeywords[JSON.stringify(rgb)];
+}
+
+function rgb2xyz(rgb) {
+  var r = rgb[0] / 255,
+      g = rgb[1] / 255,
+      b = rgb[2] / 255;
+
+  // assume sRGB
+  r = r > 0.04045 ? Math.pow(((r + 0.055) / 1.055), 2.4) : (r / 12.92);
+  g = g > 0.04045 ? Math.pow(((g + 0.055) / 1.055), 2.4) : (g / 12.92);
+  b = b > 0.04045 ? Math.pow(((b + 0.055) / 1.055), 2.4) : (b / 12.92);
+  
+  var x = (r * 0.4124) + (g * 0.3576) + (b * 0.1805);
+  var y = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
+  var z = (r * 0.0193) + (g * 0.1192) + (b * 0.9505);
+
+  return [x * 100, y *100, z * 100];
+}
+
+function rgb2lab(rgb) {
+  var xyz = rgb2xyz(rgb),
+        x = xyz[0],
+        y = xyz[1],
+        z = xyz[2],
+        l, a, b;
+
+  x /= 95.047;
+  y /= 100;
+  z /= 108.883;
+
+  x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16 / 116);
+  y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16 / 116);
+  z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16 / 116);
+
+  l = (116 * y) - 16;
+  a = 500 * (x - y);
+  b = 200 * (y - z);
+  
+  return [l, a, b];
+}
+
+
+function hsl2rgb(hsl) {
+  var h = hsl[0] / 360,
+      s = hsl[1] / 100,
+      l = hsl[2] / 100,
+      t1, t2, t3, rgb, val;
+
+  if (s == 0) {
+    val = l * 255;
+    return [val, val, val];
+  }
+
+  if (l < 0.5)
+    t2 = l * (1 + s);
+  else
+    t2 = l + s - l * s;
+  t1 = 2 * l - t2;
+
+  rgb = [0, 0, 0];
+  for (var i = 0; i < 3; i++) {
+    t3 = h + 1 / 3 * - (i - 1);
+    t3 < 0 && t3++;
+    t3 > 1 && t3--;
+
+    if (6 * t3 < 1)
+      val = t1 + (t2 - t1) * 6 * t3;
+    else if (2 * t3 < 1)
+      val = t2;
+    else if (3 * t3 < 2)
+      val = t1 + (t2 - t1) * (2 / 3 - t3) * 6;
+    else
+      val = t1;
+
+    rgb[i] = val * 255;
+  }
+  
+  return rgb;
+}
+
+function hsl2hsv(hsl) {
+  var h = hsl[0],
+      s = hsl[1] / 100,
+      l = hsl[2] / 100,
+      sv, v;
+  l *= 2;
+  s *= (l <= 1) ? l : 2 - l;
+  v = (l + s) / 2;
+  sv = (2 * s) / (l + s);
+  return [h, s * 100, v * 100];
+}
+
+function hsl2cmyk(args) {
+  return rgb2cmyk(hsl2rgb(args));
+}
+
+function hsl2keyword(args) {
+  return rgb2keyword(hsl2rgb(args));
+}
+
+
+function hsv2rgb(hsv) {
+  var h = hsv[0] / 60,
+      s = hsv[1] / 100,
+      v = hsv[2] / 100,
+      hi = Math.floor(h) % 6;
+
+  var f = h - Math.floor(h),
+      p = 255 * v * (1 - s),
+      q = 255 * v * (1 - (s * f)),
+      t = 255 * v * (1 - (s * (1 - f))),
+      v = 255 * v;
+
+  switch(hi) {
+    case 0:
+      return [v, t, p];
+    case 1:
+      return [q, v, p];
+    case 2:
+      return [p, v, t];
+    case 3:
+      return [p, q, v];
+    case 4:
+      return [t, p, v];
+    case 5:
+      return [v, p, q];
+  }
+}
+
+function hsv2hsl(hsv) {
+  var h = hsv[0],
+      s = hsv[1] / 100,
+      v = hsv[2] / 100,
+      sl, l;
+
+  l = (2 - s) * v;  
+  sl = s * v;
+  sl /= (l <= 1) ? l : 2 - l;
+  l /= 2;
+  return [h, sl * 100, l * 100];
+}
+
+function hsv2cmyk(args) {
+  return rgb2cmyk(hsv2rgb(args));
+}
+
+function hsv2keyword(args) {
+  return rgb2keyword(hsv2rgb(args));
+}
+
+function cmyk2rgb(cmyk) {
+  var c = cmyk[0] / 100,
+      m = cmyk[1] / 100,
+      y = cmyk[2] / 100,
+      k = cmyk[3] / 100,
+      r, g, b;
+
+  r = 1 - Math.min(1, c * (1 - k) + k);
+  g = 1 - Math.min(1, m * (1 - k) + k);
+  b = 1 - Math.min(1, y * (1 - k) + k);
+  return [r * 255, g * 255, b * 255];
+}
+
+function cmyk2hsl(args) {
+  return rgb2hsl(cmyk2rgb(args));
+}
+
+function cmyk2hsv(args) {
+  return rgb2hsv(cmyk2rgb(args));
+}
+
+function cmyk2keyword(args) {
+  return rgb2keyword(cmyk2rgb(args));
+}
+
+
+function xyz2rgb(xyz) {
+  var x = xyz[0] / 100,
+      y = xyz[1] / 100,
+      z = xyz[2] / 100,
+      r, g, b;
+
+  r = (x * 3.2406) + (y * -1.5372) + (z * -0.4986);
+  g = (x * -0.9689) + (y * 1.8758) + (z * 0.0415);
+  b = (x * 0.0557) + (y * -0.2040) + (z * 1.0570);
+
+  // assume sRGB
+  r = r > 0.0031308 ? ((1.055 * Math.pow(r, 1.0 / 2.4)) - 0.055)
+    : r = (r * 12.92);
+
+  g = g > 0.0031308 ? ((1.055 * Math.pow(g, 1.0 / 2.4)) - 0.055)
+    : g = (g * 12.92);
+        
+  b = b > 0.0031308 ? ((1.055 * Math.pow(b, 1.0 / 2.4)) - 0.055)
+    : b = (b * 12.92);
+
+  r = (r < 0) ? 0 : r;
+  g = (g < 0) ? 0 : g;
+  b = (b < 0) ? 0 : b;
+
+  return [r * 255, g * 255, b * 255];
+}
+
+
+function keyword2rgb(keyword) {
+  return cssKeywords[keyword];
+}
+
+function keyword2hsl(args) {
+  return rgb2hsl(keyword2rgb(args));
+}
+
+function keyword2hsv(args) {
+  return rgb2hsv(keyword2rgb(args));
+}
+
+function keyword2cmyk(args) {
+  return rgb2cmyk(keyword2rgb(args));
+}
+
+var cssKeywords = {
+  aliceblue:  [240,248,255],
+  antiquewhite: [250,235,215],
+  aqua: [0,255,255],
+  aquamarine: [127,255,212],
+  azure:  [240,255,255],
+  beige:  [245,245,220],
+  bisque: [255,228,196],
+  black:  [0,0,0],
+  blanchedalmond: [255,235,205],
+  blue: [0,0,255],
+  blueviolet: [138,43,226],
+  brown:  [165,42,42],
+  burlywood:  [222,184,135],
+  cadetblue:  [95,158,160],
+  chartreuse: [127,255,0],
+  chocolate:  [210,105,30],
+  coral:  [255,127,80],
+  cornflowerblue: [100,149,237],
+  cornsilk: [255,248,220],
+  crimson:  [220,20,60],
+  cyan: [0,255,255],
+  darkblue: [0,0,139],
+  darkcyan: [0,139,139],
+  darkgoldenrod:  [184,134,11],
+  darkgray: [169,169,169],
+  darkgreen:  [0,100,0],
+  darkgrey: [169,169,169],
+  darkkhaki:  [189,183,107],
+  darkmagenta:  [139,0,139],
+  darkolivegreen: [85,107,47],
+  darkorange: [255,140,0],
+  darkorchid: [153,50,204],
+  darkred:  [139,0,0],
+  darksalmon: [233,150,122],
+  darkseagreen: [143,188,143],
+  darkslateblue:  [72,61,139],
+  darkslategray:  [47,79,79],
+  darkslategrey:  [47,79,79],
+  darkturquoise:  [0,206,209],
+  darkviolet: [148,0,211],
+  deeppink: [255,20,147],
+  deepskyblue:  [0,191,255],
+  dimgray:  [105,105,105],
+  dimgrey:  [105,105,105],
+  dodgerblue: [30,144,255],
+  firebrick:  [178,34,34],
+  floralwhite:  [255,250,240],
+  forestgreen:  [34,139,34],
+  fuchsia:  [255,0,255],
+  gainsboro:  [220,220,220],
+  ghostwhite: [248,248,255],
+  gold: [255,215,0],
+  goldenrod:  [218,165,32],
+  gray: [128,128,128],
+  green:  [0,128,0],
+  greenyellow:  [173,255,47],
+  grey: [128,128,128],
+  honeydew: [240,255,240],
+  hotpink:  [255,105,180],
+  indianred:  [205,92,92],
+  indigo: [75,0,130],
+  ivory:  [255,255,240],
+  khaki:  [240,230,140],
+  lavender: [230,230,250],
+  lavenderblush:  [255,240,245],
+  lawngreen:  [124,252,0],
+  lemonchiffon: [255,250,205],
+  lightblue:  [173,216,230],
+  lightcoral: [240,128,128],
+  lightcyan:  [224,255,255],
+  lightgoldenrodyellow: [250,250,210],
+  lightgray:  [211,211,211],
+  lightgreen: [144,238,144],
+  lightgrey:  [211,211,211],
+  lightpink:  [255,182,193],
+  lightsalmon:  [255,160,122],
+  lightseagreen:  [32,178,170],
+  lightskyblue: [135,206,250],
+  lightslategray: [119,136,153],
+  lightslategrey: [119,136,153],
+  lightsteelblue: [176,196,222],
+  lightyellow:  [255,255,224],
+  lime: [0,255,0],
+  limegreen:  [50,205,50],
+  linen:  [250,240,230],
+  magenta:  [255,0,255],
+  maroon: [128,0,0],
+  mediumaquamarine: [102,205,170],
+  mediumblue: [0,0,205],
+  mediumorchid: [186,85,211],
+  mediumpurple: [147,112,219],
+  mediumseagreen: [60,179,113],
+  mediumslateblue:  [123,104,238],
+  mediumspringgreen:  [0,250,154],
+  mediumturquoise:  [72,209,204],
+  mediumvioletred:  [199,21,133],
+  midnightblue: [25,25,112],
+  mintcream:  [245,255,250],
+  mistyrose:  [255,228,225],
+  moccasin: [255,228,181],
+  navajowhite:  [255,222,173],
+  navy: [0,0,128],
+  oldlace:  [253,245,230],
+  olive:  [128,128,0],
+  olivedrab:  [107,142,35],
+  orange: [255,165,0],
+  orangered:  [255,69,0],
+  orchid: [218,112,214],
+  palegoldenrod:  [238,232,170],
+  palegreen:  [152,251,152],
+  paleturquoise:  [175,238,238],
+  palevioletred:  [219,112,147],
+  papayawhip: [255,239,213],
+  peachpuff:  [255,218,185],
+  peru: [205,133,63],
+  pink: [255,192,203],
+  plum: [221,160,221],
+  powderblue: [176,224,230],
+  purple: [128,0,128],
+  red:  [255,0,0],
+  rosybrown:  [188,143,143],
+  royalblue:  [65,105,225],
+  saddlebrown:  [139,69,19],
+  salmon: [250,128,114],
+  sandybrown: [244,164,96],
+  seagreen: [46,139,87],
+  seashell: [255,245,238],
+  sienna: [160,82,45],
+  silver: [192,192,192],
+  skyblue:  [135,206,235],
+  slateblue:  [106,90,205],
+  slategray:  [112,128,144],
+  slategrey:  [112,128,144],
+  snow: [255,250,250],
+  springgreen:  [0,255,127],
+  steelblue:  [70,130,180],
+  tan:  [210,180,140],
+  teal: [0,128,128],
+  thistle:  [216,191,216],
+  tomato: [255,99,71],
+  turquoise:  [64,224,208],
+  violet: [238,130,238],
+  wheat:  [245,222,179],
+  white:  [255,255,255],
+  whitesmoke: [245,245,245],
+  yellow: [255,255,0],
+  yellowgreen:  [154,205,50]
+};
+
+var reverseKeywords = {};
+for (var key in cssKeywords) {
+  reverseKeywords[JSON.stringify(cssKeywords[key])] = key;
+}
+
+},{}],4:[function(require,module,exports){
+var conversions = require("./conversions");
+
+var exports = {};
+module.exports = exports;
+
+for (var func in conversions) {
+  // export rgb2hslRaw
+  exports[func + "Raw"] =  (function(func) {
+    // accept array or plain args
+    return function(arg) {
+      if (typeof arg == "number")
+        arg = Array.prototype.slice.call(arguments);
+      return conversions[func](arg);
+    }
+  })(func);
+
+  var pair = /(\w+)2(\w+)/.exec(func),
+      from = pair[1],
+      to = pair[2];
+  exports[from] = exports[from] || {};
+
+  // export rgb2hsl and ["rgb"]["hsl"]
+  exports[func] = exports[from][to] = (function(func) { 
+    return function(arg) {
+      if (typeof arg == "number")
+        arg = Array.prototype.slice.call(arguments);
+      
+      var val = conversions[func](arg);
+      if (typeof val == "string" || val === undefined)
+        return val; // keyword
+
+      for (var i = 0; i < val.length; i++)
+        val[i] = Math.round(val[i]);
+      return val;
+    }
+  })(func);
+
+}
+
+/*
+exports["rgb"]  = {
+  "hsl": exports.rgb2hsl,
+  "hsv": exports.rgb2hsv,
+  "cmyk": exports.rgb2cmyk,
+  "keyword": exports.rgb2keyword,
+  "xyz": exports.rgb2xyz,
+  "lab": exports.rgb2lab,
+}
+
+exports["hsl"]  = {
+  "rgb": exports.hsl2rgb,
+  "hsv": exports.hsl2hsv,
+  "cmyk": function(args) {
+    return exports.rgb2cmyk(exports.hsl2rgbRaw(args));
+  },
+  "keyword": function(args) {
+    return exports.rgb2keyword(exports.hsl2rgbRaw(args));
+  }
+}
+
+exports["hsv"] = {
+  "rgb": exports.hsv2rgb,
+  "hsl": exports.hsv2hsl,
+  "cmyk": function(args) {
+    return exports.rgb2cmyk(exports.hsv2rgbRaw(args));
+  },
+  "keyword": function(args) {
+    return exports.rgb2keyword(exports.hsv2rgbRaw(args));
+  }
+}
+
+exports.cmyk = {
+  "rgb": exports.cmyk2rgb,
+  "hsl": function(args) {
+    return exports.rgb2hsl(exports.cmyk2rgbRaw(args));
+  },
+  "hsv": function(args) {
+    return exports.rgb2hsv(exports.cmyk2rgbRaw(args));
+  },
+  "keyword": function(args) {
+    return exports.rgb2keyword(exports.cmyk2rgbRaw(args));
+  }
+}
+
+exports.keyword = {
+  "rgb": exports.keyword2rgb,
+  "hsl": function(args) {
+    return exports.rgb2hsl(exports.keyword2rgb(args));
+  },
+  "hsv": function(args) {
+    return exports.rgb2hsv(exports.keyword2rgb(args));
+  },
+  "cmyk": function(args) {
+    return exports.rgb2cmyk(exports.keyword2rgb(args));
+  }
+}
+
+exports.xyz = {
+  "rgb": exports.xyz2rgb
+} */
+},{"./conversions":3}]},{},[1]);
+
+/*
+ * Browserified version of https://github.com/mattdesl/gl-sprites
+ *
+ * Atrocities committed: placed SpriteRenderer and createTexture2D
+ * into the global namespace
+ */
+
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
@@ -8860,8 +10937,8 @@ module.exports = {
 },{"./copy":5,"./mat4":7,"as-number":8}]},{},[6]);
 
 /**
- *  Main entry point for Rice engine
- *  @copyright (C) 2014 1HandGaming
+ *  Main entry point for Bento engine
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
 (function () {
@@ -8873,405 +10950,27 @@ module.exports = {
     window.bento = window.bento || bento;
 }());
 /**
- *  @copyright (C) 1HandGaming
- */
-bento.define('bento/director', [
-    'bento/sugar',
-    'bento',
-    'bento/screen'
-], function (Sugar, Bento, Screen) {
-    'use strict';
-    var screens = {},
-        currentScreen = null,
-        getScreen = function (name) {
-            return screens[name];
-        },
-        module = {
-            addScreen: function (screen) {
-                if (!screen.getName()) {
-                    throw 'Add name property to screen';
-                }
-                screens[screen.getName()] = screen;
-            },
-            showScreen: function (name, callback) {
-                if (currentScreen !== null) {
-                    this.hideScreen();
-                }
-                currentScreen = screens[name];
-                if (currentScreen) {
-                    currentScreen.onShow();
-                } else {
-                    throw 'Could not find screen';
-                }
-            },
-            hideScreen: function () {
-                if (!currentScreen) {
-                    return;
-                }
-                currentScreen.onHide();
-                currentScreen = null;
-            },
-            getCurrentScreen: function () {
-                return currentScreen;
-            }
-        };
-
-    return module;
-});
-/*
- * A base object to hold components
- * @copyright (C) 1HandGaming
- */
-bento.define('bento/entity', [
-    'bento/sugar',
-    'bento/math/vector2',
-    'bento/math/rectangle'
-], function (Sugar, Vector2, Rectangle) {
-    'use strict';
-    var globalId = 0;
-    return function (settings) {
-        var i,
-            name,
-            visible = true,
-            position = Vector2(0, 0),
-            origin = Vector2(0, 0),
-            dimension = Rectangle(0, 0, 0, 0),
-            rectangle,
-            components = [],
-            family = [],
-            removedComponents = [],
-            parent = null,
-            uniqueId = ++globalId,
-            cleanComponents = function () {
-                var i, component;
-                while (removedComponents.length) {
-                    component = removedComponents.pop();
-                    // should destroy be called?
-                    /*if (component.destroy) {
-                        component.destroy();
-                    }*/
-                    Sugar.removeObject(components, component);
-                }
-            },
-            entity = {
-                z: 0,
-                timer: 0,
-                global: false,
-                updateWhenPaused: false,
-                name: '',
-                destroy: function (data) {
-                    var i,
-                        l,
-                        component;
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.destroy) {
-                            component.destroy(data);
-                        }
-                    }
-                },
-                update: function (data) {
-                    var i,
-                        l,
-                        component;
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.update) {
-                            component.update(data);
-                        }
-                    }
-                    ++entity.timer;
-
-                    // clean up
-                    cleanComponents();
-                },
-                draw: function (data) {
-                    var i,
-                        l,
-                        component;
-                    if (!visible) {
-                        return;
-                    }
-                    // call components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.draw) {
-                            component.draw(data);
-                        }
-                    }
-                    // post draw
-                    for (i = components.length - 1; i >= 0; i--) {
-                        component = components[i];
-                        if (component && component.postDraw) {
-                            component.postDraw(data);
-                        }
-                    }
-                },
-                addToFamily: function (name) {
-                    family.push(name);
-                },
-                getFamily: function () {
-                    return family;
-                },
-                add: function (object) {
-                    return Sugar.combine(entity, object);
-                },
-                getPosition: function () {
-                    return position;
-                },
-                setPosition: function (value) {
-                    position.x = value.x;
-                    position.y = value.y;
-                },
-                getDimension: function () {
-                    return dimension;
-                },
-                setDimension: function (value) {
-                    if (Sugar.isDimension(value)) {
-                        dimension = value;
-                    }
-                },
-                getBoundingBox: function () {
-                    var scale, x1, x2, y1, y2, box;
-                    if (!rectangle) {
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
-                        x1 = position.x - origin.x * scale.x;
-                        y1 = position.y - origin.y * scale.y;
-                        x2 = position.x + (dimension.width - origin.x) * scale.x;
-                        y2 = position.y + (dimension.height - origin.y) * scale.y;
-                        // swap variables if scale is negative
-                        if (scale.x < 0) {
-                            x2 = [x1, x1 = x2][0];
-                        }
-                        if (scale.y < 0) {
-                            y2 = [y1, y1 = y2][0];
-                        }
-                        return Rectangle(x1, y1, x2 - x1, y2 - y1);
-                    } else {
-                        box = rectangle.clone();
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
-                        box.x *= Math.abs(scale.x);
-                        box.y *= Math.abs(scale.y);
-                        box.width *= Math.abs(scale.x);
-                        box.height *= Math.abs(scale.y);
-                        box.x += position.x;
-                        box.y += position.y;
-                        return box;
-                    }
-                },
-                setBoundingBox: function (value) {
-                    rectangle = value;
-                },
-                getRectangle: function () {
-                    return rectangle;
-                },
-                setOrigin: function (value) {
-                    origin.x = value.x;
-                    origin.y = value.y;
-                },
-                setOriginRelative: function (value) {
-                    origin.x = value.x * dimension.width;
-                    origin.y = value.y * dimension.height;
-                },
-                getOrigin: function () {
-                    return origin;
-                },
-                isVisible: function () {
-                    return visible;
-                },
-                setVisible: function (value) {
-                    visible = value;
-                },
-                attach: function (component, name) {
-                    var mixin = {};
-                    components.push(component);
-                    if (component.setParent) {
-                        component.setParent(entity);
-                    }
-                    if (component.init) {
-                        component.init();
-                    }
-                    if (name) {
-                        mixin[name] = component;
-                        Sugar.combine(entity, mixin);
-                    }
-                    return entity;
-                },
-                remove: function (component) {
-                    var i, type, index;
-                    if (!component) {
-                        return;
-                    }
-                    index = components.indexOf(component);
-                    if (index >= 0) {
-                        components[index] = null;
-                    }
-                    return entity;
-                },
-                getComponents: function () {
-                    return components;
-                },
-                getComponentByName: function (name) {
-                    var i, l, component;
-                    for (i = 0, i = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component.name === name) {
-                            return component;
-                        }
-                    }
-                },
-                setParent: function (obj) {
-                    parent = obj;
-                },
-                getParent: function () {
-                    return parent;
-                },
-                getId: function () {
-                    return uniqueId;
-                },
-                collidesWith: function (other, offset) {
-                    if (!Sugar.isDefined(offset)) {
-                        offset = Vector2(0, 0);
-                    }
-                    return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
-                },
-                collidesWithGroup: function (array, offset) {
-                    var i,
-                        obj,
-                        box;
-                    if (!Sugar.isDefined(offset)) {
-                        offset = Vector2(0, 0);
-                    }
-                    if (!Sugar.isArray(array)) {
-                        // throw 'Collision check must be with an Array of object';
-                        console.log('Collision check must be with an Array of object');
-                        return;
-                    }
-                    if (!array.length) {
-                        return null;
-                    }
-                    box = entity.getBoundingBox().offset(offset);
-                    for (i = 0; i < array.length; ++i) {
-                        obj = array[i];
-                        if (obj === entity) {
-                            continue;
-                        }
-                        if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
-                            return obj;
-                        }
-                    }
-                    return null;
-                }
-            };
-
-        // read settings
-        if (settings) {
-            if (settings.components) {
-                if (!Sugar.isArray(settings.components)) {
-                    settings.components = [settings.components];
-                }
-                for (i = 0; i < settings.components.length; ++i) {
-                    settings.components[i](entity, settings);
-                }
-            }
-            if (settings.position) {
-                entity.setPosition(settings.position);
-            }
-            if (settings.origin) {
-                entity.setOrigin(settings.origin);
-            }
-            if (settings.originRelative) {
-                entity.setOriginRelative(settings.originRelative);
-            }
-            if (settings.name) {
-                entity.setName(settings.name);
-            }
-            if (settings.family) {
-                if (!Sugar.isArray(settings.family)) {
-                    settings.family = [settings.family];
-                }
-                for (i = 0; i < settings.family.length; ++i) {
-                    entity.addToFamily(settings.family[i]);
-                }
-            }
-            if (settings.init) {
-                settings.init.apply(entity);
-            }
-
-            entity.updateWhenPaused = settings.updateWhenPaused || false;
-            entity.global = settings.global || false;
-        }
-        return entity;
-    };
-});
-bento.define('bento/eventsystem', [
-    'bento/sugar'
-], function (Sugar) {
-    var events = {};
-    /*
-    events = {
-        'eventName': [Array of listeners]
-    }
-    */
-    return {
-        fire: function (eventName, eventData) {
-            var i, l, listeners;
-            if (!Sugar.isString(eventName)) {
-                eventName = eventName.toString();
-            }
-            if (Sugar.isUndefined(events[eventName])) {
-                return;
-            }
-            listeners = events[eventName];
-            for (i = 0, l = listeners.length; i < l; ++i) {
-                listeners[i](eventData);
-            }
-        },
-        addEventListener: function (eventName, callback) {
-            if (Sugar.isUndefined(events[eventName])) {
-                events[eventName] = [];
-            }
-            events[eventName].push(callback);
-        },
-        removeEventListener: function (eventName, callback) {
-            var i, l, listener;
-            if (Sugar.isUndefined(events[eventName])) {
-                return;
-            }
-            listener = events[eventName];
-            for (i = 0, l = listener.length; i < l; ++i) {
-                if (listener[i] === callback) {
-                    listener.splice(i, 1);
-                    break;
-                }
-            }
-        }
-    };
-});
-/**
- *  Rice game instance, controls managers and game loop
- *  @copyright (C) 2014 1HandGaming
+ *  Bento module, main entry point to game modules
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento', [
-    'bento/sugar',
+    'bento/utils',
     'bento/lib/domready',
-    'bento/lib/requestanimationframe',
     'bento/managers/asset',
     'bento/managers/input',
     'bento/managers/object',
+    'bento/managers/audio',
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/renderer'
 ], function (
-    Sugar,
+    Utils,
     DomReady,
-    RequestAnimationFrame,
     AssetManager,
     InputManager,
     ObjectManager,
+    AudioManager,
     Vector2,
     Rectangle,
     Renderer
@@ -9301,6 +11000,9 @@ bento.define('bento', [
         gameData = {},
         viewport = Rectangle(0, 0, 640, 480),
         setupDebug = function () {
+            if (navigator.isCocoonJS) {
+                return;
+            }
             debug.debugBar = document.createElement('div');
             debug.debugBar.style['font-family'] = 'Arial';
             debug.debugBar.style.padding = '8px';
@@ -9322,6 +11024,7 @@ bento.define('bento', [
                     throw 'Supply a canvasId to settings or add a wrapper div';
                 }
                 canvas = document.createElement(navigator.isCocoonJS ? 'screencanvas' : 'canvas');
+                canvas.id = settings.canvasId;
                 wrapper.addChild(canvas);
             }
             canvas.width = viewport.width;
@@ -9391,11 +11094,11 @@ bento.define('bento', [
             canvasScale.x = width / viewport.width;
             canvasScale.y = height / viewport.height;
         },
-        game = {
+        module = {
             setup: function (settings, callback) {
                 DomReady(function () {
                     var runGame = function () {
-                        game.objects.run();
+                        module.objects.run();
                         if (callback) {
                             callback();
                         }
@@ -9416,15 +11119,16 @@ bento.define('bento', [
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
 
-                        game.input = InputManager(gameData);
-                        game.objects = ObjectManager(gameData, debug);
-                        game.assets = AssetManager();
+                        module.input = InputManager(gameData);
+                        module.objects = ObjectManager(gameData, settings.deltaT, debug);
+                        module.assets = AssetManager();
+                        module.audio = AudioManager(module);
 
                         // mix functions
-                        Sugar.combine(game, game.objects);
+                        Utils.combine(module, module.objects);
 
                         if (settings.assetGroups) {
-                            game.assets.loadAssetGroups(settings.assetGroups, runGame);
+                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
                         } else {
                             runGame();
                         }
@@ -9435,15 +11139,414 @@ bento.define('bento', [
             getViewport: function () {
                 return viewport;
             },
+            getCanvas: function () {
+                return canvas;
+            },
             assets: null,
             objects: null,
-            input: null
+            input: null,
+            audio: null,
+            utils: Utils
         };
-    return game;
+    return module;
+});
+/**
+ *  @copyright (C) HeiGames
+ */
+bento.define('bento/director', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var screens = {},
+        currentScreen = null,
+        getScreen = function (name) {
+            return screens[name];
+        },
+        director = {
+            addScreen: function (screen) {
+                if (!screen.name) {
+                    throw 'Add name property to screen';
+                }
+                screens[screen.name] = screen;
+            },
+            showScreen: function (name, callback) {
+                if (currentScreen !== null) {
+                    director.hideScreen();
+                }
+                currentScreen = screens[name];
+                if (currentScreen) {
+                    if (currentScreen.onShow) {
+                        currentScreen.onShow();
+                    }
+                    if (callback) {
+                        callback();
+                    }
+                } else {
+                    // load asynchronously
+                    bento.require([name], function (screen) {
+                        if (!screen.name) {
+                            screen.name = name;
+                        }
+                        director.addScreen(screen);
+                        // try again
+                        director.showScreen(name, callback);
+                    });
+                }
+            },
+            hideScreen: function () {
+                if (!currentScreen) {
+                    return;
+                }
+                currentScreen.onHide();
+                currentScreen = null;
+            },
+            getCurrentScreen: function () {
+                return currentScreen;
+            }
+        };
+
+    return director;
+});
+/*
+ * A base object to hold components
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/entity', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/math/rectangle'
+], function (Bento, Utils, Vector2, Rectangle) {
+    'use strict';
+    var globalId = 0;
+    return function (settings) {
+        var i,
+            name,
+            visible = true,
+            position = Vector2(0, 0),
+            origin = Vector2(0, 0),
+            dimension = Rectangle(0, 0, 0, 0),
+            rectangle,
+            components = [],
+            family = [],
+            removedComponents = [],
+            parent = null,
+            uniqueId = ++globalId,
+            cleanComponents = function () {
+                var i, component;
+                while (removedComponents.length) {
+                    component = removedComponents.pop();
+                    // should destroy be called?
+                    /*if (component.destroy) {
+                        component.destroy();
+                    }*/
+                    Utils.removeObject(components, component);
+                }
+            },
+            entity = {
+                z: 0,
+                timer: 0,
+                global: false,
+                updateWhenPaused: false,
+                name: '',
+                destroy: function (data) {
+                    var i,
+                        l,
+                        component;
+                    // update components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.destroy) {
+                            component.destroy(data);
+                        }
+                    }
+                },
+                update: function (data) {
+                    var i,
+                        l,
+                        component;
+                    // update components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.update) {
+                            component.update(data);
+                        }
+                    }
+                    ++entity.timer;
+
+                    // clean up
+                    cleanComponents();
+                },
+                draw: function (data) {
+                    var i,
+                        l,
+                        component;
+                    if (!visible) {
+                        return;
+                    }
+                    // call components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.draw) {
+                            component.draw(data);
+                        }
+                    }
+                    // post draw
+                    for (i = components.length - 1; i >= 0; i--) {
+                        component = components[i];
+                        if (component && component.postDraw) {
+                            component.postDraw(data);
+                        }
+                    }
+                },
+                addToFamily: function (name) {
+                    family.push(name);
+                },
+                getFamily: function () {
+                    return family;
+                },
+                extend: function (object) {
+                    return Utils.combine(entity, object);
+                },
+                getPosition: function () {
+                    return position;
+                },
+                setPosition: function (value) {
+                    position.x = value.x;
+                    position.y = value.y;
+                },
+                getDimension: function () {
+                    return dimension;
+                },
+                setDimension: function (value) {
+                    if (Utils.isDimension(value)) {
+                        dimension = value;
+                    }
+                },
+                getBoundingBox: function () {
+                    var scale, x1, x2, y1, y2, box;
+                    if (!rectangle) {
+                        // TODO get rid of scale component dependency
+                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        x1 = position.x - origin.x * scale.x;
+                        y1 = position.y - origin.y * scale.y;
+                        x2 = position.x + (dimension.width - origin.x) * scale.x;
+                        y2 = position.y + (dimension.height - origin.y) * scale.y;
+                        // swap variables if scale is negative
+                        if (scale.x < 0) {
+                            x2 = [x1, x1 = x2][0];
+                        }
+                        if (scale.y < 0) {
+                            y2 = [y1, y1 = y2][0];
+                        }
+                        return Rectangle(x1, y1, x2 - x1, y2 - y1);
+                    } else {
+                        box = rectangle.clone();
+                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        box.x *= Math.abs(scale.x);
+                        box.y *= Math.abs(scale.y);
+                        box.width *= Math.abs(scale.x);
+                        box.height *= Math.abs(scale.y);
+                        box.x += position.x;
+                        box.y += position.y;
+                        return box;
+                    }
+                },
+                setBoundingBox: function (value) {
+                    rectangle = value;
+                },
+                getRectangle: function () {
+                    return rectangle;
+                },
+                setOrigin: function (value) {
+                    origin.x = value.x;
+                    origin.y = value.y;
+                },
+                setOriginRelative: function (value) {
+                    origin.x = value.x * dimension.width;
+                    origin.y = value.y * dimension.height;
+                },
+                getOrigin: function () {
+                    return origin;
+                },
+                isVisible: function () {
+                    return visible;
+                },
+                setVisible: function (value) {
+                    visible = value;
+                },
+                attach: function (component, name) {
+                    var mixin = {};
+                    components.push(component);
+                    if (component.setParent) {
+                        component.setParent(entity);
+                    }
+                    if (component.init) {
+                        component.init();
+                    }
+                    if (name) {
+                        mixin[name] = component;
+                        Utils.combine(entity, mixin);
+                    }
+                    return entity;
+                },
+                remove: function (component) {
+                    var i, type, index;
+                    if (!component) {
+                        return;
+                    }
+                    index = components.indexOf(component);
+                    if (index >= 0) {
+                        components[index] = null;
+                    }
+                    return entity;
+                },
+                getComponents: function () {
+                    return components;
+                },
+                getComponentByName: function (name) {
+                    var i, l, component;
+                    for (i = 0, i = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component.name === name) {
+                            return component;
+                        }
+                    }
+                },
+                setParent: function (obj) {
+                    parent = obj;
+                },
+                getParent: function () {
+                    return parent;
+                },
+                getId: function () {
+                    return uniqueId;
+                },
+                collidesWith: function (other, offset) {
+                    if (!Utils.isDefined(offset)) {
+                        offset = Vector2(0, 0);
+                    }
+                    return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
+                },
+                collidesWithGroup: function (array, offset) {
+                    var i,
+                        obj,
+                        box;
+                    if (!Utils.isDefined(offset)) {
+                        offset = Vector2(0, 0);
+                    }
+                    if (!Utils.isArray(array)) {
+                        // throw 'Collision check must be with an Array of object';
+                        console.log('Collision check must be with an Array of object');
+                        return;
+                    }
+                    if (!array.length) {
+                        return null;
+                    }
+                    box = entity.getBoundingBox().offset(offset);
+                    for (i = 0; i < array.length; ++i) {
+                        obj = array[i];
+                        if (obj === entity) {
+                            continue;
+                        }
+                        if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
+                            return obj;
+                        }
+                    }
+                    return null;
+                }
+            };
+
+        // read settings
+        if (settings) {
+            if (settings.components) {
+                if (!Utils.isArray(settings.components)) {
+                    settings.components = [settings.components];
+                }
+                for (i = 0; i < settings.components.length; ++i) {
+                    settings.components[i](entity, settings);
+                }
+            }
+            if (settings.position) {
+                entity.setPosition(settings.position);
+            }
+            if (settings.origin) {
+                entity.setOrigin(settings.origin);
+            }
+            if (settings.originRelative) {
+                entity.setOriginRelative(settings.originRelative);
+            }
+            if (settings.name) {
+                entity.setName(settings.name);
+            }
+            if (settings.family) {
+                if (!Utils.isArray(settings.family)) {
+                    settings.family = [settings.family];
+                }
+                for (i = 0; i < settings.family.length; ++i) {
+                    entity.addToFamily(settings.family[i]);
+                }
+            }
+            if (settings.init) {
+                settings.init.apply(entity);
+            }
+
+            entity.updateWhenPaused = settings.updateWhenPaused || false;
+            entity.global = settings.global || false;
+
+            if (settings.addNow) {
+                Bento.objects.add(entity);
+            }
+
+        }
+        return entity;
+    };
+});
+bento.define('bento/eventsystem', [
+    'bento/utils'
+], function (Utils) {
+    var events = {};
+    /*events = {
+        [String eventName]: [Array listeners]
+    }*/
+    return {
+        fire: function (eventName, eventData) {
+            var i, l, listeners;
+            if (!Utils.isString(eventName)) {
+                eventName = eventName.toString();
+            }
+            if (Utils.isUndefined(events[eventName])) {
+                return;
+            }
+            listeners = events[eventName];
+            for (i = 0, l = listeners.length; i < l; ++i) {
+                listeners[i](eventData);
+            }
+        },
+        addEventListener: function (eventName, callback) {
+            if (Utils.isUndefined(events[eventName])) {
+                events[eventName] = [];
+            }
+            events[eventName].push(callback);
+        },
+        removeEventListener: function (eventName, callback) {
+            var i, l, listener;
+            if (Utils.isUndefined(events[eventName])) {
+                return;
+            }
+            listener = events[eventName];
+            for (i = 0, l = listener.length; i < l; ++i) {
+                if (listener[i] === callback) {
+                    listener.splice(i, 1);
+                    break;
+                }
+            }
+        }
+    };
 });
 bento.define('bento/renderer', [
-    'bento/sugar'
-], function (Sugar, Canvas2D) {
+    'bento/utils'
+], function (Utils, Canvas2D) {
     return function (type, canvas, context, callback) {
         var module = {
             save: function () {},
@@ -9454,73 +11557,13 @@ bento.define('bento/renderer', [
             fillRect: function (color, x, y, w, h) {},
             drawImage: function (texture, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
-            flush: function () {}
+            flush: function () {},
+            setColor: function () {}
         };
         require(['bento/renderers/' + type], function (renderer) {
-            Sugar.combine(module, renderer(canvas, context));
+            Utils.combine(module, renderer(canvas, context));
             callback(module);
         });
-    };
-});
-/**
- *  @copyright (C) 1HandGaming
- */
-bento.define('bento/screen', [
-    'bento/sugar',
-    'bento',
-    'bento/math/rectangle'
-], function (Sugar, Bento, Rectangle) {
-    'use strict';
-    return function (name) {
-        var viewport = Bento.getViewport(),
-            dimension = Rectangle(0, 0, 0, 0),
-            isShown = false,
-            module = {
-                setDimension: function (rectangle) {
-                    dimension.width = rectangle.width;
-                    dimension.height = rectangle.height;
-                },
-                getDimension: function () {
-                    return dimension;
-                },
-                add: function (object) {
-                    return Sugar.combine(this, object);
-                },
-                /**
-                 * Get the name of the screen
-                 * @name getName
-                 * @memberOf screen
-                 * @function
-                 * @return Screen name as string
-                 */
-                getName: function () {
-                    return name;
-                },
-                /**
-                 * Set a boolean that defines if the screen is shown
-                 * @name setShown
-                 * @memberOf screen
-                 * @function
-                 */
-                setShown: function (bool) {
-                    if (!Sugar.isBoolean(bool)) {
-                        throw 'Argument is not a boolean';
-                    } else {
-                        isShown = bool;
-                    }
-                },
-                onShow: function () {},
-                onHide: function () {
-                    // remove all objects
-                    Bento.removeAll();
-                    // reset viewport scroll when hiding screen
-                    viewport.x = 0;
-                    viewport.y = 0;
-
-                }
-            };
-
-        return module;
     };
 });
 bento.define('bento/subimage', [
@@ -9532,7 +11575,7 @@ bento.define('bento/subimage', [
         return rectangle;
     };
 });
-bento.define('bento/sugar', [], function () {
+bento.define('bento/utils', [], function () {
     'use strict';
     var isString = function (value) {
             return typeof value === 'string' || value instanceof String;
@@ -9737,8 +11780,8 @@ bento.define('bento/sugar', [], function () {
 
 });
 bento.define('bento/components/animation', [
-    'bento/sugar',
-], function (Sugar) {
+    'bento/utils',
+], function (Utils) {
     'use strict';
     return function (base, settings) {
         var image,
@@ -9756,7 +11799,7 @@ bento.define('bento/components/animation', [
             onCompleteCallback,
             origin = base.getOrigin(),
             component = {
-                name: 'sprite',
+                name: 'animation',
                 setup: function (settings) {
                     if (settings) {
                         animationSettings = settings;
@@ -9803,10 +11846,10 @@ bento.define('bento/components/animation', [
                         return;
                     }
                     if (anim && currentAnimation !== anim) {
-                        if (!Sugar.isDefined(anim.loop)) {
+                        if (!Utils.isDefined(anim.loop)) {
                             anim.loop = true;
                         }
-                        if (!Sugar.isDefined(anim.backTo)) {
+                        if (!Utils.isDefined(anim.backTo)) {
                             anim.backTo = 0;
                         }
                         // set even if there is no callback
@@ -9878,15 +11921,15 @@ bento.define('bento/components/animation', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
 bento.define('bento/components/clickable', [
-    'bento/sugar',
+    'bento/utils',
     'bento/math/vector2',
     'bento/eventsystem'
-], function (Sugar, Vector2, EventSystem) {
+], function (Utils, Vector2, EventSystem) {
     'use strict';
     return function (base, settings) {
         var mixin = {},
@@ -9915,33 +11958,42 @@ bento.define('bento/components/clickable', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
 bento.define('bento/components/fill', [
-    'bento/sugar',
+    'bento/utils',
     'bento'
-], function (Sugar, Bento) {
+], function (Utils, Bento) {
     'use strict';
     return function (base, settings) {
         var viewport = Bento.getViewport(),
             mixin = {},
+            color = '#000',
             component = {
                 name: 'fill',
                 draw: function (data) {
-                    data.renderer.fillRect('#000', 0, 0, viewport.width, viewport.height);
+                    data.renderer.fillRect(color, 0, 0, viewport.width, viewport.height);
+                },
+                setup: function (settings) {
+                    color = settings.color;
                 }
             };
+
+        if (settings && settings[component.name]) {
+            component.setup(settings[component.name]);
+        }
+
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
 bento.define('bento/components/rotation', [
-    'bento/sugar',
-], function (Sugar) {
+    'bento/utils',
+], function (Utils) {
     'use strict';
     return function (base) {
         var angle,
@@ -9988,14 +12040,14 @@ bento.define('bento/components/rotation', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
 bento.define('bento/components/scale', [
-    'bento/sugar',
+    'bento/utils',
     'bento/math/vector2'
-], function (Sugar, Vector2) {
+], function (Utils, Vector2) {
     'use strict';
     return function (base) {
         var set = false,
@@ -10026,19 +12078,22 @@ bento.define('bento/components/scale', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
 bento.define('bento/components/sprite', [
-    'bento/sugar',
+    'bento/utils',
     'bento/components/translation',
     'bento/components/rotation',
     'bento/components/scale',
     'bento/components/animation'
-], function (Sugar, Translation, Rotation, Scale, Animation) {
+], function (Utils, Translation, Rotation, Scale, Animation) {
     'use strict';
     return function (base, settings) {
+        if (settings.sprite) {
+            settings.animation = settings.sprite;
+        }
         Translation(base, settings);
         Scale(base, settings);
         Rotation(base, settings);
@@ -10047,9 +12102,9 @@ bento.define('bento/components/sprite', [
     };
 });
 bento.define('bento/components/translation', [
-    'bento/sugar',
+    'bento/utils',
     'bento/math/vector2'
-], function (Sugar, Vector2) {
+], function (Utils, Vector2) {
     'use strict';
     return function (base) {
         var set = false,
@@ -10074,7 +12129,7 @@ bento.define('bento/components/translation', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Sugar.combine(base, mixin);
+        Utils.combine(base, mixin);
         return base;
     };
 });
@@ -10249,19 +12304,38 @@ bento.define('bento/lib/requestanimationframe', [], function () {
 });
 /**
  *  Manager that controls all assets
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/asset', [
-    'bento/sugar'
-], function (Sugar) {
+    'bento/utils'
+], function (Utils) {
     'use strict';
     return function () {
         var assetGroups = {},
+            path = '',
             assets = {
                 audio: {},
                 json: {},
-                images: {}
+                images: {},
+                binary: {}
+            },
+            loadAudio = function (name, source, callback) {
+                var asset,
+                    i;
+                if (!Utils.isArray(source)) {
+                    source = [path + 'audio/' + source];
+                } else {
+                    // prepend asset paths
+                    for (i = 0; i < source.length; i += 1) {
+                        source[i] = path + 'audio/' + source[i];
+                    }
+                }
+                asset = new Howl({
+                    urls: source,
+                    onload: callback
+                });
+                assets.audio[name] = asset;
             },
             loadJSON = function (name, source, callback) {
                 var xhr = new XMLHttpRequest();
@@ -10302,7 +12376,7 @@ bento.define('bento/managers/asset', [
              */
             loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
                 var jsonName,
-                    keyCount = Sugar.getKeyLength(jsonFiles),
+                    keyCount = Utils.getKeyLength(jsonFiles),
                     loaded = 0,
                     callback = function (err, name, json) {
                         if (err) {
@@ -10311,10 +12385,10 @@ bento.define('bento/managers/asset', [
                         }
                         assetGroups[name] = json;
                         loaded += 1;
-                        if (Sugar.isDefined(onLoaded)) {
+                        if (Utils.isDefined(onLoaded)) {
                             onLoaded(loaded, keyCount);
                         }
-                        if (keyCount === loaded && Sugar.isDefined(onReady)) {
+                        if (keyCount === loaded && Utils.isDefined(onReady)) {
                             onReady(null);
                         }
                     };
@@ -10334,10 +12408,9 @@ bento.define('bento/managers/asset', [
                 var group = assetGroups[groupName],
                     asset,
                     assetsLoaded = 0,
-                    path = '',
                     assetCount = 0,
                     checkLoaded = function () {
-                        if (assetsLoaded === assetCount && Sugar.isDefined(onReady)) {
+                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
                             onReady(null);
                         }
                     },
@@ -10348,70 +12421,319 @@ bento.define('bento/managers/asset', [
                         }
                         assets.images[name] = image;
                         assetsLoaded += 1;
-                        if (Sugar.isDefined(onLoaded)) {
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadAudio = function () {
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
                             onLoaded(assetsLoaded, assetCount);
                         }
                         checkLoaded();
                     };
 
-                if (!Sugar.isDefined(group)) {
+                if (!Utils.isDefined(group)) {
                     onReady('Could not find asset group ' + groupName);
                     return;
                 }
                 // set path
-                if (Sugar.isDefined(group.path)) {
+                if (Utils.isDefined(group.path)) {
                     path += group.path;
                 }
                 // load images
-                if (Sugar.isDefined(group.images)) {
-                    assetCount += Sugar.getKeyLength(group.images);
+                if (Utils.isDefined(group.images)) {
+                    assetCount += Utils.getKeyLength(group.images);
                     for (asset in group.images) {
                         if (!group.images.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadImage(asset, path + group.images[asset], onLoadImage);
+                        loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
                     }
                 }
                 // load audio
-                if (Sugar.isDefined(group.audio)) {
-                    assetCount += Sugar.getKeyLength(group.audio);
+                if (Utils.isDefined(group.audio)) {
+                    assetCount += Utils.getKeyLength(group.audio);
+                    for (asset in group.audio) {
+                        if (!group.audio.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadAudio(asset, group.audio[asset], onLoadAudio);
+                    }
                 }
                 // load json
-                if (Sugar.isDefined(group.json)) {
-                    assetCount += Sugar.getKeyLength(group.json);
+                if (Utils.isDefined(group.json)) {
+                    assetCount += Utils.getKeyLength(group.json);
                 }
 
             },
-            unload = function () {},
+            unload = function (groupName) {},
             getImage = function (name) {
                 var asset = assets.images[name];
-                if (!Sugar.isDefined(asset)) {
+                if (!Utils.isDefined(asset)) {
                     throw ('Asset ' + name + ' could not be found');
                 }
                 return asset;
             },
             getSubImage = function (name) {
 
+            },
+            getJson = function (name) {
+                var asset = assets.json[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            getAudio = function (name) {
+                var asset = assets.audio[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            getAssets = function () {
+                return assets;
             };
         return {
             loadAssetGroups: loadAssetGroups,
             load: load,
             unload: unload,
             getImage: getImage,
-            getSubImage: getSubImage
+            getSubImage: getSubImage,
+            getJson: getJson,
+            getAudio: getAudio,
+            getAssets: getAssets
         };
+    };
+});
+/*
+ * Audio manager, will be rewritten in the future
+ */
+
+define('bento/managers/audio', [
+    'bento/utils'
+], function (Utils) {
+    return function (bento) {
+        var volume = 1,
+            mutedSound = false,
+            mutedMusic = false,
+            preventSounds = false,
+            howler,
+            musicLoop = false,
+            lastMusicPlayed = '',
+            currentMusicId = 0,
+            saveMuteSound,
+            saveMuteMusic,
+            assetManager = bento.assets,
+            canvasElement = bento.getCanvas(),
+            onVisibilityChanged = function (hidden) {
+                if (hidden) {
+                    // save audio preferences and mute
+                    saveMuteSound = mutedSound;
+                    saveMuteMusic = mutedMusic;
+                    obj.muteMusic(true);
+                    obj.muteSound(true);
+                } else {
+                    // reload audio preferences and replay music if necessary
+                    mutedSound = saveMuteSound;
+                    mutedMusic = saveMuteMusic;
+                    obj.playMusic(lastMusicPlayed, musicLoop);
+                }
+            },
+            obj = {
+                /* Sets the volume (0 = minimum, 1 = maximum)
+                 * @name setVolume
+                 * @function
+                 * @param {Number} value: the volume
+                 * @param {String} name: name of the sound currently playing
+                 */
+                setVolume: function (value) {
+                    var i, l, node;
+                    if (!Utils.isDefined(howler)) {
+                        return;
+                    }
+                    for (i = 0, l = howler._audioNode.length; i < l; ++i) {
+                        node = howler._audioNode[i];
+                        if (!node.paused) {
+                            howler.volume(value, node.id);
+                        }
+                    }
+                },
+                /* Plays a sound
+                 * @name playSound
+                 * @function
+                 * @param {String} name: name of the soundfile
+                 */
+                playSound: function (name) {
+                    if (!mutedSound && !preventSounds) {
+                        assetManager.getAudio(name).play();
+                    }
+                },
+                stopSound: function (name) {
+                    var i, l, node;
+                    assetManager.getAudio(name).stop();
+                },
+                /* Plays a music
+                 * @name playMusic
+                 * @function
+                 * @param {String} name: name of the soundfile
+                 */
+                playMusic: function (name, loop, onEnd) {
+                    lastMusicPlayed = name;
+                    if (Utils.isDefined(loop)) {
+                        musicLoop = loop;
+                    } else {
+                        musicLoop = false;
+                    }
+                    // set end event
+                    if (navigator.isCocoonJS && onEnd) {
+                        assetManager.getAudio(name)._audioNode[0].onended = onEnd;
+                    }
+                    if (!mutedMusic && lastMusicPlayed !== '') {
+                        if (navigator.isCocoonJS) {
+                            assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
+                            assetManager.getAudio(name)._audioNode[0].play();
+                            return;
+                        }
+                        assetManager.getAudio(name).loop(musicLoop);
+                        assetManager.getAudio(name).play(function (id) {
+                            currentMusicId = id;
+                        });
+                    }
+                },
+                stopMusic: function (name) {
+                    var i, l, node;
+                    if (navigator.isCocoonJS) {
+                        assetManager.getAudio(name)._audioNode[0].pause();
+                        return;
+                    }
+                    assetManager.getAudio(name).stop();
+                },
+                /* Mute or unmute all sound
+                 * @name muteSound
+                 * @function
+                 * @param {Boolean} mute: whether to mute or not
+                 */
+                muteSound: function (mute) {
+                    mutedSound = mute;
+                    if (mutedSound) {
+                        // we stop all sounds because setting volume is not supported on all devices
+                        this.stopAllSound();
+                    }
+                },
+                /* Mute or unmute all music
+                 * @name muteMusic
+                 * @function
+                 * @param {Boolean} mute: whether to mute or not
+                 */
+                muteMusic: function (mute, continueMusic) {
+                    var last = lastMusicPlayed;
+                    mutedMusic = mute;
+
+                    if (!Utils.isDefined(continueMusic)) {
+                        continueMusic = false;
+                    }
+                    if (mutedMusic) {
+                        obj.stopAllMusic();
+                        lastMusicPlayed = last;
+                    } else if (continueMusic && lastMusicPlayed !== '') {
+                        obj.playMusic(lastMusicPlayed, musicLoop);
+                    }
+                },
+                /* Stop all sound currently playing
+                 * @name stopAllSound
+                 * @function
+                 */
+                stopAllSound: function () {
+                    var sound,
+                        howls = assetManager.getAssets().audio;
+                    for (sound in howls) {
+                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
+                            howls[sound].stop();
+                        }
+                    }
+                },
+                /* Stop all sound currently playing
+                 * @name stopAllSound
+                 * @function
+                 */
+                stopAllMusic: function () {
+                    var sound,
+                        howls = assetManager.getAssets().audio;
+                    for (sound in howls) {
+                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
+                            if (navigator.isCocoonJS) {
+                                howls[sound]._audioNode[0].pause();
+                                continue;
+                            }
+                            howls[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
+                        }
+                    }
+                    lastMusicPlayed = '';
+                },
+                /* Prevents any sound from playing without interrupting current sounds
+                 * @name preventSounds
+                 * @function
+                 */
+                preventSounds: function (bool) {
+                    preventSounds = bool;
+                }
+            };
+        // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
+        if ('hidden' in document) {
+            document.addEventListener("visibilitychange", function () {
+                onVisibilityChanged(document.hidden);
+            }, false);
+        } else if ('mozHidden' in document) {
+            document.addEventListener("mozvisibilitychange", function () {
+                onVisibilityChanged(document.mozHidden);
+            }, false);
+        } else if ('webkitHidden' in document) {
+            document.addEventListener("webkitvisibilitychange", function () {
+                onVisibilityChanged(document.webkitHidden);
+            }, false);
+        } else if ('msHidden' in document) {
+            document.addEventListener("msvisibilitychange", function () {
+                onVisibilityChanged(document.msHidden);
+            }, false);
+        } else if ('onpagehide' in window) {
+            window.addEventListener('pagehide', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('pageshow', function () {
+                onVisibilityChanged(false);
+            }, false);
+        } else if ('onblur' in document) {
+            window.addEventListener('blur', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focus', function () {
+                onVisibilityChanged(false);
+            }, false);
+            visHandled = true;
+        } else if ('onfocusout' in document) {
+            window.addEventListener('focusout', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focusin', function () {
+                onVisibilityChanged(false);
+            }, false);
+        }
+        return obj;
     };
 });
 /**
  *  Manager that controls all events and input
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/input', [
-    'bento/sugar',
+    'bento/utils',
     'bento/math/vector2',
     'bento/eventsystem'
-], function (Sugar, Vector2, EventSystem) {
+], function (Utils, Vector2, EventSystem) {
     'use strict';
     return function (settings) {
         var isPaused = false,
@@ -10539,14 +12861,14 @@ bento.define('bento/managers/input', [
 });
 /**
  *  Manager that controls all objects
- *  @copyright (C) 2014 1HandGaming
+ *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/object', [
-    'bento/sugar'
-], function (Sugar) {
+    'bento/utils'
+], function (Utils) {
     'use strict';
-    return function (settings, debugObj) {
+    return function (settings, useDeltaT, debugObj) {
         var objects = [],
             lastTime = new Date().getTime(),
             cumulativeTime = 0,
@@ -10558,7 +12880,7 @@ bento.define('bento/managers/object', [
             useSort = true,
             isPaused = false,
             sort = function () {
-                Sugar.stableSort.inplace(objects, function (a, b) {
+                Utils.stableSort.inplace(objects, function (a, b) {
                     return a.z - b.z;
                 });
                 /*// default behavior
@@ -10597,6 +12919,9 @@ bento.define('bento/managers/object', [
                 lastTime = currentTime;
                 cumulativeTime += deltaT;
                 gameData.deltaT = deltaT;
+                if (useDeltaT) {
+                    cumulativeTime = 1000 / 60;
+                }
                 while (cumulativeTime >= 1000 / 60) {
                     cumulativeTime -= 1000 / 60;
                     if (cumulativeTime > 1000 / minimumFps) {
@@ -10604,6 +12929,9 @@ bento.define('bento/managers/object', [
                         while (cumulativeTime >= 1000 / 60) {
                             cumulativeTime -= 1000 / 60;
                         }
+                    }
+                    if (useDeltaT) {
+                        cumulativeTime = 0;
                     }
                     for (i = 0; i < objects.length; ++i) {
                         object = objects[i];
@@ -10681,7 +13009,7 @@ bento.define('bento/managers/object', [
                     family = object.getFamily();
                     for (i = 0; i < family.length; ++i) {
                         type = family[i];
-                        Sugar.removeObject(quickAccess[type], object);
+                        Utils.removeObject(quickAccess[type], object);
                     }
                 }
             },
@@ -10737,9 +13065,8 @@ bento.define('bento/managers/object', [
     };
 });
 /**
- *  @module Array2d
- *  @desc Represents a 2 dimensional array
- *  @copyright (C) 1HandGaming
+ *  Represents a 2 dimensional array
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento/math/array2d', function () {
@@ -10785,14 +13112,13 @@ bento.define('bento/math/array2d', function () {
     };
 });
 /**
- *  @module Matrix
- *  @desc Represents a matrix (a 2d array of Numbers)
- *  @copyright (C) 1HandGaming
+ *  Represents a matrix (a 2d array of Numbers)
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento/math/matrix', [
-    'bento/sugar'
-], function (Sugar) {
+    'bento/utils'
+], function (Utils) {
     'use strict';
     var add = function (other) {
             var newMatrix = this.clone();
@@ -10902,7 +13228,7 @@ bento.define('bento/math/matrix', [
                     var i, j;
                     for (j = 0; j < m; ++j) {
                         for (i = 0; i < n; ++i) {
-                            if (!Sugar.isFunction(callback)) {
+                            if (!Utils.isFunction(callback)) {
                                 throw ('Please supply a callback function');
                             }
                             callback(i, j, get(i, j));
@@ -10965,7 +13291,7 @@ bento.define('bento/math/matrix', [
                     for (j = 0; j < newHeight; ++j) {
                         for (i = 0; i < newWidth; ++i) {
                             newValue = 0;
-                            // loop through matrices
+                            // loop through matbentos
                             for (k = 0; k < oldWidth; ++k) {
                                 newValue += matrix.get(k, j) * get(i, k);
                             }
@@ -10995,13 +13321,13 @@ bento.define('bento/math/matrix', [
 /**
  *  @module Polygon
  *  @desc Represents a polygon
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento/math/polygon', [
-    'bento/sugar',
+    'bento/utils',
     'bento/math/rectangle'
-], function (Sugar, Rectangle) {
+], function (Utils, Rectangle) {
     'use strict';
     var isPolygon = function () {
             return true;
@@ -11169,10 +13495,10 @@ bento.define('bento/math/polygon', [
 /**
  *  @module Rectangle
  *  @desc Represents a rectangle
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
-bento.define('bento/math/rectangle', ['bento/sugar'], function (Sugar) {
+bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';
     var isRectangle = function () {
             return true;
@@ -11253,7 +13579,7 @@ bento.define('bento/math/rectangle', ['bento/sugar'], function (Sugar) {
 /**
  *  @module Vector2
  *  @desc Represents a 2 dimensional vector
- *  @copyright (C) 1HandGaming
+ *  @copyright (C) HeiGames
  *  @author Hernan Zhou
  */
 bento.define('bento/math/vector2', [], function () {
@@ -11365,9 +13691,313 @@ bento.define('bento/math/vector2', [], function () {
         };
     return module;
 });
+/**
+ *  @copyright (C) HeiGames
+ */
+bento.define('bento/screen', [
+    'bento/utils',
+    'bento',
+    'bento/math/rectangle'
+], function (Utils, Bento, Rectangle) {
+    'use strict';
+    return function (settings) {
+        /*settings = {
+            dimension: Rectangle, [optional / overwritten by tmx size]
+            tiled: String
+        }*/
+        var viewport = Bento.getViewport(),
+            dimension = settings.dimension || Rectangle(0, 0, 0, 0),
+            isShown = false,
+            module = {
+                setDimension: function (rectangle) {
+                    dimension.width = rectangle.width;
+                    dimension.height = rectangle.height;
+                },
+                getDimension: function () {
+                    return dimension;
+                },
+                add: function (object) {
+                    return Utils.combine(this, object);
+                },
+                setShown: function (bool) {
+                    if (!Utils.isBoolean(bool)) {
+                        throw 'Argument is not a boolean';
+                    } else {
+                        isShown = bool;
+                    }
+                },
+                onShow: function () {},
+                onHide: function () {
+                    // remove all objects
+                    Bento.removeAll();
+                    // reset viewport scroll when hiding screen
+                    viewport.x = 0;
+                    viewport.y = 0;
+
+                }
+            };
+
+        return module;
+    };
+});
+define('bento/tiled', [
+    'bento',
+    'bento/entity',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/math/polygon'
+], function (Bento, Entity, Vector2, Rectangle, Polygon) {
+    'use strict';
+    return function (settings, onReady) {
+        /*settings = {
+            name: String, // name of JSON file
+            background: Boolean // TODO false: splits tileLayer tile entities
+        }*/
+        var json = Bento.assets.getJSON(settings.name),
+            i,
+            j,
+            k,
+            width = json.width,
+            height = json.height,
+            layers = json.layers.length,
+            tileWidth = json.tilewidth,
+            tileHeight = json.tileheight,
+            canvas = document.createElement('canvas'),
+            context = canvas.getContext('2d'),
+            image,
+            layer,
+            firstgid,
+            object,
+            points,
+            objects = [],
+            shapes = [],
+            viewport = Bento.getViewport(),
+            background = Entity().add({
+                z: 0,
+                draw: function (gameData) {
+                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
+                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0);
+
+                    if (w === 0 || h === 0) {
+                        return;
+                    }
+                    // only draw the part in the viewport
+                    gameData.renderer.drawImage(
+                        canvas,
+                        ~~(Math.max(Math.min(viewport.x, canvas.width), 0)),
+                        ~~(Math.max(Math.min(viewport.y, canvas.height), 0)),
+                        ~~w,
+                        ~~h,
+                        0,
+                        0,
+                        ~~w,
+                        ~~h
+                    );
+                }
+            }),
+            getTileset = function (gid) {
+                var l,
+                    tileset,
+                    current = null;
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l < json.tilesets.length; ++l) {
+                    tileset = json.tilesets[l];
+                    if (tileset.firstgid <= gid) {
+                        current = tileset;
+                    }
+                }
+                return current;
+            },
+            getTile = function (tileset, gid) {
+                var index,
+                    tilesetWidth,
+                    tilesetHeight;
+                if (tileset === null) {
+                    return null;
+                }
+                index = gid - tileset.firstgid;
+                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
+                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
+                return {
+                    // convention: the tileset name must be equal to the asset name!
+                    image: Bento.assets.getImage(tileset.name),
+                    x: (index % tilesetWidth) * tileset.tilewidth,
+                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
+                    width: tileset.tilewidth,
+                    height: tileset.tileheight
+                };
+            },
+            drawTileLayer = function (x, y) {
+                var gid = layer.data[y * width + x],
+                    // get correct tileset and image
+                    tileset = getTileset(gid),
+                    tile = getTile(tileset, gid);
+                // draw background to offscreen canvas
+                if (tile) {
+                    context.drawImage(
+                        tile.image.image,
+                        tile.image.x + tile.x,
+                        tile.image.y + tile.y,
+                        tile.width,
+                        tile.height,
+                        x * tileWidth,
+                        y * tileHeight,
+                        tileWidth,
+                        tileHeight
+                    );
+                }
+            },
+            spawn = function (name, obj, tilesetProperties) {
+                var x = obj.x,
+                    y = obj.y,
+                    params = [],
+                    getParams = function (properties) {
+                        var prop;
+                        for (prop in properties) {
+                            if (!prop.match(/param\d+/)) {
+                                continue;
+                            }
+                            if (isNaN(properties[prop])) {
+                                params.push(properties[prop]);
+                            } else {
+                                params.push((+properties[prop]));
+                            }
+                        }
+                    };
+
+                // search params
+                getParams(tilesetProperties);
+                getParams(obj.properties);
+
+                require([name], function (Instance) {
+                    var instance = Instance.apply(this, params),
+                        origin = instance.getOrigin(),
+                        dimension = instance.getDimension(),
+                        prop,
+                        addProperties = function (properties) {
+                            var prop;
+                            for (prop in properties) {
+                                if (prop === 'module' || prop.match(/param\d+/)) {
+                                    continue;
+                                }
+                                if (properties.hasOwnProperty(prop)) {
+                                    // number or string?
+                                    if (isNaN(properties[prop])) {
+                                        instance[prop] = properties[prop];
+                                    } else {
+                                        instance[prop] = (+properties[prop]);
+                                    }
+                                }
+                            }
+                        };
+
+                    instance.setPosition({
+                        // tiled assumes origin (0, 1)
+                        x: x + (origin.x),
+                        y: y + (origin.y - dimension.height)
+                    });
+                    // add in tileset properties
+                    addProperties(tilesetProperties);
+                    // add tile properties
+                    addProperties(obj.properties);
+                    // add to game
+                    // Bento.objects.add(instance);
+                    objects.push(instance);
+                });
+            },
+            spawnObject = function (obj) {
+                var gid = obj.gid,
+                    // get tileset: should contain module name
+                    tileset = getTileset(gid),
+                    id = gid - tileset.firstgid,
+                    properties,
+                    moduleName;
+                if (tileset.tileproperties) {
+                    if (properties = tileset.tileproperties[id.toString()]) {
+                        moduleName = properties['module'];
+                    }
+                }
+                if (moduleName) {
+                    spawn(moduleName, obj, properties);
+                }
+            },
+            spawnShape = function (shape, type) {
+                /*var obj = Entity({
+                    z: 0,
+                    name: type,
+                    family: [type]
+                }).extend({
+                    update: function () {},
+                    draw: function () {}
+                });
+                obj.setBoundingBox(shape);
+                Bento.objects.add(obj);*/
+                shape.type = type;
+                shapes.push(shape);
+            };
+
+        // setup canvas
+        // to do: split up in multiple canvas elements due to max
+        // size
+        canvas.width = width * tileWidth;
+        canvas.height = height * tileHeight;
+
+        // loop through layers
+        for (k = 0; k < layers; ++k) {
+            layer = json.layers[k];
+            if (layer.type === 'tilelayer') {
+                // loop through tiles
+                for (j = 0; j < layer.height; ++j) {
+                    for (i = 0; i < layer.width; ++i) {
+                        drawTileLayer(i, j);
+                    }
+                }
+            } else if (layer.type === 'objectgroup') {
+                for (i = 0; i < layer.objects.length; ++i) {
+                    object = layer.objects[i];
+
+                    // default type is solid
+                    if (object.type === '') {
+                        object.type = 'solid';
+                    }
+
+                    if (object.gid) {
+                        // normal object
+                        spawnObject(object);
+                    } else if (object.polygon) {
+                        // polygon 
+                        points = [];
+                        for (j = 0; j < object.polygon.length; ++j) {
+                            points.push(object.polygon[j]);
+                            points[j].x += object.x;
+                            // shift polygons 1 pixel down?
+                            // something might be wrong with polygon definition
+                            points[j].y += object.y + 1;
+                        }
+                        spawnShape(Polygon(points), object.type);
+                    } else {
+                        // rectangle
+                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
+                    }
+                }
+            }
+        }
+
+        // add background to game
+        // Bento.objects.add(background);
+
+        return {
+            tileLayer: background,
+            objects: objects,
+            shapes: shapes,
+            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
+        };
+    };
+});
 bento.define('bento/renderers/canvas2d', [
-    'bento/sugar'
-], function (Sugar) {
+    'bento/utils'
+], function (Utils) {
     return function (canvas, context) {
         var renderer = {
             name: 'canvas2d',
@@ -11400,8 +14030,8 @@ bento.define('bento/renderers/canvas2d', [
     };
 });
 bento.define('bento/renderers/pixi', [
-    'bento/sugar'
-], function (Sugar) {
+    'bento/utils'
+], function (Utils) {
     return function (canvas, context) {
         var useBatch = false,
             pixiStage,
@@ -11430,7 +14060,6 @@ bento.define('bento/renderers/pixi', [
                 fillRect: function (color, x, y, w, h) {},
                 drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
                     currentObject.pixiTexture.setFrame(new PIXI.Rectangle(sx, sy, sw, sh));
-
                 },
                 flush: function () {
                     pixiRenderer.render(pixiStage);
@@ -11453,9 +14082,9 @@ bento.define('bento/renderers/pixi', [
     }
 });
 bento.define('bento/renderers/webgl', [
-    'bento/sugar',
+    'bento/utils',
     'bento/renderers/canvas2d'
-], function (Sugar, Canvas2d) {
+], function (Utils, Canvas2d) {
     return function (canvas, context) {
         var canWebGl,
             glRenderer,
@@ -11477,14 +14106,16 @@ bento.define('bento/renderers/webgl', [
                     glRenderer.rotate(angle);
                 },
                 fillRect: function (color, x, y, w, h) {
-                    glRenderer.color = [0, 0, 0, 1.0];
+                    var oldColor = glRenderer.color;
+                    // 
+                    renderer.setColor(color);
                     glRenderer.fillRect(x, y, w, h);
+                    glRenderer.color = oldColor;
                 },
                 drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
                     if (!image.texture) {
                         image.texture = window.GlSprites.createTexture2D(context, image);
                     }
-                    glRenderer.color = [1, 1, 1, 1];
                     glRenderer.drawImage(image.texture, sx, sy, sw, sh, x, y, sw, sh);
                 },
                 begin: function () {
@@ -11492,6 +14123,9 @@ bento.define('bento/renderers/webgl', [
                 },
                 flush: function () {
                     glRenderer.end();
+                },
+                setColor: function (cssStr) {
+                    glRenderer.color = colorString.getRgba(cssStr);
                 }
             };
         console.log('Init webgl as renderer');

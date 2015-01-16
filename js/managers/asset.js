@@ -4,8 +4,9 @@
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/asset', [
+    'bento/packedimage',
     'bento/utils'
-], function (Utils) {
+], function (PackedImage, Utils) {
     'use strict';
     return function () {
         var assetGroups = {},
@@ -16,6 +17,8 @@ bento.define('bento/managers/asset', [
                 images: {},
                 binary: {}
             },
+            texturePacker = {},
+            packs = [],
             loadAudio = function (name, source, callback) {
                 var asset,
                     i;
@@ -55,6 +58,34 @@ bento.define('bento/managers/asset', [
                     }
                 };
                 xhr.send(null);
+            },
+            loadBinary = function (name, source, success, failure) {
+                var xhr = new XMLHttpRequest(),
+                    arrayBuffer,
+                    byteArray,
+                    buffer,
+                    i = 0;
+
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + name);
+                };
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function (e) {
+                    var binary;
+                    arrayBuffer = xhr.response;
+                    if (arrayBuffer) {
+                        byteArray = new Uint8Array(arrayBuffer);
+                        buffer = [];
+                        for (i; i < byteArray.byteLength; ++i) {
+                            buffer[i] = String.fromCharCode(byteArray[i]);
+                        }
+                        // loadedAssets.binary[name] = buffer.join('');
+                        binary = buffer.join('');
+                        callback(null, name, binary);
+                    }
+                };
+                xhr.send();
             },
             loadImage = function (name, source, callback) {
                 // TODO: Implement failure
@@ -107,6 +138,7 @@ bento.define('bento/managers/asset', [
                     assetCount = 0,
                     checkLoaded = function () {
                         if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
+                            initPackedImages();
                             onReady(null);
                         }
                     },
@@ -121,6 +153,15 @@ bento.define('bento/managers/asset', [
                             onLoaded(assetsLoaded, assetCount);
                         }
                         checkLoaded();
+                    },
+                    onLoadPack = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        packs.push(name);
+                        assetsLoaded += 1;
                     },
                     onLoadAudio = function () {
                         assetsLoaded += 1;
@@ -148,6 +189,16 @@ bento.define('bento/managers/asset', [
                         loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
                     }
                 }
+                // load packed images
+                if (Utils.isDefined(group.texturePacker)) {
+                    assetCount += Utils.getKeyLength(group.texturePacker);
+                    for (asset in group.texturePacker) {
+                        if (!group.texturePacker.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadJSON(asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                    }
+                }
                 // load audio
                 if (Utils.isDefined(group.audio)) {
                     assetCount += Utils.getKeyLength(group.audio);
@@ -166,14 +217,23 @@ bento.define('bento/managers/asset', [
             },
             unload = function (groupName) {},
             getImage = function (name) {
+                var image, packedImage = texturePacker[name];
+                if (!packedImage) {
+                    image = getImageElement(name);
+                    if (!image) {
+                        throw 'Can not find ' + name;
+                    }
+                    packedImage = PackedImage(image);
+                    texturePacker[name] = packedImage;
+                }
+                return packedImage;
+            },
+            getImageElement = function (name) {
                 var asset = assets.images[name];
                 if (!Utils.isDefined(asset)) {
                     throw ('Asset ' + name + ' could not be found');
                 }
                 return asset;
-            },
-            getSubImage = function (name) {
-
             },
             getJson = function (name) {
                 var asset = assets.json[name];
@@ -191,13 +251,30 @@ bento.define('bento/managers/asset', [
             },
             getAssets = function () {
                 return assets;
+            },
+            initPackedImages = function () {
+                var frame, pack, i, image, json;
+                while (packs.length) {
+                    pack = packs.pop();
+                    image = getImageElement(pack);
+                    json = getJson(pack);
+
+                    // parse json
+                    for (i = 0; i < json.frames.length; ++i) {
+                        name = json.frames[i].filename;
+                        name = name.substring(0, name.length - 4);
+                        frame = json.frames[i].frame;
+                        texturePacker[name] = PackedImage(image, frame);
+                    }
+                    console.log(texturePacker);
+                }
             };
         return {
             loadAssetGroups: loadAssetGroups,
             load: load,
             unload: unload,
             getImage: getImage,
-            getSubImage: getSubImage,
+            getImageElement: getImageElement,
             getJson: getJson,
             getAudio: getAudio,
             getAssets: getAssets

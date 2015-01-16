@@ -13,7 +13,7 @@ bento.define('bento/components/sprite', [
         Translation(base, settings);
         Scale(base, settings);
         Rotation(base, settings);
-        Animation(base, settings)
+        Animation(base, settings);
         return base;
     };
 });
