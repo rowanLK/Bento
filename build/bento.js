@@ -3307,888 +3307,6 @@ var requirejs, require, define;
 
 })();
 
-/*!
- * FPSMeter 0.3.1 - 9th May 2013
- * https://github.com/Darsain/fpsmeter
- *
- * Licensed under the MIT license.
- * http://opensource.org/licenses/MIT
- */
-;(function (w, undefined) {
-    'use strict';
-
-    /**
-     * Create a new element.
-     *
-     * @param  {String} name Element type name.
-     *
-     * @return {Element}
-     */
-    function newEl(name) {
-        return document.createElement(name);
-    }
-
-    /**
-     * Apply theme CSS properties to element.
-     *
-     * @param  {Element} element DOM element.
-     * @param  {Object}  theme   Theme object.
-     *
-     * @return {Element}
-     */
-    function applyTheme(element, theme) {
-        for (var name in theme) {
-            try {
-                element.style[name] = theme[name];
-            } catch (e) {}
-        }
-        return element;
-    }
-
-    /**
-     * Return type of the value.
-     *
-     * @param  {Mixed} value
-     *
-     * @return {String}
-     */
-    function type(value) {
-        if (value == null) {
-            return String(value);
-        }
-
-        if (typeof value === 'object' || typeof value === 'function') {
-            return Object.prototype.toString.call(value).match(/\s([a-z]+)/i)[1].toLowerCase() || 'object';
-        }
-
-        return typeof value;
-    }
-
-    /**
-     * Check whether the value is in an array.
-     *
-     * @param  {Mixed} value
-     * @param  {Array} array
-     *
-     * @return {Integer} Array index or -1 when not found.
-     */
-    function inArray(value, array) {
-        if (type(array) !== 'array') {
-            return -1;
-        }
-        if (array.indexOf) {
-            return array.indexOf(value);
-        }
-        for (var i = 0, l = array.length; i < l; i++) {
-            if (array[i] === value) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Poor man's deep object extend.
-     *
-     * Example:
-     *   extend({}, defaults, options);
-     *
-     * @return {Void}
-     */
-    function extend() {
-        var args = arguments;
-        for (var key in args[1]) {
-            if (args[1].hasOwnProperty(key)) {
-                switch (type(args[1][key])) {
-                    case 'object':
-                        args[0][key] = extend({}, args[0][key], args[1][key]);
-                        break;
-
-                    case 'array':
-                        args[0][key] = args[1][key].slice(0);
-                        break;
-
-                    default:
-                        args[0][key] = args[1][key];
-                }
-            }
-        }
-        return args.length > 2 ?
-            extend.apply(null, [args[0]].concat(Array.prototype.slice.call(args, 2))) :
-            args[0];
-    }
-
-    /**
-     * Convert HSL color to HEX string.
-     *
-     * @param  {Array} hsl Array with [hue, saturation, lightness].
-     *
-     * @return {Array} Array with [red, green, blue].
-     */
-    function hslToHex(h, s, l) {
-        var r, g, b;
-        var v, min, sv, sextant, fract, vsf;
-
-        if (l <= 0.5) {
-            v = l * (1 + s);
-        } else {
-            v = l + s - l * s;
-        }
-
-        if (v === 0) {
-            return '#000';
-        } else {
-            min = 2 * l - v;
-            sv = (v - min) / v;
-            h = 6 * h;
-            sextant = Math.floor(h);
-            fract = h - sextant;
-            vsf = v * sv * fract;
-            if (sextant === 0 || sextant === 6) {
-                r = v;
-                g = min + vsf;
-                b = min;
-            } else if (sextant === 1) {
-                r = v - vsf;
-                g = v;
-                b = min;
-            } else if (sextant === 2) {
-                r = min;
-                g = v;
-                b = min + vsf;
-            } else if (sextant === 3) {
-                r = min;
-                g = v - vsf;
-                b = v;
-            } else if (sextant === 4) {
-                r = min + vsf;
-                g = min;
-                b = v;
-            } else {
-                r = v;
-                g = min;
-                b = v - vsf;
-            }
-            return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
-        }
-    }
-
-    /**
-     * Helper function for hslToHex.
-     */
-    function componentToHex(c) {
-        c = Math.round(c * 255).toString(16);
-        return c.length === 1 ? '0' + c : c;
-    }
-
-    /**
-     * Manage element event listeners.
-     *
-     * @param  {Node}     element
-     * @param  {Event}    eventName
-     * @param  {Function} handler
-     * @param  {Bool}     remove
-     *
-     * @return {Void}
-     */
-    function listener(element, eventName, handler, remove) {
-        if (element.addEventListener) {
-            element[remove ? 'removeEventListener' : 'addEventListener'](eventName, handler, false);
-        } else if (element.attachEvent) {
-            element[remove ? 'detachEvent' : 'attachEvent']('on' + eventName, handler);
-        }
-    }
-
-    // Preferred timing funtion
-    var getTime;
-    (function () {
-        var perf = w.performance;
-        if (perf && (perf.now || perf.webkitNow)) {
-            var perfNow = perf.now ? 'now' : 'webkitNow';
-            getTime = perf[perfNow].bind(perf);
-        } else {
-            getTime = function () {
-                return +new Date();
-            };
-        }
-    }());
-
-    // Local WindowAnimationTiming interface polyfill
-    var cAF = w.cancelAnimationFrame || w.cancelRequestAnimationFrame;
-    var rAF = w.requestAnimationFrame;
-    (function () {
-        var vendors = ['moz', 'webkit', 'o'];
-        var lastTime = 0;
-
-        // For a more accurate WindowAnimationTiming interface implementation, ditch the native
-        // requestAnimationFrame when cancelAnimationFrame is not present (older versions of Firefox)
-        for (var i = 0, l = vendors.length; i < l && !cAF; ++i) {
-            cAF = w[vendors[i]+'CancelAnimationFrame'] || w[vendors[i]+'CancelRequestAnimationFrame'];
-            rAF = cAF && w[vendors[i]+'RequestAnimationFrame'];
-        }
-
-        if (!cAF) {
-            rAF = function (callback) {
-                var currTime = getTime();
-                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-                lastTime = currTime + timeToCall;
-                return w.setTimeout(function () { callback(currTime + timeToCall); }, timeToCall);
-            };
-
-            cAF = function (id) {
-                clearTimeout(id);
-            };
-        }
-    }());
-
-    // Property name for assigning element text content
-    var textProp = type(document.createElement('div').textContent) === 'string' ? 'textContent' : 'innerText';
-
-    /**
-     * FPSMeter class.
-     *
-     * @param {Element} anchor  Element to append the meter to. Default is document.body.
-     * @param {Object}  options Object with options.
-     */
-    function FPSMeter(anchor, options) {
-        // Optional arguments
-        if (type(anchor) === 'object' && anchor.nodeType === undefined) {
-            options = anchor;
-            anchor = document.body;
-        }
-        if (!anchor) {
-            anchor = document.body;
-        }
-
-        // Private properties
-        var self = this;
-        var o = extend({}, FPSMeter.defaults, options || {});
-
-        var el = {};
-        var cols = [];
-        var theme, heatmaps;
-        var heatDepth = 100;
-        var heating = [];
-
-        var thisFrameTime = 0;
-        var frameTime = o.threshold;
-        var frameStart = 0;
-        var lastLoop = getTime() - frameTime;
-        var time;
-
-        var fpsHistory = [];
-        var durationHistory = [];
-
-        var frameID, renderID;
-        var showFps = o.show === 'fps';
-        var graphHeight, count, i, j;
-
-        // Exposed properties
-        self.options = o;
-        self.fps = 0;
-        self.duration = 0;
-        self.isPaused = 0;
-
-        /**
-         * Tick start for measuring the actual rendering duration.
-         *
-         * @return {Void}
-         */
-        self.tickStart = function () {
-            frameStart = getTime();
-        };
-
-        /**
-         * FPS tick.
-         *
-         * @return {Void}
-         */
-        self.tick = function () {
-            time = getTime();
-            thisFrameTime = time - lastLoop;
-            frameTime += (thisFrameTime - frameTime) / o.smoothing;
-            self.fps = 1000 / frameTime;
-            self.duration = frameStart < lastLoop ? frameTime : time - frameStart;
-            lastLoop = time;
-        };
-
-        /**
-         * Pause display rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.pause = function () {
-            if (frameID) {
-                self.isPaused = 1;
-                clearTimeout(frameID);
-                cAF(frameID);
-                cAF(renderID);
-                frameID = renderID = 0;
-            }
-            return self;
-        };
-
-        /**
-         * Resume display rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.resume = function () {
-            if (!frameID) {
-                self.isPaused = 0;
-                requestRender();
-            }
-            return self;
-        };
-
-        /**
-         * Update options.
-         *
-         * @param {String} name  Option name.
-         * @param {Mixed}  value New value.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.set = function (name, value) {
-            o[name] = value;
-            showFps = o.show === 'fps';
-
-            // Rebuild or reposition elements when specific option has been updated
-            if (inArray(name, rebuilders) !== -1) {
-                createMeter();
-            }
-            if (inArray(name, repositioners) !== -1) {
-                positionMeter();
-            }
-            return self;
-        };
-
-        /**
-         * Change meter into rendering duration mode.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.showDuration = function () {
-            self.set('show', 'ms');
-            return self;
-        };
-
-        /**
-         * Change meter into FPS mode.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.showFps = function () {
-            self.set('show', 'fps');
-            return self;
-        };
-
-        /**
-         * Toggles between show: 'fps' and show: 'duration'.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.toggle = function () {
-            self.set('show', showFps ? 'ms' : 'fps');
-            return self;
-        };
-
-        /**
-         * Hide the FPSMeter. Also pauses the rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.hide = function () {
-            self.pause();
-            el.container.style.display = 'none';
-            return self;
-        };
-
-        /**
-         * Show the FPSMeter. Also resumes the rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.show = function () {
-            self.resume();
-            el.container.style.display = 'block';
-            return self;
-        };
-
-        /**
-         * Check the current FPS and save it in history.
-         *
-         * @return {Void}
-         */
-        function historyTick() {
-            for (i = o.history; i--;) {
-                fpsHistory[i] = i === 0 ? self.fps : fpsHistory[i-1];
-                durationHistory[i] = i === 0 ? self.duration : durationHistory[i-1];
-            }
-        }
-
-        /**
-         * Returns heat hex color based on values passed.
-         *
-         * @param  {Integer} heatmap
-         * @param  {Integer} value
-         * @param  {Integer} min
-         * @param  {Integer} max
-         *
-         * @return {Integer}
-         */
-        function getHeat(heatmap, value, min, max) {
-            return heatmaps[0|heatmap][Math.round(Math.min((value - min) / (max - min) * heatDepth, heatDepth))];
-        }
-
-        /**
-         * Update counter number and legend.
-         *
-         * @return {Void}
-         */
-        function updateCounter() {
-            // Update legend only when changed
-            if (el.legend.fps !== showFps) {
-                el.legend.fps = showFps;
-                el.legend[textProp] = showFps ? 'FPS' : 'ms';
-            }
-            // Update counter with a nicely formated & readable number
-            count = showFps ? self.fps : self.duration;
-            el.count[textProp] = count > 999 ? '999+' : count.toFixed(count > 99 ? 0 : o.decimals);
-        }
-
-        /**
-         * Render current FPS state.
-         *
-         * @return {Void}
-         */
-        function render() {
-            time = getTime();
-            // If renderer stopped reporting, do a simulated drop to 0 fps
-            if (lastLoop < time - o.threshold) {
-                self.fps -= self.fps / Math.max(1, o.smoothing * 60 / o.interval);
-                self.duration = 1000 / self.fps;
-            }
-
-            historyTick();
-            updateCounter();
-
-            // Apply heat to elements
-            if (o.heat) {
-                if (heating.length) {
-                    for (i = heating.length; i--;) {
-                        heating[i].el.style[theme[heating[i].name].heatOn] = showFps ?
-                            getHeat(theme[heating[i].name].heatmap, self.fps, 0, o.maxFps) :
-                            getHeat(theme[heating[i].name].heatmap, self.duration, o.threshold, 0);
-                    }
-                }
-
-                if (el.graph && theme.column.heatOn) {
-                    for (i = cols.length; i--;) {
-                        cols[i].style[theme.column.heatOn] = showFps ?
-                            getHeat(theme.column.heatmap, fpsHistory[i], 0, o.maxFps) :
-                            getHeat(theme.column.heatmap, durationHistory[i], o.threshold, 0);
-                    }
-                }
-            }
-
-            // Update graph columns height
-            if (el.graph) {
-                for (j = 0; j < o.history; j++) {
-                    cols[j].style.height = (showFps ?
-                        (fpsHistory[j] ? Math.round(graphHeight / o.maxFps * Math.min(fpsHistory[j], o.maxFps)) : 0) :
-                        (durationHistory[j] ? Math.round(graphHeight / o.threshold * Math.min(durationHistory[j], o.threshold)) : 0)
-                    ) + 'px';
-                }
-            }
-        }
-
-        /**
-         * Request rendering loop.
-         *
-         * @return {Int} Animation frame index.
-         */
-        function requestRender() {
-            if (o.interval < 20) {
-                frameID = rAF(requestRender);
-                render();
-            } else {
-                frameID = setTimeout(requestRender, o.interval);
-                renderID = rAF(render);
-            }
-        }
-
-        /**
-         * Meter events handler.
-         *
-         * @return {Void}
-         */
-        function eventHandler(event) {
-            event = event || window.event;
-            if (event.preventDefault) {
-                event.preventDefault();
-                event.stopPropagation();
-            } else {
-                event.returnValue = false;
-                event.cancelBubble = true;
-            }
-            self.toggle();
-        }
-
-        /**
-         * Destroys the current FPSMeter instance.
-         *
-         * @return {Void}
-         */
-        self.destroy = function () {
-            // Stop rendering
-            self.pause();
-            // Remove elements
-            removeMeter();
-            // Stop listening
-            self.tick = self.tickStart = function () {};
-        };
-
-        /**
-         * Remove meter element.
-         *
-         * @return {Void}
-         */
-        function removeMeter() {
-            // Unbind listeners
-            if (o.toggleOn) {
-                listener(el.container, o.toggleOn, eventHandler, 1);
-            }
-            // Detach element
-            anchor.removeChild(el.container);
-        }
-
-        /**
-         * Sets the theme, and generates heatmaps when needed.
-         */
-        function setTheme() {
-            theme = FPSMeter.theme[o.theme];
-
-            // Generate heatmaps
-            heatmaps = theme.compiledHeatmaps || [];
-            if (!heatmaps.length && theme.heatmaps.length) {
-                for (j = 0; j < theme.heatmaps.length; j++) {
-                    heatmaps[j] = [];
-                    for (i = 0; i <= heatDepth; i++) {
-                        heatmaps[j][i] = hslToHex(0.33 / heatDepth * i, theme.heatmaps[j].saturation, theme.heatmaps[j].lightness);
-                    }
-                }
-                theme.compiledHeatmaps = heatmaps;
-            }
-        }
-
-        /**
-         * Creates and attaches the meter element.
-         *
-         * @return {Void}
-         */
-        function createMeter() {
-            // Remove old meter if present
-            if (el.container) {
-                removeMeter();
-            }
-
-            // Set theme
-            setTheme();
-
-            // Create elements
-            el.container = applyTheme(newEl('div'), theme.container);
-            el.count = el.container.appendChild(applyTheme(newEl('div'), theme.count));
-            el.legend = el.container.appendChild(applyTheme(newEl('div'), theme.legend));
-            el.graph = o.graph ? el.container.appendChild(applyTheme(newEl('div'), theme.graph)) : 0;
-
-            // Add elements to heating array
-            heating.length = 0;
-            for (var key in el) {
-                if (el[key] && theme[key].heatOn) {
-                    heating.push({
-                        name: key,
-                        el: el[key]
-                    });
-                }
-            }
-
-            // Graph
-            cols.length = 0;
-            if (el.graph) {
-                // Create graph
-                el.graph.style.width = (o.history * theme.column.width + (o.history - 1) * theme.column.spacing) + 'px';
-
-                // Add columns
-                for (i = 0; i < o.history; i++) {
-                    cols[i] = el.graph.appendChild(applyTheme(newEl('div'), theme.column));
-                    cols[i].style.position = 'absolute';
-                    cols[i].style.bottom = 0;
-                    cols[i].style.right = (i * theme.column.width + i * theme.column.spacing) + 'px';
-                    cols[i].style.width = theme.column.width + 'px';
-                    cols[i].style.height = '0px';
-                }
-            }
-
-            // Set the initial state
-            positionMeter();
-            updateCounter();
-
-            // Append container to anchor
-            anchor.appendChild(el.container);
-
-            // Retrieve graph height after it was appended to DOM
-            if (el.graph) {
-                graphHeight = el.graph.clientHeight;
-            }
-
-            // Add event listeners
-            if (o.toggleOn) {
-                if (o.toggleOn === 'click') {
-                    el.container.style.cursor = 'pointer';
-                }
-                listener(el.container, o.toggleOn, eventHandler);
-            }
-        }
-
-        /**
-         * Positions the meter based on options.
-         *
-         * @return {Void}
-         */
-        function positionMeter() {
-            applyTheme(el.container, o);
-        }
-
-        /**
-         * Construct.
-         */
-        (function () {
-            // Create meter element
-            createMeter();
-            // Start rendering
-            requestRender();
-        }());
-    }
-
-    // Expose the extend function
-    FPSMeter.extend = extend;
-
-    // Expose the FPSMeter class
-    window.FPSMeter = FPSMeter;
-
-    // Default options
-    FPSMeter.defaults = {
-        interval:  100,     // Update interval in milliseconds.
-        smoothing: 10,      // Spike smoothing strength. 1 means no smoothing.
-        show:      'fps',   // Whether to show 'fps', or 'ms' = frame duration in milliseconds.
-        toggleOn:  'click', // Toggle between show 'fps' and 'ms' on this event.
-        decimals:  1,       // Number of decimals in FPS number. 1 = 59.9, 2 = 59.94, ...
-        maxFps:    60,      // Max expected FPS value.
-        threshold: 100,     // Minimal tick reporting interval in milliseconds.
-
-        // Meter position
-        position: 'absolute', // Meter position.
-        zIndex:   10,         // Meter Z index.
-        left:     '5px',      // Meter left offset.
-        top:      '5px',      // Meter top offset.
-        right:    'auto',     // Meter right offset.
-        bottom:   'auto',     // Meter bottom offset.
-        margin:   '0 0 0 0',  // Meter margin. Helps with centering the counter when left: 50%;
-
-        // Theme
-        theme: 'dark', // Meter theme. Build in: 'dark', 'light', 'transparent', 'colorful'.
-        heat:  0,      // Allow themes to use coloring by FPS heat. 0 FPS = red, maxFps = green.
-
-        // Graph
-        graph:   0, // Whether to show history graph.
-        history: 20 // How many history states to show in a graph.
-    };
-
-    // Option names that trigger FPSMeter rebuild or reposition when modified
-    var rebuilders = [
-        'toggleOn',
-        'theme',
-        'heat',
-        'graph',
-        'history'
-    ];
-    var repositioners = [
-        'position',
-        'zIndex',
-        'left',
-        'top',
-        'right',
-        'bottom',
-        'margin'
-    ];
-}(window));
-;(function (w, FPSMeter, undefined) {
-    'use strict';
-
-    // Themes object
-    FPSMeter.theme = {};
-
-    // Base theme with layout, no colors
-    var base = FPSMeter.theme.base = {
-        heatmaps: [],
-        container: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            padding: '5px',
-            minWidth: '95px',
-            height: '30px',
-            lineHeight: '30px',
-            textAlign: 'right',
-            textShadow: 'none'
-        },
-        count: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            padding: '5px 10px',
-            height: '30px',
-            fontSize: '24px',
-            fontFamily: 'Consolas, Andale Mono, monospace',
-            zIndex: 2
-        },
-        legend: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            padding: '5px 10px',
-            height: '30px',
-            fontSize: '12px',
-            lineHeight: '32px',
-            fontFamily: 'sans-serif',
-            textAlign: 'left',
-            zIndex: 2
-        },
-        graph: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            position: 'relative',
-            boxSizing: 'padding-box',
-            MozBoxSizing: 'padding-box',
-            height: '100%',
-            zIndex: 1
-        },
-        column: {
-            // Settings
-            width: 4,
-            spacing: 1,
-            heatOn: null,
-            heatmap: null
-        }
-    };
-
-    // Dark theme
-    FPSMeter.theme.dark = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.8,
-            lightness: 0.8
-        }],
-        container: {
-            background: '#222',
-            color: '#fff',
-            border: '1px solid #1a1a1a',
-            textShadow: '1px 1px 0 #222'
-        },
-        count: {
-            heatOn: 'color'
-        },
-        column: {
-            background: '#3f3f3f'
-        }
-    });
-
-    // Light theme
-    FPSMeter.theme.light = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.5,
-            lightness: 0.5
-        }],
-        container: {
-            color: '#666',
-            background: '#fff',
-            textShadow: '1px 1px 0 rgba(255,255,255,.5), -1px -1px 0 rgba(255,255,255,.5)',
-            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
-        },
-        count: {
-            heatOn: 'color'
-        },
-        column: {
-            background: '#eaeaea'
-        }
-    });
-
-    // Colorful theme
-    FPSMeter.theme.colorful = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.5,
-            lightness: 0.6
-        }],
-        container: {
-            heatOn: 'backgroundColor',
-            background: '#888',
-            color: '#fff',
-            textShadow: '1px 1px 0 rgba(0,0,0,.2)',
-            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
-        },
-        column: {
-            background: '#777',
-            backgroundColor: 'rgba(0,0,0,.2)'
-        }
-    });
-
-    // Transparent theme
-    FPSMeter.theme.transparent = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.8,
-            lightness: 0.5
-        }],
-        container: {
-            padding: 0,
-            color: '#fff',
-            textShadow: '1px 1px 0 rgba(0,0,0,.5)'
-        },
-        count: {
-            padding: '0 5px',
-            height: '40px',
-            lineHeight: '40px'
-        },
-        legend: {
-            padding: '0 5px',
-            height: '40px',
-            lineHeight: '42px'
-        },
-        graph: {
-            height: '40px'
-        },
-        column: {
-            width: 5,
-            background: '#999',
-            heatOn: 'backgroundColor',
-            opacity: 0.5
-        }
-    });
-}(window, FPSMeter));
 // https://github.com/harthur/color-string
 
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
@@ -11896,18 +11014,19 @@ bento.define('bento', [
             document.body.appendChild(debug.debugBar);
         },
         setupCanvas = function (settings, callback) {
-            var wrapper;
+            var parent;
             canvas = document.getElementById(settings.canvasId);
 
             if (!canvas) {
                 // no canvas, create it
-                wrapper = document.getElementById('wrapper');
-                if (!wrapper) {
-                    throw 'Supply a canvasId to settings or add a wrapper div';
+                parent = document.getElementById('wrapper');
+                if (!parent) {
+                    // just append it to the document body
+                    parent = document.body;
                 }
                 canvas = document.createElement(navigator.isCocoonJS ? 'screencanvas' : 'canvas');
                 canvas.id = settings.canvasId;
-                wrapper.appendChild(canvas);
+                parent.appendChild(canvas);
             }
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -12029,63 +11148,6 @@ bento.define('bento', [
         };
     return module;
 });
-/**
- *  @copyright (C) HeiGames
- */
-bento.define('bento/director', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    var screens = {},
-        currentScreen = null,
-        getScreen = function (name) {
-            return screens[name];
-        },
-        director = {
-            addScreen: function (screen) {
-                if (!screen.name) {
-                    throw 'Add name property to screen';
-                }
-                screens[screen.name] = screen;
-            },
-            showScreen: function (name, callback) {
-                if (currentScreen !== null) {
-                    director.hideScreen();
-                }
-                currentScreen = screens[name];
-                if (currentScreen) {
-                    if (currentScreen.onShow) {
-                        currentScreen.onShow();
-                    }
-                    if (callback) {
-                        callback();
-                    }
-                } else {
-                    // load asynchronously
-                    bento.require([name], function (screen) {
-                        if (!screen.name) {
-                            screen.name = name;
-                        }
-                        director.addScreen(screen);
-                        // try again
-                        director.showScreen(name, callback);
-                    });
-                }
-            },
-            hideScreen: function () {
-                if (!currentScreen) {
-                    return;
-                }
-                currentScreen.onHide();
-                currentScreen = null;
-            },
-            getCurrentScreen: function () {
-                return currentScreen;
-            }
-        };
-
-    return director;
-});
 /*
  * A base object to hold components
  * @copyright (C) HeiGames
@@ -12193,6 +11255,12 @@ bento.define('bento/entity', [
                 setPosition: function (value) {
                     position.x = value.x;
                     position.y = value.y;
+                },
+                setPositionX: function (value) {
+                    position.x = value;
+                },
+                setPositionY: function (value) {
+                    position.y = value;
                 },
                 getDimension: function () {
                     return dimension;
@@ -12356,7 +11424,7 @@ bento.define('bento/entity', [
                 entity.setOriginRelative(settings.originRelative);
             }
             if (settings.name) {
-                entity.setName(settings.name);
+                entity.name = settings.name;
             }
             if (settings.family) {
                 if (!Utils.isArray(settings.family)) {
@@ -12978,6 +12046,7 @@ bento.define('bento/components/sprite', [
         Scale(base, settings);
         Rotation(base, settings);
         Animation(base, settings);
+        base.sprite = base.animation;
         return base;
     };
 });
@@ -13143,6 +12212,888 @@ bento.define('bento/lib/domready', [], function () {
     return domReady;
 });
 
+/*!
+ * FPSMeter 0.3.1 - 9th May 2013
+ * https://github.com/Darsain/fpsmeter
+ *
+ * Licensed under the MIT license.
+ * http://opensource.org/licenses/MIT
+ */
+;(function (w, undefined) {
+    'use strict';
+
+    /**
+     * Create a new element.
+     *
+     * @param  {String} name Element type name.
+     *
+     * @return {Element}
+     */
+    function newEl(name) {
+        return document.createElement(name);
+    }
+
+    /**
+     * Apply theme CSS properties to element.
+     *
+     * @param  {Element} element DOM element.
+     * @param  {Object}  theme   Theme object.
+     *
+     * @return {Element}
+     */
+    function applyTheme(element, theme) {
+        for (var name in theme) {
+            try {
+                element.style[name] = theme[name];
+            } catch (e) {}
+        }
+        return element;
+    }
+
+    /**
+     * Return type of the value.
+     *
+     * @param  {Mixed} value
+     *
+     * @return {String}
+     */
+    function type(value) {
+        if (value == null) {
+            return String(value);
+        }
+
+        if (typeof value === 'object' || typeof value === 'function') {
+            return Object.prototype.toString.call(value).match(/\s([a-z]+)/i)[1].toLowerCase() || 'object';
+        }
+
+        return typeof value;
+    }
+
+    /**
+     * Check whether the value is in an array.
+     *
+     * @param  {Mixed} value
+     * @param  {Array} array
+     *
+     * @return {Integer} Array index or -1 when not found.
+     */
+    function inArray(value, array) {
+        if (type(array) !== 'array') {
+            return -1;
+        }
+        if (array.indexOf) {
+            return array.indexOf(value);
+        }
+        for (var i = 0, l = array.length; i < l; i++) {
+            if (array[i] === value) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Poor man's deep object extend.
+     *
+     * Example:
+     *   extend({}, defaults, options);
+     *
+     * @return {Void}
+     */
+    function extend() {
+        var args = arguments;
+        for (var key in args[1]) {
+            if (args[1].hasOwnProperty(key)) {
+                switch (type(args[1][key])) {
+                    case 'object':
+                        args[0][key] = extend({}, args[0][key], args[1][key]);
+                        break;
+
+                    case 'array':
+                        args[0][key] = args[1][key].slice(0);
+                        break;
+
+                    default:
+                        args[0][key] = args[1][key];
+                }
+            }
+        }
+        return args.length > 2 ?
+            extend.apply(null, [args[0]].concat(Array.prototype.slice.call(args, 2))) :
+            args[0];
+    }
+
+    /**
+     * Convert HSL color to HEX string.
+     *
+     * @param  {Array} hsl Array with [hue, saturation, lightness].
+     *
+     * @return {Array} Array with [red, green, blue].
+     */
+    function hslToHex(h, s, l) {
+        var r, g, b;
+        var v, min, sv, sextant, fract, vsf;
+
+        if (l <= 0.5) {
+            v = l * (1 + s);
+        } else {
+            v = l + s - l * s;
+        }
+
+        if (v === 0) {
+            return '#000';
+        } else {
+            min = 2 * l - v;
+            sv = (v - min) / v;
+            h = 6 * h;
+            sextant = Math.floor(h);
+            fract = h - sextant;
+            vsf = v * sv * fract;
+            if (sextant === 0 || sextant === 6) {
+                r = v;
+                g = min + vsf;
+                b = min;
+            } else if (sextant === 1) {
+                r = v - vsf;
+                g = v;
+                b = min;
+            } else if (sextant === 2) {
+                r = min;
+                g = v;
+                b = min + vsf;
+            } else if (sextant === 3) {
+                r = min;
+                g = v - vsf;
+                b = v;
+            } else if (sextant === 4) {
+                r = min + vsf;
+                g = min;
+                b = v;
+            } else {
+                r = v;
+                g = min;
+                b = v - vsf;
+            }
+            return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
+        }
+    }
+
+    /**
+     * Helper function for hslToHex.
+     */
+    function componentToHex(c) {
+        c = Math.round(c * 255).toString(16);
+        return c.length === 1 ? '0' + c : c;
+    }
+
+    /**
+     * Manage element event listeners.
+     *
+     * @param  {Node}     element
+     * @param  {Event}    eventName
+     * @param  {Function} handler
+     * @param  {Bool}     remove
+     *
+     * @return {Void}
+     */
+    function listener(element, eventName, handler, remove) {
+        if (element.addEventListener) {
+            element[remove ? 'removeEventListener' : 'addEventListener'](eventName, handler, false);
+        } else if (element.attachEvent) {
+            element[remove ? 'detachEvent' : 'attachEvent']('on' + eventName, handler);
+        }
+    }
+
+    // Preferred timing funtion
+    var getTime;
+    (function () {
+        var perf = w.performance;
+        if (perf && (perf.now || perf.webkitNow)) {
+            var perfNow = perf.now ? 'now' : 'webkitNow';
+            getTime = perf[perfNow].bind(perf);
+        } else {
+            getTime = function () {
+                return +new Date();
+            };
+        }
+    }());
+
+    // Local WindowAnimationTiming interface polyfill
+    var cAF = w.cancelAnimationFrame || w.cancelRequestAnimationFrame;
+    var rAF = w.requestAnimationFrame;
+    (function () {
+        var vendors = ['moz', 'webkit', 'o'];
+        var lastTime = 0;
+
+        // For a more accurate WindowAnimationTiming interface implementation, ditch the native
+        // requestAnimationFrame when cancelAnimationFrame is not present (older versions of Firefox)
+        for (var i = 0, l = vendors.length; i < l && !cAF; ++i) {
+            cAF = w[vendors[i]+'CancelAnimationFrame'] || w[vendors[i]+'CancelRequestAnimationFrame'];
+            rAF = cAF && w[vendors[i]+'RequestAnimationFrame'];
+        }
+
+        if (!cAF) {
+            rAF = function (callback) {
+                var currTime = getTime();
+                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+                lastTime = currTime + timeToCall;
+                return w.setTimeout(function () { callback(currTime + timeToCall); }, timeToCall);
+            };
+
+            cAF = function (id) {
+                clearTimeout(id);
+            };
+        }
+    }());
+
+    // Property name for assigning element text content
+    var textProp = type(document.createElement('div').textContent) === 'string' ? 'textContent' : 'innerText';
+
+    /**
+     * FPSMeter class.
+     *
+     * @param {Element} anchor  Element to append the meter to. Default is document.body.
+     * @param {Object}  options Object with options.
+     */
+    function FPSMeter(anchor, options) {
+        // Optional arguments
+        if (type(anchor) === 'object' && anchor.nodeType === undefined) {
+            options = anchor;
+            anchor = document.body;
+        }
+        if (!anchor) {
+            anchor = document.body;
+        }
+
+        // Private properties
+        var self = this;
+        var o = extend({}, FPSMeter.defaults, options || {});
+
+        var el = {};
+        var cols = [];
+        var theme, heatmaps;
+        var heatDepth = 100;
+        var heating = [];
+
+        var thisFrameTime = 0;
+        var frameTime = o.threshold;
+        var frameStart = 0;
+        var lastLoop = getTime() - frameTime;
+        var time;
+
+        var fpsHistory = [];
+        var durationHistory = [];
+
+        var frameID, renderID;
+        var showFps = o.show === 'fps';
+        var graphHeight, count, i, j;
+
+        // Exposed properties
+        self.options = o;
+        self.fps = 0;
+        self.duration = 0;
+        self.isPaused = 0;
+
+        /**
+         * Tick start for measuring the actual rendering duration.
+         *
+         * @return {Void}
+         */
+        self.tickStart = function () {
+            frameStart = getTime();
+        };
+
+        /**
+         * FPS tick.
+         *
+         * @return {Void}
+         */
+        self.tick = function () {
+            time = getTime();
+            thisFrameTime = time - lastLoop;
+            frameTime += (thisFrameTime - frameTime) / o.smoothing;
+            self.fps = 1000 / frameTime;
+            self.duration = frameStart < lastLoop ? frameTime : time - frameStart;
+            lastLoop = time;
+        };
+
+        /**
+         * Pause display rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.pause = function () {
+            if (frameID) {
+                self.isPaused = 1;
+                clearTimeout(frameID);
+                cAF(frameID);
+                cAF(renderID);
+                frameID = renderID = 0;
+            }
+            return self;
+        };
+
+        /**
+         * Resume display rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.resume = function () {
+            if (!frameID) {
+                self.isPaused = 0;
+                requestRender();
+            }
+            return self;
+        };
+
+        /**
+         * Update options.
+         *
+         * @param {String} name  Option name.
+         * @param {Mixed}  value New value.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.set = function (name, value) {
+            o[name] = value;
+            showFps = o.show === 'fps';
+
+            // Rebuild or reposition elements when specific option has been updated
+            if (inArray(name, rebuilders) !== -1) {
+                createMeter();
+            }
+            if (inArray(name, repositioners) !== -1) {
+                positionMeter();
+            }
+            return self;
+        };
+
+        /**
+         * Change meter into rendering duration mode.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.showDuration = function () {
+            self.set('show', 'ms');
+            return self;
+        };
+
+        /**
+         * Change meter into FPS mode.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.showFps = function () {
+            self.set('show', 'fps');
+            return self;
+        };
+
+        /**
+         * Toggles between show: 'fps' and show: 'duration'.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.toggle = function () {
+            self.set('show', showFps ? 'ms' : 'fps');
+            return self;
+        };
+
+        /**
+         * Hide the FPSMeter. Also pauses the rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.hide = function () {
+            self.pause();
+            el.container.style.display = 'none';
+            return self;
+        };
+
+        /**
+         * Show the FPSMeter. Also resumes the rendering.
+         *
+         * @return {Object} FPSMeter instance.
+         */
+        self.show = function () {
+            self.resume();
+            el.container.style.display = 'block';
+            return self;
+        };
+
+        /**
+         * Check the current FPS and save it in history.
+         *
+         * @return {Void}
+         */
+        function historyTick() {
+            for (i = o.history; i--;) {
+                fpsHistory[i] = i === 0 ? self.fps : fpsHistory[i-1];
+                durationHistory[i] = i === 0 ? self.duration : durationHistory[i-1];
+            }
+        }
+
+        /**
+         * Returns heat hex color based on values passed.
+         *
+         * @param  {Integer} heatmap
+         * @param  {Integer} value
+         * @param  {Integer} min
+         * @param  {Integer} max
+         *
+         * @return {Integer}
+         */
+        function getHeat(heatmap, value, min, max) {
+            return heatmaps[0|heatmap][Math.round(Math.min((value - min) / (max - min) * heatDepth, heatDepth))];
+        }
+
+        /**
+         * Update counter number and legend.
+         *
+         * @return {Void}
+         */
+        function updateCounter() {
+            // Update legend only when changed
+            if (el.legend.fps !== showFps) {
+                el.legend.fps = showFps;
+                el.legend[textProp] = showFps ? 'FPS' : 'ms';
+            }
+            // Update counter with a nicely formated & readable number
+            count = showFps ? self.fps : self.duration;
+            el.count[textProp] = count > 999 ? '999+' : count.toFixed(count > 99 ? 0 : o.decimals);
+        }
+
+        /**
+         * Render current FPS state.
+         *
+         * @return {Void}
+         */
+        function render() {
+            time = getTime();
+            // If renderer stopped reporting, do a simulated drop to 0 fps
+            if (lastLoop < time - o.threshold) {
+                self.fps -= self.fps / Math.max(1, o.smoothing * 60 / o.interval);
+                self.duration = 1000 / self.fps;
+            }
+
+            historyTick();
+            updateCounter();
+
+            // Apply heat to elements
+            if (o.heat) {
+                if (heating.length) {
+                    for (i = heating.length; i--;) {
+                        heating[i].el.style[theme[heating[i].name].heatOn] = showFps ?
+                            getHeat(theme[heating[i].name].heatmap, self.fps, 0, o.maxFps) :
+                            getHeat(theme[heating[i].name].heatmap, self.duration, o.threshold, 0);
+                    }
+                }
+
+                if (el.graph && theme.column.heatOn) {
+                    for (i = cols.length; i--;) {
+                        cols[i].style[theme.column.heatOn] = showFps ?
+                            getHeat(theme.column.heatmap, fpsHistory[i], 0, o.maxFps) :
+                            getHeat(theme.column.heatmap, durationHistory[i], o.threshold, 0);
+                    }
+                }
+            }
+
+            // Update graph columns height
+            if (el.graph) {
+                for (j = 0; j < o.history; j++) {
+                    cols[j].style.height = (showFps ?
+                        (fpsHistory[j] ? Math.round(graphHeight / o.maxFps * Math.min(fpsHistory[j], o.maxFps)) : 0) :
+                        (durationHistory[j] ? Math.round(graphHeight / o.threshold * Math.min(durationHistory[j], o.threshold)) : 0)
+                    ) + 'px';
+                }
+            }
+        }
+
+        /**
+         * Request rendering loop.
+         *
+         * @return {Int} Animation frame index.
+         */
+        function requestRender() {
+            if (o.interval < 20) {
+                frameID = rAF(requestRender);
+                render();
+            } else {
+                frameID = setTimeout(requestRender, o.interval);
+                renderID = rAF(render);
+            }
+        }
+
+        /**
+         * Meter events handler.
+         *
+         * @return {Void}
+         */
+        function eventHandler(event) {
+            event = event || window.event;
+            if (event.preventDefault) {
+                event.preventDefault();
+                event.stopPropagation();
+            } else {
+                event.returnValue = false;
+                event.cancelBubble = true;
+            }
+            self.toggle();
+        }
+
+        /**
+         * Destroys the current FPSMeter instance.
+         *
+         * @return {Void}
+         */
+        self.destroy = function () {
+            // Stop rendering
+            self.pause();
+            // Remove elements
+            removeMeter();
+            // Stop listening
+            self.tick = self.tickStart = function () {};
+        };
+
+        /**
+         * Remove meter element.
+         *
+         * @return {Void}
+         */
+        function removeMeter() {
+            // Unbind listeners
+            if (o.toggleOn) {
+                listener(el.container, o.toggleOn, eventHandler, 1);
+            }
+            // Detach element
+            anchor.removeChild(el.container);
+        }
+
+        /**
+         * Sets the theme, and generates heatmaps when needed.
+         */
+        function setTheme() {
+            theme = FPSMeter.theme[o.theme];
+
+            // Generate heatmaps
+            heatmaps = theme.compiledHeatmaps || [];
+            if (!heatmaps.length && theme.heatmaps.length) {
+                for (j = 0; j < theme.heatmaps.length; j++) {
+                    heatmaps[j] = [];
+                    for (i = 0; i <= heatDepth; i++) {
+                        heatmaps[j][i] = hslToHex(0.33 / heatDepth * i, theme.heatmaps[j].saturation, theme.heatmaps[j].lightness);
+                    }
+                }
+                theme.compiledHeatmaps = heatmaps;
+            }
+        }
+
+        /**
+         * Creates and attaches the meter element.
+         *
+         * @return {Void}
+         */
+        function createMeter() {
+            // Remove old meter if present
+            if (el.container) {
+                removeMeter();
+            }
+
+            // Set theme
+            setTheme();
+
+            // Create elements
+            el.container = applyTheme(newEl('div'), theme.container);
+            el.count = el.container.appendChild(applyTheme(newEl('div'), theme.count));
+            el.legend = el.container.appendChild(applyTheme(newEl('div'), theme.legend));
+            el.graph = o.graph ? el.container.appendChild(applyTheme(newEl('div'), theme.graph)) : 0;
+
+            // Add elements to heating array
+            heating.length = 0;
+            for (var key in el) {
+                if (el[key] && theme[key].heatOn) {
+                    heating.push({
+                        name: key,
+                        el: el[key]
+                    });
+                }
+            }
+
+            // Graph
+            cols.length = 0;
+            if (el.graph) {
+                // Create graph
+                el.graph.style.width = (o.history * theme.column.width + (o.history - 1) * theme.column.spacing) + 'px';
+
+                // Add columns
+                for (i = 0; i < o.history; i++) {
+                    cols[i] = el.graph.appendChild(applyTheme(newEl('div'), theme.column));
+                    cols[i].style.position = 'absolute';
+                    cols[i].style.bottom = 0;
+                    cols[i].style.right = (i * theme.column.width + i * theme.column.spacing) + 'px';
+                    cols[i].style.width = theme.column.width + 'px';
+                    cols[i].style.height = '0px';
+                }
+            }
+
+            // Set the initial state
+            positionMeter();
+            updateCounter();
+
+            // Append container to anchor
+            anchor.appendChild(el.container);
+
+            // Retrieve graph height after it was appended to DOM
+            if (el.graph) {
+                graphHeight = el.graph.clientHeight;
+            }
+
+            // Add event listeners
+            if (o.toggleOn) {
+                if (o.toggleOn === 'click') {
+                    el.container.style.cursor = 'pointer';
+                }
+                listener(el.container, o.toggleOn, eventHandler);
+            }
+        }
+
+        /**
+         * Positions the meter based on options.
+         *
+         * @return {Void}
+         */
+        function positionMeter() {
+            applyTheme(el.container, o);
+        }
+
+        /**
+         * Construct.
+         */
+        (function () {
+            // Create meter element
+            createMeter();
+            // Start rendering
+            requestRender();
+        }());
+    }
+
+    // Expose the extend function
+    FPSMeter.extend = extend;
+
+    // Expose the FPSMeter class
+    window.FPSMeter = FPSMeter;
+
+    // Default options
+    FPSMeter.defaults = {
+        interval:  100,     // Update interval in milliseconds.
+        smoothing: 10,      // Spike smoothing strength. 1 means no smoothing.
+        show:      'fps',   // Whether to show 'fps', or 'ms' = frame duration in milliseconds.
+        toggleOn:  'click', // Toggle between show 'fps' and 'ms' on this event.
+        decimals:  1,       // Number of decimals in FPS number. 1 = 59.9, 2 = 59.94, ...
+        maxFps:    60,      // Max expected FPS value.
+        threshold: 100,     // Minimal tick reporting interval in milliseconds.
+
+        // Meter position
+        position: 'absolute', // Meter position.
+        zIndex:   10,         // Meter Z index.
+        left:     '5px',      // Meter left offset.
+        top:      '5px',      // Meter top offset.
+        right:    'auto',     // Meter right offset.
+        bottom:   'auto',     // Meter bottom offset.
+        margin:   '0 0 0 0',  // Meter margin. Helps with centering the counter when left: 50%;
+
+        // Theme
+        theme: 'dark', // Meter theme. Build in: 'dark', 'light', 'transparent', 'colorful'.
+        heat:  0,      // Allow themes to use coloring by FPS heat. 0 FPS = red, maxFps = green.
+
+        // Graph
+        graph:   0, // Whether to show history graph.
+        history: 20 // How many history states to show in a graph.
+    };
+
+    // Option names that trigger FPSMeter rebuild or reposition when modified
+    var rebuilders = [
+        'toggleOn',
+        'theme',
+        'heat',
+        'graph',
+        'history'
+    ];
+    var repositioners = [
+        'position',
+        'zIndex',
+        'left',
+        'top',
+        'right',
+        'bottom',
+        'margin'
+    ];
+}(window));
+;(function (w, FPSMeter, undefined) {
+    'use strict';
+
+    // Themes object
+    FPSMeter.theme = {};
+
+    // Base theme with layout, no colors
+    var base = FPSMeter.theme.base = {
+        heatmaps: [],
+        container: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            padding: '5px',
+            minWidth: '95px',
+            height: '30px',
+            lineHeight: '30px',
+            textAlign: 'right',
+            textShadow: 'none'
+        },
+        count: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            padding: '5px 10px',
+            height: '30px',
+            fontSize: '24px',
+            fontFamily: 'Consolas, Andale Mono, monospace',
+            zIndex: 2
+        },
+        legend: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            padding: '5px 10px',
+            height: '30px',
+            fontSize: '12px',
+            lineHeight: '32px',
+            fontFamily: 'sans-serif',
+            textAlign: 'left',
+            zIndex: 2
+        },
+        graph: {
+            // Settings
+            heatOn: null,
+            heatmap: null,
+
+            // Styles
+            position: 'relative',
+            boxSizing: 'padding-box',
+            MozBoxSizing: 'padding-box',
+            height: '100%',
+            zIndex: 1
+        },
+        column: {
+            // Settings
+            width: 4,
+            spacing: 1,
+            heatOn: null,
+            heatmap: null
+        }
+    };
+
+    // Dark theme
+    FPSMeter.theme.dark = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.8,
+            lightness: 0.8
+        }],
+        container: {
+            background: '#222',
+            color: '#fff',
+            border: '1px solid #1a1a1a',
+            textShadow: '1px 1px 0 #222'
+        },
+        count: {
+            heatOn: 'color'
+        },
+        column: {
+            background: '#3f3f3f'
+        }
+    });
+
+    // Light theme
+    FPSMeter.theme.light = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.5,
+            lightness: 0.5
+        }],
+        container: {
+            color: '#666',
+            background: '#fff',
+            textShadow: '1px 1px 0 rgba(255,255,255,.5), -1px -1px 0 rgba(255,255,255,.5)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
+        },
+        count: {
+            heatOn: 'color'
+        },
+        column: {
+            background: '#eaeaea'
+        }
+    });
+
+    // Colorful theme
+    FPSMeter.theme.colorful = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.5,
+            lightness: 0.6
+        }],
+        container: {
+            heatOn: 'backgroundColor',
+            background: '#888',
+            color: '#fff',
+            textShadow: '1px 1px 0 rgba(0,0,0,.2)',
+            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
+        },
+        column: {
+            background: '#777',
+            backgroundColor: 'rgba(0,0,0,.2)'
+        }
+    });
+
+    // Transparent theme
+    FPSMeter.theme.transparent = FPSMeter.extend({}, base, {
+        heatmaps: [{
+            saturation: 0.8,
+            lightness: 0.5
+        }],
+        container: {
+            padding: 0,
+            color: '#fff',
+            textShadow: '1px 1px 0 rgba(0,0,0,.5)'
+        },
+        count: {
+            padding: '0 5px',
+            height: '40px',
+            lineHeight: '40px'
+        },
+        legend: {
+            padding: '0 5px',
+            height: '40px',
+            lineHeight: '42px'
+        },
+        graph: {
+            height: '40px'
+        },
+        column: {
+            width: 5,
+            background: '#999',
+            heatOn: 'backgroundColor',
+            opacity: 0.5
+        }
+    });
+}(window, FPSMeter));
 /**
  * http://www.makeitgo.ws/articles/animationframe/
  */
@@ -13181,6 +13132,1489 @@ bento.define('bento/lib/requestanimationframe', [], function () {
             };
     }());
     return window.requestAnimationFrame;
+});
+/**
+ *  Manager that controls all assets
+ *  @copyright (C) 2014 HeiGames
+ *  @author Hernan Zhou
+ */
+bento.define('bento/managers/asset', [
+    'bento/packedimage',
+    'bento/utils'
+], function (PackedImage, Utils) {
+    'use strict';
+    return function () {
+        var assetGroups = {},
+            path = '',
+            assets = {
+                audio: {},
+                json: {},
+                images: {},
+                binary: {}
+            },
+            texturePacker = {},
+            packs = [],
+            loadAudio = function (name, source, callback) {
+                var asset,
+                    i;
+                if (!Utils.isArray(source)) {
+                    source = [path + 'audio/' + source];
+                } else {
+                    // prepend asset paths
+                    for (i = 0; i < source.length; i += 1) {
+                        source[i] = path + 'audio/' + source[i];
+                    }
+                }
+                asset = new Howl({
+                    urls: source,
+                    onload: callback
+                });
+                assets.audio[name] = asset;
+            },
+            loadJSON = function (name, source, callback) {
+                var xhr = new XMLHttpRequest();
+                if (xhr.overrideMimeType) {
+                    xhr.overrideMimeType('application/json');
+                }
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + source);
+                };
+                xhr.ontimeout = function () {
+                    callback('Timeout' + source);
+                };
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if ((xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                            callback(null, name, JSON.parse(xhr.responseText));
+                        } else {
+                            callback('Error: State ' + xhr.readyState + ' ' + source);
+                        }
+                    }
+                };
+                xhr.send(null);
+            },
+            loadBinary = function (name, source, success, failure) {
+                var xhr = new XMLHttpRequest(),
+                    arrayBuffer,
+                    byteArray,
+                    buffer,
+                    i = 0;
+
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + name);
+                };
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function (e) {
+                    var binary;
+                    arrayBuffer = xhr.response;
+                    if (arrayBuffer) {
+                        byteArray = new Uint8Array(arrayBuffer);
+                        buffer = [];
+                        for (i; i < byteArray.byteLength; ++i) {
+                            buffer[i] = String.fromCharCode(byteArray[i]);
+                        }
+                        // loadedAssets.binary[name] = buffer.join('');
+                        binary = buffer.join('');
+                        callback(null, name, binary);
+                    }
+                };
+                xhr.send();
+            },
+            loadImage = function (name, source, callback) {
+                // TODO: Implement failure
+                var img = new Image();
+                img.src = source;
+                img.addEventListener('load', function () {
+                    callback(null, name, img);
+                }, false);
+            },
+            /**
+             * Loads json files containing asset paths
+             * @param {Object} jsonFiles: name with json path
+             * @param {Function} onReady: callback when ready
+             * @param {Function} onLoaded: callback when json file is loaded
+             */
+            loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
+                var jsonName,
+                    keyCount = Utils.getKeyLength(jsonFiles),
+                    loaded = 0,
+                    callback = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assetGroups[name] = json;
+                        loaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(loaded, keyCount);
+                        }
+                        if (keyCount === loaded && Utils.isDefined(onReady)) {
+                            onReady(null);
+                        }
+                    };
+                for (jsonName in jsonFiles) {
+                    if (jsonFiles.hasOwnProperty(jsonName)) {
+                        loadJSON(jsonName, jsonFiles[jsonName], callback);
+                    }
+                }
+            },
+            /**
+             * Loads assets from group
+             * @param {String} groupName: name of asset group
+             * @param {Function} onReady: callback when ready
+             * @param {Function} onLoaded: callback when asset file is loaded
+             */
+            load = function (groupName, onReady, onLoaded) {
+                var group = assetGroups[groupName],
+                    asset,
+                    assetsLoaded = 0,
+                    assetCount = 0,
+                    checkLoaded = function () {
+                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
+                            initPackedImages();
+                            onReady(null);
+                        }
+                    },
+                    onLoadImage = function (err, name, image) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.images[name] = image;
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadPack = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        packs.push(name);
+                        assetsLoaded += 1;
+                    },
+                    onLoadJson = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        assetsLoaded += 1;
+                    },
+                    onLoadAudio = function () {
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    };
+
+                if (!Utils.isDefined(group)) {
+                    onReady('Could not find asset group ' + groupName);
+                    return;
+                }
+                // set path
+                if (Utils.isDefined(group.path)) {
+                    path += group.path;
+                }
+                // load images
+                if (Utils.isDefined(group.images)) {
+                    assetCount += Utils.getKeyLength(group.images);
+                    for (asset in group.images) {
+                        if (!group.images.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
+                    }
+                }
+                // load packed images
+                if (Utils.isDefined(group.texturePacker)) {
+                    assetCount += Utils.getKeyLength(group.texturePacker);
+                    for (asset in group.texturePacker) {
+                        if (!group.texturePacker.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadJSON(asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                    }
+                }
+                // load audio
+                if (Utils.isDefined(group.audio)) {
+                    assetCount += Utils.getKeyLength(group.audio);
+                    for (asset in group.audio) {
+                        if (!group.audio.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadAudio(asset, group.audio[asset], onLoadAudio);
+                    }
+                }
+                // load json
+                if (Utils.isDefined(group.json)) {
+                    assetCount += Utils.getKeyLength(group.json);
+                    for (asset in group.json) {
+                        if (!group.json.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadJSON(asset, path + 'json/' + group.json[asset], onLoadJson);
+                    }
+                }
+
+            },
+            unload = function (groupName) {},
+            getImage = function (name) {
+                var image, packedImage = texturePacker[name];
+                if (!packedImage) {
+                    image = getImageElement(name);
+                    if (!image) {
+                        throw 'Can not find ' + name;
+                    }
+                    packedImage = PackedImage(image);
+                    texturePacker[name] = packedImage;
+                }
+                return packedImage;
+            },
+            getImageElement = function (name) {
+                var asset = assets.images[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            getJson = function (name) {
+                var asset = assets.json[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            getAudio = function (name) {
+                var asset = assets.audio[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            getAssets = function () {
+                return assets;
+            },
+            initPackedImages = function () {
+                var frame, pack, i, image, json;
+                while (packs.length) {
+                    pack = packs.pop();
+                    image = getImageElement(pack);
+                    json = getJson(pack);
+
+                    // parse json
+                    for (i = 0; i < json.frames.length; ++i) {
+                        name = json.frames[i].filename;
+                        name = name.substring(0, name.length - 4);
+                        frame = json.frames[i].frame;
+                        texturePacker[name] = PackedImage(image, frame);
+                    }
+                    console.log(texturePacker);
+                }
+            };
+        return {
+            loadAssetGroups: loadAssetGroups,
+            load: load,
+            unload: unload,
+            getImage: getImage,
+            getImageElement: getImageElement,
+            getJson: getJson,
+            getAudio: getAudio,
+            getAssets: getAssets
+        };
+    };
+});
+/*
+ * Audio manager, will be rewritten in the future
+ */
+
+define('bento/managers/audio', [
+    'bento/utils'
+], function (Utils) {
+    return function (bento) {
+        var volume = 1,
+            mutedSound = false,
+            mutedMusic = false,
+            preventSounds = false,
+            howler,
+            musicLoop = false,
+            lastMusicPlayed = '',
+            currentMusicId = 0,
+            saveMuteSound,
+            saveMuteMusic,
+            assetManager = bento.assets,
+            canvasElement = bento.getCanvas(),
+            onVisibilityChanged = function (hidden) {
+                if (hidden) {
+                    // save audio preferences and mute
+                    saveMuteSound = mutedSound;
+                    saveMuteMusic = mutedMusic;
+                    obj.muteMusic(true);
+                    obj.muteSound(true);
+                } else {
+                    // reload audio preferences and replay music if necessary
+                    mutedSound = saveMuteSound;
+                    mutedMusic = saveMuteMusic;
+                    obj.playMusic(lastMusicPlayed, musicLoop);
+                }
+            },
+            obj = {
+                /* Sets the volume (0 = minimum, 1 = maximum)
+                 * @name setVolume
+                 * @function
+                 * @param {Number} value: the volume
+                 * @param {String} name: name of the sound currently playing
+                 */
+                setVolume: function (value) {
+                    var i, l, node;
+                    if (!Utils.isDefined(howler)) {
+                        return;
+                    }
+                    for (i = 0, l = howler._audioNode.length; i < l; ++i) {
+                        node = howler._audioNode[i];
+                        if (!node.paused) {
+                            howler.volume(value, node.id);
+                        }
+                    }
+                },
+                /* Plays a sound
+                 * @name playSound
+                 * @function
+                 * @param {String} name: name of the soundfile
+                 */
+                playSound: function (name) {
+                    if (!mutedSound && !preventSounds) {
+                        assetManager.getAudio(name).play();
+                    }
+                },
+                stopSound: function (name) {
+                    var i, l, node;
+                    assetManager.getAudio(name).stop();
+                },
+                /* Plays a music
+                 * @name playMusic
+                 * @function
+                 * @param {String} name: name of the soundfile
+                 */
+                playMusic: function (name, loop, onEnd) {
+                    lastMusicPlayed = name;
+                    if (Utils.isDefined(loop)) {
+                        musicLoop = loop;
+                    } else {
+                        musicLoop = false;
+                    }
+                    // set end event
+                    if (navigator.isCocoonJS && onEnd) {
+                        assetManager.getAudio(name)._audioNode[0].onended = onEnd;
+                    }
+                    if (!mutedMusic && lastMusicPlayed !== '') {
+                        if (navigator.isCocoonJS) {
+                            assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
+                            assetManager.getAudio(name)._audioNode[0].play();
+                            return;
+                        }
+                        assetManager.getAudio(name).loop(musicLoop);
+                        assetManager.getAudio(name).play(function (id) {
+                            currentMusicId = id;
+                        });
+                    }
+                },
+                stopMusic: function (name) {
+                    var i, l, node;
+                    if (navigator.isCocoonJS) {
+                        assetManager.getAudio(name)._audioNode[0].pause();
+                        return;
+                    }
+                    assetManager.getAudio(name).stop();
+                },
+                /* Mute or unmute all sound
+                 * @name muteSound
+                 * @function
+                 * @param {Boolean} mute: whether to mute or not
+                 */
+                muteSound: function (mute) {
+                    mutedSound = mute;
+                    if (mutedSound) {
+                        // we stop all sounds because setting volume is not supported on all devices
+                        this.stopAllSound();
+                    }
+                },
+                /* Mute or unmute all music
+                 * @name muteMusic
+                 * @function
+                 * @param {Boolean} mute: whether to mute or not
+                 */
+                muteMusic: function (mute, continueMusic) {
+                    var last = lastMusicPlayed;
+                    mutedMusic = mute;
+
+                    if (!Utils.isDefined(continueMusic)) {
+                        continueMusic = false;
+                    }
+                    if (mutedMusic) {
+                        obj.stopAllMusic();
+                        lastMusicPlayed = last;
+                    } else if (continueMusic && lastMusicPlayed !== '') {
+                        obj.playMusic(lastMusicPlayed, musicLoop);
+                    }
+                },
+                /* Stop all sound currently playing
+                 * @name stopAllSound
+                 * @function
+                 */
+                stopAllSound: function () {
+                    var sound,
+                        howls = assetManager.getAssets().audio;
+                    for (sound in howls) {
+                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
+                            howls[sound].stop();
+                        }
+                    }
+                },
+                /* Stop all sound currently playing
+                 * @name stopAllSound
+                 * @function
+                 */
+                stopAllMusic: function () {
+                    var sound,
+                        howls = assetManager.getAssets().audio;
+                    for (sound in howls) {
+                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
+                            if (navigator.isCocoonJS) {
+                                howls[sound]._audioNode[0].pause();
+                                continue;
+                            }
+                            howls[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
+                        }
+                    }
+                    lastMusicPlayed = '';
+                },
+                /* Prevents any sound from playing without interrupting current sounds
+                 * @name preventSounds
+                 * @function
+                 */
+                preventSounds: function (bool) {
+                    preventSounds = bool;
+                }
+            };
+        // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
+        if ('hidden' in document) {
+            document.addEventListener("visibilitychange", function () {
+                onVisibilityChanged(document.hidden);
+            }, false);
+        } else if ('mozHidden' in document) {
+            document.addEventListener("mozvisibilitychange", function () {
+                onVisibilityChanged(document.mozHidden);
+            }, false);
+        } else if ('webkitHidden' in document) {
+            document.addEventListener("webkitvisibilitychange", function () {
+                onVisibilityChanged(document.webkitHidden);
+            }, false);
+        } else if ('msHidden' in document) {
+            document.addEventListener("msvisibilitychange", function () {
+                onVisibilityChanged(document.msHidden);
+            }, false);
+        } else if ('onpagehide' in window) {
+            window.addEventListener('pagehide', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('pageshow', function () {
+                onVisibilityChanged(false);
+            }, false);
+        } else if ('onblur' in document) {
+            window.addEventListener('blur', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focus', function () {
+                onVisibilityChanged(false);
+            }, false);
+            visHandled = true;
+        } else if ('onfocusout' in document) {
+            window.addEventListener('focusout', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focusin', function () {
+                onVisibilityChanged(false);
+            }, false);
+        }
+        return obj;
+    };
+});
+/**
+ *  Manager that controls all events and input
+ *  @copyright (C) 2014 HeiGames
+ *  @author Hernan Zhou
+ */
+bento.define('bento/managers/input', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
+    'use strict';
+    return function (settings) {
+        var isPaused = false,
+            canvas,
+            canvasScale,
+            viewport,
+            pointers = [],
+            offsetLeft = 0,
+            offsetTop = 0,
+            pointerDown = function (evt) {
+                EventSystem.fire('pointerDown', evt);
+            },
+            pointerMove = function (evt) {
+                EventSystem.fire('pointerMove', evt);
+            },
+            pointerUp = function (evt) {
+                EventSystem.fire('pointerUp', evt);
+            },
+            touchStart = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i);
+                }
+                pointerDown(evt);
+            },
+            touchMove = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i);
+                }
+                pointerMove(evt);
+            },
+            touchEnd = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i);
+                }
+                pointerUp(evt);
+            },
+            mouseDown = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt);
+                pointerDown(evt);
+            },
+            mouseMove = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt);
+                pointerMove(evt);
+            },
+            mouseUp = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt);
+                pointerUp(evt);
+            },
+            addTouchPosition = function (evt, n) {
+                var touch = evt.changedTouches[n],
+                    x = (touch.pageX - offsetLeft) / canvasScale.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y;
+                evt.preventDefault();
+                evt.eventType = 'touch';
+                evt.changedTouches[n].position = Vector2(x, y);
+                evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
+                evt.changedTouches[n].worldPosition.x += viewport.x;
+                evt.changedTouches[n].worldPosition.y += viewport.y;
+                // add 'normal' position
+                evt.position = evt.changedTouches[n].position.clone();
+                evt.worldPosition = evt.changedTouches[n].position.clone();
+            },
+            addMousePosition = function (evt) {
+                var x = (evt.clientX - offsetLeft) / canvasScale.x,
+                    y = (evt.clientY - offsetTop) / canvasScale.y;
+                evt.eventType = 'mouse';
+                evt.position = Vector2(x, y);
+                evt.worldPosition = evt.position.clone();
+                evt.worldPosition.x += viewport.x;
+                evt.worldPosition.y += viewport.y;
+            };
+
+        if (!settings) {
+            throw 'Supply a settings object';
+        }
+        // canvasScale is needed to take css scaling into account
+        canvasScale = settings.canvasScale;
+        canvas = settings.canvas;
+        viewport = settings.viewport;
+        canvas.addEventListener('touchstart', touchStart);
+        canvas.addEventListener('touchmove', touchMove);
+        canvas.addEventListener('touchend', touchEnd);
+        canvas.addEventListener('mousedown', mouseDown);
+        canvas.addEventListener('mousemove', mouseMove);
+        canvas.addEventListener('mouseup', mouseUp);
+
+        if (canvas && !navigator.isCocoonJS) {
+            offsetLeft = canvas.offsetLeft;
+            offsetTop = canvas.offsetTop;
+        }
+
+        // touch device
+        document.body.addEventListener('touchstart', function (evt) {
+            if (evt && evt.preventDefault) {
+                evt.preventDefault();
+            }
+            if (evt && evt.stopPropagation) {
+                evt.stopPropagation();
+            }
+            return false;
+        });
+        document.body.addEventListener('touchmove', function (evt) {
+            if (evt && evt.preventDefault) {
+                evt.preventDefault();
+            }
+            if (evt && evt.stopPropagation) {
+                evt.stopPropagation();
+            }
+            return false;
+        });
+        return {
+            addListener: function () {},
+            removeListener: function () {}
+        };
+    };
+});
+/**
+ *  Manager that controls all objects
+ *  @copyright (C) 2014 HeiGames
+ *  @author Hernan Zhou
+ */
+bento.define('bento/managers/object', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    return function (settings, useDeltaT, debug) {
+        var objects = [],
+            lastTime = new Date().getTime(),
+            cumulativeTime = 0,
+            minimumFps = 30,
+            lastFrameTime = new Date().getTime(),
+            gameData,
+            quickAccess = {},
+            isRunning = false,
+            useSort = true,
+            isPaused = false,
+            fpsMeter,
+            sort = function () {
+                if (!settings.defaultSort) {
+                    Utils.stableSort.inplace(objects, function (a, b) {
+                        return a.z - b.z;
+                    });
+                } else {
+                    // default behavior
+                    objects.sort(function (a, b) {
+                        return a.z - b.z;
+                    });
+                }
+            },
+            cleanObjects = function () {
+                var i;
+                // loop objects array from end to start and remove null elements
+                for (i = objects.length - 1; i >= 0; --i) {
+                    if (objects[i] === null) {
+                        objects.splice(i, 1);
+                    }
+                }
+            },
+            mainLoop = function (time) {
+                var object,
+                    i,
+                    currentTime = new Date().getTime(),
+                    deltaT = currentTime - lastTime;
+
+                if (debug) {
+                    fpsMeter.tickStart();
+                }
+
+                lastTime = currentTime;
+                cumulativeTime += deltaT;
+                gameData.deltaT = deltaT;
+                if (useDeltaT) {
+                    cumulativeTime = 1000 / 60;
+                }
+                while (cumulativeTime >= 1000 / 60) {
+                    cumulativeTime -= 1000 / 60;
+                    if (cumulativeTime > 1000 / minimumFps) {
+                        // deplete cumulative time
+                        while (cumulativeTime >= 1000 / 60) {
+                            cumulativeTime -= 1000 / 60;
+                        }
+                    }
+                    if (useDeltaT) {
+                        cumulativeTime = 0;
+                    }
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
+                            object.update(gameData);
+                        }
+                    }
+                }
+                cleanObjects();
+                if (useSort) {
+                    sort();
+                }
+                gameData.renderer.begin();
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (object.draw) {
+                        object.draw(gameData);
+                    }
+                }
+                gameData.renderer.flush();
+
+                lastFrameTime = time;
+                if (debug) {
+                    fpsMeter.tick();
+                }
+
+                requestAnimationFrame(mainLoop);
+            };
+
+        if (!window.performance) {
+            window.performance = {
+                now: Date.now
+            };
+        }
+        gameData = settings;
+        if (debug) {
+            FPSMeter.defaults.graph = 1;
+            fpsMeter = new FPSMeter();
+        }
+
+        return {
+            add: function (object) {
+                var i, type, family;
+                object.z = object.z || 0;
+                objects.push(object);
+                if (object.init) {
+                    object.init();
+                }
+                // add object to access pools
+                if (object.getFamily) {
+                    family = object.getFamily();
+                    for (i = 0; i < family.length; ++i) {
+                        type = family[i];
+                        if (!quickAccess[type]) {
+                            quickAccess[type] = [];
+                        }
+                        quickAccess[type].push(object);
+                    }
+                }
+            },
+            remove: function (object) {
+                var i, type, index, family;
+                if (!object) {
+                    return;
+                }
+                index = objects.indexOf(object);
+                if (index >= 0) {
+                    objects[index] = null;
+                    if (object.destroy) {
+                        object.destroy(gameData);
+                    }
+                }
+                // remove from access pools
+                if (object.getFamily) {
+                    family = object.getFamily();
+                    for (i = 0; i < family.length; ++i) {
+                        type = family[i];
+                        Utils.removeObject(quickAccess[type], object);
+                    }
+                }
+            },
+            removeAll: function (removeGlobal) {
+                var i,
+                    object;
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (!object.global || removeGlobal) {
+                        this.remove(object);
+                    }
+                }
+            },
+            getByName: function (objectName) {
+                var i,
+                    object,
+                    array = [];
+
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (!object.name) {
+                        continue;
+                    }
+                    if (object.name === objectName) {
+                        array.push(object);
+                    }
+                }
+                return array;
+            },
+            getByFamily: function (type) {
+                var array = quickAccess[type];
+                if (!array) {
+                    // initialize it
+                    quickAccess[type] = [];
+                    array = quickAccess[type];
+                    console.log('Warning: family called ' + type + ' does not exist');
+                }
+                return array;
+            },
+            run: function () {
+                if (!isRunning) {
+                    mainLoop();
+                    isRunning = true;
+                }
+            }
+        };
+    };
+});
+/**
+ *  @copyright (C) HeiGames
+ */
+bento.define('bento/director', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var screens = {},
+        currentScreen = null,
+        getScreen = function (name) {
+            return screens[name];
+        },
+        director = {
+            addScreen: function (screen) {
+                if (!screen.name) {
+                    throw 'Add name property to screen';
+                }
+                screens[screen.name] = screen;
+            },
+            showScreen: function (name, callback) {
+                if (currentScreen !== null) {
+                    director.hideScreen();
+                }
+                currentScreen = screens[name];
+                if (currentScreen) {
+                    if (currentScreen.onShow) {
+                        currentScreen.onShow();
+                    }
+                    if (callback) {
+                        callback();
+                    }
+                } else {
+                    // load asynchronously
+                    bento.require([name], function (screen) {
+                        if (!screen.name) {
+                            screen.name = name;
+                        }
+                        director.addScreen(screen);
+                        // try again
+                        director.showScreen(name, callback);
+                    });
+                }
+            },
+            hideScreen: function () {
+                if (!currentScreen) {
+                    return;
+                }
+                currentScreen.onHide();
+                currentScreen = null;
+            },
+            getCurrentScreen: function () {
+                return currentScreen;
+            }
+        };
+
+    return director;
+});
+/**
+ *  @copyright (C) HeiGames
+ */
+bento.define('bento/screen', [
+    'bento/utils',
+    'bento',
+    'bento/math/rectangle',
+    'bento/tiled'
+], function (Utils, Bento, Rectangle) {
+    'use strict';
+    return function (settings) {
+        /*settings = {
+            dimension: Rectangle, [optional / overwritten by tmx size]
+            tiled: String
+        }*/
+        var viewport = Bento.getViewport(),
+            dimension = settings.dimension || Rectangle(0, 0, 0, 0),
+            isShown = false,
+            module = {
+                setDimension: function (rectangle) {
+                    dimension.width = rectangle.width;
+                    dimension.height = rectangle.height;
+                },
+                getDimension: function () {
+                    return dimension;
+                },
+                add: function (object) {
+                    return Utils.combine(this, object);
+                },
+                setShown: function (bool) {
+                    if (!Utils.isBoolean(bool)) {
+                        throw 'Argument is not a boolean';
+                    } else {
+                        isShown = bool;
+                    }
+                },
+                onShow: function () {},
+                onHide: function () {
+                    // remove all objects
+                    Bento.removeAll();
+                    // reset viewport scroll when hiding screen
+                    viewport.x = 0;
+                    viewport.y = 0;
+
+                }
+            };
+
+        return module;
+    };
+});
+define('bento/tiled', [
+    'bento',
+    'bento/entity',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/math/polygon',
+    'bento/packedimage'
+], function (Bento, Entity, Vector2, Rectangle, Polygon, PackedImage) {
+    'use strict';
+    return function (settings, onReady) {
+        /*settings = {
+            name: String, // name of JSON file
+            background: Boolean // TODO false: splits tileLayer tile entities
+        }*/
+        var json = Bento.assets.getJson(settings.name),
+            i,
+            j,
+            k,
+            width = json.width,
+            height = json.height,
+            layers = json.layers.length,
+            tileWidth = json.tilewidth,
+            tileHeight = json.tileheight,
+            canvas = document.createElement('canvas'),
+            context = canvas.getContext('2d'),
+            image,
+            layer,
+            firstgid,
+            object,
+            points,
+            objects = [],
+            shapes = [],
+            viewport = Bento.getViewport(),
+            background = Entity().extend({
+                z: 0,
+                draw: function (gameData) {
+                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
+                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0),
+                        img = PackedImage(canvas);
+
+                    if (w === 0 || h === 0) {
+                        return;
+                    }
+                    // only draw the part in the viewport
+                    gameData.renderer.drawImage(
+                        img, ~~(Math.max(Math.min(viewport.x, canvas.width), 0)), ~~(Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
+                        0,
+                        0, ~~w, ~~h
+                    );
+                }
+            }),
+            getTileset = function (gid) {
+                var l,
+                    tileset,
+                    current = null;
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l < json.tilesets.length; ++l) {
+                    tileset = json.tilesets[l];
+                    if (tileset.firstgid <= gid) {
+                        current = tileset;
+                    }
+                }
+                return current;
+            },
+            getTile = function (tileset, gid) {
+                var index,
+                    tilesetWidth,
+                    tilesetHeight;
+                if (tileset === null) {
+                    return null;
+                }
+                index = gid - tileset.firstgid;
+                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
+                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
+                return {
+                    // convention: the tileset name must be equal to the asset name!
+                    subimage: Bento.assets.getImage(tileset.name),
+                    x: (index % tilesetWidth) * tileset.tilewidth,
+                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
+                    width: tileset.tilewidth,
+                    height: tileset.tileheight
+                };
+            },
+            drawTileLayer = function (x, y) {
+                var gid = layer.data[y * width + x],
+                    // get correct tileset and image
+                    tileset = getTileset(gid),
+                    tile = getTile(tileset, gid);
+                // draw background to offscreen canvas
+                if (tile) {
+                    context.drawImage(
+                        tile.subimage.image,
+                        tile.subimage.x + tile.x,
+                        tile.subimage.y + tile.y,
+                        tile.width,
+                        tile.height,
+                        x * tileWidth,
+                        y * tileHeight,
+                        tileWidth,
+                        tileHeight
+                    );
+                }
+            },
+            spawn = function (name, obj, tilesetProperties) {
+                var x = obj.x,
+                    y = obj.y,
+                    params = [],
+                    getParams = function (properties) {
+                        var prop;
+                        for (prop in properties) {
+                            if (!prop.match(/param\d+/)) {
+                                continue;
+                            }
+                            if (isNaN(properties[prop])) {
+                                params.push(properties[prop]);
+                            } else {
+                                params.push((+properties[prop]));
+                            }
+                        }
+                    };
+
+                // search params
+                getParams(tilesetProperties);
+                getParams(obj.properties);
+
+                require([name], function (Instance) {
+                    var instance = Instance.apply(this, params),
+                        origin = instance.getOrigin(),
+                        dimension = instance.getDimension(),
+                        prop,
+                        addProperties = function (properties) {
+                            var prop;
+                            for (prop in properties) {
+                                if (prop === 'module' || prop.match(/param\d+/)) {
+                                    continue;
+                                }
+                                if (properties.hasOwnProperty(prop)) {
+                                    // number or string?
+                                    if (isNaN(properties[prop])) {
+                                        instance[prop] = properties[prop];
+                                    } else {
+                                        instance[prop] = (+properties[prop]);
+                                    }
+                                }
+                            }
+                        };
+
+                    instance.setPosition({
+                        // tiled assumes origin (0, 1)
+                        x: x + (origin.x),
+                        y: y + (origin.y - dimension.height)
+                    });
+                    // add in tileset properties
+                    addProperties(tilesetProperties);
+                    // add tile properties
+                    addProperties(obj.properties);
+                    // add to game
+                    if (settings.spawn) {
+                        Bento.objects.add(instance);
+                    }
+                    objects.push(instance);
+                });
+            },
+            spawnObject = function (obj) {
+                var gid = obj.gid,
+                    // get tileset: should contain module name
+                    tileset = getTileset(gid),
+                    id = gid - tileset.firstgid,
+                    properties,
+                    moduleName;
+                if (tileset.tileproperties) {
+                    properties = tileset.tileproperties[id.toString()];
+                    if (properties) {
+                        moduleName = properties.module;
+                    }
+                }
+                if (moduleName) {
+                    spawn(moduleName, obj, properties);
+                }
+            },
+            spawnShape = function (shape, type) {
+                var obj;
+                if (settings.spawn) {
+                    obj = Entity({
+                        z: 0,
+                        name: type,
+                        family: [type]
+                    }).extend({
+                        update: function () {},
+                        draw: function () {}
+                    });
+                    obj.setBoundingBox(shape);
+                    Bento.objects.add(obj);
+                }
+                shape.type = type;
+                shapes.push(shape);
+            };
+
+        // setup canvas
+        // to do: split up in multiple canvas elements due to max
+        // size
+        canvas.width = width * tileWidth;
+        canvas.height = height * tileHeight;
+
+        // loop through layers
+        for (k = 0; k < layers; ++k) {
+            layer = json.layers[k];
+            if (layer.type === 'tilelayer') {
+                // loop through tiles
+                for (j = 0; j < layer.height; ++j) {
+                    for (i = 0; i < layer.width; ++i) {
+                        drawTileLayer(i, j);
+                    }
+                }
+            } else if (layer.type === 'objectgroup') {
+                for (i = 0; i < layer.objects.length; ++i) {
+                    object = layer.objects[i];
+
+                    // default type is solid
+                    if (object.type === '') {
+                        object.type = 'solid';
+                    }
+
+                    if (object.gid) {
+                        // normal object
+                        spawnObject(object);
+                    } else if (object.polygon) {
+                        // polygon 
+                        points = [];
+                        for (j = 0; j < object.polygon.length; ++j) {
+                            points.push(object.polygon[j]);
+                            points[j].x += object.x;
+                            // shift polygons 1 pixel down?
+                            // something might be wrong with polygon definition
+                            points[j].y += object.y + 1;
+                        }
+                        spawnShape(Polygon(points), object.type);
+                    } else {
+                        // rectangle
+                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
+                    }
+                }
+            }
+        }
+
+        // add background to game
+        if (settings.spawn) {
+            Bento.objects.add(background);
+        }
+
+        return {
+            tileLayer: background,
+            objects: objects,
+            shapes: shapes,
+            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
+        };
+    };
+});
+bento.define('bento/tween', [
+    'bento',
+    'bento/utils',
+    'bento/entity'
+], function (Bento, Utils, Entity) {
+    'use strict';
+    var robbertPenner = {
+            // t: current time, b: begInnIng value, c: change In value, d: duration
+            easeInQuad: function (t, b, c, d) {
+                return c * (t /= d) * t + b;
+            },
+            easeOutQuad: function (t, b, c, d) {
+                return -c * (t /= d) * (t - 2) + b;
+            },
+            easeInOutQuad: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t + b;
+                return -c / 2 * ((--t) * (t - 2) - 1) + b;
+            },
+            easeInCubic: function (t, b, c, d) {
+                return c * (t /= d) * t * t + b;
+            },
+            easeOutCubic: function (t, b, c, d) {
+                return c * ((t = t / d - 1) * t * t + 1) + b;
+            },
+            easeInOutCubic: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
+                return c / 2 * ((t -= 2) * t * t + 2) + b;
+            },
+            easeInQuart: function (t, b, c, d) {
+                return c * (t /= d) * t * t * t + b;
+            },
+            easeOutQuart: function (t, b, c, d) {
+                return -c * ((t = t / d - 1) * t * t * t - 1) + b;
+            },
+            easeInOutQuart: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
+                return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
+            },
+            easeInQuint: function (t, b, c, d) {
+                return c * (t /= d) * t * t * t * t + b;
+            },
+            easeOutQuint: function (t, b, c, d) {
+                return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+            },
+            easeInOutQuint: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
+                return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
+            },
+            easeInSine: function (t, b, c, d) {
+                return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
+            },
+            easeOutSine: function (t, b, c, d) {
+                return c * Math.sin(t / d * (Math.PI / 2)) + b;
+            },
+            easeInOutSine: function (t, b, c, d) {
+                return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+            },
+            easeInExpo: function (t, b, c, d) {
+                return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
+            },
+            easeOutExpo: function (t, b, c, d) {
+                return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
+            },
+            easeInOutExpo: function (t, b, c, d) {
+                if (t === 0) return b;
+                if (t === d) return b + c;
+                if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
+                return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
+            },
+            easeInCirc: function (t, b, c, d) {
+                return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
+            },
+            easeOutCirc: function (t, b, c, d) {
+                return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
+            },
+            easeInOutCirc: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
+                return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
+            },
+            easeInElastic: function (t, b, c, d) {
+                var s = 1.70158;
+                var p = 0;
+                var a = c;
+                if (t === 0) return b;
+                if ((t /= d) === 1) return b + c;
+                if (!p) p = d * .3;
+                if (a < Math.abs(c)) {
+                    a = c;
+                    var s = p / 4;
+                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+            },
+            easeOutElastic: function (t, b, c, d) {
+                var s = 1.70158;
+                var p = 0;
+                var a = c;
+                if (t === 0) return b;
+                if ((t /= d) === 1) return b + c;
+                if (!p) p = d * .3;
+                if (a < Math.abs(c)) {
+                    a = c;
+                    var s = p / 4;
+                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
+            },
+            easeInOutElastic: function (t, b, c, d) {
+                var s = 1.70158;
+                var p = 0;
+                var a = c;
+                if (t === 0) return b;
+                if ((t /= d / 2) === 2) return b + c;
+                if (!p) p = d * (.3 * 1.5);
+                if (a < Math.abs(c)) {
+                    a = c;
+                    var s = p / 4;
+                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                if (t < 1) return -.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+                return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * .5 + c + b;
+            },
+            easeInBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                return c * (t /= d) * t * ((s + 1) * t - s) + b;
+            },
+            easeOutBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+            },
+            easeInOutBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
+                return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
+            },
+            easeInBounce: function (t, b, c, d) {
+                return c - this.easeOutBounce(d - t, 0, c, d) + b;
+            },
+            easeOutBounce: function (t, b, c, d) {
+                if ((t /= d) < (1 / 2.75)) {
+                    return c * (7.5625 * t * t) + b;
+                } else if (t < (2 / 2.75)) {
+                    return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+                } else if (t < (2.5 / 2.75)) {
+                    return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+                } else {
+                    return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+                }
+            },
+            easeInOutBounce: function (t, b, c, d) {
+                if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * .5 + b;
+                return this.easeOutBounce(t * 2 - d, 0, c, d) * .5 + c * .5 + b;
+            }
+        },
+        interpolations = {
+            linear: function (s, e, t, alpha, beta) {
+                return (e - s) * t + s;
+            },
+            quadratic: function (s, e, t, alpha, beta) {
+                return (e - s) * t * t + s;
+            },
+            squareroot: function (s, e, t, alpha, beta) {
+                return (e - s) * Math.pow(t, 0.5) + s;
+            },
+            cubic: function (s, e, t, alpha, beta) {
+                return (e - s) * t * t * t + s;
+            },
+            cuberoot: function (s, e, t, alpha, beta) {
+                return (e - s) * Math.pow(t, 1 / 3) + s;
+            },
+            exponential: function (s, e, t, alpha, beta) {
+                //takes alpha as growth/damp factor
+                return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+            },
+            elastic: function (s, e, t, alpha, beta) {
+                //alpha=growth factor, beta=wavenumber
+                return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+            },
+            sin: function (s, e, t, alpha, beta) {
+                //s=offset, e=amplitude, alpha=wavenumber
+                return s + e * Math.sin(alpha * t * 2 * Math.PI);
+            },
+            cos: function (s, e, t, alpha, beta) {
+                //s=offset, e=amplitude, alpha=wavenumber
+                return s + e * Math.cos(alpha * t * 2 * Math.PI);
+            }
+        },
+        interpolate = function (type, s, e, t, alpha, beta) {
+            // interpolate(string type,float from,float to,float time,float alpha,float beta)
+            // s = starting value
+            // e = ending value
+            // t = time variable (going from 0 to 1)
+            var fn = interpolations[type];
+            if (fn) {
+                return fn(s, e, t, alpha, beta);
+            } else {
+                return robbertPenner[type](t, s, e - s, 1);
+            }
+        };
+    return function (settings) {
+        /* settings = {
+            from: Number
+            to: Number
+            in: Number
+            ease: String
+            alpha: Number (optional)
+            beta: Number (optional)
+            stay: Boolean (optional)
+            do: Gunction (value, time) {} (optional)
+            onComplete: function () {} (optional)
+            id: Number (optional),
+            updateWhenPaused: Boolean (optional)
+        }*/
+        var time = 0,
+            added = false,
+            running = true,
+            tween = Entity(settings).extend({
+                id: settings.id,
+                update: function (data) {
+                    if (!running) {
+                        return;
+                    }
+                    ++time;
+                    // run update
+                    if (settings.do) {
+                        settings.do.apply(this, [interpolate(
+                            settings.ease || 'linear',
+                            settings.from || 0,
+                            Utils.isDefined(settings.to) ? settings.to : 1,
+                            time / (settings.in),
+                            Utils.isDefined(settings.alpha) ? settings.alpha : 1,
+                            Utils.isDefined(settings.beta) ? settings.beta : 1
+                        ), time]);
+                    }
+                    // end
+                    if (!settings.stay && time >= settings.in) {
+                        if (settings.onComplete) {
+                            settings.onComplete.apply(this);
+                        }
+                        Bento.objects.remove(tween);
+                        added = false;
+                    }
+                },
+                start: function () {
+                    time = 0;
+                    if (!added) {
+                        Bento.objects.add(tween);
+                        added = true;
+                    }
+                    running = true;
+                    return tween;
+                },
+                stop: function () {
+                    time = 0;
+                    running = false;
+                    return tween;
+                }
+            });
+        if (settings.in === 0) {
+            settings.in = 1;
+        }
+        // tween automatically starts
+        tween.start();
+        return tween;
+    };
 });
 /**
  *  Represents a 2 dimensional array
@@ -13808,1150 +15242,6 @@ bento.define('bento/math/vector2', [], function () {
             };
         };
     return module;
-});
-/**
- *  Manager that controls all assets
- *  @copyright (C) 2014 HeiGames
- *  @author Hernan Zhou
- */
-bento.define('bento/managers/asset', [
-    'bento/packedimage',
-    'bento/utils'
-], function (PackedImage, Utils) {
-    'use strict';
-    return function () {
-        var assetGroups = {},
-            path = '',
-            assets = {
-                audio: {},
-                json: {},
-                images: {},
-                binary: {}
-            },
-            texturePacker = {},
-            packs = [],
-            loadAudio = function (name, source, callback) {
-                var asset,
-                    i;
-                if (!Utils.isArray(source)) {
-                    source = [path + 'audio/' + source];
-                } else {
-                    // prepend asset paths
-                    for (i = 0; i < source.length; i += 1) {
-                        source[i] = path + 'audio/' + source[i];
-                    }
-                }
-                asset = new Howl({
-                    urls: source,
-                    onload: callback
-                });
-                assets.audio[name] = asset;
-            },
-            loadJSON = function (name, source, callback) {
-                var xhr = new XMLHttpRequest();
-                if (xhr.overrideMimeType) {
-                    xhr.overrideMimeType('application/json');
-                }
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + source);
-                };
-                xhr.ontimeout = function () {
-                    callback('Timeout' + source);
-                };
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4) {
-                        if ((xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
-                            callback(null, name, JSON.parse(xhr.responseText));
-                        } else {
-                            callback('Error: State ' + xhr.readyState + ' ' + source);
-                        }
-                    }
-                };
-                xhr.send(null);
-            },
-            loadBinary = function (name, source, success, failure) {
-                var xhr = new XMLHttpRequest(),
-                    arrayBuffer,
-                    byteArray,
-                    buffer,
-                    i = 0;
-
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + name);
-                };
-                xhr.responseType = 'arraybuffer';
-                xhr.onload = function (e) {
-                    var binary;
-                    arrayBuffer = xhr.response;
-                    if (arrayBuffer) {
-                        byteArray = new Uint8Array(arrayBuffer);
-                        buffer = [];
-                        for (i; i < byteArray.byteLength; ++i) {
-                            buffer[i] = String.fromCharCode(byteArray[i]);
-                        }
-                        // loadedAssets.binary[name] = buffer.join('');
-                        binary = buffer.join('');
-                        callback(null, name, binary);
-                    }
-                };
-                xhr.send();
-            },
-            loadImage = function (name, source, callback) {
-                // TODO: Implement failure
-                var img = new Image();
-                img.src = source;
-                img.addEventListener('load', function () {
-                    callback(null, name, img);
-                }, false);
-            },
-            /**
-             * Loads json files containing asset paths
-             * @param {Object} jsonFiles: name with json path
-             * @param {Function} onReady: callback when ready
-             * @param {Function} onLoaded: callback when json file is loaded
-             */
-            loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
-                var jsonName,
-                    keyCount = Utils.getKeyLength(jsonFiles),
-                    loaded = 0,
-                    callback = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assetGroups[name] = json;
-                        loaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(loaded, keyCount);
-                        }
-                        if (keyCount === loaded && Utils.isDefined(onReady)) {
-                            onReady(null);
-                        }
-                    };
-                for (jsonName in jsonFiles) {
-                    if (jsonFiles.hasOwnProperty(jsonName)) {
-                        loadJSON(jsonName, jsonFiles[jsonName], callback);
-                    }
-                }
-            },
-            /**
-             * Loads assets from group
-             * @param {String} groupName: name of asset group
-             * @param {Function} onReady: callback when ready
-             * @param {Function} onLoaded: callback when asset file is loaded
-             */
-            load = function (groupName, onReady, onLoaded) {
-                var group = assetGroups[groupName],
-                    asset,
-                    assetsLoaded = 0,
-                    assetCount = 0,
-                    checkLoaded = function () {
-                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
-                            initPackedImages();
-                            onReady(null);
-                        }
-                    },
-                    onLoadImage = function (err, name, image) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.images[name] = image;
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadPack = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.json[name] = json;
-                        packs.push(name);
-                        assetsLoaded += 1;
-                    },
-                    onLoadAudio = function () {
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    };
-
-                if (!Utils.isDefined(group)) {
-                    onReady('Could not find asset group ' + groupName);
-                    return;
-                }
-                // set path
-                if (Utils.isDefined(group.path)) {
-                    path += group.path;
-                }
-                // load images
-                if (Utils.isDefined(group.images)) {
-                    assetCount += Utils.getKeyLength(group.images);
-                    for (asset in group.images) {
-                        if (!group.images.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
-                    }
-                }
-                // load packed images
-                if (Utils.isDefined(group.texturePacker)) {
-                    assetCount += Utils.getKeyLength(group.texturePacker);
-                    for (asset in group.texturePacker) {
-                        if (!group.texturePacker.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        loadJSON(asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
-                    }
-                }
-                // load audio
-                if (Utils.isDefined(group.audio)) {
-                    assetCount += Utils.getKeyLength(group.audio);
-                    for (asset in group.audio) {
-                        if (!group.audio.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        loadAudio(asset, group.audio[asset], onLoadAudio);
-                    }
-                }
-                // load json
-                if (Utils.isDefined(group.json)) {
-                    assetCount += Utils.getKeyLength(group.json);
-                }
-
-            },
-            unload = function (groupName) {},
-            getImage = function (name) {
-                var image, packedImage = texturePacker[name];
-                if (!packedImage) {
-                    image = getImageElement(name);
-                    if (!image) {
-                        throw 'Can not find ' + name;
-                    }
-                    packedImage = PackedImage(image);
-                    texturePacker[name] = packedImage;
-                }
-                return packedImage;
-            },
-            getImageElement = function (name) {
-                var asset = assets.images[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            getJson = function (name) {
-                var asset = assets.json[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            getAudio = function (name) {
-                var asset = assets.audio[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            getAssets = function () {
-                return assets;
-            },
-            initPackedImages = function () {
-                var frame, pack, i, image, json;
-                while (packs.length) {
-                    pack = packs.pop();
-                    image = getImageElement(pack);
-                    json = getJson(pack);
-
-                    // parse json
-                    for (i = 0; i < json.frames.length; ++i) {
-                        name = json.frames[i].filename;
-                        name = name.substring(0, name.length - 4);
-                        frame = json.frames[i].frame;
-                        texturePacker[name] = PackedImage(image, frame);
-                    }
-                    console.log(texturePacker);
-                }
-            };
-        return {
-            loadAssetGroups: loadAssetGroups,
-            load: load,
-            unload: unload,
-            getImage: getImage,
-            getImageElement: getImageElement,
-            getJson: getJson,
-            getAudio: getAudio,
-            getAssets: getAssets
-        };
-    };
-});
-/*
- * Audio manager, will be rewritten in the future
- */
-
-define('bento/managers/audio', [
-    'bento/utils'
-], function (Utils) {
-    return function (bento) {
-        var volume = 1,
-            mutedSound = false,
-            mutedMusic = false,
-            preventSounds = false,
-            howler,
-            musicLoop = false,
-            lastMusicPlayed = '',
-            currentMusicId = 0,
-            saveMuteSound,
-            saveMuteMusic,
-            assetManager = bento.assets,
-            canvasElement = bento.getCanvas(),
-            onVisibilityChanged = function (hidden) {
-                if (hidden) {
-                    // save audio preferences and mute
-                    saveMuteSound = mutedSound;
-                    saveMuteMusic = mutedMusic;
-                    obj.muteMusic(true);
-                    obj.muteSound(true);
-                } else {
-                    // reload audio preferences and replay music if necessary
-                    mutedSound = saveMuteSound;
-                    mutedMusic = saveMuteMusic;
-                    obj.playMusic(lastMusicPlayed, musicLoop);
-                }
-            },
-            obj = {
-                /* Sets the volume (0 = minimum, 1 = maximum)
-                 * @name setVolume
-                 * @function
-                 * @param {Number} value: the volume
-                 * @param {String} name: name of the sound currently playing
-                 */
-                setVolume: function (value) {
-                    var i, l, node;
-                    if (!Utils.isDefined(howler)) {
-                        return;
-                    }
-                    for (i = 0, l = howler._audioNode.length; i < l; ++i) {
-                        node = howler._audioNode[i];
-                        if (!node.paused) {
-                            howler.volume(value, node.id);
-                        }
-                    }
-                },
-                /* Plays a sound
-                 * @name playSound
-                 * @function
-                 * @param {String} name: name of the soundfile
-                 */
-                playSound: function (name) {
-                    if (!mutedSound && !preventSounds) {
-                        assetManager.getAudio(name).play();
-                    }
-                },
-                stopSound: function (name) {
-                    var i, l, node;
-                    assetManager.getAudio(name).stop();
-                },
-                /* Plays a music
-                 * @name playMusic
-                 * @function
-                 * @param {String} name: name of the soundfile
-                 */
-                playMusic: function (name, loop, onEnd) {
-                    lastMusicPlayed = name;
-                    if (Utils.isDefined(loop)) {
-                        musicLoop = loop;
-                    } else {
-                        musicLoop = false;
-                    }
-                    // set end event
-                    if (navigator.isCocoonJS && onEnd) {
-                        assetManager.getAudio(name)._audioNode[0].onended = onEnd;
-                    }
-                    if (!mutedMusic && lastMusicPlayed !== '') {
-                        if (navigator.isCocoonJS) {
-                            assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
-                            assetManager.getAudio(name)._audioNode[0].play();
-                            return;
-                        }
-                        assetManager.getAudio(name).loop(musicLoop);
-                        assetManager.getAudio(name).play(function (id) {
-                            currentMusicId = id;
-                        });
-                    }
-                },
-                stopMusic: function (name) {
-                    var i, l, node;
-                    if (navigator.isCocoonJS) {
-                        assetManager.getAudio(name)._audioNode[0].pause();
-                        return;
-                    }
-                    assetManager.getAudio(name).stop();
-                },
-                /* Mute or unmute all sound
-                 * @name muteSound
-                 * @function
-                 * @param {Boolean} mute: whether to mute or not
-                 */
-                muteSound: function (mute) {
-                    mutedSound = mute;
-                    if (mutedSound) {
-                        // we stop all sounds because setting volume is not supported on all devices
-                        this.stopAllSound();
-                    }
-                },
-                /* Mute or unmute all music
-                 * @name muteMusic
-                 * @function
-                 * @param {Boolean} mute: whether to mute or not
-                 */
-                muteMusic: function (mute, continueMusic) {
-                    var last = lastMusicPlayed;
-                    mutedMusic = mute;
-
-                    if (!Utils.isDefined(continueMusic)) {
-                        continueMusic = false;
-                    }
-                    if (mutedMusic) {
-                        obj.stopAllMusic();
-                        lastMusicPlayed = last;
-                    } else if (continueMusic && lastMusicPlayed !== '') {
-                        obj.playMusic(lastMusicPlayed, musicLoop);
-                    }
-                },
-                /* Stop all sound currently playing
-                 * @name stopAllSound
-                 * @function
-                 */
-                stopAllSound: function () {
-                    var sound,
-                        howls = assetManager.getAssets().audio;
-                    for (sound in howls) {
-                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
-                            howls[sound].stop();
-                        }
-                    }
-                },
-                /* Stop all sound currently playing
-                 * @name stopAllSound
-                 * @function
-                 */
-                stopAllMusic: function () {
-                    var sound,
-                        howls = assetManager.getAssets().audio;
-                    for (sound in howls) {
-                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
-                            if (navigator.isCocoonJS) {
-                                howls[sound]._audioNode[0].pause();
-                                continue;
-                            }
-                            howls[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
-                        }
-                    }
-                    lastMusicPlayed = '';
-                },
-                /* Prevents any sound from playing without interrupting current sounds
-                 * @name preventSounds
-                 * @function
-                 */
-                preventSounds: function (bool) {
-                    preventSounds = bool;
-                }
-            };
-        // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
-        if ('hidden' in document) {
-            document.addEventListener("visibilitychange", function () {
-                onVisibilityChanged(document.hidden);
-            }, false);
-        } else if ('mozHidden' in document) {
-            document.addEventListener("mozvisibilitychange", function () {
-                onVisibilityChanged(document.mozHidden);
-            }, false);
-        } else if ('webkitHidden' in document) {
-            document.addEventListener("webkitvisibilitychange", function () {
-                onVisibilityChanged(document.webkitHidden);
-            }, false);
-        } else if ('msHidden' in document) {
-            document.addEventListener("msvisibilitychange", function () {
-                onVisibilityChanged(document.msHidden);
-            }, false);
-        } else if ('onpagehide' in window) {
-            window.addEventListener('pagehide', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('pageshow', function () {
-                onVisibilityChanged(false);
-            }, false);
-        } else if ('onblur' in document) {
-            window.addEventListener('blur', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('focus', function () {
-                onVisibilityChanged(false);
-            }, false);
-            visHandled = true;
-        } else if ('onfocusout' in document) {
-            window.addEventListener('focusout', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('focusin', function () {
-                onVisibilityChanged(false);
-            }, false);
-        }
-        return obj;
-    };
-});
-/**
- *  Manager that controls all events and input
- *  @copyright (C) 2014 HeiGames
- *  @author Hernan Zhou
- */
-bento.define('bento/managers/input', [
-    'bento/utils',
-    'bento/math/vector2',
-    'bento/eventsystem'
-], function (Utils, Vector2, EventSystem) {
-    'use strict';
-    return function (settings) {
-        var isPaused = false,
-            canvas,
-            canvasScale,
-            viewport,
-            pointers = [],
-            offsetLeft = 0,
-            offsetTop = 0,
-            pointerDown = function (evt) {
-                EventSystem.fire('pointerDown', evt);
-            },
-            pointerMove = function (evt) {
-                EventSystem.fire('pointerMove', evt);
-            },
-            pointerUp = function (evt) {
-                EventSystem.fire('pointerUp', evt);
-            },
-            touchStart = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
-                }
-                pointerDown(evt);
-            },
-            touchMove = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
-                }
-                pointerMove(evt);
-            },
-            touchEnd = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
-                }
-                pointerUp(evt);
-            },
-            mouseDown = function (evt) {
-                evt.preventDefault();
-                addMousePosition(evt);
-                pointerDown(evt);
-            },
-            mouseMove = function (evt) {
-                evt.preventDefault();
-                addMousePosition(evt);
-                pointerMove(evt);
-            },
-            mouseUp = function (evt) {
-                evt.preventDefault();
-                addMousePosition(evt);
-                pointerUp(evt);
-            },
-            addTouchPosition = function (evt, n) {
-                var touch = evt.changedTouches[n],
-                    x = (touch.pageX - offsetLeft) / canvasScale.x,
-                    y = (touch.pageY - offsetTop) / canvasScale.y;
-                evt.preventDefault();
-                evt.eventType = 'touch';
-                evt.changedTouches[n].position = Vector2(x, y);
-                evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
-                evt.changedTouches[n].worldPosition.x += viewport.x;
-                evt.changedTouches[n].worldPosition.y += viewport.y;
-                // add 'normal' position
-                evt.position = evt.changedTouches[n].position.clone();
-                evt.worldPosition = evt.changedTouches[n].position.clone();
-            },
-            addMousePosition = function (evt) {
-                var x = (evt.clientX - offsetLeft) / canvasScale.x,
-                    y = (evt.clientY - offsetTop) / canvasScale.y;
-                evt.eventType = 'mouse';
-                evt.position = Vector2(x, y);
-                evt.worldPosition = evt.position.clone();
-                evt.worldPosition.x += viewport.x;
-                evt.worldPosition.y += viewport.y;
-            };
-
-        if (!settings) {
-            throw 'Supply a settings object';
-        }
-        // canvasScale is needed to take css scaling into account
-        canvasScale = settings.canvasScale;
-        canvas = settings.canvas;
-        viewport = settings.viewport;
-        canvas.addEventListener('touchstart', touchStart);
-        canvas.addEventListener('touchmove', touchMove);
-        canvas.addEventListener('touchend', touchEnd);
-        canvas.addEventListener('mousedown', mouseDown);
-        canvas.addEventListener('mousemove', mouseMove);
-        canvas.addEventListener('mouseup', mouseUp);
-
-        if (canvas && !navigator.isCocoonJS) {
-            offsetLeft = canvas.offsetLeft;
-            offsetTop = canvas.offsetTop;
-        }
-
-        // touch device
-        document.body.addEventListener('touchstart', function (evt) {
-            if (evt && evt.preventDefault) {
-                evt.preventDefault();
-            }
-            if (evt && evt.stopPropagation) {
-                evt.stopPropagation();
-            }
-            return false;
-        });
-        document.body.addEventListener('touchmove', function (evt) {
-            if (evt && evt.preventDefault) {
-                evt.preventDefault();
-            }
-            if (evt && evt.stopPropagation) {
-                evt.stopPropagation();
-            }
-            return false;
-        });
-        return {
-            addListener: function () {},
-            removeListener: function () {}
-        };
-    };
-});
-/**
- *  Manager that controls all objects
- *  @copyright (C) 2014 HeiGames
- *  @author Hernan Zhou
- */
-bento.define('bento/managers/object', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    return function (settings, useDeltaT, debug) {
-        var objects = [],
-            lastTime = new Date().getTime(),
-            cumulativeTime = 0,
-            minimumFps = 30,
-            lastFrameTime = new Date().getTime(),
-            gameData,
-            isRunning = false,
-            useSort = true,
-            isPaused = false,
-            fpsMeter,
-            sort = function () {
-                if (!settings.defaultSort) {
-                    Utils.stableSort.inplace(objects, function (a, b) {
-                        return a.z - b.z;
-                    });
-                } else {
-                    // default behavior
-                    objects.sort(function (a, b) {
-                        return a.z - b.z;
-                    });
-                }
-            },
-            cleanObjects = function () {
-                var i;
-                // loop objects array from end to start and remove null elements
-                for (i = objects.length - 1; i >= 0; --i) {
-                    if (objects[i] === null) {
-                        objects.splice(i, 1);
-                    }
-                }
-            },
-            mainLoop = function (time) {
-                var object,
-                    i,
-                    currentTime = new Date().getTime(),
-                    deltaT = currentTime - lastTime;
-
-                if (debug) {
-                    fpsMeter.tickStart();
-                }
-
-                lastTime = currentTime;
-                cumulativeTime += deltaT;
-                gameData.deltaT = deltaT;
-                if (useDeltaT) {
-                    cumulativeTime = 1000 / 60;
-                }
-                while (cumulativeTime >= 1000 / 60) {
-                    cumulativeTime -= 1000 / 60;
-                    if (cumulativeTime > 1000 / minimumFps) {
-                        // deplete cumulative time
-                        while (cumulativeTime >= 1000 / 60) {
-                            cumulativeTime -= 1000 / 60;
-                        }
-                    }
-                    if (useDeltaT) {
-                        cumulativeTime = 0;
-                    }
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
-                            object.update(gameData);
-                        }
-                    }
-                }
-                cleanObjects();
-                if (useSort) {
-                    sort();
-                }
-                gameData.renderer.begin();
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (object.draw) {
-                        object.draw(gameData);
-                    }
-                }
-                gameData.renderer.flush();
-
-                lastFrameTime = time;
-                if (debug) {
-                    fpsMeter.tick();
-                }
-
-                requestAnimationFrame(mainLoop);
-            };
-
-        if (!window.performance) {
-            window.performance = {
-                now: Date.now
-            };
-        }
-        gameData = settings;
-        if (debug) {
-            FPSMeter.defaults.graph = 1;
-            fpsMeter = new FPSMeter();
-        }
-
-        return {
-            add: function (object) {
-                var i, type, family;
-                object.z = object.z || 0;
-                objects.push(object);
-                if (object.init) {
-                    object.init();
-                }
-                // add object to access pools
-                if (object.getFamily) {
-                    family = object.getFamily();
-                    for (i = 0; i < family.length; ++i) {
-                        type = family[i];
-                        if (!quickAccess[type]) {
-                            quickAccess[type] = [];
-                        }
-                        quickAccess[type].push(object);
-                    }
-                }
-            },
-            remove: function (object) {
-                var i, type, index, family;
-                if (!object) {
-                    return;
-                }
-                index = objects.indexOf(object);
-                if (index >= 0) {
-                    objects[index] = null;
-                    if (object.destroy) {
-                        object.destroy(gameData);
-                    }
-                }
-                // remove from access pools
-                if (object.getFamily) {
-                    family = object.getFamily();
-                    for (i = 0; i < family.length; ++i) {
-                        type = family[i];
-                        Utils.removeObject(quickAccess[type], object);
-                    }
-                }
-            },
-            removeAll: function (removeGlobal) {
-                var i,
-                    object;
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (!object.global || removeGlobal) {
-                        this.remove(object);
-                    }
-                }
-            },
-            getByName: function (objectName) {
-                var i,
-                    object,
-                    array = [];
-
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (!object.name) {
-                        continue;
-                    }
-                    if (object.name === objectName) {
-                        array.push(object);
-                    }
-                }
-                return array;
-            },
-            getByFamily: function (type) {
-                var array = quickAccess[type];
-                if (!array) {
-                    // initialize it
-                    quickAccess[type] = [];
-                    array = quickAccess[type];
-                    console.log('Warning: family called ' + type + ' does not exist');
-                }
-                return array;
-            },
-            run: function () {
-                if (!isRunning) {
-                    mainLoop();
-                    isRunning = true;
-                }
-            }
-        };
-    };
-});
-/**
- *  @copyright (C) HeiGames
- */
-bento.define('bento/screen', [
-    'bento/utils',
-    'bento',
-    'bento/math/rectangle'
-], function (Utils, Bento, Rectangle) {
-    'use strict';
-    return function (settings) {
-        /*settings = {
-            dimension: Rectangle, [optional / overwritten by tmx size]
-            tiled: String
-        }*/
-        var viewport = Bento.getViewport(),
-            dimension = settings.dimension || Rectangle(0, 0, 0, 0),
-            isShown = false,
-            module = {
-                setDimension: function (rectangle) {
-                    dimension.width = rectangle.width;
-                    dimension.height = rectangle.height;
-                },
-                getDimension: function () {
-                    return dimension;
-                },
-                add: function (object) {
-                    return Utils.combine(this, object);
-                },
-                setShown: function (bool) {
-                    if (!Utils.isBoolean(bool)) {
-                        throw 'Argument is not a boolean';
-                    } else {
-                        isShown = bool;
-                    }
-                },
-                onShow: function () {},
-                onHide: function () {
-                    // remove all objects
-                    Bento.removeAll();
-                    // reset viewport scroll when hiding screen
-                    viewport.x = 0;
-                    viewport.y = 0;
-
-                }
-            };
-
-        return module;
-    };
-});
-define('bento/tiled', [
-    'bento',
-    'bento/entity',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/math/polygon'
-], function (Bento, Entity, Vector2, Rectangle, Polygon) {
-    'use strict';
-    return function (settings, onReady) {
-        /*settings = {
-            name: String, // name of JSON file
-            background: Boolean // TODO false: splits tileLayer tile entities
-        }*/
-        var json = Bento.assets.getJSON(settings.name),
-            i,
-            j,
-            k,
-            width = json.width,
-            height = json.height,
-            layers = json.layers.length,
-            tileWidth = json.tilewidth,
-            tileHeight = json.tileheight,
-            canvas = document.createElement('canvas'),
-            context = canvas.getContext('2d'),
-            image,
-            layer,
-            firstgid,
-            object,
-            points,
-            objects = [],
-            shapes = [],
-            viewport = Bento.getViewport(),
-            background = Entity().add({
-                z: 0,
-                draw: function (gameData) {
-                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
-                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0);
-
-                    if (w === 0 || h === 0) {
-                        return;
-                    }
-                    // only draw the part in the viewport
-                    gameData.renderer.drawImage(
-                        canvas,
-                        ~~(Math.max(Math.min(viewport.x, canvas.width), 0)),
-                        ~~(Math.max(Math.min(viewport.y, canvas.height), 0)),
-                        ~~w,
-                        ~~h,
-                        0,
-                        0,
-                        ~~w,
-                        ~~h
-                    );
-                }
-            }),
-            getTileset = function (gid) {
-                var l,
-                    tileset,
-                    current = null;
-                // loop through tilesets and find the highest firstgid that's
-                // still lower or equal to the gid
-                for (l = 0; l < json.tilesets.length; ++l) {
-                    tileset = json.tilesets[l];
-                    if (tileset.firstgid <= gid) {
-                        current = tileset;
-                    }
-                }
-                return current;
-            },
-            getTile = function (tileset, gid) {
-                var index,
-                    tilesetWidth,
-                    tilesetHeight;
-                if (tileset === null) {
-                    return null;
-                }
-                index = gid - tileset.firstgid;
-                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
-                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
-                return {
-                    // convention: the tileset name must be equal to the asset name!
-                    subimage: Bento.assets.getImage(tileset.name),
-                    x: (index % tilesetWidth) * tileset.tilewidth,
-                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
-                    width: tileset.tilewidth,
-                    height: tileset.tileheight
-                };
-            },
-            drawTileLayer = function (x, y) {
-                var gid = layer.data[y * width + x],
-                    // get correct tileset and image
-                    tileset = getTileset(gid),
-                    tile = getTile(tileset, gid);
-                // draw background to offscreen canvas
-                if (tile) {
-                    context.drawImage(
-                        tile.subimage.image,
-                        tile.subimage.x + tile.x,
-                        tile.subimage.y + tile.y,
-                        tile.width,
-                        tile.height,
-                        x * tileWidth,
-                        y * tileHeight,
-                        tileWidth,
-                        tileHeight
-                    );
-                }
-            },
-            spawn = function (name, obj, tilesetProperties) {
-                var x = obj.x,
-                    y = obj.y,
-                    params = [],
-                    getParams = function (properties) {
-                        var prop;
-                        for (prop in properties) {
-                            if (!prop.match(/param\d+/)) {
-                                continue;
-                            }
-                            if (isNaN(properties[prop])) {
-                                params.push(properties[prop]);
-                            } else {
-                                params.push((+properties[prop]));
-                            }
-                        }
-                    };
-
-                // search params
-                getParams(tilesetProperties);
-                getParams(obj.properties);
-
-                require([name], function (Instance) {
-                    var instance = Instance.apply(this, params),
-                        origin = instance.getOrigin(),
-                        dimension = instance.getDimension(),
-                        prop,
-                        addProperties = function (properties) {
-                            var prop;
-                            for (prop in properties) {
-                                if (prop === 'module' || prop.match(/param\d+/)) {
-                                    continue;
-                                }
-                                if (properties.hasOwnProperty(prop)) {
-                                    // number or string?
-                                    if (isNaN(properties[prop])) {
-                                        instance[prop] = properties[prop];
-                                    } else {
-                                        instance[prop] = (+properties[prop]);
-                                    }
-                                }
-                            }
-                        };
-
-                    instance.setPosition({
-                        // tiled assumes origin (0, 1)
-                        x: x + (origin.x),
-                        y: y + (origin.y - dimension.height)
-                    });
-                    // add in tileset properties
-                    addProperties(tilesetProperties);
-                    // add tile properties
-                    addProperties(obj.properties);
-                    // add to game
-                    // Bento.objects.add(instance);
-                    objects.push(instance);
-                });
-            },
-            spawnObject = function (obj) {
-                var gid = obj.gid,
-                    // get tileset: should contain module name
-                    tileset = getTileset(gid),
-                    id = gid - tileset.firstgid,
-                    properties,
-                    moduleName;
-                if (tileset.tileproperties) {
-                    properties = tileset.tileproperties[id.toString()];
-                    if (properties) {
-                        moduleName = properties.module;
-                    }
-                }
-                if (moduleName) {
-                    spawn(moduleName, obj, properties);
-                }
-            },
-            spawnShape = function (shape, type) {
-                /*var obj = Entity({
-                    z: 0,
-                    name: type,
-                    family: [type]
-                }).extend({
-                    update: function () {},
-                    draw: function () {}
-                });
-                obj.setBoundingBox(shape);
-                Bento.objects.add(obj);*/
-                shape.type = type;
-                shapes.push(shape);
-            };
-
-        // setup canvas
-        // to do: split up in multiple canvas elements due to max
-        // size
-        canvas.width = width * tileWidth;
-        canvas.height = height * tileHeight;
-
-        // loop through layers
-        for (k = 0; k < layers; ++k) {
-            layer = json.layers[k];
-            if (layer.type === 'tilelayer') {
-                // loop through tiles
-                for (j = 0; j < layer.height; ++j) {
-                    for (i = 0; i < layer.width; ++i) {
-                        drawTileLayer(i, j);
-                    }
-                }
-            } else if (layer.type === 'objectgroup') {
-                for (i = 0; i < layer.objects.length; ++i) {
-                    object = layer.objects[i];
-
-                    // default type is solid
-                    if (object.type === '') {
-                        object.type = 'solid';
-                    }
-
-                    if (object.gid) {
-                        // normal object
-                        spawnObject(object);
-                    } else if (object.polygon) {
-                        // polygon 
-                        points = [];
-                        for (j = 0; j < object.polygon.length; ++j) {
-                            points.push(object.polygon[j]);
-                            points[j].x += object.x;
-                            // shift polygons 1 pixel down?
-                            // something might be wrong with polygon definition
-                            points[j].y += object.y + 1;
-                        }
-                        spawnShape(Polygon(points), object.type);
-                    } else {
-                        // rectangle
-                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
-                    }
-                }
-            }
-        }
-
-        // add background to game
-        // Bento.objects.add(background);
-
-        return {
-            tileLayer: background,
-            objects: objects,
-            shapes: shapes,
-            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
-        };
-    };
 });
 bento.define('bento/renderers/canvas2d', [
     'bento/utils'

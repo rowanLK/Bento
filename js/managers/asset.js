@@ -163,6 +163,14 @@ bento.define('bento/managers/asset', [
                         packs.push(name);
                         assetsLoaded += 1;
                     },
+                    onLoadJson = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        assetsLoaded += 1;
+                    },
                     onLoadAudio = function () {
                         assetsLoaded += 1;
                         if (Utils.isDefined(onLoaded)) {
@@ -212,6 +220,12 @@ bento.define('bento/managers/asset', [
                 // load json
                 if (Utils.isDefined(group.json)) {
                     assetCount += Utils.getKeyLength(group.json);
+                    for (asset in group.json) {
+                        if (!group.json.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadJSON(asset, path + 'json/' + group.json[asset], onLoadJson);
+                    }
                 }
 
             },

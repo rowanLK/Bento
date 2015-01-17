@@ -14,6 +14,7 @@ bento.define('bento/components/sprite', [
         Scale(base, settings);
         Rotation(base, settings);
         Animation(base, settings);
+        base.sprite = base.animation;
         return base;
     };
 });

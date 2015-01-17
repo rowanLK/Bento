@@ -106,6 +106,12 @@ bento.define('bento/entity', [
                     position.x = value.x;
                     position.y = value.y;
                 },
+                setPositionX: function (value) {
+                    position.x = value;
+                },
+                setPositionY: function (value) {
+                    position.y = value;
+                },
                 getDimension: function () {
                     return dimension;
                 },
@@ -268,7 +274,7 @@ bento.define('bento/entity', [
                 entity.setOriginRelative(settings.originRelative);
             }
             if (settings.name) {
-                entity.setName(settings.name);
+                entity.name = settings.name;
             }
             if (settings.family) {
                 if (!Utils.isArray(settings.family)) {

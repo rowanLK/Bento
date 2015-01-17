@@ -8,7 +8,8 @@ bento.require([
     'bento/components/rotation',
     'bento/components/scale',
     'bento/components/fill',
-    'bento/components/clickable'
+    'bento/components/clickable',
+    'bento/tween'
 ], function (
     Bento,
     Vector2,
@@ -19,7 +20,8 @@ bento.require([
     Rotation,
     Scale,
     Fill,
-    Clickable
+    Clickable,
+    Tween
 ) {
     Bento.setup({
         canvasId: 'canvas',
@@ -56,7 +58,19 @@ bento.require([
                     },
                     clickable: {
                         pointerDown: function (evt) {
-                            console.log(evt)
+                            console.log(evt);
+                            Tween({
+                                from: 16,
+                                to: 160,
+                                'in': 60,
+                                ease: 'easeOutBounce',
+                                do: function (v, t) {
+                                    bunny1.setPositionY(v);
+                                },
+                                onComplete: function () {
+                            
+                                }
+                            });
                         }
                     },
                     init: function () {

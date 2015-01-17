@@ -4,7 +4,8 @@
 bento.define('bento/screen', [
     'bento/utils',
     'bento',
-    'bento/math/rectangle'
+    'bento/math/rectangle',
+    'bento/tiled'
 ], function (Utils, Bento, Rectangle) {
     'use strict';
     return function (settings) {

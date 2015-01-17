@@ -1,0 +1,10 @@
+{
+    "path": "assets/",
+    "images": {
+        "tiles": "tiles.png",
+        "bunnygirlsmall": "bunnygirlsmall.png"
+    },
+    "json": {
+        "level": "level.json"
+    }
+}

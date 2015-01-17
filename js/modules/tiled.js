@@ -3,15 +3,16 @@ define('bento/tiled', [
     'bento/entity',
     'bento/math/vector2',
     'bento/math/rectangle',
-    'bento/math/polygon'
-], function (Bento, Entity, Vector2, Rectangle, Polygon) {
+    'bento/math/polygon',
+    'bento/packedimage'
+], function (Bento, Entity, Vector2, Rectangle, Polygon, PackedImage) {
     'use strict';
     return function (settings, onReady) {
         /*settings = {
             name: String, // name of JSON file
             background: Boolean // TODO false: splits tileLayer tile entities
         }*/
-        var json = Bento.assets.getJSON(settings.name),
+        var json = Bento.assets.getJson(settings.name),
             i,
             j,
             k,
@@ -30,26 +31,21 @@ define('bento/tiled', [
             objects = [],
             shapes = [],
             viewport = Bento.getViewport(),
-            background = Entity().add({
+            background = Entity().extend({
                 z: 0,
                 draw: function (gameData) {
                     var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
-                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0);
+                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0),
+                        img = PackedImage(canvas);
 
                     if (w === 0 || h === 0) {
                         return;
                     }
                     // only draw the part in the viewport
                     gameData.renderer.drawImage(
-                        canvas,
-                        ~~(Math.max(Math.min(viewport.x, canvas.width), 0)),
-                        ~~(Math.max(Math.min(viewport.y, canvas.height), 0)),
-                        ~~w,
-                        ~~h,
+                        img, ~~(Math.max(Math.min(viewport.x, canvas.width), 0)), ~~(Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
                         0,
-                        0,
-                        ~~w,
-                        ~~h
+                        0, ~~w, ~~h
                     );
                 }
             }),
@@ -160,7 +156,9 @@ define('bento/tiled', [
                     // add tile properties
                     addProperties(obj.properties);
                     // add to game
-                    // Bento.objects.add(instance);
+                    if (settings.spawn) {
+                        Bento.objects.add(instance);
+                    }
                     objects.push(instance);
                 });
             },
@@ -182,16 +180,19 @@ define('bento/tiled', [
                 }
             },
             spawnShape = function (shape, type) {
-                /*var obj = Entity({
-                    z: 0,
-                    name: type,
-                    family: [type]
-                }).extend({
-                    update: function () {},
-                    draw: function () {}
-                });
-                obj.setBoundingBox(shape);
-                Bento.objects.add(obj);*/
+                var obj;
+                if (settings.spawn) {
+                    obj = Entity({
+                        z: 0,
+                        name: type,
+                        family: [type]
+                    }).extend({
+                        update: function () {},
+                        draw: function () {}
+                    });
+                    obj.setBoundingBox(shape);
+                    Bento.objects.add(obj);
+                }
                 shape.type = type;
                 shapes.push(shape);
             };
@@ -244,7 +245,9 @@ define('bento/tiled', [
         }
 
         // add background to game
-        // Bento.objects.add(background);
+        if (settings.spawn) {
+            Bento.objects.add(background);
+        }
 
         return {
             tileLayer: background,

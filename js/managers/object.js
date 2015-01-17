@@ -14,6 +14,7 @@ bento.define('bento/managers/object', [
             minimumFps = 30,
             lastFrameTime = new Date().getTime(),
             gameData,
+            quickAccess = {},
             isRunning = false,
             useSort = true,
             isPaused = false,

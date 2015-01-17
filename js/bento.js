@@ -63,18 +63,19 @@ bento.define('bento', [
             document.body.appendChild(debug.debugBar);
         },
         setupCanvas = function (settings, callback) {
-            var wrapper;
+            var parent;
             canvas = document.getElementById(settings.canvasId);
 
             if (!canvas) {
                 // no canvas, create it
-                wrapper = document.getElementById('wrapper');
-                if (!wrapper) {
-                    throw 'Supply a canvasId to settings or add a wrapper div';
+                parent = document.getElementById('wrapper');
+                if (!parent) {
+                    // just append it to the document body
+                    parent = document.body;
                 }
                 canvas = document.createElement(navigator.isCocoonJS ? 'screencanvas' : 'canvas');
                 canvas.id = settings.canvasId;
-                wrapper.appendChild(canvas);
+                parent.appendChild(canvas);
             }
             canvas.width = viewport.width;
             canvas.height = viewport.height;
