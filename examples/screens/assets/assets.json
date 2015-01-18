@@ -5,6 +5,7 @@
         "bunnygirlsmall": "bunnygirlsmall.png"
     },
     "json": {
-        "level": "level.json"
+        "level1": "level1.json",
+        "level2": "level2.json"
     }
 }

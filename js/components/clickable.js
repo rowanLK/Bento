@@ -10,7 +10,12 @@ bento.define('bento/components/clickable', [
                 name: 'clickable',
                 pointerDown: function (evt) {},
                 pointerUp: function (evt) {},
-                pointerMove: function (evt) {}
+                pointerMove: function (evt) {},
+                destroy: function () {
+                    EventSystem.removeEventListener('pointerDown', component.pointerDown);
+                    EventSystem.removeEventListener('pointerUp', component.pointerUp);
+                    EventSystem.removeEventListener('pointerMove', component.pointerMove);
+                }
             };
 
         if (settings && settings[component.name]) {

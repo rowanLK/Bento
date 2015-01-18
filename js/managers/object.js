@@ -99,6 +99,96 @@ bento.define('bento/managers/object', [
                 }
 
                 requestAnimationFrame(mainLoop);
+            },
+            module = {
+                add: function (object) {
+                    var i, type, family;
+                    object.z = object.z || 0;
+                    objects.push(object);
+                    if (object.init) {
+                        object.init();
+                    }
+                    // add object to access pools
+                    if (object.getFamily) {
+                        family = object.getFamily();
+                        for (i = 0; i < family.length; ++i) {
+                            type = family[i];
+                            if (!quickAccess[type]) {
+                                quickAccess[type] = [];
+                            }
+                            quickAccess[type].push(object);
+                        }
+                    }
+                },
+                remove: function (object) {
+                    var i, type, index, family;
+                    if (!object) {
+                        return;
+                    }
+                    index = objects.indexOf(object);
+                    if (index >= 0) {
+                        objects[index] = null;
+                        if (object.destroy) {
+                            object.destroy(gameData);
+                        }
+                    }
+                    // remove from access pools
+                    if (object.getFamily) {
+                        family = object.getFamily();
+                        for (i = 0; i < family.length; ++i) {
+                            type = family[i];
+                            Utils.removeObject(quickAccess[type], object);
+                        }
+                    }
+                },
+                removeAll: function (removeGlobal) {
+                    var i,
+                        object;
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.global || removeGlobal) {
+                            module.remove(object);
+                        }
+                    }
+                },
+                getByName: function (objectName) {
+                    var i,
+                        object,
+                        array = [];
+
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.name) {
+                            continue;
+                        }
+                        if (object.name === objectName) {
+                            array.push(object);
+                        }
+                    }
+                    return array;
+                },
+                getByFamily: function (type) {
+                    var array = quickAccess[type];
+                    if (!array) {
+                        // initialize it
+                        quickAccess[type] = [];
+                        array = quickAccess[type];
+                        console.log('Warning: family called ' + type + ' does not exist');
+                    }
+                    return array;
+                },
+                run: function () {
+                    if (!isRunning) {
+                        mainLoop();
+                        isRunning = true;
+                    }
+                }
             };
 
         if (!window.performance) {
@@ -112,95 +202,6 @@ bento.define('bento/managers/object', [
             fpsMeter = new FPSMeter();
         }
 
-        return {
-            add: function (object) {
-                var i, type, family;
-                object.z = object.z || 0;
-                objects.push(object);
-                if (object.init) {
-                    object.init();
-                }
-                // add object to access pools
-                if (object.getFamily) {
-                    family = object.getFamily();
-                    for (i = 0; i < family.length; ++i) {
-                        type = family[i];
-                        if (!quickAccess[type]) {
-                            quickAccess[type] = [];
-                        }
-                        quickAccess[type].push(object);
-                    }
-                }
-            },
-            remove: function (object) {
-                var i, type, index, family;
-                if (!object) {
-                    return;
-                }
-                index = objects.indexOf(object);
-                if (index >= 0) {
-                    objects[index] = null;
-                    if (object.destroy) {
-                        object.destroy(gameData);
-                    }
-                }
-                // remove from access pools
-                if (object.getFamily) {
-                    family = object.getFamily();
-                    for (i = 0; i < family.length; ++i) {
-                        type = family[i];
-                        Utils.removeObject(quickAccess[type], object);
-                    }
-                }
-            },
-            removeAll: function (removeGlobal) {
-                var i,
-                    object;
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (!object.global || removeGlobal) {
-                        this.remove(object);
-                    }
-                }
-            },
-            getByName: function (objectName) {
-                var i,
-                    object,
-                    array = [];
-
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (!object.name) {
-                        continue;
-                    }
-                    if (object.name === objectName) {
-                        array.push(object);
-                    }
-                }
-                return array;
-            },
-            getByFamily: function (type) {
-                var array = quickAccess[type];
-                if (!array) {
-                    // initialize it
-                    quickAccess[type] = [];
-                    array = quickAccess[type];
-                    console.log('Warning: family called ' + type + ' does not exist');
-                }
-                return array;
-            },
-            run: function () {
-                if (!isRunning) {
-                    mainLoop();
-                    isRunning = true;
-                }
-            }
-        };
+        return module;
     };
 });

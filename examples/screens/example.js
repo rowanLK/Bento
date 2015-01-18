@@ -21,12 +21,12 @@ bento.require([
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', function (err) {
-            var viewport = Bento.getViewport(),
+            var viewport = Bento.getViewport()/*,
                 tiled = Tiled({
                     name: 'level',
                     spawn: true
-                });
-            console.log(tiled)
+                })*/;
+        Bento.screens.show('screen1');
         }, function (current, total) {
             console.log(current + '/' + total);
         });

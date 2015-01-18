@@ -10,7 +10,8 @@ define('bento/tiled', [
     return function (settings, onReady) {
         /*settings = {
             name: String, // name of JSON file
-            background: Boolean // TODO false: splits tileLayer tile entities
+            background: Boolean // TODO false: splits tileLayer tile entities,
+            spawn: Boolean // adds objects into game immediately
         }*/
         var json = Bento.assets.getJson(settings.name),
             i,

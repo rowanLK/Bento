@@ -6,7 +6,7 @@ bento.define('bento/screen', [
     'bento',
     'bento/math/rectangle',
     'bento/tiled'
-], function (Utils, Bento, Rectangle) {
+], function (Utils, Bento, Rectangle, Tiled) {
     'use strict';
     return function (settings) {
         /*settings = {
@@ -15,8 +15,10 @@ bento.define('bento/screen', [
         }*/
         var viewport = Bento.getViewport(),
             dimension = settings.dimension || Rectangle(0, 0, 0, 0),
+            tiled,
             isShown = false,
             module = {
+                name: null,
                 setDimension: function (rectangle) {
                     dimension.width = rectangle.width;
                     dimension.height = rectangle.height;
@@ -24,7 +26,7 @@ bento.define('bento/screen', [
                 getDimension: function () {
                     return dimension;
                 },
-                add: function (object) {
+                extend: function (object) {
                     return Utils.combine(this, object);
                 },
                 setShown: function (bool) {
@@ -34,7 +36,18 @@ bento.define('bento/screen', [
                         isShown = bool;
                     }
                 },
-                onShow: function () {},
+                loadTiled: function (name) {
+                    tiled = Tiled({
+                        name: name,
+                        spawn: true // TEMP
+                    });
+                },
+                onShow: function () {
+                    // load tiled map if present
+                    if (settings.tiled) {
+                        this.loadTiled(settings.tiled);
+                    }
+                },
                 onHide: function () {
                     // remove all objects
                     Bento.removeAll();
