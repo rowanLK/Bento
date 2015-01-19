@@ -1,7 +1,11 @@
+/*
+ * Base functions for renderer
+ * @copyright (C) HeiGames
+ */
 bento.define('bento/renderer', [
     'bento/utils'
-], function (Utils, Canvas2D) {
-    return function (type, canvas, context, callback) {
+], function (Utils) {
+    return function (type, canvas, settings, callback) {
         var module = {
             save: function () {},
             restore: function () {},
@@ -15,7 +19,7 @@ bento.define('bento/renderer', [
             setColor: function () {}
         };
         require(['bento/renderers/' + type], function (renderer) {
-            Utils.combine(module, renderer(canvas, context));
+            Utils.extend(module, renderer(canvas, settings));
             callback(module);
         });
     };

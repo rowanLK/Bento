@@ -1,5 +1,5 @@
 /**
- *  Manager that controls all objects
+ *  Manager that controls mainloop and all objects
  *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */

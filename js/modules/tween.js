@@ -1,3 +1,7 @@
+/*
+ * Creates a tween object
+ * @copyright (C) HeiGames
+ */
 bento.define('bento/tween', [
     'bento',
     'bento/utils',

@@ -1,9 +1,14 @@
+/*
+ * WebGL renderer using gl-sprites by Matt DesLauriers
+ * @copyright (C) HeiGames
+ */
 bento.define('bento/renderers/webgl', [
     'bento/utils',
     'bento/renderers/canvas2d'
 ], function (Utils, Canvas2d) {
-    return function (canvas, context) {
+    return function (canvas, settings) {
         var canWebGl,
+            context,
             glRenderer,
             renderer = {
                 name: 'webgl',
@@ -42,8 +47,9 @@ bento.define('bento/renderers/webgl', [
                 flush: function () {
                     glRenderer.end();
                 },
-                setColor: function (cssStr) {
-                    glRenderer.color = colorString.getRgba(cssStr);
+                setColor: function (color) {
+                    // glRenderer.color = colorString.getRgba(cssStr);
+                    glRenderer.color = color;
                 }
             };
         console.log('Init webgl as renderer');
@@ -64,7 +70,7 @@ bento.define('bento/renderers/webgl', [
             glRenderer.ortho(canvas.width, canvas.height);
             return renderer;
         } else {
-            return Canvas2d(canvas, context);
+            return Canvas2d(canvas, settings);
         }
     };
 });

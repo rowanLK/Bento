@@ -1,5 +1,5 @@
 /**
- *  Manager that controls all events and input
+ *  Manager that controls all events for input
  *  @copyright (C) 2014 HeiGames
  *  @author Hernan Zhou
  */
@@ -103,7 +103,7 @@ bento.define('bento/managers/input', [
         canvas.addEventListener('mousemove', mouseMove);
         canvas.addEventListener('mouseup', mouseUp);
 
-        if (canvas && !navigator.isCocoonJS) {
+        if (canvas && !Utils.isCocoonJS()) {
             offsetLeft = canvas.offsetLeft;
             offsetTop = canvas.offsetTop;
         }

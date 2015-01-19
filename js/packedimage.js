@@ -1,3 +1,7 @@
+/*
+ * Wrapper for images, holds data for image atlas
+ * @copyright (C) HeiGames
+ */
 bento.define('bento/packedimage', [
     'bento/math/rectangle'
 ], function (Rectangle) {

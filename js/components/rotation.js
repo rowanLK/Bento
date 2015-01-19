@@ -47,7 +47,7 @@ bento.define('bento/components/rotation', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Utils.combine(base, mixin);
+        Utils.extend(base, mixin);
         return base;
     };
 });

@@ -9,7 +9,7 @@ bento.require([
     'bento/components/clickable'
 ], function (Bento, Vector2, Rectangle, Entity, Animation, Translation, Fill, Clickable) {
     var hash = window.location ? window.location.hash : '',
-        renderer = 'auto';
+        renderer = 'webgl';
     if (hash && hash === '#canvas2d') {
         renderer = 'canvas2d';
     } else if (hash && hash === '#webgl') {
@@ -28,7 +28,8 @@ bento.require([
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
                 bunnies = 0,
-                renderer = Bento.getRenderer().name;
+                renderer = Bento.getRenderer().name,
+                bgcolor = renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1],
                 background = Entity({
                     components: [Fill, Clickable],
                     clickable: {
@@ -37,12 +38,11 @@ bento.require([
                             for (i = 0; i < 100; ++i) {
                                 addBunny();
                             }
-                            console.log(renderer)
                             console.log('Current bunnies:', bunnies);
                         }
                     },
                     fill: {
-                        color: renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1]
+                        color: bgcolor
                     }
                 }),
                 getRandom = function (val) {
@@ -95,6 +95,7 @@ bento.require([
                 };
             Bento.add(background);
             addBunny();
+
             window.add = function (val) {
                 var i;
                 val = val || 100;

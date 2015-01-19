@@ -29,7 +29,7 @@ bento.require([
                     addNow: true,
                     components: [Fill],
                     fill: {
-                        color: 'rgba(0, 0, 0, 1)'
+                        color: [0, 0, 0, 1]
                     }
                 }),
                 gravityComponent = {

@@ -1,3 +1,7 @@
+/*
+ * Reads tiled json files
+ * @copyright (C) HeiGames
+ */
 define('bento/tiled', [
     'bento',
     'bento/entity',

@@ -1,5 +1,6 @@
-/**
- *  @copyright (C) HeiGames
+/*
+ * Screen manager 
+ * @copyright (C) HeiGames
  */
 bento.define('bento/managers/screen', [
     'bento/utils'

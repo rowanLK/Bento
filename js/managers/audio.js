@@ -78,11 +78,11 @@ define('bento/managers/audio', [
                         musicLoop = false;
                     }
                     // set end event
-                    if (navigator.isCocoonJS && onEnd) {
+                    if (Utils.isCocoonJS() && onEnd) {
                         assetManager.getAudio(name)._audioNode[0].onended = onEnd;
                     }
                     if (!mutedMusic && lastMusicPlayed !== '') {
-                        if (navigator.isCocoonJS) {
+                        if (Utils.isCocoonJS()) {
                             assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
                             assetManager.getAudio(name)._audioNode[0].play();
                             return;
@@ -95,7 +95,7 @@ define('bento/managers/audio', [
                 },
                 stopMusic: function (name) {
                     var i, l, node;
-                    if (navigator.isCocoonJS) {
+                    if (Utils.isCocoonJS()) {
                         assetManager.getAudio(name)._audioNode[0].pause();
                         return;
                     }
@@ -154,7 +154,7 @@ define('bento/managers/audio', [
                         howls = assetManager.getAssets().audio;
                     for (sound in howls) {
                         if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
-                            if (navigator.isCocoonJS) {
+                            if (Utils.isCocoonJS()) {
                                 howls[sound]._audioNode[0].pause();
                                 continue;
                             }

@@ -1,5 +1,6 @@
-/**
- *  @copyright (C) HeiGames
+/*
+ * Screen/state object
+ * @copyright (C) HeiGames
  */
 bento.define('bento/screen', [
     'bento/utils',
@@ -27,7 +28,7 @@ bento.define('bento/screen', [
                     return dimension;
                 },
                 extend: function (object) {
-                    return Utils.combine(this, object);
+                    return Utils.extend(this, object);
                 },
                 setShown: function (bool) {
                     if (!Utils.isBoolean(bool)) {
@@ -54,7 +55,6 @@ bento.define('bento/screen', [
                     // reset viewport scroll when hiding screen
                     viewport.x = 0;
                     viewport.y = 0;
-
                 }
             };
 

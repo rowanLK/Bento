@@ -32,7 +32,7 @@ bento.define('bento/components/scale', [
             };
         base.attach(component);
         mixin[component.name] = component;
-        Utils.combine(base, mixin);
+        Utils.extend(base, mixin);
         return base;
     };
 });

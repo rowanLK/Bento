@@ -1,3 +1,7 @@
+/*
+ * Sends custom events
+ * @copyright (C) HeiGames
+ */
 bento.define('bento/eventsystem', [
     'bento/utils'
 ], function (Utils) {

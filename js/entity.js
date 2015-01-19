@@ -15,6 +15,8 @@ bento.define('bento/entity', [
             name,
             visible = true,
             position = Vector2(0, 0),
+            angle = 0,
+            scale = Vector2(0, 0),
             origin = Vector2(0, 0),
             dimension = Rectangle(0, 0, 0, 0),
             rectangle,
@@ -97,7 +99,7 @@ bento.define('bento/entity', [
                     return family;
                 },
                 extend: function (object) {
-                    return Utils.combine(entity, object);
+                    return Utils.extend(entity, object);
                 },
                 getPosition: function () {
                     return position;
@@ -183,7 +185,7 @@ bento.define('bento/entity', [
                     }
                     if (name) {
                         mixin[name] = component;
-                        Utils.combine(entity, mixin);
+                        Utils.extend(entity, mixin);
                     }
                     return entity;
                 },

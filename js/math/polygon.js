@@ -1,8 +1,6 @@
-/**
- *  @module Polygon
- *  @desc Represents a polygon
- *  @copyright (C) HeiGames
- *  @author Hernan Zhou
+/*
+ * Polygon
+ * @copyright (C) HeiGames
  */
 bento.define('bento/math/polygon', [
     'bento/utils',

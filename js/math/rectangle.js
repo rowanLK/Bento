@@ -1,8 +1,6 @@
-/**
- *  @module Rectangle
- *  @desc Represents a rectangle
- *  @copyright (C) HeiGames
- *  @author Hernan Zhou
+/*
+ * Rectangle
+ * @copyright (C) HeiGames
  */
 bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';

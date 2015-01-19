@@ -1,8 +1,6 @@
-/**
- *  @module Vector2
- *  @desc Represents a 2 dimensional vector
- *  @copyright (C) HeiGames
- *  @author Hernan Zhou
+/*
+ * 2 dimensional vector
+ * @copyright (C) HeiGames
  */
 bento.define('bento/math/vector2', [], function () {
     'use strict';

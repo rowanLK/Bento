@@ -1,3 +1,7 @@
+/*
+ * Useful functions
+ * @copyright (C) HeiGames
+ */
 bento.define('bento/utils', [], function () {
     'use strict';
     var isString = function (value) {
@@ -38,19 +42,19 @@ bento.define('bento/utils', [], function () {
                 }
             }
         },
-        combine = function (obj1, obj2) {                        
+        extend = function (obj1, obj2, overwrite) {
             var prop, temp;
             for (prop in obj2) {
                 if (obj2.hasOwnProperty(prop)) {
-                    if (obj1.hasOwnProperty(prop)) {
+                    if (obj1.hasOwnProperty(prop) && !overwrite) {
                         // property already exists, move it up
                         obj1.base = obj1.base || {};
                         temp = {};
                         temp[prop] = obj1[prop];
-                        combine(obj1.base, temp);
-                    } 
+                        extend(obj1.base, temp);
+                    }
                     if (isObject(obj2[prop])) {
-                        obj1[prop] = combine({}, obj2[prop]);
+                        obj1[prop] = extend({}, obj2[prop]);
                     } else {
                         obj1[prop] = obj2[prop];
                     }
@@ -64,12 +68,12 @@ bento.define('bento/utils', [], function () {
         setAnimationFrameTimeout = function (callback, timeout) {
             var now = new Date().getTime(),
                 rafID = null;
-            
+
             if (timeout === undefined) timeout = 1;
-            
+
             function animationFrame() {
                 var later = new Date().getTime();
-                
+
                 if (later - now >= timeout) {
                     callback();
                 } else {
@@ -82,7 +86,7 @@ bento.define('bento/utils', [], function () {
                 /**
                  * On supported browsers cancel this timeout.
                  */
-                cancel: function() {
+                cancel: function () {
                     if (typeof cancelAnimationFrame !== 'undefined') {
                         cancelAnimationFrame(rafID);
                     }
@@ -184,7 +188,6 @@ bento.define('bento/utils', [], function () {
             return stable;
         })();
 
-
     return {
         isString: isString,
         isArray: isArray,
@@ -196,9 +199,41 @@ bento.define('bento/utils', [], function () {
         isUndefined: isUndefined,
         isDefined: isDefined,
         removeObject: removeObject,
-        combine: combine,
+        extend: extend,
         getKeyLength: getKeyLength,
-        stableSort: stableSort
+        stableSort: stableSort,
+        getRandom: function (n) {
+            return Math.floor(Math.random() * n);
+        },
+        toRadian: function (degree) {
+            return degree * Math.PI / 180;
+        },
+        sign: function (value) {
+            if (value > 0) {
+                return 1;
+            } else if (value < 0) {
+                return -1;
+            } else {
+                return 0;
+            }
+        },
+        approach: function (start, end, max) {
+            if (start < end) {
+                return Math.min(start + max, end);
+            } else {
+                return Math.max(start - max, end);
+            }
+        },
+        isApple: function () {
+            var device = (navigator.userAgent).match(/iPhone|iPad|iPod/i);
+            return /iPhone/i.test(device) || /iPad/i.test(device) || /iPod/i.test(device);
+        },
+        isAndroid: function () {
+            return /Android/i.test(navigator.userAgent);
+        },
+        isCocoonJS: function () {
+            return navigator.isCocoonJS;
+        }
     };
 
 });

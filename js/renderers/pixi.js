@@ -1,8 +1,9 @@
 bento.define('bento/renderers/pixi', [
     'bento/utils'
 ], function (Utils) {
-    return function (canvas, context) {
+    return function (canvas, settings) {
         var useBatch = false,
+            context,
             pixiStage,
             pixiRenderer,
             pixiBatch,

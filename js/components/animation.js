@@ -140,7 +140,7 @@ bento.define('bento/components/animation', [
 
         base.attach(component);
         mixin[component.name] = component;
-        Utils.combine(base, mixin);
+        Utils.extend(base, mixin);
         return base;
     };
 });

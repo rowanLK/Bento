@@ -1,7 +1,6 @@
-/**
- *  Represents a 2 dimensional array
- *  @copyright (C) HeiGames
- *  @author Hernan Zhou
+/*
+ * 2 dimensional array 
+ * @copyright (C) HeiGames
  */
 bento.define('bento/math/array2d', function () {
     'use strict';

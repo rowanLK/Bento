@@ -51,7 +51,7 @@ bento.define('bento', [
         gameData = {},
         viewport = Rectangle(0, 0, 640, 480),
         setupDebug = function () {
-            if (navigator.isCocoonJS) {
+            if (Utils.isCocoonJS()) {
                 return;
             }
             debug.debugBar = document.createElement('div');
@@ -75,7 +75,7 @@ bento.define('bento', [
                     // just append it to the document body
                     parent = document.body;
                 }
-                canvas = document.createElement(navigator.isCocoonJS ? 'screencanvas' : 'canvas');
+                canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
                 canvas.id = settings.canvasId;
                 parent.appendChild(canvas);
             }
@@ -83,37 +83,22 @@ bento.define('bento', [
             canvas.height = viewport.height;
             canvasRatio = viewport.height / viewport.width;
 
-            settings.renderer = settings.renderer || 'canvas2d';
+            settings.renderer = settings.renderer || 'auto';
 
             if (settings.renderer === 'auto') {
                 settings.renderer = 'webgl';
                 // canvas is accelerated in cocoonJS
-                if (navigator.isCocoonJS) {
+                // should also use canvas for android
+                if (Utils.isCocoonJS() || Utils.isAndroid()) {
                     settings.renderer = 'canvas2d';
-                }
-                // should also use canvas for android?
-            }
-
-            // setup canvas 2d
-            if (settings.renderer === 'canvas2d') {
-                context = canvas.getContext('2d');
-                if (!settings.smoothing) {
-                    if (context.imageSmoothingEnabled) {
-                        context.imageSmoothingEnabled = false;
-                    }
-                    if (context.webkitImageSmoothingEnabled) {
-                        context.webkitImageSmoothingEnabled = false;
-                    }
-                    if (context.mozImageSmoothingEnabled) {
-                        context.mozImageSmoothingEnabled = false;
-                    }
                 }
             }
             // setup renderer
-            Renderer(settings.renderer, canvas, context, function (renderer) {
+            Renderer(settings.renderer, canvas, settings, function (rend) {
+                renderer = rend;
                 gameData = {
                     canvas: canvas,
-                    renderer: renderer,
+                    renderer: rend,
                     canvasScale: canvasScale,
                     viewport: viewport
                 };
@@ -175,7 +160,7 @@ bento.define('bento', [
                         module.screens = ScreenManager();
 
                         // mix functions
-                        Utils.combine(module, module.objects);
+                        Utils.extend(module, module.objects);
 
                         if (settings.assetGroups) {
                             module.assets.loadAssetGroups(settings.assetGroups, runGame);
@@ -191,6 +176,9 @@ bento.define('bento', [
             },
             getCanvas: function () {
                 return canvas;
+            },
+            getRenderer: function () {
+                return renderer;
             },
             assets: null,
             objects: null,

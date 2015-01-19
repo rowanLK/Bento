@@ -1,7 +1,6 @@
-/**
- *  Represents a matrix (a 2d array of Numbers)
- *  @copyright (C) HeiGames
- *  @author Hernan Zhou
+/*
+ * Matrix
+ * @copyright (C) HeiGames
  */
 bento.define('bento/math/matrix', [
     'bento/utils'

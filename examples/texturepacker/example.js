@@ -23,7 +23,7 @@ bento.require([
 ) {
     Bento.setup({
         canvasId: 'canvas',
-        canvasDimension: Rectangle(0, 0, 320, 480),
+        canvasDimension: Rectangle(0, 0, 160, 240),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -36,7 +36,7 @@ bento.require([
                     addNow: true,
                     components: [Fill],
                     fill: {
-                        color: 'rgba(0, 0, 0, 1)'
+                        color: [0, 0, 0, 1]
                     }
                 }),
                 bunny1 = Entity({
