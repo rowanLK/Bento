@@ -4189,822 +4189,6 @@ var requirejs, require, define;
         }
     });
 }(window, FPSMeter));
-// https://github.com/harthur/color-string
-
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-// this file is the entrypoint for building a browser file with browserify
-
-colorString = require("./color-string");
-},{"./color-string":2}],2:[function(require,module,exports){
-/* MIT license */
-var convert = require("color-convert");
-
-module.exports = {
-   getRgba: getRgba,
-   getHsla: getHsla,
-   getRgb: getRgb,
-   getHsl: getHsl,
-   getHwb: getHwb,
-   getAlpha: getAlpha,
-
-   hexString: hexString,
-   rgbString: rgbString,
-   rgbaString: rgbaString,
-   percentString: percentString,
-   percentaString: percentaString,
-   hslString: hslString,
-   hslaString: hslaString,
-   hwbString: hwbString,
-   keyword: keyword
-}
-
-function getRgba(string) {
-   if (!string) {
-      return;
-   }
-   var abbr =  /^#([a-fA-F0-9]{3})$/,
-       hex =  /^#([a-fA-F0-9]{6})$/,
-       rgba = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d\.]+)\s*)?\)$/,
-       per = /^rgba?\(\s*([\d\.]+)\%\s*,\s*([\d\.]+)\%\s*,\s*([\d\.]+)\%\s*(?:,\s*([\d\.]+)\s*)?\)$/,
-       keyword = /(\D+)/;
-
-   var rgb = [0, 0, 0],
-       a = 1,
-       match = string.match(abbr);
-   if (match) {
-      match = match[1];
-      for (var i = 0; i < rgb.length; i++) {
-         rgb[i] = parseInt(match[i] + match[i], 16);
-      }
-   }
-   else if (match = string.match(hex)) {
-      match = match[1];
-      for (var i = 0; i < rgb.length; i++) {
-         rgb[i] = parseInt(match.slice(i * 2, i * 2 + 2), 16);
-      }
-   }
-   else if (match = string.match(rgba)) {
-      for (var i = 0; i < rgb.length; i++) {
-         rgb[i] = parseInt(match[i + 1]);
-      }
-      a = parseFloat(match[4]);
-   }
-   else if (match = string.match(per)) {
-      for (var i = 0; i < rgb.length; i++) {
-         rgb[i] = Math.round(parseFloat(match[i + 1]) * 2.55);
-      }
-      a = parseFloat(match[4]);
-   }
-   else if (match = string.match(keyword)) {
-      if (match[1] == "transparent") {
-         return [0, 0, 0, 0];
-      }
-      rgb = convert.keyword2rgb(match[1]);
-      if (!rgb) {
-         return;
-      }
-   }
-
-   for (var i = 0; i < rgb.length; i++) {
-      rgb[i] = scale(rgb[i], 0, 255);
-   }
-   if (!a && a != 0) {
-      a = 1;
-   }
-   else {
-      a = scale(a, 0, 1);
-   }
-   rgb.push(a);
-   return rgb;
-}
-
-function getHsla(string) {
-   if (!string) {
-      return;
-   }
-   var hsl = /^hsla?\(\s*(\d+)(?:deg)?\s*,\s*([\d\.]+)%\s*,\s*([\d\.]+)%\s*(?:,\s*([\d\.]+)\s*)?\)/;
-   var match = string.match(hsl);
-   if (match) {
-      var h = scale(parseInt(match[1]), 0, 360),
-          s = scale(parseFloat(match[2]), 0, 100),
-          l = scale(parseFloat(match[3]), 0, 100),
-          a = scale(parseFloat(match[4]) || 1, 0, 1);
-      return [h, s, l, a];
-   }
-}
-
-function getHwb(string) {
-   if (!string) {
-      return;
-   }
-   var hwb = /^hwb\(\s*(\d+)(?:deg)?\s*,\s*([\d\.]+)%\s*,\s*([\d\.]+)%\s*(?:,\s*([\d\.]+)\s*)?\)/;
-   var match = string.match(hwb);
-   if (match) {
-      var h = scale(parseInt(match[1]), 0, 360),
-          w = scale(parseFloat(match[2]), 0, 100),
-          b = scale(parseFloat(match[3]), 0, 100),
-          a = scale(parseFloat(match[4]) || 1, 0, 1);
-      return [h, w, b, a];
-   }
-}
-
-function getRgb(string) {
-   var rgba = getRgba(string);
-   return rgba && rgba.slice(0, 3);
-}
-
-function getHsl(string) {
-  var hsla = getHsla(string);
-  return hsla && hsla.slice(0, 3);
-}
-
-function getAlpha(string) {
-   var vals = getRgba(string);
-   if (vals) {
-      return vals[3];
-   }
-   else if (vals = getHsla(string)) {
-      return vals[3];
-   }
-   else if (vals = getHwb(string)) {
-      return vals[3];
-   }
-}
-
-// generators
-function hexString(rgb) {
-   return "#" + hexDouble(rgb[0]) + hexDouble(rgb[1])
-              + hexDouble(rgb[2]);
-}
-
-function rgbString(rgba, alpha) {
-   if (alpha < 1 || (rgba[3] && rgba[3] < 1)) {
-      return rgbaString(rgba, alpha);
-   }
-   return "rgb(" + rgba[0] + ", " + rgba[1] + ", " + rgba[2] + ")";
-}
-
-function rgbaString(rgba, alpha) {
-   if (alpha === undefined) {
-      alpha = (rgba[3] !== undefined ? rgba[3] : 1);
-   }
-   return "rgba(" + rgba[0] + ", " + rgba[1] + ", " + rgba[2]
-           + ", " + alpha + ")";
-}
-
-function percentString(rgba, alpha) {
-   if (alpha < 1 || (rgba[3] && rgba[3] < 1)) {
-      return percentaString(rgba, alpha);
-   }
-   var r = Math.round(rgba[0]/255 * 100),
-       g = Math.round(rgba[1]/255 * 100),
-       b = Math.round(rgba[2]/255 * 100);
-
-   return "rgb(" + r + "%, " + g + "%, " + b + "%)";
-}
-
-function percentaString(rgba, alpha) {
-   var r = Math.round(rgba[0]/255 * 100),
-       g = Math.round(rgba[1]/255 * 100),
-       b = Math.round(rgba[2]/255 * 100);
-   return "rgba(" + r + "%, " + g + "%, " + b + "%, " + (alpha || rgba[3] || 1) + ")";
-}
-
-function hslString(hsla, alpha) {
-   if (alpha < 1 || (hsla[3] && hsla[3] < 1)) {
-      return hslaString(hsla, alpha);
-   }
-   return "hsl(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%)";
-}
-
-function hslaString(hsla, alpha) {
-   if (alpha === undefined) {
-      alpha = (hsla[3] !== undefined ? hsla[3] : 1);
-   }
-   return "hsla(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%, "
-           + alpha + ")";
-}
-
-// hwb is a bit different than rgb(a) & hsl(a) since there is no alpha specific syntax
-// (hwb have alpha optional & 1 is default value)
-function hwbString(hwb, alpha) {
-   if (alpha === undefined) {
-      alpha = (hwb[3] !== undefined ? hwb[3] : 1);
-   }
-   return "hwb(" + hwb[0] + ", " + hwb[1] + "%, " + hwb[2] + "%"
-           + (alpha !== undefined && alpha !== 1 ? ", " + alpha : "") + ")";
-}
-
-function keyword(rgb) {
-   return convert.rgb2keyword(rgb.slice(0, 3));
-}
-
-// helpers
-function scale(num, min, max) {
-   return Math.min(Math.max(min, num), max);
-}
-
-function hexDouble(num) {
-  var str = num.toString(16).toUpperCase();
-  return (str.length < 2) ? "0" + str : str;
-}
-
-},{"color-convert":4}],3:[function(require,module,exports){
-/* MIT license */
-
-module.exports = {
-  rgb2hsl: rgb2hsl,
-  rgb2hsv: rgb2hsv,
-  rgb2cmyk: rgb2cmyk,
-  rgb2keyword: rgb2keyword,
-  rgb2xyz: rgb2xyz,
-  rgb2lab: rgb2lab,
-
-  hsl2rgb: hsl2rgb,
-  hsl2hsv: hsl2hsv,
-  hsl2cmyk: hsl2cmyk,
-  hsl2keyword: hsl2keyword,
-
-  hsv2rgb: hsv2rgb,
-  hsv2hsl: hsv2hsl,
-  hsv2cmyk: hsv2cmyk,
-  hsv2keyword: hsv2keyword,
-
-  cmyk2rgb: cmyk2rgb,
-  cmyk2hsl: cmyk2hsl,
-  cmyk2hsv: cmyk2hsv,
-  cmyk2keyword: cmyk2keyword,
-  
-  keyword2rgb: keyword2rgb,
-  keyword2hsl: keyword2hsl,
-  keyword2hsv: keyword2hsv,
-  keyword2cmyk: keyword2cmyk,
-  
-  xyz2rgb: xyz2rgb,
-}
-
-
-function rgb2hsl(rgb) {
-  var r = rgb[0]/255,
-      g = rgb[1]/255,
-      b = rgb[2]/255,
-      min = Math.min(r, g, b),
-      max = Math.max(r, g, b),
-      delta = max - min,
-      h, s, l;
-
-  if (max == min)
-    h = 0;
-  else if (r == max) 
-    h = (g - b) / delta; 
-  else if (g == max)
-    h = 2 + (b - r) / delta; 
-  else if (b == max)
-    h = 4 + (r - g)/ delta;
-
-  h = Math.min(h * 60, 360);
-
-  if (h < 0)
-    h += 360;
-
-  l = (min + max) / 2;
-
-  if (max == min)
-    s = 0;
-  else if (l <= 0.5)
-    s = delta / (max + min);
-  else
-    s = delta / (2 - max - min);
-
-  return [h, s * 100, l * 100];
-}
-
-function rgb2hsv(rgb) {
-  var r = rgb[0],
-      g = rgb[1],
-      b = rgb[2],
-      min = Math.min(r, g, b),
-      max = Math.max(r, g, b),
-      delta = max - min,
-      h, s, l;
-
-  if (max == 0)
-    s = 0;
-  else
-    s = (delta/max * 1000)/10;
-
-  if (max == min)
-    h = 0;
-  else if (r == max) 
-    h = (g - b) / delta; 
-  else if (g == max)
-    h = 2 + (b - r) / delta; 
-  else if (b == max)
-    h = 4 + (r - g) / delta;
-
-  h = Math.min(h * 60, 360);
-
-  if (h < 0) 
-    h += 360;
-
-  v = ((max / 255) * 1000) / 10;
-
-  return [h, s, v];
-}
-
-function rgb2cmyk(rgb) {
-  var r = rgb[0] / 255,
-      g = rgb[1] / 255,
-      b = rgb[2] / 255,
-      c, m, y, k;
-      
-  k = Math.min(1 - r, 1 - g, 1 - b);
-  c = (1 - r - k) / (1 - k);
-  m = (1 - g - k) / (1 - k);
-  y = (1 - b - k) / (1 - k);
-  return [c * 100, m * 100, y * 100, k * 100];
-}
-
-function rgb2keyword(rgb) {
-  return reverseKeywords[JSON.stringify(rgb)];
-}
-
-function rgb2xyz(rgb) {
-  var r = rgb[0] / 255,
-      g = rgb[1] / 255,
-      b = rgb[2] / 255;
-
-  // assume sRGB
-  r = r > 0.04045 ? Math.pow(((r + 0.055) / 1.055), 2.4) : (r / 12.92);
-  g = g > 0.04045 ? Math.pow(((g + 0.055) / 1.055), 2.4) : (g / 12.92);
-  b = b > 0.04045 ? Math.pow(((b + 0.055) / 1.055), 2.4) : (b / 12.92);
-  
-  var x = (r * 0.4124) + (g * 0.3576) + (b * 0.1805);
-  var y = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
-  var z = (r * 0.0193) + (g * 0.1192) + (b * 0.9505);
-
-  return [x * 100, y *100, z * 100];
-}
-
-function rgb2lab(rgb) {
-  var xyz = rgb2xyz(rgb),
-        x = xyz[0],
-        y = xyz[1],
-        z = xyz[2],
-        l, a, b;
-
-  x /= 95.047;
-  y /= 100;
-  z /= 108.883;
-
-  x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16 / 116);
-  y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16 / 116);
-  z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16 / 116);
-
-  l = (116 * y) - 16;
-  a = 500 * (x - y);
-  b = 200 * (y - z);
-  
-  return [l, a, b];
-}
-
-
-function hsl2rgb(hsl) {
-  var h = hsl[0] / 360,
-      s = hsl[1] / 100,
-      l = hsl[2] / 100,
-      t1, t2, t3, rgb, val;
-
-  if (s == 0) {
-    val = l * 255;
-    return [val, val, val];
-  }
-
-  if (l < 0.5)
-    t2 = l * (1 + s);
-  else
-    t2 = l + s - l * s;
-  t1 = 2 * l - t2;
-
-  rgb = [0, 0, 0];
-  for (var i = 0; i < 3; i++) {
-    t3 = h + 1 / 3 * - (i - 1);
-    t3 < 0 && t3++;
-    t3 > 1 && t3--;
-
-    if (6 * t3 < 1)
-      val = t1 + (t2 - t1) * 6 * t3;
-    else if (2 * t3 < 1)
-      val = t2;
-    else if (3 * t3 < 2)
-      val = t1 + (t2 - t1) * (2 / 3 - t3) * 6;
-    else
-      val = t1;
-
-    rgb[i] = val * 255;
-  }
-  
-  return rgb;
-}
-
-function hsl2hsv(hsl) {
-  var h = hsl[0],
-      s = hsl[1] / 100,
-      l = hsl[2] / 100,
-      sv, v;
-  l *= 2;
-  s *= (l <= 1) ? l : 2 - l;
-  v = (l + s) / 2;
-  sv = (2 * s) / (l + s);
-  return [h, s * 100, v * 100];
-}
-
-function hsl2cmyk(args) {
-  return rgb2cmyk(hsl2rgb(args));
-}
-
-function hsl2keyword(args) {
-  return rgb2keyword(hsl2rgb(args));
-}
-
-
-function hsv2rgb(hsv) {
-  var h = hsv[0] / 60,
-      s = hsv[1] / 100,
-      v = hsv[2] / 100,
-      hi = Math.floor(h) % 6;
-
-  var f = h - Math.floor(h),
-      p = 255 * v * (1 - s),
-      q = 255 * v * (1 - (s * f)),
-      t = 255 * v * (1 - (s * (1 - f))),
-      v = 255 * v;
-
-  switch(hi) {
-    case 0:
-      return [v, t, p];
-    case 1:
-      return [q, v, p];
-    case 2:
-      return [p, v, t];
-    case 3:
-      return [p, q, v];
-    case 4:
-      return [t, p, v];
-    case 5:
-      return [v, p, q];
-  }
-}
-
-function hsv2hsl(hsv) {
-  var h = hsv[0],
-      s = hsv[1] / 100,
-      v = hsv[2] / 100,
-      sl, l;
-
-  l = (2 - s) * v;  
-  sl = s * v;
-  sl /= (l <= 1) ? l : 2 - l;
-  l /= 2;
-  return [h, sl * 100, l * 100];
-}
-
-function hsv2cmyk(args) {
-  return rgb2cmyk(hsv2rgb(args));
-}
-
-function hsv2keyword(args) {
-  return rgb2keyword(hsv2rgb(args));
-}
-
-function cmyk2rgb(cmyk) {
-  var c = cmyk[0] / 100,
-      m = cmyk[1] / 100,
-      y = cmyk[2] / 100,
-      k = cmyk[3] / 100,
-      r, g, b;
-
-  r = 1 - Math.min(1, c * (1 - k) + k);
-  g = 1 - Math.min(1, m * (1 - k) + k);
-  b = 1 - Math.min(1, y * (1 - k) + k);
-  return [r * 255, g * 255, b * 255];
-}
-
-function cmyk2hsl(args) {
-  return rgb2hsl(cmyk2rgb(args));
-}
-
-function cmyk2hsv(args) {
-  return rgb2hsv(cmyk2rgb(args));
-}
-
-function cmyk2keyword(args) {
-  return rgb2keyword(cmyk2rgb(args));
-}
-
-
-function xyz2rgb(xyz) {
-  var x = xyz[0] / 100,
-      y = xyz[1] / 100,
-      z = xyz[2] / 100,
-      r, g, b;
-
-  r = (x * 3.2406) + (y * -1.5372) + (z * -0.4986);
-  g = (x * -0.9689) + (y * 1.8758) + (z * 0.0415);
-  b = (x * 0.0557) + (y * -0.2040) + (z * 1.0570);
-
-  // assume sRGB
-  r = r > 0.0031308 ? ((1.055 * Math.pow(r, 1.0 / 2.4)) - 0.055)
-    : r = (r * 12.92);
-
-  g = g > 0.0031308 ? ((1.055 * Math.pow(g, 1.0 / 2.4)) - 0.055)
-    : g = (g * 12.92);
-        
-  b = b > 0.0031308 ? ((1.055 * Math.pow(b, 1.0 / 2.4)) - 0.055)
-    : b = (b * 12.92);
-
-  r = (r < 0) ? 0 : r;
-  g = (g < 0) ? 0 : g;
-  b = (b < 0) ? 0 : b;
-
-  return [r * 255, g * 255, b * 255];
-}
-
-
-function keyword2rgb(keyword) {
-  return cssKeywords[keyword];
-}
-
-function keyword2hsl(args) {
-  return rgb2hsl(keyword2rgb(args));
-}
-
-function keyword2hsv(args) {
-  return rgb2hsv(keyword2rgb(args));
-}
-
-function keyword2cmyk(args) {
-  return rgb2cmyk(keyword2rgb(args));
-}
-
-var cssKeywords = {
-  aliceblue:  [240,248,255],
-  antiquewhite: [250,235,215],
-  aqua: [0,255,255],
-  aquamarine: [127,255,212],
-  azure:  [240,255,255],
-  beige:  [245,245,220],
-  bisque: [255,228,196],
-  black:  [0,0,0],
-  blanchedalmond: [255,235,205],
-  blue: [0,0,255],
-  blueviolet: [138,43,226],
-  brown:  [165,42,42],
-  burlywood:  [222,184,135],
-  cadetblue:  [95,158,160],
-  chartreuse: [127,255,0],
-  chocolate:  [210,105,30],
-  coral:  [255,127,80],
-  cornflowerblue: [100,149,237],
-  cornsilk: [255,248,220],
-  crimson:  [220,20,60],
-  cyan: [0,255,255],
-  darkblue: [0,0,139],
-  darkcyan: [0,139,139],
-  darkgoldenrod:  [184,134,11],
-  darkgray: [169,169,169],
-  darkgreen:  [0,100,0],
-  darkgrey: [169,169,169],
-  darkkhaki:  [189,183,107],
-  darkmagenta:  [139,0,139],
-  darkolivegreen: [85,107,47],
-  darkorange: [255,140,0],
-  darkorchid: [153,50,204],
-  darkred:  [139,0,0],
-  darksalmon: [233,150,122],
-  darkseagreen: [143,188,143],
-  darkslateblue:  [72,61,139],
-  darkslategray:  [47,79,79],
-  darkslategrey:  [47,79,79],
-  darkturquoise:  [0,206,209],
-  darkviolet: [148,0,211],
-  deeppink: [255,20,147],
-  deepskyblue:  [0,191,255],
-  dimgray:  [105,105,105],
-  dimgrey:  [105,105,105],
-  dodgerblue: [30,144,255],
-  firebrick:  [178,34,34],
-  floralwhite:  [255,250,240],
-  forestgreen:  [34,139,34],
-  fuchsia:  [255,0,255],
-  gainsboro:  [220,220,220],
-  ghostwhite: [248,248,255],
-  gold: [255,215,0],
-  goldenrod:  [218,165,32],
-  gray: [128,128,128],
-  green:  [0,128,0],
-  greenyellow:  [173,255,47],
-  grey: [128,128,128],
-  honeydew: [240,255,240],
-  hotpink:  [255,105,180],
-  indianred:  [205,92,92],
-  indigo: [75,0,130],
-  ivory:  [255,255,240],
-  khaki:  [240,230,140],
-  lavender: [230,230,250],
-  lavenderblush:  [255,240,245],
-  lawngreen:  [124,252,0],
-  lemonchiffon: [255,250,205],
-  lightblue:  [173,216,230],
-  lightcoral: [240,128,128],
-  lightcyan:  [224,255,255],
-  lightgoldenrodyellow: [250,250,210],
-  lightgray:  [211,211,211],
-  lightgreen: [144,238,144],
-  lightgrey:  [211,211,211],
-  lightpink:  [255,182,193],
-  lightsalmon:  [255,160,122],
-  lightseagreen:  [32,178,170],
-  lightskyblue: [135,206,250],
-  lightslategray: [119,136,153],
-  lightslategrey: [119,136,153],
-  lightsteelblue: [176,196,222],
-  lightyellow:  [255,255,224],
-  lime: [0,255,0],
-  limegreen:  [50,205,50],
-  linen:  [250,240,230],
-  magenta:  [255,0,255],
-  maroon: [128,0,0],
-  mediumaquamarine: [102,205,170],
-  mediumblue: [0,0,205],
-  mediumorchid: [186,85,211],
-  mediumpurple: [147,112,219],
-  mediumseagreen: [60,179,113],
-  mediumslateblue:  [123,104,238],
-  mediumspringgreen:  [0,250,154],
-  mediumturquoise:  [72,209,204],
-  mediumvioletred:  [199,21,133],
-  midnightblue: [25,25,112],
-  mintcream:  [245,255,250],
-  mistyrose:  [255,228,225],
-  moccasin: [255,228,181],
-  navajowhite:  [255,222,173],
-  navy: [0,0,128],
-  oldlace:  [253,245,230],
-  olive:  [128,128,0],
-  olivedrab:  [107,142,35],
-  orange: [255,165,0],
-  orangered:  [255,69,0],
-  orchid: [218,112,214],
-  palegoldenrod:  [238,232,170],
-  palegreen:  [152,251,152],
-  paleturquoise:  [175,238,238],
-  palevioletred:  [219,112,147],
-  papayawhip: [255,239,213],
-  peachpuff:  [255,218,185],
-  peru: [205,133,63],
-  pink: [255,192,203],
-  plum: [221,160,221],
-  powderblue: [176,224,230],
-  purple: [128,0,128],
-  red:  [255,0,0],
-  rosybrown:  [188,143,143],
-  royalblue:  [65,105,225],
-  saddlebrown:  [139,69,19],
-  salmon: [250,128,114],
-  sandybrown: [244,164,96],
-  seagreen: [46,139,87],
-  seashell: [255,245,238],
-  sienna: [160,82,45],
-  silver: [192,192,192],
-  skyblue:  [135,206,235],
-  slateblue:  [106,90,205],
-  slategray:  [112,128,144],
-  slategrey:  [112,128,144],
-  snow: [255,250,250],
-  springgreen:  [0,255,127],
-  steelblue:  [70,130,180],
-  tan:  [210,180,140],
-  teal: [0,128,128],
-  thistle:  [216,191,216],
-  tomato: [255,99,71],
-  turquoise:  [64,224,208],
-  violet: [238,130,238],
-  wheat:  [245,222,179],
-  white:  [255,255,255],
-  whitesmoke: [245,245,245],
-  yellow: [255,255,0],
-  yellowgreen:  [154,205,50]
-};
-
-var reverseKeywords = {};
-for (var key in cssKeywords) {
-  reverseKeywords[JSON.stringify(cssKeywords[key])] = key;
-}
-
-},{}],4:[function(require,module,exports){
-var conversions = require("./conversions");
-
-var exports = {};
-module.exports = exports;
-
-for (var func in conversions) {
-  // export rgb2hslRaw
-  exports[func + "Raw"] =  (function(func) {
-    // accept array or plain args
-    return function(arg) {
-      if (typeof arg == "number")
-        arg = Array.prototype.slice.call(arguments);
-      return conversions[func](arg);
-    }
-  })(func);
-
-  var pair = /(\w+)2(\w+)/.exec(func),
-      from = pair[1],
-      to = pair[2];
-  exports[from] = exports[from] || {};
-
-  // export rgb2hsl and ["rgb"]["hsl"]
-  exports[func] = exports[from][to] = (function(func) { 
-    return function(arg) {
-      if (typeof arg == "number")
-        arg = Array.prototype.slice.call(arguments);
-      
-      var val = conversions[func](arg);
-      if (typeof val == "string" || val === undefined)
-        return val; // keyword
-
-      for (var i = 0; i < val.length; i++)
-        val[i] = Math.round(val[i]);
-      return val;
-    }
-  })(func);
-
-}
-
-/*
-exports["rgb"]  = {
-  "hsl": exports.rgb2hsl,
-  "hsv": exports.rgb2hsv,
-  "cmyk": exports.rgb2cmyk,
-  "keyword": exports.rgb2keyword,
-  "xyz": exports.rgb2xyz,
-  "lab": exports.rgb2lab,
-}
-
-exports["hsl"]  = {
-  "rgb": exports.hsl2rgb,
-  "hsv": exports.hsl2hsv,
-  "cmyk": function(args) {
-    return exports.rgb2cmyk(exports.hsl2rgbRaw(args));
-  },
-  "keyword": function(args) {
-    return exports.rgb2keyword(exports.hsl2rgbRaw(args));
-  }
-}
-
-exports["hsv"] = {
-  "rgb": exports.hsv2rgb,
-  "hsl": exports.hsv2hsl,
-  "cmyk": function(args) {
-    return exports.rgb2cmyk(exports.hsv2rgbRaw(args));
-  },
-  "keyword": function(args) {
-    return exports.rgb2keyword(exports.hsv2rgbRaw(args));
-  }
-}
-
-exports.cmyk = {
-  "rgb": exports.cmyk2rgb,
-  "hsl": function(args) {
-    return exports.rgb2hsl(exports.cmyk2rgbRaw(args));
-  },
-  "hsv": function(args) {
-    return exports.rgb2hsv(exports.cmyk2rgbRaw(args));
-  },
-  "keyword": function(args) {
-    return exports.rgb2keyword(exports.cmyk2rgbRaw(args));
-  }
-}
-
-exports.keyword = {
-  "rgb": exports.keyword2rgb,
-  "hsl": function(args) {
-    return exports.rgb2hsl(exports.keyword2rgb(args));
-  },
-  "hsv": function(args) {
-    return exports.rgb2hsv(exports.keyword2rgb(args));
-  },
-  "cmyk": function(args) {
-    return exports.rgb2cmyk(exports.keyword2rgb(args));
-  }
-}
-
-exports.xyz = {
-  "rgb": exports.xyz2rgb
-} */
-},{"./conversions":3}]},{},[1]);
-
 /*
  * Browserified version of https://github.com/mattdesl/gl-sprites
  *
@@ -12846,7 +12030,7 @@ bento.define('bento/components/fill', [
     return function (base, settings) {
         var viewport = Bento.getViewport(),
             mixin = {},
-            color = [0, 0, 0, 0],
+            color = [0, 0, 0, 1],
             component = {
                 name: 'fill',
                 draw: function (data) {
@@ -13178,1402 +12362,6 @@ bento.define('bento/lib/requestanimationframe', [], function () {
             };
     }());
     return window.requestAnimationFrame;
-});
-/*
- * Screen/state object
- * @copyright (C) HeiGames
- */
-bento.define('bento/screen', [
-    'bento/utils',
-    'bento',
-    'bento/math/rectangle',
-    'bento/tiled'
-], function (Utils, Bento, Rectangle, Tiled) {
-    'use strict';
-    return function (settings) {
-        /*settings = {
-            dimension: Rectangle, [optional / overwritten by tmx size]
-            tiled: String
-        }*/
-        var viewport = Bento.getViewport(),
-            dimension = settings.dimension || Rectangle(0, 0, 0, 0),
-            tiled,
-            isShown = false,
-            module = {
-                name: null,
-                setDimension: function (rectangle) {
-                    dimension.width = rectangle.width;
-                    dimension.height = rectangle.height;
-                },
-                getDimension: function () {
-                    return dimension;
-                },
-                extend: function (object) {
-                    return Utils.extend(this, object);
-                },
-                setShown: function (bool) {
-                    if (!Utils.isBoolean(bool)) {
-                        throw 'Argument is not a boolean';
-                    } else {
-                        isShown = bool;
-                    }
-                },
-                loadTiled: function (name) {
-                    tiled = Tiled({
-                        name: name,
-                        spawn: true // TEMP
-                    });
-                },
-                onShow: function () {
-                    // load tiled map if present
-                    if (settings.tiled) {
-                        this.loadTiled(settings.tiled);
-                    }
-                },
-                onHide: function () {
-                    // remove all objects
-                    Bento.removeAll();
-                    // reset viewport scroll when hiding screen
-                    viewport.x = 0;
-                    viewport.y = 0;
-                }
-            };
-
-        return module;
-    };
-});
-/*
- * Reads tiled json files
- * @copyright (C) HeiGames
- */
-define('bento/tiled', [
-    'bento',
-    'bento/entity',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/math/polygon',
-    'bento/packedimage'
-], function (Bento, Entity, Vector2, Rectangle, Polygon, PackedImage) {
-    'use strict';
-    return function (settings, onReady) {
-        /*settings = {
-            name: String, // name of JSON file
-            background: Boolean // TODO false: splits tileLayer tile entities,
-            spawn: Boolean // adds objects into game immediately
-        }*/
-        var json = Bento.assets.getJson(settings.name),
-            i,
-            j,
-            k,
-            width = json.width,
-            height = json.height,
-            layers = json.layers.length,
-            tileWidth = json.tilewidth,
-            tileHeight = json.tileheight,
-            canvas = document.createElement('canvas'),
-            context = canvas.getContext('2d'),
-            image,
-            layer,
-            firstgid,
-            object,
-            points,
-            objects = [],
-            shapes = [],
-            viewport = Bento.getViewport(),
-            background = Entity().extend({
-                z: 0,
-                draw: function (gameData) {
-                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
-                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0),
-                        img = PackedImage(canvas);
-
-                    if (w === 0 || h === 0) {
-                        return;
-                    }
-                    // only draw the part in the viewport
-                    gameData.renderer.drawImage(
-                        img, ~~(Math.max(Math.min(viewport.x, canvas.width), 0)), ~~(Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
-                        0,
-                        0, ~~w, ~~h
-                    );
-                }
-            }),
-            getTileset = function (gid) {
-                var l,
-                    tileset,
-                    current = null;
-                // loop through tilesets and find the highest firstgid that's
-                // still lower or equal to the gid
-                for (l = 0; l < json.tilesets.length; ++l) {
-                    tileset = json.tilesets[l];
-                    if (tileset.firstgid <= gid) {
-                        current = tileset;
-                    }
-                }
-                return current;
-            },
-            getTile = function (tileset, gid) {
-                var index,
-                    tilesetWidth,
-                    tilesetHeight;
-                if (tileset === null) {
-                    return null;
-                }
-                index = gid - tileset.firstgid;
-                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
-                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
-                return {
-                    // convention: the tileset name must be equal to the asset name!
-                    subimage: Bento.assets.getImage(tileset.name),
-                    x: (index % tilesetWidth) * tileset.tilewidth,
-                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
-                    width: tileset.tilewidth,
-                    height: tileset.tileheight
-                };
-            },
-            drawTileLayer = function (x, y) {
-                var gid = layer.data[y * width + x],
-                    // get correct tileset and image
-                    tileset = getTileset(gid),
-                    tile = getTile(tileset, gid);
-                // draw background to offscreen canvas
-                if (tile) {
-                    context.drawImage(
-                        tile.subimage.image,
-                        tile.subimage.x + tile.x,
-                        tile.subimage.y + tile.y,
-                        tile.width,
-                        tile.height,
-                        x * tileWidth,
-                        y * tileHeight,
-                        tileWidth,
-                        tileHeight
-                    );
-                }
-            },
-            spawn = function (name, obj, tilesetProperties) {
-                var x = obj.x,
-                    y = obj.y,
-                    params = [],
-                    getParams = function (properties) {
-                        var prop;
-                        for (prop in properties) {
-                            if (!prop.match(/param\d+/)) {
-                                continue;
-                            }
-                            if (isNaN(properties[prop])) {
-                                params.push(properties[prop]);
-                            } else {
-                                params.push((+properties[prop]));
-                            }
-                        }
-                    };
-
-                // search params
-                getParams(tilesetProperties);
-                getParams(obj.properties);
-
-                require([name], function (Instance) {
-                    var instance = Instance.apply(this, params),
-                        origin = instance.getOrigin(),
-                        dimension = instance.getDimension(),
-                        prop,
-                        addProperties = function (properties) {
-                            var prop;
-                            for (prop in properties) {
-                                if (prop === 'module' || prop.match(/param\d+/)) {
-                                    continue;
-                                }
-                                if (properties.hasOwnProperty(prop)) {
-                                    // number or string?
-                                    if (isNaN(properties[prop])) {
-                                        instance[prop] = properties[prop];
-                                    } else {
-                                        instance[prop] = (+properties[prop]);
-                                    }
-                                }
-                            }
-                        };
-
-                    instance.setPosition({
-                        // tiled assumes origin (0, 1)
-                        x: x + (origin.x),
-                        y: y + (origin.y - dimension.height)
-                    });
-                    // add in tileset properties
-                    addProperties(tilesetProperties);
-                    // add tile properties
-                    addProperties(obj.properties);
-                    // add to game
-                    if (settings.spawn) {
-                        Bento.objects.add(instance);
-                    }
-                    objects.push(instance);
-                });
-            },
-            spawnObject = function (obj) {
-                var gid = obj.gid,
-                    // get tileset: should contain module name
-                    tileset = getTileset(gid),
-                    id = gid - tileset.firstgid,
-                    properties,
-                    moduleName;
-                if (tileset.tileproperties) {
-                    properties = tileset.tileproperties[id.toString()];
-                    if (properties) {
-                        moduleName = properties.module;
-                    }
-                }
-                if (moduleName) {
-                    spawn(moduleName, obj, properties);
-                }
-            },
-            spawnShape = function (shape, type) {
-                var obj;
-                if (settings.spawn) {
-                    obj = Entity({
-                        z: 0,
-                        name: type,
-                        family: [type]
-                    }).extend({
-                        update: function () {},
-                        draw: function () {}
-                    });
-                    obj.setBoundingBox(shape);
-                    Bento.objects.add(obj);
-                }
-                shape.type = type;
-                shapes.push(shape);
-            };
-
-        // setup canvas
-        // to do: split up in multiple canvas elements due to max
-        // size
-        canvas.width = width * tileWidth;
-        canvas.height = height * tileHeight;
-
-        // loop through layers
-        for (k = 0; k < layers; ++k) {
-            layer = json.layers[k];
-            if (layer.type === 'tilelayer') {
-                // loop through tiles
-                for (j = 0; j < layer.height; ++j) {
-                    for (i = 0; i < layer.width; ++i) {
-                        drawTileLayer(i, j);
-                    }
-                }
-            } else if (layer.type === 'objectgroup') {
-                for (i = 0; i < layer.objects.length; ++i) {
-                    object = layer.objects[i];
-
-                    // default type is solid
-                    if (object.type === '') {
-                        object.type = 'solid';
-                    }
-
-                    if (object.gid) {
-                        // normal object
-                        spawnObject(object);
-                    } else if (object.polygon) {
-                        // polygon 
-                        points = [];
-                        for (j = 0; j < object.polygon.length; ++j) {
-                            points.push(object.polygon[j]);
-                            points[j].x += object.x;
-                            // shift polygons 1 pixel down?
-                            // something might be wrong with polygon definition
-                            points[j].y += object.y + 1;
-                        }
-                        spawnShape(Polygon(points), object.type);
-                    } else {
-                        // rectangle
-                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
-                    }
-                }
-            }
-        }
-
-        // add background to game
-        if (settings.spawn) {
-            Bento.objects.add(background);
-        }
-
-        return {
-            tileLayer: background,
-            objects: objects,
-            shapes: shapes,
-            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
-        };
-    };
-});
-/*
- * Creates a tween object
- * @copyright (C) HeiGames
- */
-bento.define('bento/tween', [
-    'bento',
-    'bento/utils',
-    'bento/entity'
-], function (Bento, Utils, Entity) {
-    'use strict';
-    var robbertPenner = {
-            // t: current time, b: begInnIng value, c: change In value, d: duration
-            easeInQuad: function (t, b, c, d) {
-                return c * (t /= d) * t + b;
-            },
-            easeOutQuad: function (t, b, c, d) {
-                return -c * (t /= d) * (t - 2) + b;
-            },
-            easeInOutQuad: function (t, b, c, d) {
-                if ((t /= d / 2) < 1) return c / 2 * t * t + b;
-                return -c / 2 * ((--t) * (t - 2) - 1) + b;
-            },
-            easeInCubic: function (t, b, c, d) {
-                return c * (t /= d) * t * t + b;
-            },
-            easeOutCubic: function (t, b, c, d) {
-                return c * ((t = t / d - 1) * t * t + 1) + b;
-            },
-            easeInOutCubic: function (t, b, c, d) {
-                if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
-                return c / 2 * ((t -= 2) * t * t + 2) + b;
-            },
-            easeInQuart: function (t, b, c, d) {
-                return c * (t /= d) * t * t * t + b;
-            },
-            easeOutQuart: function (t, b, c, d) {
-                return -c * ((t = t / d - 1) * t * t * t - 1) + b;
-            },
-            easeInOutQuart: function (t, b, c, d) {
-                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
-                return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
-            },
-            easeInQuint: function (t, b, c, d) {
-                return c * (t /= d) * t * t * t * t + b;
-            },
-            easeOutQuint: function (t, b, c, d) {
-                return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
-            },
-            easeInOutQuint: function (t, b, c, d) {
-                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
-                return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
-            },
-            easeInSine: function (t, b, c, d) {
-                return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
-            },
-            easeOutSine: function (t, b, c, d) {
-                return c * Math.sin(t / d * (Math.PI / 2)) + b;
-            },
-            easeInOutSine: function (t, b, c, d) {
-                return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
-            },
-            easeInExpo: function (t, b, c, d) {
-                return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
-            },
-            easeOutExpo: function (t, b, c, d) {
-                return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
-            },
-            easeInOutExpo: function (t, b, c, d) {
-                if (t === 0) return b;
-                if (t === d) return b + c;
-                if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
-                return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
-            },
-            easeInCirc: function (t, b, c, d) {
-                return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
-            },
-            easeOutCirc: function (t, b, c, d) {
-                return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
-            },
-            easeInOutCirc: function (t, b, c, d) {
-                if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
-                return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
-            },
-            easeInElastic: function (t, b, c, d) {
-                var s = 1.70158;
-                var p = 0;
-                var a = c;
-                if (t === 0) return b;
-                if ((t /= d) === 1) return b + c;
-                if (!p) p = d * .3;
-                if (a < Math.abs(c)) {
-                    a = c;
-                    var s = p / 4;
-                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
-                return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-            },
-            easeOutElastic: function (t, b, c, d) {
-                var s = 1.70158;
-                var p = 0;
-                var a = c;
-                if (t === 0) return b;
-                if ((t /= d) === 1) return b + c;
-                if (!p) p = d * .3;
-                if (a < Math.abs(c)) {
-                    a = c;
-                    var s = p / 4;
-                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
-                return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
-            },
-            easeInOutElastic: function (t, b, c, d) {
-                var s = 1.70158;
-                var p = 0;
-                var a = c;
-                if (t === 0) return b;
-                if ((t /= d / 2) === 2) return b + c;
-                if (!p) p = d * (.3 * 1.5);
-                if (a < Math.abs(c)) {
-                    a = c;
-                    var s = p / 4;
-                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
-                if (t < 1) return -.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-                return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * .5 + c + b;
-            },
-            easeInBack: function (t, b, c, d, s) {
-                if (s === undefined) s = 1.70158;
-                return c * (t /= d) * t * ((s + 1) * t - s) + b;
-            },
-            easeOutBack: function (t, b, c, d, s) {
-                if (s === undefined) s = 1.70158;
-                return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
-            },
-            easeInOutBack: function (t, b, c, d, s) {
-                if (s === undefined) s = 1.70158;
-                if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
-                return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
-            },
-            easeInBounce: function (t, b, c, d) {
-                return c - this.easeOutBounce(d - t, 0, c, d) + b;
-            },
-            easeOutBounce: function (t, b, c, d) {
-                if ((t /= d) < (1 / 2.75)) {
-                    return c * (7.5625 * t * t) + b;
-                } else if (t < (2 / 2.75)) {
-                    return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
-                } else if (t < (2.5 / 2.75)) {
-                    return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
-                } else {
-                    return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
-                }
-            },
-            easeInOutBounce: function (t, b, c, d) {
-                if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * .5 + b;
-                return this.easeOutBounce(t * 2 - d, 0, c, d) * .5 + c * .5 + b;
-            }
-        },
-        interpolations = {
-            linear: function (s, e, t, alpha, beta) {
-                return (e - s) * t + s;
-            },
-            quadratic: function (s, e, t, alpha, beta) {
-                return (e - s) * t * t + s;
-            },
-            squareroot: function (s, e, t, alpha, beta) {
-                return (e - s) * Math.pow(t, 0.5) + s;
-            },
-            cubic: function (s, e, t, alpha, beta) {
-                return (e - s) * t * t * t + s;
-            },
-            cuberoot: function (s, e, t, alpha, beta) {
-                return (e - s) * Math.pow(t, 1 / 3) + s;
-            },
-            exponential: function (s, e, t, alpha, beta) {
-                //takes alpha as growth/damp factor
-                return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
-            },
-            elastic: function (s, e, t, alpha, beta) {
-                //alpha=growth factor, beta=wavenumber
-                return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
-            },
-            sin: function (s, e, t, alpha, beta) {
-                //s=offset, e=amplitude, alpha=wavenumber
-                return s + e * Math.sin(alpha * t * 2 * Math.PI);
-            },
-            cos: function (s, e, t, alpha, beta) {
-                //s=offset, e=amplitude, alpha=wavenumber
-                return s + e * Math.cos(alpha * t * 2 * Math.PI);
-            }
-        },
-        interpolate = function (type, s, e, t, alpha, beta) {
-            // interpolate(string type,float from,float to,float time,float alpha,float beta)
-            // s = starting value
-            // e = ending value
-            // t = time variable (going from 0 to 1)
-            var fn = interpolations[type];
-            if (fn) {
-                return fn(s, e, t, alpha, beta);
-            } else {
-                return robbertPenner[type](t, s, e - s, 1);
-            }
-        };
-    return function (settings) {
-        /* settings = {
-            from: Number
-            to: Number
-            in: Number
-            ease: String
-            alpha: Number (optional)
-            beta: Number (optional)
-            stay: Boolean (optional)
-            do: Gunction (value, time) {} (optional)
-            onComplete: function () {} (optional)
-            id: Number (optional),
-            updateWhenPaused: Boolean (optional)
-        }*/
-        var time = 0,
-            added = false,
-            running = true,
-            tween = Entity(settings).extend({
-                id: settings.id,
-                update: function (data) {
-                    if (!running) {
-                        return;
-                    }
-                    ++time;
-                    // run update
-                    if (settings.do) {
-                        settings.do.apply(this, [interpolate(
-                            settings.ease || 'linear',
-                            settings.from || 0,
-                            Utils.isDefined(settings.to) ? settings.to : 1,
-                            time / (settings.in),
-                            Utils.isDefined(settings.alpha) ? settings.alpha : 1,
-                            Utils.isDefined(settings.beta) ? settings.beta : 1
-                        ), time]);
-                    }
-                    // end
-                    if (!settings.stay && time >= settings.in) {
-                        if (settings.onComplete) {
-                            settings.onComplete.apply(this);
-                        }
-                        Bento.objects.remove(tween);
-                        added = false;
-                    }
-                },
-                start: function () {
-                    time = 0;
-                    if (!added) {
-                        Bento.objects.add(tween);
-                        added = true;
-                    }
-                    running = true;
-                    return tween;
-                },
-                stop: function () {
-                    time = 0;
-                    running = false;
-                    return tween;
-                }
-            });
-        if (settings.in === 0) {
-            settings.in = 1;
-        }
-        // tween automatically starts
-        tween.start();
-        return tween;
-    };
-});
-/*
- * 2 dimensional array 
- * @copyright (C) HeiGames
- */
-bento.define('bento/math/array2d', function () {
-    'use strict';
-    return function (width, height) {
-        var array = [],
-            i,
-            j;
-
-        // init array
-        for (i = 0; i < width; ++i) {
-            array[i] = [];
-            for (j = 0; j < height; ++j) {
-                array[i][j] = null;
-            }
-        }
-
-        return {
-            isArray2d: function () {
-                return true;
-            },
-            iterate: function (callback) {
-                var i, j;
-                for (j = 0; j < height; ++j) {
-                    for (i = 0; i < width; ++i) {
-                        callback(i, j, array[i][j]);
-                    }
-                }
-            },
-            get: function (x, y) {
-                return array[x][y];
-            },
-            set: function (x, y, value) {
-                array[x][y] = value;
-            },
-            width: function () {
-                return width;
-            },
-            height: function () {
-                return height;
-            }
-        };
-    };
-});
-/*
- * Matrix
- * @copyright (C) HeiGames
- */
-bento.define('bento/math/matrix', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    var add = function (other) {
-            var newMatrix = this.clone();
-            newMatrix.addTo(other);
-            return newMatrix;
-        },
-        multiply = function (matrix1, matrix2) {
-            var newMatrix = this.clone();
-            newMatrix.multiplyWith(other);
-            return newMatrix;
-        },
-        module = function (width, height) {
-            var matrix = [],
-                n = width || 0,
-                m = height || 0,
-                i,
-                j,
-                set = function (x, y, value) {
-                    matrix[y * n + x] = value;
-                },
-                get = function (x, y) {
-                    return matrix[y * n + x];
-                };
-
-            // initialize as identity matrix
-            for (j = 0; j < m; ++j) {
-                for (i = 0; i < n; ++i) {
-                    if (i === j) {
-                        set(i, j, 1);
-                    } else {
-                        set(i, j, 0);
-                    }
-                }
-            }
-
-            return {
-                isMatrix: function () {
-                    return true;
-                },
-                /**
-                 * Returns a string representation of the matrix (useful for debugging purposes)
-                 */
-                stringify: function () {
-                    var i,
-                        j,
-                        str = '',
-                        row = '';
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            row += get(i, j) + '\t';
-                        }
-                        str += row + '\n';
-                        row = '';
-                    }
-                    return str;
-                },
-                /**
-                 * Get the value inside matrix
-                 * @param {Number} x - x index
-                 * @param {Number} y - y index
-                 */
-                get: function (x, y) {
-                    return get(x, y);
-                },
-                /**
-                 * Set the value inside matrix
-                 * @param {Number} x - x index
-                 * @param {Number} y - y index
-                 * @param {Number} value - new value
-                 */
-                set: function (x, y, value) {
-                    set(x, y, value);
-                },
-                /**
-                 * Set the values inside matrix using an array
-                 * If the matrix is 2x2 in size, then supplying an array with
-                 * values [1, 2, 3, 4] will result in a matrix
-                 * [1 2]
-                 * [3 4]
-                 * If the array has more elements than the matrix, the
-                 * rest of the array is ignored.
-                 * @param {Array} array - array with Numbers
-                 */
-                setValues: function (array) {
-                    var i, l = Math.min(matrix.length, array.length);
-                    for (i = 0; i < l; ++i) {
-                        matrix[i] = array[i];
-                    }
-                    return this;
-                },
-                /**
-                 * Get the matrix width
-                 */
-                getWidth: function () {
-                    return n;
-                },
-                /**
-                 * Get the matrix height
-                 */
-                getHeight: function () {
-                    return m;
-                },
-                /**
-                 * Iterate through matrix
-                 */
-                iterate: function (callback) {
-                    var i, j;
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            if (!Utils.isFunction(callback)) {
-                                throw ('Please supply a callback function');
-                            }
-                            callback(i, j, get(i, j));
-                        }
-                    }
-                },
-                /**
-                 * Transposes the current matrix
-                 */
-                transpose: function () {
-                    var i, j, newMat = [];
-                    // reverse loop so m becomes n
-                    for (i = 0; i < n; ++i) {
-                        for (j = 0; j < m; ++j) {
-                            newMat[i * m + j] = get(i, j);
-                        }
-                    }
-                    // set new matrix
-                    matrix = newMat;
-                    // swap width and height
-                    m = [n, n = m][0];
-                    return this;
-                },
-                /**
-                 * Addition of another matrix
-                 * @param {Matrix} matrix - matrix to add
-                 */
-                addTo: function (other) {
-                    var i, j;
-                    if (m != other.getHeight() || n != other.getWidth()) {
-                        throw 'Matrix sizes incorrect';
-                    }
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            set(i, j, get(i, j) + other.get(i, j));
-                        }
-                    }
-                    return this;
-                },
-                add: add,
-                /**
-                 * Multiply with another matrix
-                 * If a new matrix C is the result of A * B = C
-                 * then B is the current matrix and becomes C, A is the input matrix
-                 * @param {Matrix} matrix - input matrix to multiply with
-                 */
-                multiplyWith: function (other) {
-                    var i, j,
-                        newMat = [],
-                        newWidth = n, // B.n
-                        oldHeight = m, // B.m
-                        newHeight = other.getHeight(), // A.m
-                        oldWidth = other.getWidth(), // A.n
-                        newValue = 0,
-                        k;
-                    if (oldHeight != oldWidth) {
-                        throw 'Matrix sizes incorrect';
-                    }
-
-                    for (j = 0; j < newHeight; ++j) {
-                        for (i = 0; i < newWidth; ++i) {
-                            newValue = 0;
-                            // loop through matbentos
-                            for (k = 0; k < oldWidth; ++k) {
-                                newValue += matrix.get(k, j) * get(i, k);
-                            }
-                            newMat[j * newWidth + i] = newValue;
-                        }
-                    }
-                    // set to new matrix
-                    matrix = newMat;
-                    // update matrix size
-                    n = newWidth;
-                    m = newHeight;
-                    return this;
-                },
-                multiply: multiply,
-                /**
-                 * Returns a clone of the current matrix
-                 */
-                clone: function () {
-                    var newMatrix = module(n, m);
-                    newMatrix.setValues(matrix);
-                    return newMatrix;
-                }
-            };
-        };
-    return module;
-});
-/*
- * Polygon
- * @copyright (C) HeiGames
- */
-bento.define('bento/math/polygon', [
-    'bento/utils',
-    'bento/math/rectangle'
-], function (Utils, Rectangle) {
-    'use strict';
-    var isPolygon = function () {
-            return true;
-        },
-        clone = function () {
-            var clone = [],
-                points = this.points,
-                i = points.length;
-            // clone the array
-            while (i--) {
-                clone[i] = points[i];
-            }
-            return module(clone);
-        },
-        offset = function (pos) {
-            var clone = [],
-                points = this.points,
-                i = points.length;
-            while (i--) {
-                clone[i] = points[i];
-                clone[i].x += pos.x;
-                clone[i].y += pos.y;
-            }
-            return module(clone);
-        },
-        doLineSegmentsIntersect = function (p, p2, q, q2) {
-            // based on https://github.com/pgkelley4/line-segments-intersect
-            var crossProduct = function (p1, p2) {
-                    return p1.x * p2.y - p1.y * p2.x;
-                },
-                subtractPoints = function (p1, p2) {
-                    return {
-                        x: p1.x - p2.x,
-                        y: p1.y - p2.y
-                    };
-                },
-                r = subtractPoints(p2, p),
-                s = subtractPoints(q2, q),
-                uNumerator = crossProduct(subtractPoints(q, p), r),
-                denominator = crossProduct(r, s),
-                u,
-                t;
-            if (uNumerator === 0 && denominator === 0) {
-                return ((q.x - p.x < 0) !== (q.x - p2.x < 0) !== (q2.x - p.x < 0) !== (q2.x - p2.x < 0)) ||
-                    ((q.y - p.y < 0) !== (q.y - p2.y < 0) !== (q2.y - p.y < 0) !== (q2.y - p2.y < 0));
-            }
-            if (denominator === 0) {
-                return false;
-            }
-            u = uNumerator / denominator;
-            t = crossProduct(subtractPoints(q, p), s) / denominator;
-            return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
-        },
-        intersect = function (polygon) {
-            var intersect = false,
-                other = [],
-                points = this.points,
-                p1,
-                p2,
-                q1,
-                q2,
-                i,
-                j;
-
-            // is other really a polygon?
-            if (polygon.isRectangle) {
-                // before constructing a polygon, check if boxes collide in the first place 
-                if (!this.getBoundingBox().intersect(polygon)) {
-                    return false;
-                }
-                // construct a polygon out of rectangle
-                other.push({
-                    x: polygon.x,
-                    y: polygon.y
-                });
-                other.push({
-                    x: polygon.getX2(),
-                    y: polygon.y
-                });
-                other.push({
-                    x: polygon.getX2(),
-                    y: polygon.getY2()
-                });
-                other.push({
-                    x: polygon.x,
-                    y: polygon.getY2()
-                });
-                polygon = module(other);
-            } else {
-                // simplest check first: regard polygons as boxes and check collision
-                if (!this.getBoundingBox().intersect(polygon.getBoundingBox())) {
-                    return false;
-                }
-                // get polygon points
-                other = polygon.points;
-            }
-
-            // precision check
-            for (i = 0; i < points.length; ++i) {
-                for (j = 0; j < other.length; ++j) {
-                    p1 = points[i];
-                    p2 = points[(i + 1) % points.length];
-                    q1 = other[j];
-                    q2 = other[(j + 1) % other.length];
-                    if (doLineSegmentsIntersect(p1, p2, q1, q2)) {
-                        return true;
-                    }
-                }
-            }
-            // check inside one or another
-            if (this.hasPosition(other[0]) || polygon.hasPosition(points[0])) {
-                return true;
-            } else {
-                return false;
-            }
-        },
-        hasPosition = function (p) {
-            var points = this.points,
-                has = false,
-                i = 0,
-                j = points.length - 1;
-
-            if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) {
-                return false;
-            }
-            for (i, j; i < points.length; j = i++) {
-                if ((points[i].y > p.y) != (points[j].y > p.y) &&
-                    p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
-                    (points[j].y - points[i].y) + points[i].x) {
-                    has = !has;
-                }
-            }
-            return has;
-        },
-        module = function (points) {
-            var minX = points[0].x,
-                maxX = points[0].x,
-                minY = points[0].y,
-                maxY = points[0].y,
-                n = 1,
-                q;
-
-            for (n = 1; n < points.length; ++n) {
-                q = points[n];
-                minX = Math.min(q.x, minX);
-                maxX = Math.max(q.x, maxX);
-                minY = Math.min(q.y, minY);
-                maxY = Math.max(q.y, maxY);
-            }
-
-            return {
-                points: points,
-                isPolygon: isPolygon,
-                getBoundingBox: function () {
-                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
-                },
-                hasPosition: hasPosition,
-                intersect: intersect,
-                offset: offset,
-                clone: clone
-            };
-        };
-    return module;
-});
-/*
- * Rectangle
- * @copyright (C) HeiGames
- */
-bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
-    'use strict';
-    var isRectangle = function () {
-            return true;
-        },
-        getX2 = function () {
-            return this.x + this.width;
-        },
-        getY2 = function () {
-            return this.y + this.height;
-        },
-        union = function (rectangle) {
-            var x1 = Math.min(this.x, rectangle.x),
-                y1 = Math.min(this.y, rectangle.y),
-                x2 = Math.max(this.getX2(), rectangle.getX2()),
-                y2 = Math.max(this.getY2(), rectangle.getY2());
-            return module(x1, y1, x2 - x1, y2 - y1);
-        },
-        intersect = function (other) {
-            if (other.isPolygon) {
-                return other.intersect(this);
-            } else {
-                return !(this.x + this.width <= other.x ||
-                    this.y + this.height <= other.y ||
-                    this.x >= other.x + other.width ||
-                    this.y >= other.y + other.height);
-            }
-        },
-        intersection = function (rectangle) {
-            var inter = module(0, 0, 0, 0);
-            if (this.intersect(rectangle)) {
-                inter.x = Math.max(this.x, rectangle.x);
-                inter.y = Math.max(this.y, rectangle.y);
-                inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
-                inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
-            }
-            return inter;
-        },
-        offset = function (pos) {
-            return module(this.x + pos.x, this.y + pos.y, this.width, this.height);
-        },
-        clone = function () {
-            return module(this.x, this.y, this.width, this.height);
-        },
-        hasPosition = function (vector) {
-            return !(
-                vector.x < this.x ||
-                vector.y < this.y ||
-                vector.x >= this.x + this.width ||
-                vector.y >= this.y + this.height
-            );
-        },
-        grow = function (size) {
-            this.x -= size / 2;
-            this.y -= size / 2;
-            this.width += size;
-            this.height += size;
-        },
-        module = function (x, y, width, height) {
-            return {
-                x: x,
-                y: y,
-                width: width,
-                height: height,
-                isRectangle: isRectangle,
-                getX2: getX2,
-                getY2: getY2,
-                union: union,
-                intersect: intersect,
-                intersection: intersection,
-                offset: offset,
-                clone: clone,
-                hasPosition: hasPosition,
-                grow: grow
-            };
-        };
-    return module;
-});
-/*
- * 2 dimensional vector
- * @copyright (C) HeiGames
- */
-bento.define('bento/math/vector2', [], function () {
-    'use strict';
-    var isVector2 = function () {
-            return true;
-        },
-        add = function (vector) {
-            var v = this.clone();
-            v.addTo(vector);
-            return v;
-        },
-        addTo = function (vector) {
-            this.x += vector.x;
-            this.y += vector.y;
-            return this;
-        },
-        substract = function (vector) {
-            var v = this.clone();
-            v.substractFrom(vector);
-            return v;
-        },
-        substractFrom = function (vector) {
-            this.x -= vector.x;
-            this.y -= vector.y;
-            return this;
-        },
-        angle = function () {
-            return Math.atan2(this.y, this.x);
-        },
-        angleBetween = function (vector) {
-            return Math.atan2(
-                vector.y - this.y,
-                vector.x - this.x
-            );
-        },
-        dotProduct = function (vector) {
-            return this.x * vector.x + this.y * vector.y;
-        },
-        multiply = function (vector) {
-            var v = this.clone();
-            v.multiplyWith(vector);
-            return v;
-        },
-        multiplyWith = function (vector) {
-            this.x *= vector.x;
-            this.y *= vector.y;
-            return this;
-        },
-        divide = function (vector) {
-            var v = this.clone();
-            v.divideBy(vector);
-            return v;
-        },
-        divideBy = function (vector) {
-            this.x /= vector.x;
-            this.y /= vector.y;
-            return this;
-        },
-        scale = function (value) {
-            this.x *= value;
-            this.y *= value;
-            return this;
-        },
-        length = function () {
-            return Math.sqrt(this.dotProduct(this));
-        },
-        normalize = function () {
-            var length = this.length();
-            this.x /= length;
-            this.y /= length;
-            return this;
-        },
-        distance = function (vector) {
-            return vector.substract(this).length();
-        },
-        clone = function () {
-            return module(this.x, this.y);
-        },
-        toMatrix = function () {
-            var matrix = Matrix(1, 3);
-            matrix.set(0, 0, this.x);
-            matrix.set(0, 1, this.y);
-            matrix.set(0, 2, 1);
-            return matrix;
-        },
-        module = function (x, y) {
-            return {
-                x: x,
-                y: y,
-                isVector2: isVector2,
-                add: add,
-                addTo: addTo,
-                substract: substract,
-                substractFrom: substractFrom,
-                angle: angle,
-                angleBetween: angleBetween,
-                dotProduct: dotProduct,
-                multiply: multiply,
-                multiplyWith: multiplyWith,
-                divide: divide,
-                divideBy: divideBy,
-                scale: scale,
-                length: length,
-                normalize: normalize,
-                distance: distance,
-                clone: clone
-            };
-        };
-    return module;
-});
-/*
- * Canvas 2d renderer
- * @copyright (C) HeiGames
- */
-bento.define('bento/renderers/canvas2d', [
-    'bento/utils'
-], function (Utils) {
-    return function (canvas, settings) {
-        var context = canvas.getContext('2d'),
-            renderer = {
-            name: 'canvas2d',
-            save: function () {
-                context.save();
-            },
-            restore: function () {
-                context.restore();
-            },
-            translate: function (x, y) {
-                context.translate(x, y);
-            },
-            scale: function (x, y) {
-                context.scale(x, y);
-            },
-            rotate: function (angle) {
-                context.rotate(angle);
-            },
-            fillRect: function (colorArray, x, y, w, h) {
-                var colorStr = '#';
-                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
-                context.fillStyle = colorStr;
-                context.fillRect(x, y, w, h);
-            },
-            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
-            }
-        };
-        console.log('Init canvas2d as renderer');
-
-        if (!settings.smoothing) {
-            if (context.imageSmoothingEnabled) {
-                context.imageSmoothingEnabled = false;
-            }
-            if (context.webkitImageSmoothingEnabled) {
-                context.webkitImageSmoothingEnabled = false;
-            }
-            if (context.mozImageSmoothingEnabled) {
-                context.mozImageSmoothingEnabled = false;
-            }
-        }
-        return renderer;
-    };
-});
-bento.define('bento/renderers/pixi', [
-    'bento/utils'
-], function (Utils) {
-    return function (canvas, settings) {
-        var useBatch = false,
-            context,
-            pixiStage,
-            pixiRenderer,
-            pixiBatch,
-            currentObject,
-            renderer = {
-                name: 'pixi',
-                init: function () {
-
-                },
-                destroy: function () {},
-                save: function (obj) {
-                    currentObject = obj;
-                    pixiBatch.addChild(obj.pixiSprite);
-                    currentObject.pixiSprite.position.x = 0;
-                    currentObject.pixiSprite.position.y = 0;
-                },
-                restore: function () {},
-                translate: function (x, y) {
-                    currentObject.pixiSprite.position.x += x;
-                    currentObject.pixiSprite.position.y += y;
-                },
-                scale: function (x, y) {},
-                rotate: function (angle) {},
-                fillRect: function (color, x, y, w, h) {},
-                drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
-                    currentObject.pixiTexture.setFrame(new PIXI.Rectangle(sx, sy, sw, sh));
-                },
-                flush: function () {
-                    pixiRenderer.render(pixiStage);
-                    pixiBatch.removeChildren();
-                }
-            };
-        // init pixi
-        pixiStage = new PIXI.Stage(0x000000);
-        pixiRenderer = PIXI.autoDetectRenderer(canvas.width, canvas.height, {
-            view: canvas
-        });
-        if (useBatch) {
-            pixiBatch = new PIXI.SpriteBatch();
-            pixiStage.addChild(pixiBatch);
-        } else {
-            pixiBatch = pixiStage;
-        }
-        console.log('Init pixi as renderer');
-        return renderer;
-    };
-});
-/*
- * WebGL renderer using gl-sprites by Matt DesLauriers
- * @copyright (C) HeiGames
- */
-bento.define('bento/renderers/webgl', [
-    'bento/utils',
-    'bento/renderers/canvas2d'
-], function (Utils, Canvas2d) {
-    return function (canvas, settings) {
-        var canWebGl,
-            context,
-            glRenderer,
-            renderer = {
-                name: 'webgl',
-                save: function () {
-                    glRenderer.save();
-                },
-                restore: function () {
-                    glRenderer.restore();
-                },
-                translate: function (x, y) {
-                    glRenderer.translate(x, y);
-                },
-                scale: function (x, y) {
-                    glRenderer.scale(x, y);
-                },
-                rotate: function (angle) {
-                    glRenderer.rotate(angle);
-                },
-                fillRect: function (color, x, y, w, h) {
-                    var oldColor = glRenderer.color;
-                    // 
-                    renderer.setColor(color);
-                    glRenderer.fillRect(x, y, w, h);
-                    glRenderer.color = oldColor;
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    var image = packedImage.image;
-                    if (!image.texture) {
-                        image.texture = window.GlSprites.createTexture2D(context, image);
-                    }
-                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
-                },
-                begin: function () {
-                    glRenderer.begin();
-                },
-                flush: function () {
-                    glRenderer.end();
-                },
-                setColor: function (color) {
-                    // glRenderer.color = colorString.getRgba(cssStr);
-                    glRenderer.color = color;
-                }
-            };
-        console.log('Init webgl as renderer');
-
-        // fallback
-        canWebGl = (function () {
-            try {
-                var canvas = document.createElement('canvas');
-                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-            } catch (e) {
-                return false;
-            }
-        })();
-        if (canWebGl) {
-            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-
-            glRenderer = window.GlSprites.SpriteRenderer(context);
-            glRenderer.ortho(canvas.width, canvas.height);
-            return renderer;
-        } else {
-            return Canvas2d(canvas, settings);
-        }
-    };
 });
 /**
  *  Manager that controls all assets
@@ -15413,6 +13201,9 @@ bento.define('bento/managers/object', [
                         mainLoop();
                         isRunning = true;
                     }
+                },
+                count: function () {
+                    return objects.length;
                 }
             };
 
@@ -15489,5 +13280,1400 @@ bento.define('bento/managers/screen', [
 
         return screenManager;
 
+    };
+});
+/*
+ * 2 dimensional array 
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/math/array2d', function () {
+    'use strict';
+    return function (width, height) {
+        var array = [],
+            i,
+            j;
+
+        // init array
+        for (i = 0; i < width; ++i) {
+            array[i] = [];
+            for (j = 0; j < height; ++j) {
+                array[i][j] = null;
+            }
+        }
+
+        return {
+            isArray2d: function () {
+                return true;
+            },
+            iterate: function (callback) {
+                var i, j;
+                for (j = 0; j < height; ++j) {
+                    for (i = 0; i < width; ++i) {
+                        callback(i, j, array[i][j]);
+                    }
+                }
+            },
+            get: function (x, y) {
+                return array[x][y];
+            },
+            set: function (x, y, value) {
+                array[x][y] = value;
+            },
+            width: function () {
+                return width;
+            },
+            height: function () {
+                return height;
+            }
+        };
+    };
+});
+/*
+ * Matrix
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/math/matrix', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var add = function (other) {
+            var newMatrix = this.clone();
+            newMatrix.addTo(other);
+            return newMatrix;
+        },
+        multiply = function (matrix1, matrix2) {
+            var newMatrix = this.clone();
+            newMatrix.multiplyWith(other);
+            return newMatrix;
+        },
+        module = function (width, height) {
+            var matrix = [],
+                n = width || 0,
+                m = height || 0,
+                i,
+                j,
+                set = function (x, y, value) {
+                    matrix[y * n + x] = value;
+                },
+                get = function (x, y) {
+                    return matrix[y * n + x];
+                };
+
+            // initialize as identity matrix
+            for (j = 0; j < m; ++j) {
+                for (i = 0; i < n; ++i) {
+                    if (i === j) {
+                        set(i, j, 1);
+                    } else {
+                        set(i, j, 0);
+                    }
+                }
+            }
+
+            return {
+                isMatrix: function () {
+                    return true;
+                },
+                /**
+                 * Returns a string representation of the matrix (useful for debugging purposes)
+                 */
+                stringify: function () {
+                    var i,
+                        j,
+                        str = '',
+                        row = '';
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            row += get(i, j) + '\t';
+                        }
+                        str += row + '\n';
+                        row = '';
+                    }
+                    return str;
+                },
+                /**
+                 * Get the value inside matrix
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 */
+                get: function (x, y) {
+                    return get(x, y);
+                },
+                /**
+                 * Set the value inside matrix
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 * @param {Number} value - new value
+                 */
+                set: function (x, y, value) {
+                    set(x, y, value);
+                },
+                /**
+                 * Set the values inside matrix using an array
+                 * If the matrix is 2x2 in size, then supplying an array with
+                 * values [1, 2, 3, 4] will result in a matrix
+                 * [1 2]
+                 * [3 4]
+                 * If the array has more elements than the matrix, the
+                 * rest of the array is ignored.
+                 * @param {Array} array - array with Numbers
+                 */
+                setValues: function (array) {
+                    var i, l = Math.min(matrix.length, array.length);
+                    for (i = 0; i < l; ++i) {
+                        matrix[i] = array[i];
+                    }
+                    return this;
+                },
+                /**
+                 * Get the matrix width
+                 */
+                getWidth: function () {
+                    return n;
+                },
+                /**
+                 * Get the matrix height
+                 */
+                getHeight: function () {
+                    return m;
+                },
+                /**
+                 * Iterate through matrix
+                 */
+                iterate: function (callback) {
+                    var i, j;
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            if (!Utils.isFunction(callback)) {
+                                throw ('Please supply a callback function');
+                            }
+                            callback(i, j, get(i, j));
+                        }
+                    }
+                },
+                /**
+                 * Transposes the current matrix
+                 */
+                transpose: function () {
+                    var i, j, newMat = [];
+                    // reverse loop so m becomes n
+                    for (i = 0; i < n; ++i) {
+                        for (j = 0; j < m; ++j) {
+                            newMat[i * m + j] = get(i, j);
+                        }
+                    }
+                    // set new matrix
+                    matrix = newMat;
+                    // swap width and height
+                    m = [n, n = m][0];
+                    return this;
+                },
+                /**
+                 * Addition of another matrix
+                 * @param {Matrix} matrix - matrix to add
+                 */
+                addTo: function (other) {
+                    var i, j;
+                    if (m != other.getHeight() || n != other.getWidth()) {
+                        throw 'Matrix sizes incorrect';
+                    }
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            set(i, j, get(i, j) + other.get(i, j));
+                        }
+                    }
+                    return this;
+                },
+                add: add,
+                /**
+                 * Multiply with another matrix
+                 * If a new matrix C is the result of A * B = C
+                 * then B is the current matrix and becomes C, A is the input matrix
+                 * @param {Matrix} matrix - input matrix to multiply with
+                 */
+                multiplyWith: function (other) {
+                    var i, j,
+                        newMat = [],
+                        newWidth = n, // B.n
+                        oldHeight = m, // B.m
+                        newHeight = other.getHeight(), // A.m
+                        oldWidth = other.getWidth(), // A.n
+                        newValue = 0,
+                        k;
+                    if (oldHeight != oldWidth) {
+                        throw 'Matrix sizes incorrect';
+                    }
+
+                    for (j = 0; j < newHeight; ++j) {
+                        for (i = 0; i < newWidth; ++i) {
+                            newValue = 0;
+                            // loop through matbentos
+                            for (k = 0; k < oldWidth; ++k) {
+                                newValue += matrix.get(k, j) * get(i, k);
+                            }
+                            newMat[j * newWidth + i] = newValue;
+                        }
+                    }
+                    // set to new matrix
+                    matrix = newMat;
+                    // update matrix size
+                    n = newWidth;
+                    m = newHeight;
+                    return this;
+                },
+                multiply: multiply,
+                /**
+                 * Returns a clone of the current matrix
+                 */
+                clone: function () {
+                    var newMatrix = module(n, m);
+                    newMatrix.setValues(matrix);
+                    return newMatrix;
+                }
+            };
+        };
+    return module;
+});
+/*
+ * Polygon
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/math/polygon', [
+    'bento/utils',
+    'bento/math/rectangle'
+], function (Utils, Rectangle) {
+    'use strict';
+    var isPolygon = function () {
+            return true;
+        },
+        clone = function () {
+            var clone = [],
+                points = this.points,
+                i = points.length;
+            // clone the array
+            while (i--) {
+                clone[i] = points[i];
+            }
+            return module(clone);
+        },
+        offset = function (pos) {
+            var clone = [],
+                points = this.points,
+                i = points.length;
+            while (i--) {
+                clone[i] = points[i];
+                clone[i].x += pos.x;
+                clone[i].y += pos.y;
+            }
+            return module(clone);
+        },
+        doLineSegmentsIntersect = function (p, p2, q, q2) {
+            // based on https://github.com/pgkelley4/line-segments-intersect
+            var crossProduct = function (p1, p2) {
+                    return p1.x * p2.y - p1.y * p2.x;
+                },
+                subtractPoints = function (p1, p2) {
+                    return {
+                        x: p1.x - p2.x,
+                        y: p1.y - p2.y
+                    };
+                },
+                r = subtractPoints(p2, p),
+                s = subtractPoints(q2, q),
+                uNumerator = crossProduct(subtractPoints(q, p), r),
+                denominator = crossProduct(r, s),
+                u,
+                t;
+            if (uNumerator === 0 && denominator === 0) {
+                return ((q.x - p.x < 0) !== (q.x - p2.x < 0) !== (q2.x - p.x < 0) !== (q2.x - p2.x < 0)) ||
+                    ((q.y - p.y < 0) !== (q.y - p2.y < 0) !== (q2.y - p.y < 0) !== (q2.y - p2.y < 0));
+            }
+            if (denominator === 0) {
+                return false;
+            }
+            u = uNumerator / denominator;
+            t = crossProduct(subtractPoints(q, p), s) / denominator;
+            return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
+        },
+        intersect = function (polygon) {
+            var intersect = false,
+                other = [],
+                points = this.points,
+                p1,
+                p2,
+                q1,
+                q2,
+                i,
+                j;
+
+            // is other really a polygon?
+            if (polygon.isRectangle) {
+                // before constructing a polygon, check if boxes collide in the first place 
+                if (!this.getBoundingBox().intersect(polygon)) {
+                    return false;
+                }
+                // construct a polygon out of rectangle
+                other.push({
+                    x: polygon.x,
+                    y: polygon.y
+                });
+                other.push({
+                    x: polygon.getX2(),
+                    y: polygon.y
+                });
+                other.push({
+                    x: polygon.getX2(),
+                    y: polygon.getY2()
+                });
+                other.push({
+                    x: polygon.x,
+                    y: polygon.getY2()
+                });
+                polygon = module(other);
+            } else {
+                // simplest check first: regard polygons as boxes and check collision
+                if (!this.getBoundingBox().intersect(polygon.getBoundingBox())) {
+                    return false;
+                }
+                // get polygon points
+                other = polygon.points;
+            }
+
+            // precision check
+            for (i = 0; i < points.length; ++i) {
+                for (j = 0; j < other.length; ++j) {
+                    p1 = points[i];
+                    p2 = points[(i + 1) % points.length];
+                    q1 = other[j];
+                    q2 = other[(j + 1) % other.length];
+                    if (doLineSegmentsIntersect(p1, p2, q1, q2)) {
+                        return true;
+                    }
+                }
+            }
+            // check inside one or another
+            if (this.hasPosition(other[0]) || polygon.hasPosition(points[0])) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        hasPosition = function (p) {
+            var points = this.points,
+                has = false,
+                i = 0,
+                j = points.length - 1;
+
+            if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) {
+                return false;
+            }
+            for (i, j; i < points.length; j = i++) {
+                if ((points[i].y > p.y) != (points[j].y > p.y) &&
+                    p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
+                    (points[j].y - points[i].y) + points[i].x) {
+                    has = !has;
+                }
+            }
+            return has;
+        },
+        module = function (points) {
+            var minX = points[0].x,
+                maxX = points[0].x,
+                minY = points[0].y,
+                maxY = points[0].y,
+                n = 1,
+                q;
+
+            for (n = 1; n < points.length; ++n) {
+                q = points[n];
+                minX = Math.min(q.x, minX);
+                maxX = Math.max(q.x, maxX);
+                minY = Math.min(q.y, minY);
+                maxY = Math.max(q.y, maxY);
+            }
+
+            return {
+                points: points,
+                isPolygon: isPolygon,
+                getBoundingBox: function () {
+                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
+                },
+                hasPosition: hasPosition,
+                intersect: intersect,
+                offset: offset,
+                clone: clone
+            };
+        };
+    return module;
+});
+/*
+ * Rectangle
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
+    'use strict';
+    var isRectangle = function () {
+            return true;
+        },
+        getX2 = function () {
+            return this.x + this.width;
+        },
+        getY2 = function () {
+            return this.y + this.height;
+        },
+        union = function (rectangle) {
+            var x1 = Math.min(this.x, rectangle.x),
+                y1 = Math.min(this.y, rectangle.y),
+                x2 = Math.max(this.getX2(), rectangle.getX2()),
+                y2 = Math.max(this.getY2(), rectangle.getY2());
+            return module(x1, y1, x2 - x1, y2 - y1);
+        },
+        intersect = function (other) {
+            if (other.isPolygon) {
+                return other.intersect(this);
+            } else {
+                return !(this.x + this.width <= other.x ||
+                    this.y + this.height <= other.y ||
+                    this.x >= other.x + other.width ||
+                    this.y >= other.y + other.height);
+            }
+        },
+        intersection = function (rectangle) {
+            var inter = module(0, 0, 0, 0);
+            if (this.intersect(rectangle)) {
+                inter.x = Math.max(this.x, rectangle.x);
+                inter.y = Math.max(this.y, rectangle.y);
+                inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
+                inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
+            }
+            return inter;
+        },
+        offset = function (pos) {
+            return module(this.x + pos.x, this.y + pos.y, this.width, this.height);
+        },
+        clone = function () {
+            return module(this.x, this.y, this.width, this.height);
+        },
+        hasPosition = function (vector) {
+            return !(
+                vector.x < this.x ||
+                vector.y < this.y ||
+                vector.x >= this.x + this.width ||
+                vector.y >= this.y + this.height
+            );
+        },
+        grow = function (size) {
+            this.x -= size / 2;
+            this.y -= size / 2;
+            this.width += size;
+            this.height += size;
+        },
+        module = function (x, y, width, height) {
+            return {
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                isRectangle: isRectangle,
+                getX2: getX2,
+                getY2: getY2,
+                union: union,
+                intersect: intersect,
+                intersection: intersection,
+                offset: offset,
+                clone: clone,
+                hasPosition: hasPosition,
+                grow: grow
+            };
+        };
+    return module;
+});
+/*
+ * 2 dimensional vector
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/math/vector2', [], function () {
+    'use strict';
+    var isVector2 = function () {
+            return true;
+        },
+        add = function (vector) {
+            var v = this.clone();
+            v.addTo(vector);
+            return v;
+        },
+        addTo = function (vector) {
+            this.x += vector.x;
+            this.y += vector.y;
+            return this;
+        },
+        substract = function (vector) {
+            var v = this.clone();
+            v.substractFrom(vector);
+            return v;
+        },
+        substractFrom = function (vector) {
+            this.x -= vector.x;
+            this.y -= vector.y;
+            return this;
+        },
+        angle = function () {
+            return Math.atan2(this.y, this.x);
+        },
+        angleBetween = function (vector) {
+            return Math.atan2(
+                vector.y - this.y,
+                vector.x - this.x
+            );
+        },
+        dotProduct = function (vector) {
+            return this.x * vector.x + this.y * vector.y;
+        },
+        multiply = function (vector) {
+            var v = this.clone();
+            v.multiplyWith(vector);
+            return v;
+        },
+        multiplyWith = function (vector) {
+            this.x *= vector.x;
+            this.y *= vector.y;
+            return this;
+        },
+        divide = function (vector) {
+            var v = this.clone();
+            v.divideBy(vector);
+            return v;
+        },
+        divideBy = function (vector) {
+            this.x /= vector.x;
+            this.y /= vector.y;
+            return this;
+        },
+        scale = function (value) {
+            this.x *= value;
+            this.y *= value;
+            return this;
+        },
+        length = function () {
+            return Math.sqrt(this.dotProduct(this));
+        },
+        normalize = function () {
+            var length = this.length();
+            this.x /= length;
+            this.y /= length;
+            return this;
+        },
+        distance = function (vector) {
+            return vector.substract(this).length();
+        },
+        clone = function () {
+            return module(this.x, this.y);
+        },
+        toMatrix = function () {
+            var matrix = Matrix(1, 3);
+            matrix.set(0, 0, this.x);
+            matrix.set(0, 1, this.y);
+            matrix.set(0, 2, 1);
+            return matrix;
+        },
+        module = function (x, y) {
+            return {
+                x: x,
+                y: y,
+                isVector2: isVector2,
+                add: add,
+                addTo: addTo,
+                substract: substract,
+                substractFrom: substractFrom,
+                angle: angle,
+                angleBetween: angleBetween,
+                dotProduct: dotProduct,
+                multiply: multiply,
+                multiplyWith: multiplyWith,
+                divide: divide,
+                divideBy: divideBy,
+                scale: scale,
+                length: length,
+                normalize: normalize,
+                distance: distance,
+                clone: clone
+            };
+        };
+    return module;
+});
+/*
+ * Screen/state object
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/screen', [
+    'bento/utils',
+    'bento',
+    'bento/math/rectangle',
+    'bento/tiled'
+], function (Utils, Bento, Rectangle, Tiled) {
+    'use strict';
+    return function (settings) {
+        /*settings = {
+            dimension: Rectangle, [optional / overwritten by tmx size]
+            tiled: String
+        }*/
+        var viewport = Bento.getViewport(),
+            dimension = settings ? settings.dimension : Bento.getViewport(),
+            tiled,
+            isShown = false,
+            module = {
+                name: null,
+                setDimension: function (rectangle) {
+                    dimension.width = rectangle.width;
+                    dimension.height = rectangle.height;
+                },
+                getDimension: function () {
+                    return dimension;
+                },
+                extend: function (object) {
+                    return Utils.extend(this, object);
+                },
+                setShown: function (bool) {
+                    if (!Utils.isBoolean(bool)) {
+                        throw 'Argument is not a boolean';
+                    } else {
+                        isShown = bool;
+                    }
+                },
+                loadTiled: function (name) {
+                    tiled = Tiled({
+                        name: name,
+                        spawn: true // TEMP
+                    });
+                },
+                onShow: function () {
+                    // load tiled map if present
+                    if (settings && settings.tiled) {
+                        this.loadTiled(settings.tiled);
+                    }
+                },
+                onHide: function () {
+                    // remove all objects
+                    Bento.removeAll();
+                    // reset viewport scroll when hiding screen
+                    viewport.x = 0;
+                    viewport.y = 0;
+                }
+            };
+
+        return module;
+    };
+});
+/*
+ * Reads tiled json files
+ * @copyright (C) HeiGames
+ */
+define('bento/tiled', [
+    'bento',
+    'bento/entity',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/math/polygon',
+    'bento/packedimage'
+], function (Bento, Entity, Vector2, Rectangle, Polygon, PackedImage) {
+    'use strict';
+    return function (settings, onReady) {
+        /*settings = {
+            name: String, // name of JSON file
+            background: Boolean // TODO false: splits tileLayer tile entities,
+            spawn: Boolean // adds objects into game immediately
+        }*/
+        var json = Bento.assets.getJson(settings.name),
+            i,
+            j,
+            k,
+            width = json.width,
+            height = json.height,
+            layers = json.layers.length,
+            tileWidth = json.tilewidth,
+            tileHeight = json.tileheight,
+            canvas = document.createElement('canvas'),
+            context = canvas.getContext('2d'),
+            image,
+            layer,
+            firstgid,
+            object,
+            points,
+            objects = [],
+            shapes = [],
+            viewport = Bento.getViewport(),
+            background = Entity().extend({
+                z: 0,
+                draw: function (gameData) {
+                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
+                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0),
+                        img = PackedImage(canvas);
+
+                    if (w === 0 || h === 0) {
+                        return;
+                    }
+                    // only draw the part in the viewport
+                    gameData.renderer.drawImage(
+                        img, ~~(Math.max(Math.min(viewport.x, canvas.width), 0)), ~~(Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
+                        0,
+                        0, ~~w, ~~h
+                    );
+                }
+            }),
+            getTileset = function (gid) {
+                var l,
+                    tileset,
+                    current = null;
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l < json.tilesets.length; ++l) {
+                    tileset = json.tilesets[l];
+                    if (tileset.firstgid <= gid) {
+                        current = tileset;
+                    }
+                }
+                return current;
+            },
+            getTile = function (tileset, gid) {
+                var index,
+                    tilesetWidth,
+                    tilesetHeight;
+                if (tileset === null) {
+                    return null;
+                }
+                index = gid - tileset.firstgid;
+                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
+                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
+                return {
+                    // convention: the tileset name must be equal to the asset name!
+                    subimage: Bento.assets.getImage(tileset.name),
+                    x: (index % tilesetWidth) * tileset.tilewidth,
+                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
+                    width: tileset.tilewidth,
+                    height: tileset.tileheight
+                };
+            },
+            drawTileLayer = function (x, y) {
+                var gid = layer.data[y * width + x],
+                    // get correct tileset and image
+                    tileset = getTileset(gid),
+                    tile = getTile(tileset, gid);
+                // draw background to offscreen canvas
+                if (tile) {
+                    context.drawImage(
+                        tile.subimage.image,
+                        tile.subimage.x + tile.x,
+                        tile.subimage.y + tile.y,
+                        tile.width,
+                        tile.height,
+                        x * tileWidth,
+                        y * tileHeight,
+                        tileWidth,
+                        tileHeight
+                    );
+                }
+            },
+            spawn = function (name, obj, tilesetProperties) {
+                var x = obj.x,
+                    y = obj.y,
+                    params = [],
+                    getParams = function (properties) {
+                        var prop;
+                        for (prop in properties) {
+                            if (!prop.match(/param\d+/)) {
+                                continue;
+                            }
+                            if (isNaN(properties[prop])) {
+                                params.push(properties[prop]);
+                            } else {
+                                params.push((+properties[prop]));
+                            }
+                        }
+                    };
+
+                // search params
+                getParams(tilesetProperties);
+                getParams(obj.properties);
+
+                require([name], function (Instance) {
+                    var instance = Instance.apply(this, params),
+                        origin = instance.getOrigin(),
+                        dimension = instance.getDimension(),
+                        prop,
+                        addProperties = function (properties) {
+                            var prop;
+                            for (prop in properties) {
+                                if (prop === 'module' || prop.match(/param\d+/)) {
+                                    continue;
+                                }
+                                if (properties.hasOwnProperty(prop)) {
+                                    // number or string?
+                                    if (isNaN(properties[prop])) {
+                                        instance[prop] = properties[prop];
+                                    } else {
+                                        instance[prop] = (+properties[prop]);
+                                    }
+                                }
+                            }
+                        };
+
+                    instance.setPosition({
+                        // tiled assumes origin (0, 1)
+                        x: x + (origin.x),
+                        y: y + (origin.y - dimension.height)
+                    });
+                    // add in tileset properties
+                    addProperties(tilesetProperties);
+                    // add tile properties
+                    addProperties(obj.properties);
+                    // add to game
+                    if (settings.spawn) {
+                        Bento.objects.add(instance);
+                    }
+                    objects.push(instance);
+                });
+            },
+            spawnObject = function (obj) {
+                var gid = obj.gid,
+                    // get tileset: should contain module name
+                    tileset = getTileset(gid),
+                    id = gid - tileset.firstgid,
+                    properties,
+                    moduleName;
+                if (tileset.tileproperties) {
+                    properties = tileset.tileproperties[id.toString()];
+                    if (properties) {
+                        moduleName = properties.module;
+                    }
+                }
+                if (moduleName) {
+                    spawn(moduleName, obj, properties);
+                }
+            },
+            spawnShape = function (shape, type) {
+                var obj;
+                if (settings.spawn) {
+                    obj = Entity({
+                        z: 0,
+                        name: type,
+                        family: [type]
+                    }).extend({
+                        update: function () {},
+                        draw: function () {}
+                    });
+                    obj.setBoundingBox(shape);
+                    Bento.objects.add(obj);
+                }
+                shape.type = type;
+                shapes.push(shape);
+            };
+
+        // setup canvas
+        // to do: split up in multiple canvas elements due to max
+        // size
+        canvas.width = width * tileWidth;
+        canvas.height = height * tileHeight;
+
+        // loop through layers
+        for (k = 0; k < layers; ++k) {
+            layer = json.layers[k];
+            if (layer.type === 'tilelayer') {
+                // loop through tiles
+                for (j = 0; j < layer.height; ++j) {
+                    for (i = 0; i < layer.width; ++i) {
+                        drawTileLayer(i, j);
+                    }
+                }
+            } else if (layer.type === 'objectgroup') {
+                for (i = 0; i < layer.objects.length; ++i) {
+                    object = layer.objects[i];
+
+                    // default type is solid
+                    if (object.type === '') {
+                        object.type = 'solid';
+                    }
+
+                    if (object.gid) {
+                        // normal object
+                        spawnObject(object);
+                    } else if (object.polygon) {
+                        // polygon 
+                        points = [];
+                        for (j = 0; j < object.polygon.length; ++j) {
+                            points.push(object.polygon[j]);
+                            points[j].x += object.x;
+                            // shift polygons 1 pixel down?
+                            // something might be wrong with polygon definition
+                            points[j].y += object.y + 1;
+                        }
+                        spawnShape(Polygon(points), object.type);
+                    } else {
+                        // rectangle
+                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
+                    }
+                }
+            }
+        }
+
+        // add background to game
+        if (settings.spawn) {
+            Bento.objects.add(background);
+        }
+
+        return {
+            tileLayer: background,
+            objects: objects,
+            shapes: shapes,
+            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
+        };
+    };
+});
+/*
+ * Creates a tween object
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/tween', [
+    'bento',
+    'bento/utils',
+    'bento/entity'
+], function (Bento, Utils, Entity) {
+    'use strict';
+    var robbertPenner = {
+            // t: current time, b: begInnIng value, c: change In value, d: duration
+            easeInQuad: function (t, b, c, d) {
+                return c * (t /= d) * t + b;
+            },
+            easeOutQuad: function (t, b, c, d) {
+                return -c * (t /= d) * (t - 2) + b;
+            },
+            easeInOutQuad: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t + b;
+                return -c / 2 * ((--t) * (t - 2) - 1) + b;
+            },
+            easeInCubic: function (t, b, c, d) {
+                return c * (t /= d) * t * t + b;
+            },
+            easeOutCubic: function (t, b, c, d) {
+                return c * ((t = t / d - 1) * t * t + 1) + b;
+            },
+            easeInOutCubic: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
+                return c / 2 * ((t -= 2) * t * t + 2) + b;
+            },
+            easeInQuart: function (t, b, c, d) {
+                return c * (t /= d) * t * t * t + b;
+            },
+            easeOutQuart: function (t, b, c, d) {
+                return -c * ((t = t / d - 1) * t * t * t - 1) + b;
+            },
+            easeInOutQuart: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
+                return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
+            },
+            easeInQuint: function (t, b, c, d) {
+                return c * (t /= d) * t * t * t * t + b;
+            },
+            easeOutQuint: function (t, b, c, d) {
+                return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+            },
+            easeInOutQuint: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
+                return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
+            },
+            easeInSine: function (t, b, c, d) {
+                return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
+            },
+            easeOutSine: function (t, b, c, d) {
+                return c * Math.sin(t / d * (Math.PI / 2)) + b;
+            },
+            easeInOutSine: function (t, b, c, d) {
+                return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+            },
+            easeInExpo: function (t, b, c, d) {
+                return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
+            },
+            easeOutExpo: function (t, b, c, d) {
+                return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
+            },
+            easeInOutExpo: function (t, b, c, d) {
+                if (t === 0) return b;
+                if (t === d) return b + c;
+                if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
+                return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
+            },
+            easeInCirc: function (t, b, c, d) {
+                return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
+            },
+            easeOutCirc: function (t, b, c, d) {
+                return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
+            },
+            easeInOutCirc: function (t, b, c, d) {
+                if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
+                return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
+            },
+            easeInElastic: function (t, b, c, d) {
+                var s = 1.70158;
+                var p = 0;
+                var a = c;
+                if (t === 0) return b;
+                if ((t /= d) === 1) return b + c;
+                if (!p) p = d * .3;
+                if (a < Math.abs(c)) {
+                    a = c;
+                    var s = p / 4;
+                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+            },
+            easeOutElastic: function (t, b, c, d) {
+                var s = 1.70158;
+                var p = 0;
+                var a = c;
+                if (t === 0) return b;
+                if ((t /= d) === 1) return b + c;
+                if (!p) p = d * .3;
+                if (a < Math.abs(c)) {
+                    a = c;
+                    var s = p / 4;
+                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
+            },
+            easeInOutElastic: function (t, b, c, d) {
+                var s = 1.70158;
+                var p = 0;
+                var a = c;
+                if (t === 0) return b;
+                if ((t /= d / 2) === 2) return b + c;
+                if (!p) p = d * (.3 * 1.5);
+                if (a < Math.abs(c)) {
+                    a = c;
+                    var s = p / 4;
+                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                if (t < 1) return -.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+                return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * .5 + c + b;
+            },
+            easeInBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                return c * (t /= d) * t * ((s + 1) * t - s) + b;
+            },
+            easeOutBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+            },
+            easeInOutBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
+                return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
+            },
+            easeInBounce: function (t, b, c, d) {
+                return c - this.easeOutBounce(d - t, 0, c, d) + b;
+            },
+            easeOutBounce: function (t, b, c, d) {
+                if ((t /= d) < (1 / 2.75)) {
+                    return c * (7.5625 * t * t) + b;
+                } else if (t < (2 / 2.75)) {
+                    return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+                } else if (t < (2.5 / 2.75)) {
+                    return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+                } else {
+                    return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+                }
+            },
+            easeInOutBounce: function (t, b, c, d) {
+                if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * .5 + b;
+                return this.easeOutBounce(t * 2 - d, 0, c, d) * .5 + c * .5 + b;
+            }
+        },
+        interpolations = {
+            linear: function (s, e, t, alpha, beta) {
+                return (e - s) * t + s;
+            },
+            quadratic: function (s, e, t, alpha, beta) {
+                return (e - s) * t * t + s;
+            },
+            squareroot: function (s, e, t, alpha, beta) {
+                return (e - s) * Math.pow(t, 0.5) + s;
+            },
+            cubic: function (s, e, t, alpha, beta) {
+                return (e - s) * t * t * t + s;
+            },
+            cuberoot: function (s, e, t, alpha, beta) {
+                return (e - s) * Math.pow(t, 1 / 3) + s;
+            },
+            exponential: function (s, e, t, alpha, beta) {
+                //takes alpha as growth/damp factor
+                return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+            },
+            elastic: function (s, e, t, alpha, beta) {
+                //alpha=growth factor, beta=wavenumber
+                return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+            },
+            sin: function (s, e, t, alpha, beta) {
+                //s=offset, e=amplitude, alpha=wavenumber
+                return s + e * Math.sin(alpha * t * 2 * Math.PI);
+            },
+            cos: function (s, e, t, alpha, beta) {
+                //s=offset, e=amplitude, alpha=wavenumber
+                return s + e * Math.cos(alpha * t * 2 * Math.PI);
+            }
+        },
+        interpolate = function (type, s, e, t, alpha, beta) {
+            // interpolate(string type,float from,float to,float time,float alpha,float beta)
+            // s = starting value
+            // e = ending value
+            // t = time variable (going from 0 to 1)
+            var fn = interpolations[type];
+            if (fn) {
+                return fn(s, e, t, alpha, beta);
+            } else {
+                return robbertPenner[type](t, s, e - s, 1);
+            }
+        };
+    return function (settings) {
+        /* settings = {
+            from: Number
+            to: Number
+            in: Number
+            ease: String
+            alpha: Number (optional)
+            beta: Number (optional)
+            stay: Boolean (optional)
+            do: Gunction (value, time) {} (optional)
+            onComplete: function () {} (optional)
+            id: Number (optional),
+            updateWhenPaused: Boolean (optional)
+        }*/
+        var time = 0,
+            added = false,
+            running = true,
+            tween = Entity(settings).extend({
+                id: settings.id,
+                update: function (data) {
+                    if (!running) {
+                        return;
+                    }
+                    ++time;
+                    // run update
+                    if (settings.do) {
+                        settings.do.apply(this, [interpolate(
+                            settings.ease || 'linear',
+                            settings.from || 0,
+                            Utils.isDefined(settings.to) ? settings.to : 1,
+                            time / (settings.in),
+                            Utils.isDefined(settings.alpha) ? settings.alpha : 1,
+                            Utils.isDefined(settings.beta) ? settings.beta : 1
+                        ), time]);
+                    }
+                    // end
+                    if (!settings.stay && time >= settings.in) {
+                        if (settings.onComplete) {
+                            settings.onComplete.apply(this);
+                        }
+                        Bento.objects.remove(tween);
+                        added = false;
+                    }
+                },
+                start: function () {
+                    time = 0;
+                    if (!added) {
+                        Bento.objects.add(tween);
+                        added = true;
+                    }
+                    running = true;
+                    return tween;
+                },
+                stop: function () {
+                    time = 0;
+                    running = false;
+                    return tween;
+                }
+            });
+        if (settings.in === 0) {
+            settings.in = 1;
+        }
+        // tween automatically starts
+        tween.start();
+        return tween;
+    };
+});
+/*
+ * Canvas 2d renderer
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/renderers/canvas2d', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvas, settings) {
+        var context = canvas.getContext('2d'),
+            renderer = {
+            name: 'canvas2d',
+            save: function () {
+                context.save();
+            },
+            restore: function () {
+                context.restore();
+            },
+            translate: function (x, y) {
+                context.translate(x, y);
+            },
+            scale: function (x, y) {
+                context.scale(x, y);
+            },
+            rotate: function (angle) {
+                context.rotate(angle);
+            },
+            fillRect: function (colorArray, x, y, w, h) {
+                var colorStr = '#';
+                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                context.fillStyle = colorStr;
+                context.fillRect(x, y, w, h);
+            },
+            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+            }
+        };
+        console.log('Init canvas2d as renderer');
+
+        if (!settings.smoothing) {
+            if (context.imageSmoothingEnabled) {
+                context.imageSmoothingEnabled = false;
+            }
+            if (context.webkitImageSmoothingEnabled) {
+                context.webkitImageSmoothingEnabled = false;
+            }
+            if (context.mozImageSmoothingEnabled) {
+                context.mozImageSmoothingEnabled = false;
+            }
+        }
+        return renderer;
+    };
+});
+bento.define('bento/renderers/pixi', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvas, settings) {
+        var useBatch = false,
+            context,
+            pixiStage,
+            pixiRenderer,
+            pixiBatch,
+            currentObject,
+            renderer = {
+                name: 'pixi',
+                init: function () {
+
+                },
+                destroy: function () {},
+                save: function (obj) {
+                    currentObject = obj;
+                    pixiBatch.addChild(obj.pixiSprite);
+                    currentObject.pixiSprite.position.x = 0;
+                    currentObject.pixiSprite.position.y = 0;
+                },
+                restore: function () {},
+                translate: function (x, y) {
+                    currentObject.pixiSprite.position.x += x;
+                    currentObject.pixiSprite.position.y += y;
+                },
+                scale: function (x, y) {},
+                rotate: function (angle) {},
+                fillRect: function (color, x, y, w, h) {},
+                drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
+                    currentObject.pixiTexture.setFrame(new PIXI.Rectangle(sx, sy, sw, sh));
+                },
+                flush: function () {
+                    pixiRenderer.render(pixiStage);
+                    pixiBatch.removeChildren();
+                }
+            };
+        // init pixi
+        pixiStage = new PIXI.Stage(0x000000);
+        pixiRenderer = PIXI.autoDetectRenderer(canvas.width, canvas.height, {
+            view: canvas
+        });
+        if (useBatch) {
+            pixiBatch = new PIXI.SpriteBatch();
+            pixiStage.addChild(pixiBatch);
+        } else {
+            pixiBatch = pixiStage;
+        }
+        console.log('Init pixi as renderer');
+        return renderer;
+    };
+});
+/*
+ * WebGL renderer using gl-sprites by Matt DesLauriers
+ * @copyright (C) HeiGames
+ */
+bento.define('bento/renderers/webgl', [
+    'bento/utils',
+    'bento/renderers/canvas2d'
+], function (Utils, Canvas2d) {
+    return function (canvas, settings) {
+        var canWebGl,
+            context,
+            glRenderer,
+            renderer = {
+                name: 'webgl',
+                save: function () {
+                    glRenderer.save();
+                },
+                restore: function () {
+                    glRenderer.restore();
+                },
+                translate: function (x, y) {
+                    glRenderer.translate(x, y);
+                },
+                scale: function (x, y) {
+                    glRenderer.scale(x, y);
+                },
+                rotate: function (angle) {
+                    glRenderer.rotate(angle);
+                },
+                fillRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    // 
+                    renderer.setColor(color);
+                    glRenderer.fillRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    var image = packedImage.image;
+                    if (!image.texture) {
+                        image.texture = window.GlSprites.createTexture2D(context, image);
+                    }
+                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
+                },
+                begin: function () {
+                    glRenderer.begin();
+                },
+                flush: function () {
+                    glRenderer.end();
+                },
+                setColor: function (color) {
+                    glRenderer.color = color;
+                }
+            };
+        console.log('Init webgl as renderer');
+
+        // fallback
+        canWebGl = (function () {
+            try {
+                var canvas = document.createElement('canvas');
+                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+            } catch (e) {
+                return false;
+            }
+        })();
+        if (canWebGl) {
+            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+            glRenderer = window.GlSprites.SpriteRenderer(context);
+            glRenderer.ortho(canvas.width, canvas.height);
+            return renderer;
+        } else {
+            return Canvas2d(canvas, settings);
+        }
     };
 });

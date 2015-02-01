@@ -188,6 +188,9 @@ bento.define('bento/managers/object', [
                         mainLoop();
                         isRunning = true;
                     }
+                },
+                count: function () {
+                    return objects.length;
                 }
             };
 

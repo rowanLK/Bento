@@ -48,7 +48,6 @@ bento.define('bento/renderers/webgl', [
                     glRenderer.end();
                 },
                 setColor: function (color) {
-                    // glRenderer.color = colorString.getRgba(cssStr);
                     glRenderer.color = color;
                 }
             };

@@ -6,7 +6,7 @@ bento.define('bento/components/fill', [
     return function (base, settings) {
         var viewport = Bento.getViewport(),
             mixin = {},
-            color = [0, 0, 0, 0],
+            color = [0, 0, 0, 1],
             component = {
                 name: 'fill',
                 draw: function (data) {

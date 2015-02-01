@@ -9,7 +9,6 @@ gulp.task('default', function () {
     // place code for your default task here
     return gulp.src([
             'js/lib/fpsmeter.js',
-            'js/lib/color-string.js',
             'js/lib/gl-sprites.js',
             'js/**/main.js',
             'js/**/*.js'
