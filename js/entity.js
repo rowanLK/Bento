@@ -196,6 +196,9 @@ bento.define('bento/entity', [
                     }
                     index = components.indexOf(component);
                     if (index >= 0) {
+                        if (component.destroy) {
+                            component.destroy();
+                        }
                         components[index] = null;
                     }
                     return entity;
@@ -289,6 +292,8 @@ bento.define('bento/entity', [
             if (settings.init) {
                 settings.init.apply(entity);
             }
+
+            entity.z = settings.z || 0;
 
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;

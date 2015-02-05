@@ -154,7 +154,7 @@ bento.define('bento', [
                         onResize();
 
                         module.input = InputManager(gameData);
-                        module.objects = ObjectManager(gameData, settings.deltaT, settings.debug);
+                        module.objects = ObjectManager(gameData, settings);
                         module.assets = AssetManager();
                         module.audio = AudioManager(module);
                         module.screens = ScreenManager();
