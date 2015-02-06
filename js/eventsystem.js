@@ -11,7 +11,7 @@ bento.define('bento/eventsystem', [
     }*/
     return {
         fire: function (eventName, eventData) {
-            var i, l, listeners;
+            var i, l, listeners, listener;
             if (!Utils.isString(eventName)) {
                 eventName = eventName.toString();
             }
@@ -20,7 +20,13 @@ bento.define('bento/eventsystem', [
             }
             listeners = events[eventName];
             for (i = 0, l = listeners.length; i < l; ++i) {
-                listeners[i](eventData);
+                listener = listeners[i];
+                if (listener) {
+                    listener(eventData);
+                } else {
+                    // TODO: fix this
+                    console.log('Warning: listener is not a function:', listener, i);
+                }
             }
         },
         addEventListener: function (eventName, callback) {

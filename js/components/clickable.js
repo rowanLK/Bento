@@ -11,6 +11,7 @@ bento.define('bento/components/clickable', [
                 name: 'clickable',
                 isHovering: false,
                 hasTouched: false,
+                holdId: null,
                 pointerDown: function (evt) {},
                 pointerUp: function (evt) {},
                 pointerMove: function (evt) {},
@@ -46,7 +47,7 @@ bento.define('bento/components/clickable', [
                     component.pointerDown(evt);
                 }
                 if (entity.getBoundingBox) {
-                    checkHovering(evt.worldPosition, true);
+                    checkHovering(evt, true);
                 }
             },
             pointerUp = function (evt) {
@@ -56,9 +57,10 @@ bento.define('bento/components/clickable', [
                     component.pointerUp(evt);
                 }
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    component.onClickUp();
-                    if (component.hasTouched) {
-                        component.onHoldEnd();
+                    component.onClickUp(evt);
+                    if (component.hasTouched && component.holdId === evt.id) {
+                        component.holdId = null;
+                        component.onHoldEnd(evt);
                     }
                 }
                 component.hasTouched = false;
@@ -69,33 +71,35 @@ bento.define('bento/components/clickable', [
                 }
                 // hovering?
                 if (entity.getBoundingBox) {
-                    checkHovering(evt.worldPosition);
+                    checkHovering(evt);
                 }
             },
-            checkHovering = function (mousePosition, clicked) {
+            checkHovering = function (evt, clicked) {
+                var mousePosition = evt.worldPosition;
                 // todo: convert world position to local position
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    if (component.hasTouched && !component.isHovering) {
-                        component.onHoldEnter();
+                    if (component.hasTouched && !component.isHovering && component.holdId === evt.id) {
+                        component.onHoldEnter(evt);
                     }
                     if (!component.isHovering) {
-                        component.onHoverEnter();
+                        component.onHoverEnter(evt);
                     }
                     component.isHovering = true;
                     if (clicked) {
                         component.hasTouched = true;
-                        component.onClick();
+                        component.holdId = evt.id;
+                        component.onClick(evt);
                     }
                 } else {
-                    if (component.hasTouched && component.isHovering) {
-                        component.onHoldLeave();
+                    if (component.hasTouched && component.isHovering && component.holdId === evt.id) {
+                        component.onHoldLeave(evt);
                     }
                     if (component.isHovering) {
-                        component.onHoverLeave();
+                        component.onHoverLeave(evt);
                     }
                     component.isHovering = false;
                     if (clicked) {
-                        component.onClickMiss();                        
+                        component.onClickMiss(evt);                        
                     }
                 }
             };

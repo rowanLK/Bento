@@ -154,6 +154,25 @@ bento.define('bento/managers/object', [
                         }
                     }
                 },
+                get: function (objectName) {
+                    // retrieves the first object it finds by its name
+                    var i,
+                        object;
+
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.name) {
+                            continue;
+                        }
+                        if (object.name === objectName) {
+                            return object
+                        }
+                    }
+                    return null;
+                },
                 getByName: function (objectName) {
                     var i,
                         object,

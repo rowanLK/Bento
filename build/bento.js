@@ -11527,7 +11527,7 @@ bento.define('bento/eventsystem', [
     }*/
     return {
         fire: function (eventName, eventData) {
-            var i, l, listeners;
+            var i, l, listeners, listener;
             if (!Utils.isString(eventName)) {
                 eventName = eventName.toString();
             }
@@ -11536,7 +11536,13 @@ bento.define('bento/eventsystem', [
             }
             listeners = events[eventName];
             for (i = 0, l = listeners.length; i < l; ++i) {
-                listeners[i](eventData);
+                listener = listeners[i];
+                if (listener) {
+                    listener(eventData);
+                } else {
+                    // TODO: fix this
+                    console.log('Warning: listener is not a function:', listener, i);
+                }
             }
         },
         addEventListener: function (eventName, callback) {
@@ -11998,6 +12004,7 @@ bento.define('bento/components/clickable', [
                 name: 'clickable',
                 isHovering: false,
                 hasTouched: false,
+                holdId: null,
                 pointerDown: function (evt) {},
                 pointerUp: function (evt) {},
                 pointerMove: function (evt) {},
@@ -12033,7 +12040,7 @@ bento.define('bento/components/clickable', [
                     component.pointerDown(evt);
                 }
                 if (entity.getBoundingBox) {
-                    checkHovering(evt.worldPosition, true);
+                    checkHovering(evt, true);
                 }
             },
             pointerUp = function (evt) {
@@ -12043,9 +12050,10 @@ bento.define('bento/components/clickable', [
                     component.pointerUp(evt);
                 }
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    component.onClickUp();
-                    if (component.hasTouched) {
-                        component.onHoldEnd();
+                    component.onClickUp(evt);
+                    if (component.hasTouched && component.holdId === evt.id) {
+                        component.holdId = null;
+                        component.onHoldEnd(evt);
                     }
                 }
                 component.hasTouched = false;
@@ -12056,33 +12064,35 @@ bento.define('bento/components/clickable', [
                 }
                 // hovering?
                 if (entity.getBoundingBox) {
-                    checkHovering(evt.worldPosition);
+                    checkHovering(evt);
                 }
             },
-            checkHovering = function (mousePosition, clicked) {
+            checkHovering = function (evt, clicked) {
+                var mousePosition = evt.worldPosition;
                 // todo: convert world position to local position
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    if (component.hasTouched && !component.isHovering) {
-                        component.onHoldEnter();
+                    if (component.hasTouched && !component.isHovering && component.holdId === evt.id) {
+                        component.onHoldEnter(evt);
                     }
                     if (!component.isHovering) {
-                        component.onHoverEnter();
+                        component.onHoverEnter(evt);
                     }
                     component.isHovering = true;
                     if (clicked) {
                         component.hasTouched = true;
-                        component.onClick();
+                        component.holdId = evt.id;
+                        component.onClick(evt);
                     }
                 } else {
-                    if (component.hasTouched && component.isHovering) {
-                        component.onHoldLeave();
+                    if (component.hasTouched && component.isHovering && component.holdId === evt.id) {
+                        component.onHoldLeave(evt);
                     }
                     if (component.isHovering) {
-                        component.onHoverLeave();
+                        component.onHoverLeave(evt);
                     }
                     component.isHovering = false;
                     if (clicked) {
-                        component.onClickMiss();                        
+                        component.onClickMiss(evt);                        
                     }
                 }
             };
@@ -12972,37 +12982,40 @@ bento.define('bento/managers/input', [
             offsetLeft = 0,
             offsetTop = 0,
             pointerDown = function (evt) {
+                pointers.push(evt);
                 EventSystem.fire('pointerDown', evt);
             },
             pointerMove = function (evt) {
                 EventSystem.fire('pointerMove', evt);
+                updatePointer(evt);
             },
             pointerUp = function (evt) {
                 EventSystem.fire('pointerUp', evt);
+                removePointer(evt);
             },
             touchStart = function (evt) {
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
                     addTouchPosition(evt, i);
+                    pointerDown(evt);
                 }
-                pointerDown(evt);
             },
             touchMove = function (evt) {
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
                     addTouchPosition(evt, i);
+                    pointerMove(evt);
                 }
-                pointerMove(evt);
             },
             touchEnd = function (evt) {
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
                     addTouchPosition(evt, i);
+                    pointerUp(evt);
                 }
-                pointerUp(evt);
             },
             mouseDown = function (evt) {
                 evt.preventDefault();
@@ -13024,6 +13037,7 @@ bento.define('bento/managers/input', [
                     x = (touch.pageX - offsetLeft) / canvasScale.x,
                     y = (touch.pageY - offsetTop) / canvasScale.y;
                 evt.preventDefault();
+                evt.id = 0;
                 evt.eventType = 'touch';
                 evt.changedTouches[n].position = Vector2(x, y);
                 evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
@@ -13031,16 +13045,39 @@ bento.define('bento/managers/input', [
                 evt.changedTouches[n].worldPosition.y += viewport.y;
                 // add 'normal' position
                 evt.position = evt.changedTouches[n].position.clone();
-                evt.worldPosition = evt.changedTouches[n].position.clone();
+                evt.worldPosition = evt.changedTouches[n].worldPosition.clone();
+                // id
+                evt.id = evt.changedTouches[n].identifier + 1;
             },
             addMousePosition = function (evt) {
                 var x = (evt.clientX - offsetLeft) / canvasScale.x,
                     y = (evt.clientY - offsetTop) / canvasScale.y;
+                evt.id = 0;
                 evt.eventType = 'mouse';
                 evt.position = Vector2(x, y);
                 evt.worldPosition = evt.position.clone();
                 evt.worldPosition.x += viewport.x;
                 evt.worldPosition.y += viewport.y;
+                // give it an id that doesn't clash with touch id
+                evt.id = -1;
+            },
+            updatePointer = function (evt) {
+                var i = 0;
+                for (i = 0; i < pointers.length; i += 1) {
+                    if (pointers[i].id === evt.id) {
+                        pointers[i] = evt;
+                        return;
+                    }
+                }
+            },
+            removePointer = function (evt) {
+                var i = 0;
+                for (i = 0; i < pointers.length; i += 1) {
+                    if (pointers[i].id === evt.id) {
+                        pointers.splice(i, 1);
+                        return;
+                    }
+                }
             };
 
         if (!settings) {
@@ -13082,6 +13119,9 @@ bento.define('bento/managers/input', [
             return false;
         });
         return {
+            getPointers: function () {
+                return pointers;
+            },
             addListener: function () {},
             removeListener: function () {}
         };
@@ -13242,6 +13282,25 @@ bento.define('bento/managers/object', [
                             module.remove(object);
                         }
                     }
+                },
+                get: function (objectName) {
+                    // retrieves the first object it finds by its name
+                    var i,
+                        object;
+
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.name) {
+                            continue;
+                        }
+                        if (object.name === objectName) {
+                            return object
+                        }
+                    }
+                    return null;
                 },
                 getByName: function (objectName) {
                     var i,
