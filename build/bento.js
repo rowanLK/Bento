@@ -13122,6 +13122,9 @@ bento.define('bento/managers/input', [
             getPointers: function () {
                 return pointers;
             },
+            resetPointers: function () {
+                pointers.length = 0;
+            },
             addListener: function () {},
             removeListener: function () {}
         };
