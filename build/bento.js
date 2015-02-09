@@ -14039,6 +14039,77 @@ bento.define('bento/math/vector2', [], function () {
         };
     return module;
 });
+bento.define('bento/autoresize', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvasDimension, minSize, maxSize, isLandscape) {
+        var originalDimension = canvasDimension.clone(),
+            innerWidth = window.innerWidth,
+            innerHeight = window.innerHeight,
+            deviceHeight = isLandscape ? innerWidth : innerHeight,
+            deviceWidth = isLandscape ? innerHeight : innerWidth,
+            swap = function () {
+                // swap width and height
+                temp = canvasDimension.width;
+                canvasDimension.width = canvasDimension.height;
+                canvasDimension.height = temp;
+            },
+            setup = function () {
+                var i = 2,
+                    height = canvasDimension.height,
+                    screenHeight,
+                    windowRatio = deviceHeight / deviceWidth,
+                    canvasRatio = canvasDimension.height / canvasDimension.width;
+
+                if (windowRatio < 1) {
+                    canvasRatio = windowRatio;
+                    screenHeight = deviceHeight;
+                    // console.log('correct')
+                } else {
+                    // user is holding device wrong
+                    canvasRatio = deviceWidth / deviceHeight;
+                    screenHeight = deviceWidth;
+                    // console.log('incorrect')
+                }
+
+                // console.log(canvasRatio, 'screenHeight = ' + screenHeight);
+
+                height = screenHeight;
+
+                // dynamic height
+                while (height > maxSize) {
+                    height = Math.floor(screenHeight / i);
+                    i += 1;
+                    console.log(height);
+                    // too small: give up
+                    if (height < minSize) {
+                        console.log('cannot fit pixels');
+                        height = originalDimension.height;
+                        break;
+                    }
+                }
+                console.log(height);
+
+                //canvasRatio = Math.min(Math.max(canvasRatio, 0.5), 1.5)
+                canvasDimension.width = height / canvasRatio;
+                canvasDimension.height = height;
+                if (!isLandscape) {
+                    swap();
+                }
+                console.log(canvasDimension.width, canvasDimension.height);
+                return canvasDimension;
+            },
+            scrollAndResize = function () {
+                window.scrollTo(0, 0);
+            };
+        window.addEventListener('orientationchange', scrollAndResize, false);
+        //window.addEventListener('resize', onResize, false);
+        if (!isLandscape) {
+            swap();
+        }
+        return setup();
+    };
+});
 /*
  * Screen/state object
  * @copyright (C) HeiGames
@@ -14813,5 +14884,259 @@ bento.define('bento/renderers/webgl', [
         } else {
             return Canvas2d(canvas, settings);
         }
+    };
+});
+bento.define('bento/gui/clickbutton', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    Utils,
+    Tween
+) {
+    'use strict';
+    return function (settings) {
+        var viewport = Bento.getViewport(),
+            entitySettings = Utils.extend({
+                z: 0,
+                name: '',
+                originRelative: Vector2(0.5, 0.5),
+                position: Vector2(0, 0),
+                components: [Sprite, Clickable],
+                family: ['buttons'],
+                sprite: {
+                    image: settings.image,
+                    frameWidth: settings.frameWidth || 32,
+                    frameHeight: settings.frameHeight || 32,
+                    animations: settings.animations || {
+                        'default': {
+                            speed: 0,
+                            frames: [0]
+                        },
+                        'down': {
+                            speed: 0,
+                            frames: [1]
+                        }
+                    }
+                },
+                clickable: {
+                    onClick: function () {
+                        entity.sprite.setAnimation('down');
+                    },
+                    onHoldEnter: function () {
+                        entity.sprite.setAnimation('down');
+                    },
+                    onHoldLeave: function () {
+                        entity.sprite.setAnimation('default');
+                    },
+                    pointerUp: function () {
+                        entity.sprite.setAnimation('default');
+                    },
+                    onHoldEnd: function () {
+                        if (settings.onClick) {
+                            settings.onClick();
+                        }
+                    }
+                },
+                init: function () {}
+            }, settings),
+            entity = Entity(entitySettings);
+        return entity;
+    };
+});
+define('bento/gui/counter', [
+    'bento',
+    'bento/entity',
+    'bento/math/vector2',
+    'bento/components/sprite',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/utils'
+], function (
+    Bento,
+    Entity,
+    Vector2,
+    Sprite,
+    Translation,
+    Rotation,
+    Scale,
+    Utils
+) {
+    'use strict';
+    return function (settings) {
+        /*{
+            value: Number,
+            spacing: Vector,
+            align: String,
+            frameWidth: Number,
+            frameHeight: Number,
+            image: Image,
+            position: Vector
+        }*/
+        var value = settings.value || 0,
+            spacing = settings.spacing || Vector2(0, 0),
+            alignment = settings.align || settings.alignment || 'right',
+            digitWidth = 0,
+            children = [],
+            /*
+             * Counts the number of digits in the value
+             */
+            getDigits = function () {
+                return Math.floor(value).toString().length;
+            },
+            /*
+             * Returns an entity with all digits as animation
+             */
+            createDigit = function () {
+                return Entity({
+                    components: [Sprite],
+                    sprite: {
+                        image: settings.image,
+                        frameWidth: settings.frameWidth,
+                        frameHeight: settings.frameHeight,
+                        animations: {
+                            '0': {
+                                frames: [0]
+                            },
+                            '1': {
+                                frames: [1]
+                            },
+                            '2': {
+                                frames: [2]
+                            },
+                            '3': {
+                                frames: [3]
+                            },
+                            '4': {
+                                frames: [4]
+                            },
+                            '5': {
+                                frames: [5]
+                            },
+                            '6': {
+                                frames: [6]
+                            },
+                            '7': {
+                                frames: [7]
+                            },
+                            '8': {
+                                frames: [8]
+                            },
+                            '9': {
+                                frames: [9]
+                            }
+                        }
+                    },
+                    init: function () {
+                        // setup all digits
+                        digitWidth = settings.frameWidth;
+                    }
+                });
+            },
+            /*
+             * Adds or removes children depending on the value
+             * and number of current digits and updates
+             * the visualuzation of the digits
+             */
+            updateDigits = function () {
+                // add or remove digits
+                var i,
+                    valueStr = value.toString(),
+                    pos,
+                    digit,
+                    digits = getDigits(),
+                    difference = children.length - digits;
+                /* update number of children to be
+                    the same as number of digits*/
+                if (difference < 0) {
+                    // create new
+                    for (i = 0; i < Math.abs(difference); ++i) {
+                        digit = createDigit();
+                        children.push(digit);
+                        base.attach(digit);
+
+                    }
+                } else if (difference > 0) {
+                    // remove
+                    for (i = 0; i < Math.abs(difference); ++i) {
+                        digit = children.pop();
+                        base.remove(digit);
+                    }
+                }
+                /* update animations */
+                for (i = 0; i < children.length; ++i) {
+                    digit = children[i];
+                    digit.setPosition(Vector2((digitWidth + spacing.x) * i, 0));
+                    digit.sprite.setAnimation(valueStr.substr(i, 1));
+                }
+
+                /* alignment */
+                if (alignment === 'right') {
+                    // move all the children
+                    for (i = 0; i < children.length; ++i) {
+                        digit = children[i];
+                        pos = digit.getPosition().clone();
+                        pos.substract(Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
+                        digit.setPosition(pos);
+                    }
+                } else if (alignment === 'center') {
+                    for (i = 0; i < children.length; ++i) {
+                        digit = children[i];
+                        pos = digit.getPosition();
+                        pos.addTo(Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
+                    }
+                }
+            },
+            entitySettings = {
+                z: settings.z,
+                name: settings.name,
+                position: settings.position,
+                components: [Translation, Rotation, Scale]
+            },
+            base;
+
+        Utils.extend(entitySettings, settings);
+
+        /*
+         * Public interface
+         */
+        base = Entity(entitySettings).extend({
+            init: function () {
+                updateDigits();
+            },
+            /*
+             * Sets current value
+             */
+            setValue: function (val) {
+                value = val;
+                updateDigits();
+            },
+            /*
+             * Retrieves current value
+             */
+            getValue: function () {
+                return value;
+            },
+            addValue: function (val) {
+                value += val;
+                updateDigits();
+            },
+            getDigits: function () {
+                return getDigits();
+            }
+        });
+        return base;
     };
 });
