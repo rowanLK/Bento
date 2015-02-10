@@ -11028,6 +11028,7 @@ bento.define('bento', [
     'bento/managers/object',
     'bento/managers/audio',
     'bento/managers/screen',
+    'bento/managers/savestate',
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/renderer'
@@ -11039,6 +11040,7 @@ bento.define('bento', [
     ObjectManager,
     AudioManager,
     ScreenManager,
+    SaveState,
     Vector2,
     Rectangle,
     Renderer
@@ -11202,6 +11204,7 @@ bento.define('bento', [
             input: null,
             audio: null,
             screens: null,
+            saveState: SaveState,
             utils: Utils
         };
     return module;
@@ -13359,6 +13362,81 @@ bento.define('bento/managers/object', [
         return module;
     };
 });
+define('bento/managers/savestate', [
+    'bento/utils'
+],
+function (Utils) {
+    'use strict';
+    var uniqueID = document.URL,
+        storage,
+        storageFallBack = {
+            setItem: function (key, value) {
+                var k,
+                    count = 0;
+                storageFallBack[key] = value;
+                // update length
+                for (k in storageFallBack) {
+                    if (storageFallBack.hasOwnProperty(k)) {
+                        ++count;
+                    }
+                }
+                this.length = count;
+            },
+            getItem: function (key) {
+                var item = storageFallBack[key];
+                return Utils.isDefined(item) ? item : null;
+            },
+            removeItem: function (key) {
+                delete storageFallBack[key];
+            },
+            clear: function () {
+                this.length = 0;
+            },
+            length: 0
+        };
+
+    // initialize
+    try {
+        storage = window.localStorage;
+        // try saving once
+        if (window.localStorage) {
+            window.localStorage.setItem(uniqueID + 'save', '0');
+        } else {
+            throw 'No local storage available';
+        }
+    } catch (e) {
+        console.log('Warning: you have disabled cookies on your browser. You cannot save progress in your game.');
+        storage = storageFallBack;
+    }
+    return {
+        save: function (elementKey, element) {
+            if (typeof elementKey !== 'string') {
+                elementKey = JSON.stringify(elementKey);
+            }
+            storage.setItem(uniqueID + elementKey, JSON.stringify(element));
+        },
+        load: function (elementKey, defaultValue) {
+            var element;
+            element = storage.getItem(uniqueID + elementKey);
+            if (element === null) {
+                return defaultValue;
+            }
+            return JSON.parse(element);
+        },
+        remove: function (elementKey) {
+            storage.removeItem(uniqueID + elementKey);
+        },
+        clear: function () {
+            storage.clear();
+        },
+        debug: function () {
+            console.log(localStorage);
+        },
+        isEmpty: function () {
+            return storage.length === 0;
+        }
+    };
+});
 /*
  * Screen manager 
  * @copyright (C) HeiGames
@@ -14920,7 +14998,7 @@ bento.define('bento/gui/clickbutton', [
                     frameWidth: settings.frameWidth || 32,
                     frameHeight: settings.frameHeight || 32,
                     animations: settings.animations || {
-                        'default': {
+                        'up': {
                             speed: 0,
                             frames: [0]
                         },
@@ -14938,14 +15016,14 @@ bento.define('bento/gui/clickbutton', [
                         entity.sprite.setAnimation('down');
                     },
                     onHoldLeave: function () {
-                        entity.sprite.setAnimation('default');
+                        entity.sprite.setAnimation('up');
                     },
                     pointerUp: function () {
-                        entity.sprite.setAnimation('default');
+                        entity.sprite.setAnimation('up');
                     },
                     onHoldEnd: function () {
                         if (settings.onClick) {
-                            settings.onClick();
+                            settings.onClick.apply(entity);
                         }
                     }
                 },
@@ -15138,5 +15216,91 @@ define('bento/gui/counter', [
             }
         });
         return base;
+    };
+});
+bento.define('bento/gui/togglebutton', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    Utils,
+    Tween
+) {
+    'use strict';
+    return function (settings) {
+        var viewport = Bento.getViewport(),
+            toggled = false,
+            entitySettings = Utils.extend({
+                z: 0,
+                name: '',
+                originRelative: Vector2(0.5, 0.5),
+                position: Vector2(0, 0),
+                components: [Sprite, Clickable],
+                family: ['buttons'],
+                sprite: {
+                    image: settings.image,
+                    frameWidth: settings.frameWidth || 32,
+                    frameHeight: settings.frameHeight || 32,
+                    animations: settings.animations || {
+                        'up': {
+                            speed: 0,
+                            frames: [0]
+                        },
+                        'down': {
+                            speed: 0,
+                            frames: [1]
+                        }
+                    }
+                },
+                clickable: {
+                    onClick: function () {
+                        entity.sprite.setAnimation(!toggled ? 'down' : 'up');
+                    },
+                    onHoldEnter: function () {
+                        entity.sprite.setAnimation(!toggled ? 'down' : 'up');
+                    },
+                    onHoldLeave: function () {
+                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
+                    },
+                    pointerUp: function () {
+                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
+                    },
+                    onHoldEnd: function () {
+                        if (toggled) {
+                            toggled = false;
+                        } else {
+                            toggled = true;
+                        }
+                        if (settings.onToggle) {
+                            settings.onToggle.apply(entity);
+                        }
+                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
+                    }
+                },
+                init: function () {}
+            }, settings),
+            entity = Entity(entitySettings).extend({
+                isToggled: function () {
+                    return toggled;
+                }
+            });
+
+        // set intial state
+        if (settings.toggled) {
+            toggled = true;
+        }
+        entity.sprite.setAnimation(toggled ? 'down' : 'up');
+        return entity;
     };
 });

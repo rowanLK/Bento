@@ -11,6 +11,7 @@ bento.define('bento', [
     'bento/managers/object',
     'bento/managers/audio',
     'bento/managers/screen',
+    'bento/managers/savestate',
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/renderer'
@@ -22,6 +23,7 @@ bento.define('bento', [
     ObjectManager,
     AudioManager,
     ScreenManager,
+    SaveState,
     Vector2,
     Rectangle,
     Renderer
@@ -185,6 +187,7 @@ bento.define('bento', [
             input: null,
             audio: null,
             screens: null,
+            saveState: SaveState,
             utils: Utils
         };
     return module;

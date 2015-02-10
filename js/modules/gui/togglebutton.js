@@ -1,4 +1,4 @@
-bento.define('bento/gui/clickbutton', [
+bento.define('bento/gui/togglebutton', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
@@ -20,6 +20,7 @@ bento.define('bento/gui/clickbutton', [
     'use strict';
     return function (settings) {
         var viewport = Bento.getViewport(),
+            toggled = false,
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
@@ -44,26 +45,42 @@ bento.define('bento/gui/clickbutton', [
                 },
                 clickable: {
                     onClick: function () {
-                        entity.sprite.setAnimation('down');
+                        entity.sprite.setAnimation(!toggled ? 'down' : 'up');
                     },
                     onHoldEnter: function () {
-                        entity.sprite.setAnimation('down');
+                        entity.sprite.setAnimation(!toggled ? 'down' : 'up');
                     },
                     onHoldLeave: function () {
-                        entity.sprite.setAnimation('up');
+                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
                     },
                     pointerUp: function () {
-                        entity.sprite.setAnimation('up');
+                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
                     },
                     onHoldEnd: function () {
-                        if (settings.onClick) {
-                            settings.onClick.apply(entity);
+                        if (toggled) {
+                            toggled = false;
+                        } else {
+                            toggled = true;
                         }
+                        if (settings.onToggle) {
+                            settings.onToggle.apply(entity);
+                        }
+                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
                     }
                 },
                 init: function () {}
             }, settings),
-            entity = Entity(entitySettings);
+            entity = Entity(entitySettings).extend({
+                isToggled: function () {
+                    return toggled;
+                }
+            });
+
+        // set intial state
+        if (settings.toggled) {
+            toggled = true;
+        }
+        entity.sprite.setAnimation(toggled ? 'down' : 'up');
         return entity;
     };
 });
