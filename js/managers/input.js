@@ -15,10 +15,16 @@ bento.define('bento/managers/input', [
             canvasScale,
             viewport,
             pointers = [],
+            keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
             pointerDown = function (evt) {
-                pointers.push(evt);
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    worldPosition: evt.worldPosition
+                });
                 EventSystem.fire('pointerDown', evt);
             },
             pointerMove = function (evt) {
@@ -33,7 +39,7 @@ bento.define('bento/managers/input', [
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
+                    addTouchPosition(evt, i, 'start');
                     pointerDown(evt);
                 }
             },
@@ -41,7 +47,7 @@ bento.define('bento/managers/input', [
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
+                    addTouchPosition(evt, i, 'move');
                     pointerMove(evt);
                 }
             },
@@ -49,7 +55,7 @@ bento.define('bento/managers/input', [
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
+                    addTouchPosition(evt, i, 'end');
                     pointerUp(evt);
                 }
             },
@@ -68,7 +74,7 @@ bento.define('bento/managers/input', [
                 addMousePosition(evt);
                 pointerUp(evt);
             },
-            addTouchPosition = function (evt, n) {
+            addTouchPosition = function (evt, n, type) {
                 var touch = evt.changedTouches[n],
                     x = (touch.pageX - offsetLeft) / canvasScale.x,
                     y = (touch.pageY - offsetTop) / canvasScale.y;
@@ -101,7 +107,8 @@ bento.define('bento/managers/input', [
                 var i = 0;
                 for (i = 0; i < pointers.length; i += 1) {
                     if (pointers[i].id === evt.id) {
-                        pointers[i] = evt;
+                        pointers[i].position = evt.position;
+                        pointers[i].worldPosition = evt.worldPosition;
                         return;
                     }
                 }
@@ -114,6 +121,72 @@ bento.define('bento/managers/input', [
                         return;
                     }
                 }
+            },
+            initTouch = function () {
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+
+                document.body.addEventListener('touchstart', function (evt) {
+                    if (evt && evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt && evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
+                });
+                document.body.addEventListener('touchmove', function (evt) {
+                    if (evt && evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt && evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
+                });
+            },
+            initKeyboard = function () {
+                var element = settings.canvas || window,
+                    refocus = function (evt) {
+                        if (element.focus) {
+                            element.focus();
+                        }
+                    };
+                // fix for iframes
+                element.tabIndex = 0;
+                if (element.focus) {
+                    element.focus();
+                }
+                element.addEventListener('keydown', keyDown, false);
+                element.addEventListener('keyup', keyUp, false);
+                // refocus
+                element.addEventListener('mousedown', refocus, false);
+
+            },
+            keyDown = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i < names.length; ++i) {
+                    keyStates[names[i]] = true;
+                }
+            },
+            keyUp = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i < names.length; ++i) {
+                    keyStates[names[i]] = false;
+                }
+            },
+            destroy = function () {
+                // remove all event listeners
             };
 
         if (!settings) {
@@ -123,12 +196,6 @@ bento.define('bento/managers/input', [
         canvasScale = settings.canvasScale;
         canvas = settings.canvas;
         viewport = settings.viewport;
-        canvas.addEventListener('touchstart', touchStart);
-        canvas.addEventListener('touchmove', touchMove);
-        canvas.addEventListener('touchend', touchEnd);
-        canvas.addEventListener('mousedown', mouseDown);
-        canvas.addEventListener('mousemove', mouseMove);
-        canvas.addEventListener('mouseup', mouseUp);
 
         if (canvas && !Utils.isCocoonJS()) {
             offsetLeft = canvas.offsetLeft;
@@ -136,30 +203,20 @@ bento.define('bento/managers/input', [
         }
 
         // touch device
-        document.body.addEventListener('touchstart', function (evt) {
-            if (evt && evt.preventDefault) {
-                evt.preventDefault();
-            }
-            if (evt && evt.stopPropagation) {
-                evt.stopPropagation();
-            }
-            return false;
-        });
-        document.body.addEventListener('touchmove', function (evt) {
-            if (evt && evt.preventDefault) {
-                evt.preventDefault();
-            }
-            if (evt && evt.stopPropagation) {
-                evt.stopPropagation();
-            }
-            return false;
-        });
+        initTouch();
+
+        // keyboard
+        initKeyboard();
+
         return {
             getPointers: function () {
                 return pointers;
             },
             resetPointers: function () {
                 pointers.length = 0;
+            },
+            isKeyDown: function (name) {
+                return keyStates[name] || false;
             },
             addListener: function () {},
             removeListener: function () {}

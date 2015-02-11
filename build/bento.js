@@ -11524,13 +11524,33 @@ bento.define('bento/entity', [
 bento.define('bento/eventsystem', [
     'bento/utils'
 ], function (Utils) {
-    var events = {};
-    /*events = {
-        [String eventName]: [Array listeners]
-    }*/
+    var events = {},
+        /*events = {
+            [String eventName]: [Array listeners]
+        }*/
+        removedEvents = [],
+        cleanEventListeners = function () {
+            var i, j, l, listeners, eventName, callback;
+            for (j = 0; j < removedEvents.length; j += 1) {
+                eventName = removedEvents[j].eventName;
+                callback = removedEvents[j].callback;
+                if (Utils.isUndefined(events[eventName])) {
+                    continue;
+                }
+                listeners = events[eventName];
+                for (i = listeners.length - 1; i >= 0; i -= 1) {
+                    if (listeners[i] === callback) {
+                        listeners.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+            removedEvents = [];
+        };
     return {
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
+            cleanEventListeners();
             if (!Utils.isString(eventName)) {
                 eventName = eventName.toString();
             }
@@ -11555,17 +11575,10 @@ bento.define('bento/eventsystem', [
             events[eventName].push(callback);
         },
         removeEventListener: function (eventName, callback) {
-            var i, l, listener;
-            if (Utils.isUndefined(events[eventName])) {
-                return;
-            }
-            listener = events[eventName];
-            for (i = 0, l = listener.length; i < l; ++i) {
-                if (listener[i] === callback) {
-                    listener.splice(i, 1);
-                    break;
-                }
-            }
+            removedEvents.push({
+                eventName: eventName,
+                callback: callback
+            });
         }
     };
 });
@@ -11797,6 +11810,104 @@ bento.define('bento/utils', [], function () {
             };
             // return it instead and keep the method local to this scope
             return stable;
+        })(),
+        keyboardMapping = (function () {
+            var aI,
+                keys = {
+                    // http://github.com/RobertWhurst/KeyboardJS
+                    // general
+                    "3": ["cancel"],
+                    "8": ["backspace"],
+                    "9": ["tab"],
+                    "12": ["clear"],
+                    "13": ["enter"],
+                    "16": ["shift"],
+                    "17": ["ctrl"],
+                    "18": ["alt", "menu"],
+                    "19": ["pause", "break"],
+                    "20": ["capslock"],
+                    "27": ["escape", "esc"],
+                    "32": ["space", "spacebar"],
+                    "33": ["pageup"],
+                    "34": ["pagedown"],
+                    "35": ["end"],
+                    "36": ["home"],
+                    "37": ["left"],
+                    "38": ["up"],
+                    "39": ["right"],
+                    "40": ["down"],
+                    "41": ["select"],
+                    "42": ["printscreen"],
+                    "43": ["execute"],
+                    "44": ["snapshot"],
+                    "45": ["insert", "ins"],
+                    "46": ["delete", "del"],
+                    "47": ["help"],
+                    "91": ["command", "windows", "win", "super", "leftcommand", "leftwindows", "leftwin", "leftsuper"],
+                    "92": ["command", "windows", "win", "super", "rightcommand", "rightwindows", "rightwin", "rightsuper"],
+                    "145": ["scrolllock", "scroll"],
+                    "186": ["semicolon", ";"],
+                    "187": ["equal", "equalsign", "="],
+                    "188": ["comma", ","],
+                    "189": ["dash", "-"],
+                    "190": ["period", "."],
+                    "191": ["slash", "forwardslash", "/"],
+                    "192": ["graveaccent", "`"],
+                    "219": ["openbracket", "["],
+                    "220": ["backslash", "\\"],
+                    "221": ["closebracket", "]"],
+                    "222": ["apostrophe", "'"],
+
+                    //0-9
+                    "48": ["zero", "0"],
+                    "49": ["one", "1"],
+                    "50": ["two", "2"],
+                    "51": ["three", "3"],
+                    "52": ["four", "4"],
+                    "53": ["five", "5"],
+                    "54": ["six", "6"],
+                    "55": ["seven", "7"],
+                    "56": ["eight", "8"],
+                    "57": ["nine", "9"],
+
+                    //numpad
+                    "96": ["numzero", "num0"],
+                    "97": ["numone", "num1"],
+                    "98": ["numtwo", "num2"],
+                    "99": ["numthree", "num3"],
+                    "100": ["numfour", "num4"],
+                    "101": ["numfive", "num5"],
+                    "102": ["numsix", "num6"],
+                    "103": ["numseven", "num7"],
+                    "104": ["numeight", "num8"],
+                    "105": ["numnine", "num9"],
+                    "106": ["nummultiply", "num*"],
+                    "107": ["numadd", "num+"],
+                    "108": ["numenter"],
+                    "109": ["numsubtract", "num-"],
+                    "110": ["numdecimal", "num."],
+                    "111": ["numdivide", "num/"],
+                    "144": ["numlock", "num"],
+
+                    //function keys
+                    "112": ["f1"],
+                    "113": ["f2"],
+                    "114": ["f3"],
+                    "115": ["f4"],
+                    "116": ["f5"],
+                    "117": ["f6"],
+                    "118": ["f7"],
+                    "119": ["f8"],
+                    "120": ["f9"],
+                    "121": ["f10"],
+                    "122": ["f11"],
+                    "123": ["f12"]
+                };
+            for (aI = 65; aI <= 90; aI += 1) {
+                keys[aI] = String.fromCharCode(aI + 32);
+            }
+
+            return keys;
         })();
 
     return {
@@ -11813,6 +11924,7 @@ bento.define('bento/utils', [], function () {
         extend: extend,
         getKeyLength: getKeyLength,
         stableSort: stableSort,
+        keyboardMapping: keyboardMapping,
         getRandom: function (n) {
             return Math.floor(Math.random() * n);
         },
@@ -12639,7 +12751,7 @@ bento.define('bento/managers/asset', [
                 }
                 // set path
                 if (Utils.isDefined(group.path)) {
-                    path += group.path;
+                    path = group.path;
                 }
                 // load images
                 if (Utils.isDefined(group.images)) {
@@ -12982,10 +13094,16 @@ bento.define('bento/managers/input', [
             canvasScale,
             viewport,
             pointers = [],
+            keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
             pointerDown = function (evt) {
-                pointers.push(evt);
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    worldPosition: evt.worldPosition
+                });
                 EventSystem.fire('pointerDown', evt);
             },
             pointerMove = function (evt) {
@@ -13000,7 +13118,7 @@ bento.define('bento/managers/input', [
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
+                    addTouchPosition(evt, i, 'start');
                     pointerDown(evt);
                 }
             },
@@ -13008,7 +13126,7 @@ bento.define('bento/managers/input', [
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
+                    addTouchPosition(evt, i, 'move');
                     pointerMove(evt);
                 }
             },
@@ -13016,7 +13134,7 @@ bento.define('bento/managers/input', [
                 var id, i;
                 evt.preventDefault();
                 for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i);
+                    addTouchPosition(evt, i, 'end');
                     pointerUp(evt);
                 }
             },
@@ -13035,7 +13153,7 @@ bento.define('bento/managers/input', [
                 addMousePosition(evt);
                 pointerUp(evt);
             },
-            addTouchPosition = function (evt, n) {
+            addTouchPosition = function (evt, n, type) {
                 var touch = evt.changedTouches[n],
                     x = (touch.pageX - offsetLeft) / canvasScale.x,
                     y = (touch.pageY - offsetTop) / canvasScale.y;
@@ -13068,7 +13186,8 @@ bento.define('bento/managers/input', [
                 var i = 0;
                 for (i = 0; i < pointers.length; i += 1) {
                     if (pointers[i].id === evt.id) {
-                        pointers[i] = evt;
+                        pointers[i].position = evt.position;
+                        pointers[i].worldPosition = evt.worldPosition;
                         return;
                     }
                 }
@@ -13081,6 +13200,72 @@ bento.define('bento/managers/input', [
                         return;
                     }
                 }
+            },
+            initTouch = function () {
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+
+                document.body.addEventListener('touchstart', function (evt) {
+                    if (evt && evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt && evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
+                });
+                document.body.addEventListener('touchmove', function (evt) {
+                    if (evt && evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt && evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
+                });
+            },
+            initKeyboard = function () {
+                var element = settings.canvas || window,
+                    refocus = function (evt) {
+                        if (element.focus) {
+                            element.focus();
+                        }
+                    };
+                // fix for iframes
+                element.tabIndex = 0;
+                if (element.focus) {
+                    element.focus();
+                }
+                element.addEventListener('keydown', keyDown, false);
+                element.addEventListener('keyup', keyUp, false);
+                // refocus
+                element.addEventListener('mousedown', refocus, false);
+
+            },
+            keyDown = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i < names.length; ++i) {
+                    keyStates[names[i]] = true;
+                }
+            },
+            keyUp = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i < names.length; ++i) {
+                    keyStates[names[i]] = false;
+                }
+            },
+            destroy = function () {
+                // remove all event listeners
             };
 
         if (!settings) {
@@ -13090,12 +13275,6 @@ bento.define('bento/managers/input', [
         canvasScale = settings.canvasScale;
         canvas = settings.canvas;
         viewport = settings.viewport;
-        canvas.addEventListener('touchstart', touchStart);
-        canvas.addEventListener('touchmove', touchMove);
-        canvas.addEventListener('touchend', touchEnd);
-        canvas.addEventListener('mousedown', mouseDown);
-        canvas.addEventListener('mousemove', mouseMove);
-        canvas.addEventListener('mouseup', mouseUp);
 
         if (canvas && !Utils.isCocoonJS()) {
             offsetLeft = canvas.offsetLeft;
@@ -13103,30 +13282,20 @@ bento.define('bento/managers/input', [
         }
 
         // touch device
-        document.body.addEventListener('touchstart', function (evt) {
-            if (evt && evt.preventDefault) {
-                evt.preventDefault();
-            }
-            if (evt && evt.stopPropagation) {
-                evt.stopPropagation();
-            }
-            return false;
-        });
-        document.body.addEventListener('touchmove', function (evt) {
-            if (evt && evt.preventDefault) {
-                evt.preventDefault();
-            }
-            if (evt && evt.stopPropagation) {
-                evt.stopPropagation();
-            }
-            return false;
-        });
+        initTouch();
+
+        // keyboard
+        initKeyboard();
+
         return {
             getPointers: function () {
                 return pointers;
             },
             resetPointers: function () {
                 pointers.length = 0;
+            },
+            isKeyDown: function (name) {
+                return keyStates[name] || false;
             },
             addListener: function () {},
             removeListener: function () {}

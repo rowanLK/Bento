@@ -185,7 +185,7 @@ bento.define('bento/managers/asset', [
                 }
                 // set path
                 if (Utils.isDefined(group.path)) {
-                    path += group.path;
+                    path = group.path;
                 }
                 // load images
                 if (Utils.isDefined(group.images)) {

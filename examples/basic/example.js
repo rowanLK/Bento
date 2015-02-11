@@ -118,6 +118,9 @@ bento.require([
                 }).attach({
                     update: function () {
                         bunny3.rotation.addAngleDegree(1);
+                        if (Bento.input.isKeyDown('down')) {
+                            bunny3.getPosition().y +=1;
+                        }
                     }
                 }),
                 bunny4 = Entity({
