@@ -294,9 +294,9 @@ bento.define('bento/entity', [
             }
 
             entity.z = settings.z || 0;
-
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;
+            entity.float = settings.float || false;
 
             if (settings.addNow) {
                 Bento.objects.add(entity);

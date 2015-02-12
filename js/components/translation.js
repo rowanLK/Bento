@@ -3,20 +3,21 @@ bento.define('bento/components/translation', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    return function (base) {
+    return function (entity) {
         var set = false,
             mixin = {},
             component = {
                 name: 'translation',
                 draw: function (data) {
-                    var parent = base.getParent(),
-                        position = base.getPosition(),
+                    var parent = entity.getParent(),
+                        position = entity.getPosition(),
+                        origin = entity.getOrigin(),
                         scroll = data.viewport;
-                    data.renderer.save(base);
+                    data.renderer.save(entity);
                     data.renderer.translate(Math.round(position.x), Math.round(position.y));
 
                     // scroll (only applies to parent objects)
-                    if (parent === null) {
+                    if (parent === null && !entity.float) {
                         data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
                     }
                 },
@@ -24,9 +25,9 @@ bento.define('bento/components/translation', [
                     data.renderer.restore();
                 }
             };
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });

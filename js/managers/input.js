@@ -23,6 +23,7 @@ bento.define('bento/managers/input', [
                     id: evt.id,
                     position: evt.position,
                     eventType: evt.eventType,
+                    localPosition: evt.localPosition,
                     worldPosition: evt.worldPosition
                 });
                 EventSystem.fire('pointerDown', evt);
@@ -85,9 +86,11 @@ bento.define('bento/managers/input', [
                 evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
                 evt.changedTouches[n].worldPosition.x += viewport.x;
                 evt.changedTouches[n].worldPosition.y += viewport.y;
+                evt.changedTouches[n].localPosition = evt.changedTouches[n].position.clone();
                 // add 'normal' position
                 evt.position = evt.changedTouches[n].position.clone();
                 evt.worldPosition = evt.changedTouches[n].worldPosition.clone();
+                evt.localPosition = evt.changedTouches[n].position.clone();
                 // id
                 evt.id = evt.changedTouches[n].identifier + 1;
             },
@@ -100,6 +103,7 @@ bento.define('bento/managers/input', [
                 evt.worldPosition = evt.position.clone();
                 evt.worldPosition.x += viewport.x;
                 evt.worldPosition.y += viewport.y;
+                evt.localPosition = evt.position.clone();
                 // give it an id that doesn't clash with touch id
                 evt.id = -1;
             },
@@ -109,6 +113,7 @@ bento.define('bento/managers/input', [
                     if (pointers[i].id === evt.id) {
                         pointers[i].position = evt.position;
                         pointers[i].worldPosition = evt.worldPosition;
+                        pointers[i].localPosition = evt.position;
                         return;
                     }
                 }

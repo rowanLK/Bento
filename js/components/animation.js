@@ -117,7 +117,6 @@ bento.define('bento/components/animation', [
                     var cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1),
                         sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth,
                         sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
-
                     data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
                     data.renderer.drawImage(
                         spriteImage,
@@ -130,6 +129,7 @@ bento.define('bento/components/animation', [
                         frameWidth,
                         frameHeight
                     );
+                    data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
                 }
             };
 

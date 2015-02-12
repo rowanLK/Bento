@@ -1,8 +1,9 @@
 bento.define('bento/components/clickable', [
     'bento/utils',
     'bento/math/vector2',
+    'bento/math/matrix',
     'bento/eventsystem'
-], function (Utils, Vector2, EventSystem) {
+], function (Utils, Vector2, Matrix, EventSystem) {
     'use strict';
     return function (entity, settings) {
         var mixin = {},
@@ -41,42 +42,54 @@ bento.define('bento/components/clickable', [
                     }
                 }
             },
+            cloneEvent = function (evt) {
+                return {
+                    id: evt.id,
+                    position: evt.position.clone(),
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition.clone(),
+                    worldPosition: evt.worldPosition.clone()
+                };
+            },
             pointerDown = function (evt) {
+                var e = transformEvent(evt);
                 isPointerDown = true;
                 if (component.pointerDown) {
-                    component.pointerDown(evt);
+                    component.pointerDown(e);
                 }
                 if (entity.getBoundingBox) {
-                    checkHovering(evt, true);
+                    checkHovering(e, true);
                 }
             },
             pointerUp = function (evt) {
-                var mousePosition = evt.worldPosition;
+                var e = transformEvent(evt),
+                    mousePosition;
+                mousePosition = e.localPosition;
                 isPointerDown = false;
                 if (component.pointerUp) {
-                    component.pointerUp(evt);
+                    component.pointerUp(e);
                 }
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    component.onClickUp(evt);
-                    if (component.hasTouched && component.holdId === evt.id) {
+                    component.onClickUp(e);
+                    if (component.hasTouched && component.holdId === e.id) {
                         component.holdId = null;
-                        component.onHoldEnd(evt);
+                        component.onHoldEnd(e);
                     }
                 }
                 component.hasTouched = false;
             },
             pointerMove = function (evt) {
+                var e = transformEvent(evt);
                 if (component.pointerMove) {
-                    component.pointerMove(evt);
+                    component.pointerMove(e);
                 }
                 // hovering?
                 if (entity.getBoundingBox) {
-                    checkHovering(evt);
+                    checkHovering(e);
                 }
             },
             checkHovering = function (evt, clicked) {
-                var mousePosition = evt.worldPosition;
-                // todo: convert world position to local position
+                var mousePosition = evt.localPosition;
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
                     if (component.hasTouched && !component.isHovering && component.holdId === evt.id) {
                         component.onHoldEnter(evt);
@@ -99,9 +112,82 @@ bento.define('bento/components/clickable', [
                     }
                     component.isHovering = false;
                     if (clicked) {
-                        component.onClickMiss(evt);                        
+                        component.onClickMiss(evt);
                     }
                 }
+            },
+            transformEvent = function (evt) {
+                var positionVector,
+                    translateMatrix = Matrix(3, 3),
+                    scaleMatrix = Matrix(3, 3),
+                    rotateMatrix = Matrix(3, 3),
+                    sin,
+                    cos,
+                    type,
+                    position,
+                    parent,
+                    parents = [],
+                    i;
+
+                // no parents
+                if (!entity.getParent || !entity.getParent()) {
+                    if (!entity.float) {
+                        evt.localPosition = evt.worldPosition.clone();
+                    } else {
+                        evt.localPosition = evt.position.clone();
+                    }
+                    return evt;
+                }
+                // make a copy
+                evt = cloneEvent(evt);
+                if (entity.float) {
+                    positionVector = evt.localPosition.toMatrix();
+                } else {
+                    positionVector = evt.worldPosition.toMatrix();
+                }
+
+                // get all parents
+                parent = entity;
+                while (parent.getParent && parent.getParent()) {
+                    parent = parent.getParent();
+                    parents.unshift(parent);
+                }
+
+                /** 
+                 * reverse transform the event position vector
+                 */
+                for (i = 0; i < parents.length; ++i) {
+                    parent = parents[i];
+
+                    // construct a translation matrix and apply to position vector
+                    if (parent.getPosition) {
+                        position = parent.getPosition();
+                        translateMatrix.set(2, 0, -position.x);
+                        translateMatrix.set(2, 1, -position.y);
+                        positionVector.multiplyWith(translateMatrix);
+                    }
+                    // only scale/rotatable if there is a component
+                    if (parent.rotation) {
+                        // construct a rotation matrix and apply to position vector
+                        sin = Math.sin(-parent.rotation.getAngleRadian());
+                        cos = Math.cos(-parent.rotation.getAngleRadian());
+                        rotateMatrix.set(0, 0, cos);
+                        rotateMatrix.set(1, 0, -sin);
+                        rotateMatrix.set(0, 1, sin);
+                        rotateMatrix.set(1, 1, cos);
+                        positionVector.multiplyWith(rotateMatrix);
+                    }
+                    if (parent.scale) {
+                        // construct a scaling matrix and apply to position vector
+                        scaleMatrix.set(0, 0, 1 / parent.scale.getScale().x);
+                        scaleMatrix.set(1, 1, 1 / parent.scale.getScale().y);
+                        positionVector.multiplyWith(scaleMatrix);
+                    }
+                }
+                evt.localPosition.x = positionVector.get(0, 0);
+                evt.localPosition.y = positionVector.get(0, 1);
+
+                return evt;
             };
 
         if (settings && settings[component.name]) {

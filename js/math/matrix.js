@@ -179,7 +179,7 @@ bento.define('bento/math/matrix', [
                             newValue = 0;
                             // loop through matbentos
                             for (k = 0; k < oldWidth; ++k) {
-                                newValue += matrix.get(k, j) * get(i, k);
+                                newValue += other.get(k, j) * get(i, k);
                             }
                             newMat[j * newWidth + i] = newValue;
                         }

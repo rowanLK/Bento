@@ -34,6 +34,13 @@ bento.define('bento/renderers/webgl', [
                     glRenderer.fillRect(x, y, w, h);
                     glRenderer.color = oldColor;
                 },
+                strokeRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    // 
+                    renderer.setColor(color);
+                    glRenderer.strokeRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
                 drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                     var image = packedImage.image;
                     if (!image.texture) {

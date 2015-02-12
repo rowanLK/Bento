@@ -11505,9 +11505,9 @@ bento.define('bento/entity', [
             }
 
             entity.z = settings.z || 0;
-
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;
+            entity.float = settings.float || false;
 
             if (settings.addNow) {
                 Bento.objects.add(entity);
@@ -11611,6 +11611,7 @@ bento.define('bento/renderer', [
             scale: function (x, y) {},
             rotate: function (angle) {},
             fillRect: function (color, x, y, w, h) {},
+            strokeRect: function (color, x, y, w, h) {},
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
             flush: function () {},
@@ -12079,7 +12080,6 @@ bento.define('bento/components/animation', [
                     var cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1),
                         sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth,
                         sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
-
                     data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
                     data.renderer.drawImage(
                         spriteImage,
@@ -12092,6 +12092,7 @@ bento.define('bento/components/animation', [
                         frameWidth,
                         frameHeight
                     );
+                    data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
                 }
             };
 
@@ -12109,8 +12110,9 @@ bento.define('bento/components/animation', [
 bento.define('bento/components/clickable', [
     'bento/utils',
     'bento/math/vector2',
+    'bento/math/matrix',
     'bento/eventsystem'
-], function (Utils, Vector2, EventSystem) {
+], function (Utils, Vector2, Matrix, EventSystem) {
     'use strict';
     return function (entity, settings) {
         var mixin = {},
@@ -12149,42 +12151,54 @@ bento.define('bento/components/clickable', [
                     }
                 }
             },
+            cloneEvent = function (evt) {
+                return {
+                    id: evt.id,
+                    position: evt.position.clone(),
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition.clone(),
+                    worldPosition: evt.worldPosition.clone()
+                };
+            },
             pointerDown = function (evt) {
+                var e = transformEvent(evt);
                 isPointerDown = true;
                 if (component.pointerDown) {
-                    component.pointerDown(evt);
+                    component.pointerDown(e);
                 }
                 if (entity.getBoundingBox) {
-                    checkHovering(evt, true);
+                    checkHovering(e, true);
                 }
             },
             pointerUp = function (evt) {
-                var mousePosition = evt.worldPosition;
+                var e = transformEvent(evt),
+                    mousePosition;
+                mousePosition = e.localPosition;
                 isPointerDown = false;
                 if (component.pointerUp) {
-                    component.pointerUp(evt);
+                    component.pointerUp(e);
                 }
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    component.onClickUp(evt);
-                    if (component.hasTouched && component.holdId === evt.id) {
+                    component.onClickUp(e);
+                    if (component.hasTouched && component.holdId === e.id) {
                         component.holdId = null;
-                        component.onHoldEnd(evt);
+                        component.onHoldEnd(e);
                     }
                 }
                 component.hasTouched = false;
             },
             pointerMove = function (evt) {
+                var e = transformEvent(evt);
                 if (component.pointerMove) {
-                    component.pointerMove(evt);
+                    component.pointerMove(e);
                 }
                 // hovering?
                 if (entity.getBoundingBox) {
-                    checkHovering(evt);
+                    checkHovering(e);
                 }
             },
             checkHovering = function (evt, clicked) {
-                var mousePosition = evt.worldPosition;
-                // todo: convert world position to local position
+                var mousePosition = evt.localPosition;
                 if (entity.getBoundingBox().hasPosition(mousePosition)) {
                     if (component.hasTouched && !component.isHovering && component.holdId === evt.id) {
                         component.onHoldEnter(evt);
@@ -12207,9 +12221,82 @@ bento.define('bento/components/clickable', [
                     }
                     component.isHovering = false;
                     if (clicked) {
-                        component.onClickMiss(evt);                        
+                        component.onClickMiss(evt);
                     }
                 }
+            },
+            transformEvent = function (evt) {
+                var positionVector,
+                    translateMatrix = Matrix(3, 3),
+                    scaleMatrix = Matrix(3, 3),
+                    rotateMatrix = Matrix(3, 3),
+                    sin,
+                    cos,
+                    type,
+                    position,
+                    parent,
+                    parents = [],
+                    i;
+
+                // no parents
+                if (!entity.getParent || !entity.getParent()) {
+                    if (!entity.float) {
+                        evt.localPosition = evt.worldPosition.clone();
+                    } else {
+                        evt.localPosition = evt.position.clone();
+                    }
+                    return evt;
+                }
+                // make a copy
+                evt = cloneEvent(evt);
+                if (entity.float) {
+                    positionVector = evt.localPosition.toMatrix();
+                } else {
+                    positionVector = evt.worldPosition.toMatrix();
+                }
+
+                // get all parents
+                parent = entity;
+                while (parent.getParent && parent.getParent()) {
+                    parent = parent.getParent();
+                    parents.unshift(parent);
+                }
+
+                /** 
+                 * reverse transform the event position vector
+                 */
+                for (i = 0; i < parents.length; ++i) {
+                    parent = parents[i];
+
+                    // construct a translation matrix and apply to position vector
+                    if (parent.getPosition) {
+                        position = parent.getPosition();
+                        translateMatrix.set(2, 0, -position.x);
+                        translateMatrix.set(2, 1, -position.y);
+                        positionVector.multiplyWith(translateMatrix);
+                    }
+                    // only scale/rotatable if there is a component
+                    if (parent.rotation) {
+                        // construct a rotation matrix and apply to position vector
+                        sin = Math.sin(-parent.rotation.getAngleRadian());
+                        cos = Math.cos(-parent.rotation.getAngleRadian());
+                        rotateMatrix.set(0, 0, cos);
+                        rotateMatrix.set(1, 0, -sin);
+                        rotateMatrix.set(0, 1, sin);
+                        rotateMatrix.set(1, 1, cos);
+                        positionVector.multiplyWith(rotateMatrix);
+                    }
+                    if (parent.scale) {
+                        // construct a scaling matrix and apply to position vector
+                        scaleMatrix.set(0, 0, 1 / parent.scale.getScale().x);
+                        scaleMatrix.set(1, 1, 1 / parent.scale.getScale().y);
+                        positionVector.multiplyWith(scaleMatrix);
+                    }
+                }
+                evt.localPosition.x = positionVector.get(0, 0);
+                evt.localPosition.y = positionVector.get(0, 1);
+
+                return evt;
             };
 
         if (settings && settings[component.name]) {
@@ -12368,20 +12455,21 @@ bento.define('bento/components/translation', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    return function (base) {
+    return function (entity) {
         var set = false,
             mixin = {},
             component = {
                 name: 'translation',
                 draw: function (data) {
-                    var parent = base.getParent(),
-                        position = base.getPosition(),
+                    var parent = entity.getParent(),
+                        position = entity.getPosition(),
+                        origin = entity.getOrigin(),
                         scroll = data.viewport;
-                    data.renderer.save(base);
+                    data.renderer.save(entity);
                     data.renderer.translate(Math.round(position.x), Math.round(position.y));
 
                     // scroll (only applies to parent objects)
-                    if (parent === null) {
+                    if (parent === null && !entity.float) {
                         data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
                     }
                 },
@@ -12389,10 +12477,10 @@ bento.define('bento/components/translation', [
                     data.renderer.restore();
                 }
             };
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });
 /**
@@ -13102,6 +13190,7 @@ bento.define('bento/managers/input', [
                     id: evt.id,
                     position: evt.position,
                     eventType: evt.eventType,
+                    localPosition: evt.localPosition,
                     worldPosition: evt.worldPosition
                 });
                 EventSystem.fire('pointerDown', evt);
@@ -13164,9 +13253,11 @@ bento.define('bento/managers/input', [
                 evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
                 evt.changedTouches[n].worldPosition.x += viewport.x;
                 evt.changedTouches[n].worldPosition.y += viewport.y;
+                evt.changedTouches[n].localPosition = evt.changedTouches[n].position.clone();
                 // add 'normal' position
                 evt.position = evt.changedTouches[n].position.clone();
                 evt.worldPosition = evt.changedTouches[n].worldPosition.clone();
+                evt.localPosition = evt.changedTouches[n].position.clone();
                 // id
                 evt.id = evt.changedTouches[n].identifier + 1;
             },
@@ -13179,6 +13270,7 @@ bento.define('bento/managers/input', [
                 evt.worldPosition = evt.position.clone();
                 evt.worldPosition.x += viewport.x;
                 evt.worldPosition.y += viewport.y;
+                evt.localPosition = evt.position.clone();
                 // give it an id that doesn't clash with touch id
                 evt.id = -1;
             },
@@ -13188,6 +13280,7 @@ bento.define('bento/managers/input', [
                     if (pointers[i].id === evt.id) {
                         pointers[i].position = evt.position;
                         pointers[i].worldPosition = evt.worldPosition;
+                        pointers[i].localPosition = evt.position;
                         return;
                     }
                 }
@@ -13894,7 +13987,7 @@ bento.define('bento/math/matrix', [
                             newValue = 0;
                             // loop through matbentos
                             for (k = 0; k < oldWidth; ++k) {
-                                newValue += matrix.get(k, j) * get(i, k);
+                                newValue += other.get(k, j) * get(i, k);
                             }
                             newMat[j * newWidth + i] = newValue;
                         }
@@ -14177,7 +14270,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
  * 2 dimensional vector
  * @copyright (C) HeiGames
  */
-bento.define('bento/math/vector2', [], function () {
+bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     'use strict';
     var isVector2 = function () {
             return true;
@@ -14281,7 +14374,8 @@ bento.define('bento/math/vector2', [], function () {
                 length: length,
                 normalize: normalize,
                 distance: distance,
-                clone: clone
+                clone: clone,
+                toMatrix: toMatrix
             };
         };
     return module;
@@ -14961,34 +15055,42 @@ bento.define('bento/renderers/canvas2d', [
     return function (canvas, settings) {
         var context = canvas.getContext('2d'),
             renderer = {
-            name: 'canvas2d',
-            save: function () {
-                context.save();
-            },
-            restore: function () {
-                context.restore();
-            },
-            translate: function (x, y) {
-                context.translate(x, y);
-            },
-            scale: function (x, y) {
-                context.scale(x, y);
-            },
-            rotate: function (angle) {
-                context.rotate(angle);
-            },
-            fillRect: function (colorArray, x, y, w, h) {
-                var colorStr = '#';
-                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
-                context.fillStyle = colorStr;
-                context.fillRect(x, y, w, h);
-            },
-            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
-            }
-        };
+                name: 'canvas2d',
+                save: function () {
+                    context.save();
+                },
+                restore: function () {
+                    context.restore();
+                },
+                translate: function (x, y) {
+                    context.translate(x, y);
+                },
+                scale: function (x, y) {
+                    context.scale(x, y);
+                },
+                rotate: function (angle) {
+                    context.rotate(angle);
+                },
+                fillRect: function (colorArray, x, y, w, h) {
+                    var colorStr = '#';
+                    colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+                    colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+                    colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                    context.fillStyle = colorStr;
+                    context.fillRect(x, y, w, h);
+                },
+                strokeRect: function (colorArray, x, y, w, h) {
+                    var colorStr = '#';
+                    colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+                    colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+                    colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                    context.fillStyle = colorStr;
+                    context.strokeRect(x, y, w, h);
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+                }
+            };
         console.log('Init canvas2d as renderer');
 
         if (!settings.smoothing) {
@@ -15092,6 +15194,13 @@ bento.define('bento/renderers/webgl', [
                     // 
                     renderer.setColor(color);
                     glRenderer.fillRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                strokeRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    // 
+                    renderer.setColor(color);
+                    glRenderer.strokeRect(x, y, w, h);
                     glRenderer.color = oldColor;
                 },
                 drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {

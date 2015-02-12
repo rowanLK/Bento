@@ -2,7 +2,7 @@
  * 2 dimensional vector
  * @copyright (C) HeiGames
  */
-bento.define('bento/math/vector2', [], function () {
+bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     'use strict';
     var isVector2 = function () {
             return true;
@@ -106,7 +106,8 @@ bento.define('bento/math/vector2', [], function () {
                 length: length,
                 normalize: normalize,
                 distance: distance,
-                clone: clone
+                clone: clone,
+                toMatrix: toMatrix
             };
         };
     return module;
