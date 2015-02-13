@@ -25,23 +25,43 @@ bento.define('bento/renderers/canvas2d', [
                     context.rotate(angle);
                 },
                 fillRect: function (colorArray, x, y, w, h) {
-                    var colorStr = '#';
+                    var colorStr = '#',
+                        oldOpacity = context.globalAlpha;
                     colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
                     context.fillStyle = colorStr;
                     context.fillRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
                 },
                 strokeRect: function (colorArray, x, y, w, h) {
-                    var colorStr = '#';
+                    var colorStr = '#',
+                        oldOpacity = context.globalAlpha;
                     colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
                     context.fillStyle = colorStr;
                     context.strokeRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
                 },
                 drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                     context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+                },
+                getOpacity: function () {
+                    return context.globalAlpha;
+                },
+                setOpacity: function (value) {
+                    context.globalAlpha = value;
                 }
             };
         console.log('Init canvas2d as renderer');

@@ -3,7 +3,7 @@ bento.define('bento/components/scale', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    return function (base) {
+    return function (entity) {
         var set = false,
             scale = Vector2(1, 1),
             mixin = {},
@@ -30,9 +30,9 @@ bento.define('bento/components/scale', [
                     scale.y = value;
                 }
             };
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });

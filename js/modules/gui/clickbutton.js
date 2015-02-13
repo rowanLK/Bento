@@ -58,6 +58,10 @@ bento.define('bento/gui/clickbutton', [
                     onHoldEnd: function () {
                         if (settings.onClick) {
                             settings.onClick.apply(entity);
+                            if (settings.sfx) {
+                                Bento.audio.stopSound(settings.sfx);
+                                Bento.audio.playSound(settings.sfx);
+                            }
                         }
                     }
                 },

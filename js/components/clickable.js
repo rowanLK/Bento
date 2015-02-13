@@ -1,9 +1,10 @@
 bento.define('bento/components/clickable', [
+    'bento',
     'bento/utils',
     'bento/math/vector2',
     'bento/math/matrix',
     'bento/eventsystem'
-], function (Utils, Vector2, Matrix, EventSystem) {
+], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
     return function (entity, settings) {
         var mixin = {},
@@ -53,6 +54,9 @@ bento.define('bento/components/clickable', [
             },
             pointerDown = function (evt) {
                 var e = transformEvent(evt);
+                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
+                    return;
+                }
                 isPointerDown = true;
                 if (component.pointerDown) {
                     component.pointerDown(e);
@@ -64,6 +68,9 @@ bento.define('bento/components/clickable', [
             pointerUp = function (evt) {
                 var e = transformEvent(evt),
                     mousePosition;
+                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
+                    return;
+                }
                 mousePosition = e.localPosition;
                 isPointerDown = false;
                 if (component.pointerUp) {
@@ -80,6 +87,9 @@ bento.define('bento/components/clickable', [
             },
             pointerMove = function (evt) {
                 var e = transformEvent(evt);
+                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
+                    return;
+                }
                 if (component.pointerMove) {
                     component.pointerMove(e);
                 }

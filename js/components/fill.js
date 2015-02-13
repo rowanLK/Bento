@@ -3,7 +3,7 @@ bento.define('bento/components/fill', [
     'bento'
 ], function (Utils, Bento) {
     'use strict';
-    return function (base, settings) {
+    return function (entity, settings) {
         var viewport = Bento.getViewport(),
             mixin = {},
             color = [0, 0, 0, 1],
@@ -21,9 +21,9 @@ bento.define('bento/components/fill', [
             component.setup(settings[component.name]);
         }
 
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });

@@ -17,7 +17,9 @@ bento.define('bento/renderer', [
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
             flush: function () {},
-            setColor: function () {}
+            setColor: function () {},
+            getOpacity: function () {},
+            setOpacity: function () {}
         };
         require(['bento/renderers/' + type], function (renderer) {
             Utils.extend(module, renderer(canvas, settings));

@@ -2,7 +2,7 @@ bento.define('bento/components/rotation', [
     'bento/utils',
 ], function (Utils) {
     'use strict';
-    return function (base) {
+    return function (entity) {
         var angle,
             mixin = {},
             component = {
@@ -45,9 +45,9 @@ bento.define('bento/components/rotation', [
                     return angle;
                 }
             };
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });

@@ -56,6 +56,12 @@ bento.define('bento/renderers/webgl', [
                 },
                 setColor: function (color) {
                     glRenderer.color = color;
+                },
+                getOpacity: function () {
+                    return glRenderer.color[3];
+                },
+                setOpacity: function (value) {
+                    glRenderer.color[3] = value;
                 }
             };
         console.log('Init webgl as renderer');

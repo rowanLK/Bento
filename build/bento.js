@@ -11615,7 +11615,9 @@ bento.define('bento/renderer', [
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
             flush: function () {},
-            setColor: function () {}
+            setColor: function () {},
+            getOpacity: function () {},
+            setOpacity: function () {}
         };
         require(['bento/renderers/' + type], function (renderer) {
             Utils.extend(module, renderer(canvas, settings));
@@ -12108,11 +12110,12 @@ bento.define('bento/components/animation', [
     };
 });
 bento.define('bento/components/clickable', [
+    'bento',
     'bento/utils',
     'bento/math/vector2',
     'bento/math/matrix',
     'bento/eventsystem'
-], function (Utils, Vector2, Matrix, EventSystem) {
+], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
     return function (entity, settings) {
         var mixin = {},
@@ -12162,6 +12165,9 @@ bento.define('bento/components/clickable', [
             },
             pointerDown = function (evt) {
                 var e = transformEvent(evt);
+                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
+                    return;
+                }
                 isPointerDown = true;
                 if (component.pointerDown) {
                     component.pointerDown(e);
@@ -12173,6 +12179,9 @@ bento.define('bento/components/clickable', [
             pointerUp = function (evt) {
                 var e = transformEvent(evt),
                     mousePosition;
+                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
+                    return;
+                }
                 mousePosition = e.localPosition;
                 isPointerDown = false;
                 if (component.pointerUp) {
@@ -12189,6 +12198,9 @@ bento.define('bento/components/clickable', [
             },
             pointerMove = function (evt) {
                 var e = transformEvent(evt);
+                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
+                    return;
+                }
                 if (component.pointerMove) {
                     component.pointerMove(e);
                 }
@@ -12315,7 +12327,7 @@ bento.define('bento/components/fill', [
     'bento'
 ], function (Utils, Bento) {
     'use strict';
-    return function (base, settings) {
+    return function (entity, settings) {
         var viewport = Bento.getViewport(),
             mixin = {},
             color = [0, 0, 0, 1],
@@ -12333,17 +12345,52 @@ bento.define('bento/components/fill', [
             component.setup(settings[component.name]);
         }
 
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
+    };
+});
+bento.define('bento/components/opacity', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    return function (entity) {
+        var opacity = 1,
+            set = false,
+            oldOpacity = 1,
+            mixin = {},
+            component = {
+                name: 'opacity',
+                draw: function (data) {
+                    if (set) {
+                        oldOpacity = data.renderer.getOpacity();
+                        data.renderer.setOpacity(opacity);
+                    }
+                },
+                postDraw: function (data) {
+                    data.renderer.setOpacity(oldOpacity);
+                },
+                setOpacity: function (value) {
+                    set = true;
+                    opacity = value;
+                },
+                getOpacity: function () {
+                    return opacity;
+                }
+            };
+        entity.attach(component);
+        mixin[component.name] = component;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });
 bento.define('bento/components/rotation', [
     'bento/utils',
 ], function (Utils) {
     'use strict';
-    return function (base) {
+    return function (entity) {
         var angle,
             mixin = {},
             component = {
@@ -12386,10 +12433,10 @@ bento.define('bento/components/rotation', [
                     return angle;
                 }
             };
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });
 bento.define('bento/components/scale', [
@@ -12397,7 +12444,7 @@ bento.define('bento/components/scale', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    return function (base) {
+    return function (entity) {
         var set = false,
             scale = Vector2(1, 1),
             mixin = {},
@@ -12424,10 +12471,10 @@ bento.define('bento/components/scale', [
                     scale.y = value;
                 }
             };
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });
 bento.define('bento/components/sprite', [
@@ -12435,19 +12482,24 @@ bento.define('bento/components/sprite', [
     'bento/components/translation',
     'bento/components/rotation',
     'bento/components/scale',
+    'bento/components/opacity',
     'bento/components/animation'
-], function (Utils, Translation, Rotation, Scale, Animation) {
+], function (Utils, Translation, Rotation, Scale, Opacity, Animation) {
     'use strict';
-    return function (base, settings) {
+    return function (entity, settings) {
         if (settings.sprite) {
             settings.animation = settings.sprite;
         }
-        Translation(base, settings);
-        Scale(base, settings);
-        Rotation(base, settings);
-        Animation(base, settings);
-        base.sprite = base.animation;
-        return base;
+        Translation(entity, settings);
+        Scale(entity, settings);
+        Rotation(entity, settings);
+        Opacity(entity, settings);
+        Animation(entity, settings);
+        entity.sprite = entity.animation;
+        Utils.extend(entity.sprite, entity.scale);
+        Utils.extend(entity.sprite, entity.rotation);
+        Utils.extend(entity.sprite, entity.opacity);
+        return entity;
     };
 });
 bento.define('bento/components/translation', [
@@ -13607,6 +13659,15 @@ bento.define('bento/managers/object', [
                 },
                 count: function () {
                     return objects.length;
+                },
+                pause: function () {
+                    isPaused = true;
+                },
+                resume: function () {
+                    isPaused = false;
+                },
+                isPaused: function () {
+                    return isPaused;
                 }
             };
 
@@ -14344,6 +14405,16 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
         distance = function (vector) {
             return vector.substract(this).length();
         },
+        rotateRadian = function (angle) {
+            var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
+                y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
+            this.x = x;
+            this.y = y;
+            return this;
+        },
+        rotateDegree = function (angle) {
+            return this.rotateRadian(angle * Math.PI / 180);
+        },
         clone = function () {
             return module(this.x, this.y);
         },
@@ -14374,6 +14445,8 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
                 length: length,
                 normalize: normalize,
                 distance: distance,
+                rotateRadian: rotateRadian,
+                rotateDegree: rotateDegree,
                 clone: clone,
                 toMatrix: toMatrix
             };
@@ -15072,23 +15145,43 @@ bento.define('bento/renderers/canvas2d', [
                     context.rotate(angle);
                 },
                 fillRect: function (colorArray, x, y, w, h) {
-                    var colorStr = '#';
+                    var colorStr = '#',
+                        oldOpacity = context.globalAlpha;
                     colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
                     context.fillStyle = colorStr;
                     context.fillRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
                 },
                 strokeRect: function (colorArray, x, y, w, h) {
-                    var colorStr = '#';
+                    var colorStr = '#',
+                        oldOpacity = context.globalAlpha;
                     colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
                     colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
                     context.fillStyle = colorStr;
                     context.strokeRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
                 },
                 drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                     context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+                },
+                getOpacity: function () {
+                    return context.globalAlpha;
+                },
+                setOpacity: function (value) {
+                    context.globalAlpha = value;
                 }
             };
         console.log('Init canvas2d as renderer');
@@ -15218,6 +15311,12 @@ bento.define('bento/renderers/webgl', [
                 },
                 setColor: function (color) {
                     glRenderer.color = color;
+                },
+                getOpacity: function () {
+                    return glRenderer.color[3];
+                },
+                setOpacity: function (value) {
+                    glRenderer.color[3] = value;
                 }
             };
         console.log('Init webgl as renderer');
@@ -15302,6 +15401,10 @@ bento.define('bento/gui/clickbutton', [
                     onHoldEnd: function () {
                         if (settings.onClick) {
                             settings.onClick.apply(entity);
+                            if (settings.sfx) {
+                                Bento.audio.stopSound(settings.sfx);
+                                Bento.audio.playSound(settings.sfx);
+                            }
                         }
                     }
                 },
@@ -15562,6 +15665,10 @@ bento.define('bento/gui/togglebutton', [
                         }
                         if (settings.onToggle) {
                             settings.onToggle.apply(entity);
+                            if (settings.sfx) {
+                                Bento.audio.stopSound(settings.sfx);
+                                Bento.audio.playSound(settings.sfx);
+                            }
                         }
                         entity.sprite.setAnimation(toggled ? 'down' : 'up');
                     }

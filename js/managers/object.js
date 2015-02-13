@@ -210,6 +210,15 @@ bento.define('bento/managers/object', [
                 },
                 count: function () {
                     return objects.length;
+                },
+                pause: function () {
+                    isPaused = true;
+                },
+                resume: function () {
+                    isPaused = false;
+                },
+                isPaused: function () {
+                    return isPaused;
                 }
             };
 

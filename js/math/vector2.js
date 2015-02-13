@@ -76,6 +76,16 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
         distance = function (vector) {
             return vector.substract(this).length();
         },
+        rotateRadian = function (angle) {
+            var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
+                y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
+            this.x = x;
+            this.y = y;
+            return this;
+        },
+        rotateDegree = function (angle) {
+            return this.rotateRadian(angle * Math.PI / 180);
+        },
         clone = function () {
             return module(this.x, this.y);
         },
@@ -106,6 +116,8 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
                 length: length,
                 normalize: normalize,
                 distance: distance,
+                rotateRadian: rotateRadian,
+                rotateDegree: rotateDegree,
                 clone: clone,
                 toMatrix: toMatrix
             };

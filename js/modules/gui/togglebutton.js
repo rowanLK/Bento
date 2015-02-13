@@ -64,6 +64,10 @@ bento.define('bento/gui/togglebutton', [
                         }
                         if (settings.onToggle) {
                             settings.onToggle.apply(entity);
+                            if (settings.sfx) {
+                                Bento.audio.stopSound(settings.sfx);
+                                Bento.audio.playSound(settings.sfx);
+                            }
                         }
                         entity.sprite.setAnimation(toggled ? 'down' : 'up');
                     }
