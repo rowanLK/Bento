@@ -2,7 +2,7 @@ bento.define('bento/components/animation', [
     'bento/utils',
 ], function (Utils) {
     'use strict';
-    return function (base, settings) {
+    return function (entity, settings) {
         var spriteImage,
             animationSettings,
             animations = {},
@@ -16,7 +16,7 @@ bento.define('bento/components/animation', [
             frameWidth = 0,
             frameHeight = 0,
             onCompleteCallback,
-            origin = base.getOrigin(),
+            origin = entity.getOrigin(),
             component = {
                 name: 'animation',
                 setup: function (settings) {
@@ -51,9 +51,9 @@ bento.define('bento/components/animation', [
                         frameWidth = spriteImage.width / frameCountX;
                         frameHeight = spriteImage.height / frameCountY;
                     }
-                    // set dimension of base object
-                    base.getDimension().width = frameWidth;
-                    base.getDimension().height = frameHeight;
+                    // set dimension of entity object
+                    entity.getDimension().width = frameWidth;
+                    entity.getDimension().height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -138,9 +138,9 @@ bento.define('bento/components/animation', [
             component.setup(settings[component.name]);
         }
 
-        base.attach(component);
+        entity.attach(component);
         mixin[component.name] = component;
-        Utils.extend(base, mixin);
-        return base;
+        Utils.extend(entity, mixin);
+        return entity;
     };
 });

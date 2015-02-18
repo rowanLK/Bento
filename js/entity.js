@@ -118,9 +118,7 @@ bento.define('bento/entity', [
                     return dimension;
                 },
                 setDimension: function (value) {
-                    if (Utils.isDimension(value)) {
-                        dimension = value;
-                    }
+                    dimension = value;
                 },
                 getBoundingBox: function () {
                     var scale, x1, x2, y1, y2, box;
