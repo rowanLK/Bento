@@ -59,7 +59,9 @@ bento.define('bento/entity', [
                         l,
                         component;
 
-                    data.entity = this;
+                    if (data) {
+                        data.entity = this;
+                    }
                     // update components
                     for (i = 0, l = components.length; i < l; ++i) {
                         component = components[i];
@@ -79,7 +81,9 @@ bento.define('bento/entity', [
                     if (!visible) {
                         return;
                     }
-                    data.entity = this;
+                    if (data) {
+                        data.entity = this;
+                    }
                     // call components
                     for (i = 0, l = components.length; i < l; ++i) {
                         component = components[i];

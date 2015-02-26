@@ -11269,6 +11269,10 @@ bento.define('bento/entity', [
                     var i,
                         l,
                         component;
+
+                    if (data) {
+                        data.entity = this;
+                    }
                     // update components
                     for (i = 0, l = components.length; i < l; ++i) {
                         component = components[i];
@@ -11287,6 +11291,9 @@ bento.define('bento/entity', [
                         component;
                     if (!visible) {
                         return;
+                    }
+                    if (data) {
+                        data.entity = this;
                     }
                     // call components
                     for (i = 0, l = components.length; i < l; ++i) {
@@ -15361,6 +15368,7 @@ bento.define('bento/gui/clickbutton', [
     'use strict';
     return function (settings) {
         var viewport = Bento.getViewport(),
+            active = true,
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
@@ -15397,7 +15405,7 @@ bento.define('bento/gui/clickbutton', [
                         entity.sprite.setAnimation('up');
                     },
                     onHoldEnd: function () {
-                        if (settings.onClick) {
+                        if (active && settings.onClick) {
                             settings.onClick.apply(entity);
                             if (settings.sfx) {
                                 Bento.audio.stopSound(settings.sfx);
@@ -15408,7 +15416,16 @@ bento.define('bento/gui/clickbutton', [
                 },
                 init: function () {}
             }, settings),
-            entity = Entity(entitySettings);
+            entity = Entity(entitySettings).extend({
+                setActive: function (bool) {
+                    active = bool;
+                }
+            });
+
+        if (Utils.isDefined(settings.active)) {
+            active = settings.active;
+        }
+
         return entity;
     };
 });
