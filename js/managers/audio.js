@@ -75,7 +75,7 @@ define('bento/managers/audio', [
                     if (Utils.isDefined(loop)) {
                         musicLoop = loop;
                     } else {
-                        musicLoop = false;
+                        musicLoop = true;
                     }
                     // set end event
                     if (Utils.isCocoonJS() && onEnd) {
