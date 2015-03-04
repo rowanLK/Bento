@@ -13047,17 +13047,8 @@ define('bento/managers/audio', [
                  * @param {Number} value: the volume
                  * @param {String} name: name of the sound currently playing
                  */
-                setVolume: function (value) {
-                    var i, l, node;
-                    if (!Utils.isDefined(howler)) {
-                        return;
-                    }
-                    for (i = 0, l = howler._audioNode.length; i < l; ++i) {
-                        node = howler._audioNode[i];
-                        if (!node.paused) {
-                            howler.volume(value, node.id);
-                        }
-                    }
+                setVolume: function (value, name) {
+                    assetManager.getAudio(name).volume(value);
                 },
                 /* Plays a sound
                  * @name playSound
@@ -15414,11 +15405,16 @@ bento.define('bento/gui/clickbutton', [
                         }
                     }
                 },
-                init: function () {}
+                init: function () {
+                    this.sprite.setAnimation('up');
+                }
             }, settings),
             entity = Entity(entitySettings).extend({
                 setActive: function (bool) {
                     active = bool;
+                },
+                doCallback: function () {
+                    settings.onClick.apply(entity);
                 }
             });
 
@@ -15429,7 +15425,7 @@ bento.define('bento/gui/clickbutton', [
         return entity;
     };
 });
-define('bento/gui/counter', [
+bento.define('bento/gui/counter', [
     'bento',
     'bento/entity',
     'bento/math/vector2',
@@ -15636,6 +15632,7 @@ bento.define('bento/gui/togglebutton', [
     'use strict';
     return function (settings) {
         var viewport = Bento.getViewport(),
+            active = true,
             toggled = false,
             entitySettings = Utils.extend({
                 z: 0,
@@ -15673,6 +15670,9 @@ bento.define('bento/gui/togglebutton', [
                         entity.sprite.setAnimation(toggled ? 'down' : 'up');
                     },
                     onHoldEnd: function () {
+                        if (!active) {
+                            return;
+                        }
                         if (toggled) {
                             toggled = false;
                         } else {
@@ -15696,6 +15696,9 @@ bento.define('bento/gui/togglebutton', [
                 }
             });
 
+        if (Utils.isDefined(settings.active)) {
+            active = settings.active;
+        }
         // set intial state
         if (settings.toggled) {
             toggled = true;

@@ -39,17 +39,8 @@ define('bento/managers/audio', [
                  * @param {Number} value: the volume
                  * @param {String} name: name of the sound currently playing
                  */
-                setVolume: function (value) {
-                    var i, l, node;
-                    if (!Utils.isDefined(howler)) {
-                        return;
-                    }
-                    for (i = 0, l = howler._audioNode.length; i < l; ++i) {
-                        node = howler._audioNode[i];
-                        if (!node.paused) {
-                            howler.volume(value, node.id);
-                        }
-                    }
+                setVolume: function (value, name) {
+                    assetManager.getAudio(name).volume(value);
                 },
                 /* Plays a sound
                  * @name playSound

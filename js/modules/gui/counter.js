@@ -1,4 +1,4 @@
-define('bento/gui/counter', [
+bento.define('bento/gui/counter', [
     'bento',
     'bento/entity',
     'bento/math/vector2',

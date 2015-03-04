@@ -66,11 +66,16 @@ bento.define('bento/gui/clickbutton', [
                         }
                     }
                 },
-                init: function () {}
+                init: function () {
+                    this.sprite.setAnimation('up');
+                }
             }, settings),
             entity = Entity(entitySettings).extend({
                 setActive: function (bool) {
                     active = bool;
+                },
+                doCallback: function () {
+                    settings.onClick.apply(entity);
                 }
             });
 

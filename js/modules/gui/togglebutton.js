@@ -20,6 +20,7 @@ bento.define('bento/gui/togglebutton', [
     'use strict';
     return function (settings) {
         var viewport = Bento.getViewport(),
+            active = true,
             toggled = false,
             entitySettings = Utils.extend({
                 z: 0,
@@ -57,6 +58,9 @@ bento.define('bento/gui/togglebutton', [
                         entity.sprite.setAnimation(toggled ? 'down' : 'up');
                     },
                     onHoldEnd: function () {
+                        if (!active) {
+                            return;
+                        }
                         if (toggled) {
                             toggled = false;
                         } else {
@@ -80,6 +84,9 @@ bento.define('bento/gui/togglebutton', [
                 }
             });
 
+        if (Utils.isDefined(settings.active)) {
+            active = settings.active;
+        }
         // set intial state
         if (settings.toggled) {
             toggled = true;
