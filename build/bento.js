@@ -12891,6 +12891,10 @@ bento.define('bento/managers/asset', [
                         assets.json[name] = json;
                         packs.push(name);
                         assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
                     },
                     onLoadJson = function (err, name, json) {
                         if (err) {
@@ -12899,6 +12903,10 @@ bento.define('bento/managers/asset', [
                         }
                         assets.json[name] = json;
                         assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
                     },
                     onLoadAudio = function () {
                         assetsLoaded += 1;
