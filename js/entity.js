@@ -42,10 +42,28 @@ bento.define('bento/entity', [
                 global: false,
                 updateWhenPaused: false,
                 name: '',
+                start: function (data) {
+                    var i,
+                        l,
+                        component;
+                    if (data) {
+                        data.entity = this;
+                    }
+                    // update components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.start) {
+                            component.start(data);
+                        }
+                    }
+                },
                 destroy: function (data) {
                     var i,
                         l,
                         component;
+                    if (data) {
+                        data.entity = this;
+                    }
                     // update components
                     for (i = 0, l = components.length; i < l; ++i) {
                         component = components[i];

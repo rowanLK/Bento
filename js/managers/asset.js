@@ -50,7 +50,7 @@ bento.define('bento/managers/asset', [
                 };
                 xhr.onreadystatechange = function () {
                     if (xhr.readyState === 4) {
-                        if ((xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
                             callback(null, name, JSON.parse(xhr.responseText));
                         } else {
                             callback('Error: State ' + xhr.readyState + ' ' + source);

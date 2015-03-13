@@ -108,6 +108,9 @@ bento.define('bento/managers/object', [
                     if (object.init) {
                         object.init();
                     }
+                    if (object.start) {
+                        object.start();
+                    }
                     // add object to access pools
                     if (object.getFamily) {
                         family = object.getFamily();

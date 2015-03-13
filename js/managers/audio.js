@@ -74,6 +74,7 @@ define('bento/managers/audio', [
                     }
                     if (!mutedMusic && lastMusicPlayed !== '') {
                         if (Utils.isCocoonJS()) {
+                            assetManager.getAudio(name)._audioNode[0].currentTime = 0;
                             assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
                             assetManager.getAudio(name)._audioNode[0].play();
                             return;

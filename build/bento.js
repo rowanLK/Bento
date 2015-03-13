@@ -11253,10 +11253,28 @@ bento.define('bento/entity', [
                 global: false,
                 updateWhenPaused: false,
                 name: '',
+                start: function (data) {
+                    var i,
+                        l,
+                        component;
+                    if (data) {
+                        data.entity = this;
+                    }
+                    // update components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component && component.start) {
+                            component.start(data);
+                        }
+                    }
+                },
                 destroy: function (data) {
                     var i,
                         l,
                         component;
+                    if (data) {
+                        data.entity = this;
+                    }
                     // update components
                     for (i = 0, l = components.length; i < l; ++i) {
                         component = components[i];
@@ -12148,7 +12166,7 @@ bento.define('bento/components/clickable', [
                     EventSystem.removeEventListener('pointerUp', pointerUp);
                     EventSystem.removeEventListener('pointerMove', pointerMove);
                 },
-                init: function () {
+                start: function () {
                     EventSystem.addEventListener('pointerDown', pointerDown);
                     EventSystem.addEventListener('pointerUp', pointerUp);
                     EventSystem.addEventListener('pointerMove', pointerMove);
@@ -12761,7 +12779,7 @@ bento.define('bento/managers/asset', [
                 };
                 xhr.onreadystatechange = function () {
                     if (xhr.readyState === 4) {
-                        if ((xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
                             callback(null, name, JSON.parse(xhr.responseText));
                         } else {
                             callback('Error: State ' + xhr.readyState + ' ' + source);
@@ -13082,6 +13100,7 @@ define('bento/managers/audio', [
                     }
                     if (!mutedMusic && lastMusicPlayed !== '') {
                         if (Utils.isCocoonJS()) {
+                            assetManager.getAudio(name)._audioNode[0].currentTime = 0;
                             assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
                             assetManager.getAudio(name)._audioNode[0].play();
                             return;
@@ -13552,6 +13571,9 @@ bento.define('bento/managers/object', [
                     objects.push(object);
                     if (object.init) {
                         object.init();
+                    }
+                    if (object.start) {
+                        object.start();
                     }
                     // add object to access pools
                     if (object.getFamily) {
@@ -15091,7 +15113,7 @@ bento.define('bento/tween', [
                         added = false;
                     }
                 },
-                start: function () {
+                begin: function () {
                     time = 0;
                     if (!added) {
                         Bento.objects.add(tween);
@@ -15109,8 +15131,8 @@ bento.define('bento/tween', [
         if (settings.in === 0) {
             settings.in = 1;
         }
-        // tween automatically starts
-        tween.start();
+        // tween automatically starts ?
+        tween.begin();
         return tween;
     };
 });

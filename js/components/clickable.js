@@ -32,7 +32,7 @@ bento.define('bento/components/clickable', [
                     EventSystem.removeEventListener('pointerUp', pointerUp);
                     EventSystem.removeEventListener('pointerMove', pointerMove);
                 },
-                init: function () {
+                start: function () {
                     EventSystem.addEventListener('pointerDown', pointerDown);
                     EventSystem.addEventListener('pointerUp', pointerUp);
                     EventSystem.addEventListener('pointerMove', pointerMove);

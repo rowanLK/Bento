@@ -242,7 +242,7 @@ bento.define('bento/tween', [
                         added = false;
                     }
                 },
-                start: function () {
+                begin: function () {
                     time = 0;
                     if (!added) {
                         Bento.objects.add(tween);
@@ -260,8 +260,8 @@ bento.define('bento/tween', [
         if (settings.in === 0) {
             settings.in = 1;
         }
-        // tween automatically starts
-        tween.start();
+        // tween automatically starts ?
+        tween.begin();
         return tween;
     };
 });
