@@ -111,6 +111,7 @@ bento.define('bento/managers/object', [
                     if (object.start) {
                         object.start();
                     }
+                    object.isAdded = true;
                     // add object to access pools
                     if (object.getFamily) {
                         family = object.getFamily();
@@ -134,6 +135,7 @@ bento.define('bento/managers/object', [
                         if (object.destroy) {
                             object.destroy(gameData);
                         }
+                        object.isAdded = false;
                     }
                     // remove from access pools
                     if (object.getFamily) {

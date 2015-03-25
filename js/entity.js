@@ -42,6 +42,7 @@ bento.define('bento/entity', [
                 global: false,
                 updateWhenPaused: false,
                 name: '',
+                isAdded: false,
                 start: function (data) {
                     var i,
                         l,
@@ -198,13 +199,27 @@ bento.define('bento/entity', [
                     visible = value;
                 },
                 attach: function (component, name) {
-                    var mixin = {};
+                    var mixin = {},
+                        parent = entity;
                     components.push(component);
                     if (component.setParent) {
                         component.setParent(entity);
                     }
                     if (component.init) {
                         component.init();
+                    }
+                    if (entity.isAdded) {
+                        if (component.start) {
+                            component.start()
+                        }
+                    } else {
+                        while (parent.getParent && parent = parent.getParent()) {
+                            if (parent.isAdded) {
+                                if (component.start) {
+                                    component.start()
+                                }
+                            }
+                        }
                     }
                     if (name) {
                         mixin[name] = component;
