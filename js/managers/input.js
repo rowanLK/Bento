@@ -11,6 +11,7 @@ bento.define('bento/managers/input', [
     'use strict';
     return function (settings) {
         var isPaused = false,
+            isListening = false,
             canvas,
             canvasScale,
             viewport,
@@ -134,6 +135,7 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('mousedown', mouseDown);
                 canvas.addEventListener('mousemove', mouseMove);
                 canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
 
                 document.body.addEventListener('touchstart', function (evt) {
                     if (evt && evt.preventDefault) {
@@ -175,19 +177,23 @@ bento.define('bento/managers/input', [
             keyDown = function (evt) {
                 var i, names;
                 evt.preventDefault();
+                EventSystem.fire('keyDown', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
+                    EventSystem.fire('buttonDown', names[i]);
                 }
             },
             keyUp = function (evt) {
                 var i, names;
                 evt.preventDefault();
+                EventSystem.fire('keyUp', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = false;
+                    EventSystem.fire('buttonUp', names[i]);
                 }
             },
             destroy = function () {
@@ -223,8 +229,30 @@ bento.define('bento/managers/input', [
             isKeyDown: function (name) {
                 return keyStates[name] || false;
             },
-            addListener: function () {},
-            removeListener: function () {}
+            stop: function () {
+                if (!isListening) {
+                    return;
+                }
+                canvas.removeEventListener('touchstart', touchStart);
+                canvas.removeEventListener('touchmove', touchMove);
+                canvas.removeEventListener('touchend', touchEnd);
+                canvas.removeEventListener('mousedown', mouseDown);
+                canvas.removeEventListener('mousemove', mouseMove);
+                canvas.removeEventListener('mouseup', mouseUp);
+                isListening = false;
+            },
+            resume: function () {
+                if (isListening) {
+                    return;
+                }
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
+            }
         };
     };
 });

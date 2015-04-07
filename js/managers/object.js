@@ -18,6 +18,7 @@ bento.define('bento/managers/object', [
             isRunning = false,
             useSort = true,
             isPaused = false,
+            isStopped = false,
             fpsMeter,
             sort = function () {
                 if (!settings.defaultSort) {
@@ -46,6 +47,10 @@ bento.define('bento/managers/object', [
                     currentTime = new Date().getTime(),
                     deltaT = currentTime - lastTime;
 
+                if (!isRunning) {
+                    return;
+                }
+
                 if (settings.debug) {
                     fpsMeter.tickStart();
                 }
@@ -67,20 +72,37 @@ bento.define('bento/managers/object', [
                     if (settings.useDeltaT) {
                         cumulativeTime = 0;
                     }
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
-                            object.update(gameData);
-                        }
-                    }
+                    update();
                 }
                 cleanObjects();
                 if (useSort) {
                     sort();
                 }
+                draw();
+
+                lastFrameTime = time;
+                if (settings.debug) {
+                    fpsMeter.tick();
+                }
+
+                requestAnimationFrame(mainLoop);
+            },
+            update = function () {
+                var object,
+                    i;
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
+                        object.update(gameData);
+                    }
+                }
+            },
+            draw = function () {
+                var object,
+                    i;
                 gameData.renderer.begin();
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
@@ -92,13 +114,6 @@ bento.define('bento/managers/object', [
                     }
                 }
                 gameData.renderer.flush();
-
-                lastFrameTime = time;
-                if (settings.debug) {
-                    fpsMeter.tick();
-                }
-
-                requestAnimationFrame(mainLoop);
             },
             module = {
                 add: function (object) {
@@ -173,7 +188,7 @@ bento.define('bento/managers/object', [
                             continue;
                         }
                         if (object.name === objectName) {
-                            return object
+                            return object;
                         }
                     }
                     return null;
@@ -207,10 +222,13 @@ bento.define('bento/managers/object', [
                     }
                     return array;
                 },
+                stop: function () {
+                    isRunning = false;
+                },
                 run: function () {
                     if (!isRunning) {
-                        mainLoop();
                         isRunning = true;
+                        mainLoop();
                     }
                 },
                 count: function () {
@@ -224,6 +242,9 @@ bento.define('bento/managers/object', [
                 },
                 isPaused: function () {
                     return isPaused;
+                },
+                draw: function () {
+                    draw();
                 }
             };
 

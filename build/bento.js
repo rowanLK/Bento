@@ -1227,7 +1227,7 @@
    * Add support for AMD (Asynchronous Module Definition) libraries such as require.js.
    */
   if (typeof define === 'function' && define.amd) {
-    define(function() {
+    define('howler', function() {
       return {
         Howler: Howler,
         Howl: Howl
@@ -11253,6 +11253,7 @@ bento.define('bento/entity', [
                 global: false,
                 updateWhenPaused: false,
                 name: '',
+                isAdded: false,
                 start: function (data) {
                     var i,
                         l,
@@ -11409,13 +11410,31 @@ bento.define('bento/entity', [
                     visible = value;
                 },
                 attach: function (component, name) {
-                    var mixin = {};
+                    var mixin = {},
+                        parent = entity;
                     components.push(component);
                     if (component.setParent) {
                         component.setParent(entity);
                     }
                     if (component.init) {
                         component.init();
+                    }
+                    if (entity.isAdded) {
+                        if (component.start) {
+                            component.start();
+                        }
+                    } else {
+                        if (parent.getParent) {
+                            parent = parent.getParent();
+                        }
+                        while (parent) {
+                            if (parent.isAdded) {
+                                if (component.start) {
+                                    component.start();
+                                }
+                            }
+                            parent = parent.getParent();
+                        }
                     }
                     if (name) {
                         mixin[name] = component;
@@ -13253,6 +13272,7 @@ bento.define('bento/managers/input', [
     'use strict';
     return function (settings) {
         var isPaused = false,
+            isListening = false,
             canvas,
             canvasScale,
             viewport,
@@ -13376,6 +13396,7 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('mousedown', mouseDown);
                 canvas.addEventListener('mousemove', mouseMove);
                 canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
 
                 document.body.addEventListener('touchstart', function (evt) {
                     if (evt && evt.preventDefault) {
@@ -13417,19 +13438,23 @@ bento.define('bento/managers/input', [
             keyDown = function (evt) {
                 var i, names;
                 evt.preventDefault();
+                EventSystem.fire('keyDown', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
+                    EventSystem.fire('buttonDown', names[i]);
                 }
             },
             keyUp = function (evt) {
                 var i, names;
                 evt.preventDefault();
+                EventSystem.fire('keyUp', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = false;
+                    EventSystem.fire('buttonUp', names[i]);
                 }
             },
             destroy = function () {
@@ -13465,8 +13490,30 @@ bento.define('bento/managers/input', [
             isKeyDown: function (name) {
                 return keyStates[name] || false;
             },
-            addListener: function () {},
-            removeListener: function () {}
+            stop: function () {
+                if (!isListening) {
+                    return;
+                }
+                canvas.removeEventListener('touchstart', touchStart);
+                canvas.removeEventListener('touchmove', touchMove);
+                canvas.removeEventListener('touchend', touchEnd);
+                canvas.removeEventListener('mousedown', mouseDown);
+                canvas.removeEventListener('mousemove', mouseMove);
+                canvas.removeEventListener('mouseup', mouseUp);
+                isListening = false;
+            },
+            resume: function () {
+                if (isListening) {
+                    return;
+                }
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
+            }
         };
     };
 });
@@ -13490,6 +13537,7 @@ bento.define('bento/managers/object', [
             isRunning = false,
             useSort = true,
             isPaused = false,
+            isStopped = false,
             fpsMeter,
             sort = function () {
                 if (!settings.defaultSort) {
@@ -13518,6 +13566,10 @@ bento.define('bento/managers/object', [
                     currentTime = new Date().getTime(),
                     deltaT = currentTime - lastTime;
 
+                if (!isRunning) {
+                    return;
+                }
+
                 if (settings.debug) {
                     fpsMeter.tickStart();
                 }
@@ -13539,20 +13591,37 @@ bento.define('bento/managers/object', [
                     if (settings.useDeltaT) {
                         cumulativeTime = 0;
                     }
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
-                            object.update(gameData);
-                        }
-                    }
+                    update();
                 }
                 cleanObjects();
                 if (useSort) {
                     sort();
                 }
+                draw();
+
+                lastFrameTime = time;
+                if (settings.debug) {
+                    fpsMeter.tick();
+                }
+
+                requestAnimationFrame(mainLoop);
+            },
+            update = function () {
+                var object,
+                    i;
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
+                        object.update(gameData);
+                    }
+                }
+            },
+            draw = function () {
+                var object,
+                    i;
                 gameData.renderer.begin();
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
@@ -13564,13 +13633,6 @@ bento.define('bento/managers/object', [
                     }
                 }
                 gameData.renderer.flush();
-
-                lastFrameTime = time;
-                if (settings.debug) {
-                    fpsMeter.tick();
-                }
-
-                requestAnimationFrame(mainLoop);
             },
             module = {
                 add: function (object) {
@@ -13583,6 +13645,7 @@ bento.define('bento/managers/object', [
                     if (object.start) {
                         object.start();
                     }
+                    object.isAdded = true;
                     // add object to access pools
                     if (object.getFamily) {
                         family = object.getFamily();
@@ -13606,6 +13669,7 @@ bento.define('bento/managers/object', [
                         if (object.destroy) {
                             object.destroy(gameData);
                         }
+                        object.isAdded = false;
                     }
                     // remove from access pools
                     if (object.getFamily) {
@@ -13643,7 +13707,7 @@ bento.define('bento/managers/object', [
                             continue;
                         }
                         if (object.name === objectName) {
-                            return object
+                            return object;
                         }
                     }
                     return null;
@@ -13677,10 +13741,13 @@ bento.define('bento/managers/object', [
                     }
                     return array;
                 },
+                stop: function () {
+                    isRunning = false;
+                },
                 run: function () {
                     if (!isRunning) {
-                        mainLoop();
                         isRunning = true;
+                        mainLoop();
                     }
                 },
                 count: function () {
@@ -13694,6 +13761,9 @@ bento.define('bento/managers/object', [
                 },
                 isPaused: function () {
                     return isPaused;
+                },
+                draw: function () {
+                    draw();
                 }
             };
 
@@ -14961,44 +15031,44 @@ bento.define('bento/tween', [
                 return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
             },
             easeInElastic: function (t, b, c, d) {
-                var s = 1.70158;
-                var p = 0;
-                var a = c;
+                var s = 1.70158,
+                    p = 0,
+                    a = c;
                 if (t === 0) return b;
                 if ((t /= d) === 1) return b + c;
-                if (!p) p = d * .3;
+                if (!p) p = d * 0.3;
                 if (a < Math.abs(c)) {
                     a = c;
-                    var s = p / 4;
-                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                    s = p / 4;
+                } else s = p / (2 * Math.PI) * Math.asin(c / a);
                 return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
             },
             easeOutElastic: function (t, b, c, d) {
-                var s = 1.70158;
-                var p = 0;
-                var a = c;
+                var s = 1.70158,
+                    p = 0,
+                    a = c;
                 if (t === 0) return b;
                 if ((t /= d) === 1) return b + c;
-                if (!p) p = d * .3;
+                if (!p) p = d * 0.3;
                 if (a < Math.abs(c)) {
                     a = c;
-                    var s = p / 4;
-                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                    s = p / 4;
+                } else s = p / (2 * Math.PI) * Math.asin(c / a);
                 return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
             },
             easeInOutElastic: function (t, b, c, d) {
-                var s = 1.70158;
-                var p = 0;
-                var a = c;
+                var s = 1.70158,
+                    p = 0,
+                    a = c;
                 if (t === 0) return b;
                 if ((t /= d / 2) === 2) return b + c;
-                if (!p) p = d * (.3 * 1.5);
+                if (!p) p = d * (0.3 * 1.5);
                 if (a < Math.abs(c)) {
                     a = c;
-                    var s = p / 4;
-                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
-                if (t < 1) return -.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-                return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * .5 + c + b;
+                    s = p / 4;
+                } else s = p / (2 * Math.PI) * Math.asin(c / a);
+                if (t < 1) return -0.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+                return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * 0.5 + c + b;
             },
             easeInBack: function (t, b, c, d, s) {
                 if (s === undefined) s = 1.70158;
@@ -15020,16 +15090,16 @@ bento.define('bento/tween', [
                 if ((t /= d) < (1 / 2.75)) {
                     return c * (7.5625 * t * t) + b;
                 } else if (t < (2 / 2.75)) {
-                    return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+                    return c * (7.5625 * (t -= (1.5 / 2.75)) * t + 0.75) + b;
                 } else if (t < (2.5 / 2.75)) {
-                    return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+                    return c * (7.5625 * (t -= (2.25 / 2.75)) * t + 0.9375) + b;
                 } else {
-                    return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+                    return c * (7.5625 * (t -= (2.625 / 2.75)) * t + 0.984375) + b;
                 }
             },
             easeInOutBounce: function (t, b, c, d) {
-                if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * .5 + b;
-                return this.easeOutBounce(t * 2 - d, 0, c, d) * .5 + c * .5 + b;
+                if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
+                return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
             }
         },
         interpolations = {

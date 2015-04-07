@@ -210,15 +210,19 @@ bento.define('bento/entity', [
                     }
                     if (entity.isAdded) {
                         if (component.start) {
-                            component.start()
+                            component.start();
                         }
                     } else {
-                        while (parent.getParent && parent = parent.getParent()) {
+                        if (parent.getParent) {
+                            parent = parent.getParent();
+                        }
+                        while (parent) {
                             if (parent.isAdded) {
                                 if (component.start) {
-                                    component.start()
+                                    component.start();
                                 }
                             }
+                            parent = parent.getParent();
                         }
                     }
                     if (name) {
