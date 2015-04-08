@@ -43,6 +43,7 @@ bento.define('bento/entity', [
                 updateWhenPaused: false,
                 name: '',
                 isAdded: false,
+                useHsgh: false,
                 start: function (data) {
                     var i,
                         l,
@@ -298,6 +299,13 @@ bento.define('bento/entity', [
                         }
                     }
                     return null;
+                },
+                getAABB: function () {
+                    var box = entity.getBoundingBox();
+                    return {
+                        min: [box.x, box.y],
+                        max: [box.x + box.width, box.y + box.height]
+                    };
                 }
             };
 
@@ -339,6 +347,7 @@ bento.define('bento/entity', [
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;
             entity.float = settings.float || false;
+            entity.useHsgh = settings.Hsgh || false;
 
             if (settings.addNow) {
                 Bento.objects.add(entity);

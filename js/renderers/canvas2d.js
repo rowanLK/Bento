@@ -7,6 +7,7 @@ bento.define('bento/renderers/canvas2d', [
 ], function (Utils) {
     return function (canvas, settings) {
         var context = canvas.getContext('2d'),
+            original = context,
             renderer = {
                 name: 'canvas2d',
                 save: function () {
@@ -62,6 +63,23 @@ bento.define('bento/renderers/canvas2d', [
                 },
                 setOpacity: function (value) {
                     context.globalAlpha = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('2d');
+
+                    return newContext;
+                },
+                setContext: function (ctx) {
+                    context = ctx;
+                },
+                restoreContext: function () {
+                    context = original;
                 }
             };
         console.log('Init canvas2d as renderer');

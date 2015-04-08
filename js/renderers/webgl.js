@@ -7,9 +7,18 @@ bento.define('bento/renderers/webgl', [
     'bento/renderers/canvas2d'
 ], function (Utils, Canvas2d) {
     return function (canvas, settings) {
-        var canWebGl,
+        var canWebGl = (function () {
+                // try making a canvas
+                try {
+                    var canvas = document.createElement('canvas');
+                    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                } catch (e) {
+                    return false;
+                }
+            })(),
             context,
             glRenderer,
+            original,
             renderer = {
                 name: 'webgl',
                 save: function () {
@@ -62,24 +71,37 @@ bento.define('bento/renderers/webgl', [
                 },
                 setOpacity: function (value) {
                     glRenderer.color[3] = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext,
+                        newGlRenderer;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    newGlRenderer = window.GlSprites.SpriteRenderer(newContext);
+                    newGlRenderer.ortho(canvas.width, canvas.height);
+
+                    return newGlRenderer;
+                },
+                setContext: function (ctx) {
+                    glRenderer = ctx;
+                },
+                restoreContext: function () {
+                    glRenderer = original;
                 }
             };
         console.log('Init webgl as renderer');
 
         // fallback
-        canWebGl = (function () {
-            try {
-                var canvas = document.createElement('canvas');
-                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-            } catch (e) {
-                return false;
-            }
-        })();
         if (canWebGl) {
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
             glRenderer = window.GlSprites.SpriteRenderer(context);
             glRenderer.ortho(canvas.width, canvas.height);
+            original = glRenderer;
             return renderer;
         } else {
             return Canvas2d(canvas, settings);

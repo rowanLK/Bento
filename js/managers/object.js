@@ -4,8 +4,9 @@
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/object', [
+    'hsgh'
     'bento/utils'
-], function (Utils) {
+], function (Hsgh, Utils) {
     'use strict';
     return function (data, settings) {
         var objects = [],
@@ -20,6 +21,7 @@ bento.define('bento/managers/object', [
             isPaused = false,
             isStopped = false,
             fpsMeter,
+            hsgh = new Hsgh(),
             sort = function () {
                 if (!settings.defaultSort) {
                     Utils.stableSort.inplace(objects, function (a, b) {
@@ -90,6 +92,10 @@ bento.define('bento/managers/object', [
             update = function () {
                 var object,
                     i;
+                if (!isPaused) {
+                    hsgh.update();
+                    hsgh.queryForCollisionPairs();
+                }
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
                     if (!object) {
@@ -127,6 +133,9 @@ bento.define('bento/managers/object', [
                         object.start();
                     }
                     object.isAdded = true;
+                    if (object.useHsgh && object.getAABB) {
+                        hsgh.addObject(object);
+                    }
                     // add object to access pools
                     if (object.getFamily) {
                         family = object.getFamily();
@@ -151,6 +160,9 @@ bento.define('bento/managers/object', [
                             object.destroy(gameData);
                         }
                         object.isAdded = false;
+                    }
+                    if (object.useHsgh && object.getAABB) {
+                        hsgh.removeObject(object);
                     }
                     // remove from access pools
                     if (object.getFamily) {

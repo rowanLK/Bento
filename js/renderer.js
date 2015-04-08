@@ -19,7 +19,10 @@ bento.define('bento/renderer', [
             flush: function () {},
             setColor: function () {},
             getOpacity: function () {},
-            setOpacity: function () {}
+            setOpacity: function () {},
+            createSurface: function () {},
+            setContext: function () {},
+            restoreContext: function () {}
         };
         require(['bento/renderers/' + type], function (renderer) {
             Utils.extend(module, renderer(canvas, settings));
