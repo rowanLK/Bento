@@ -4,7 +4,7 @@
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/object', [
-    'hsgh'
+    'hsgh',
     'bento/utils'
 ], function (Hsgh, Utils) {
     'use strict';

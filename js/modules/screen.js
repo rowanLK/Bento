@@ -15,7 +15,7 @@ bento.define('bento/screen', [
             tiled: String
         }*/
         var viewport = Bento.getViewport(),
-            dimension = settings ? settings.dimension : Bento.getViewport(),
+            dimension = settings ? settings.dimension : Bento.getViewport().clone(),
             tiled,
             isShown = false,
             module = {
@@ -42,6 +42,7 @@ bento.define('bento/screen', [
                         name: name,
                         spawn: true // TEMP
                     });
+                    this.setDimension(tiled.dimension);
                 },
                 onShow: function () {
                     // load tiled map if present
