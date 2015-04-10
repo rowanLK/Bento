@@ -267,13 +267,18 @@ bento.define('bento/entity', [
                 getId: function () {
                     return uniqueId;
                 },
-                collidesWith: function (other, offset) {
+                collidesWith: function (other, offset, callback) {
+                    var intersect;
                     if (!Utils.isDefined(offset)) {
                         offset = Vector2(0, 0);
                     }
-                    return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
+                    intersect = entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
+                    if (intersect && callback) {
+                        callback();
+                    }
+                    return intersect;
                 },
-                collidesWithGroup: function (array, offset) {
+                collidesWithGroup: function (array, offset, callback) {
                     var i,
                         obj,
                         box;
@@ -295,6 +300,9 @@ bento.define('bento/entity', [
                             continue;
                         }
                         if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
+                            if (callback) {
+                                callback(obj);
+                            }
                             return obj;
                         }
                     }

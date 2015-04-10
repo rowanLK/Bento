@@ -11493,13 +11493,18 @@ bento.define('bento/entity', [
                 getId: function () {
                     return uniqueId;
                 },
-                collidesWith: function (other, offset) {
+                collidesWith: function (other, offset, callback) {
+                    var intersect;
                     if (!Utils.isDefined(offset)) {
                         offset = Vector2(0, 0);
                     }
-                    return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
+                    intersect = entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
+                    if (intersect && callback) {
+                        callback();
+                    }
+                    return intersect;
                 },
-                collidesWithGroup: function (array, offset) {
+                collidesWithGroup: function (array, offset, callback) {
                     var i,
                         obj,
                         box;
@@ -11521,6 +11526,9 @@ bento.define('bento/entity', [
                             continue;
                         }
                         if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
+                            if (callback) {
+                                callback(obj);
+                            }
                             return obj;
                         }
                     }
@@ -14285,7 +14293,7 @@ bento.define('bento/managers/object', [
                         }
                     }
                 },
-                get: function (objectName) {
+                get: function (objectName, callback) {
                     // retrieves the first object it finds by its name
                     var i,
                         object;
@@ -14299,12 +14307,15 @@ bento.define('bento/managers/object', [
                             continue;
                         }
                         if (object.name === objectName) {
+                            if (callback) {
+                                callback(object);
+                            }
                             return object;
                         }
                     }
                     return null;
                 },
-                getByName: function (objectName) {
+                getByName: function (objectName, callback) {
                     var i,
                         object,
                         array = [];
@@ -14321,15 +14332,21 @@ bento.define('bento/managers/object', [
                             array.push(object);
                         }
                     }
+                    if (callback && array.length) {
+                        callback(array);
+                    }
                     return array;
                 },
-                getByFamily: function (type) {
+                getByFamily: function (type, callback) {
                     var array = quickAccess[type];
                     if (!array) {
                         // initialize it
                         quickAccess[type] = [];
                         array = quickAccess[type];
                         console.log('Warning: family called ' + type + ' does not exist');
+                    }
+                    if (callback && array.length) {
+                        callback(array);
                     }
                     return array;
                 },
@@ -15229,7 +15246,7 @@ bento.define('bento/screen', [
             tiled: String
         }*/
         var viewport = Bento.getViewport(),
-            dimension = settings ? settings.dimension : Bento.getViewport().clone(),
+            dimension = settings ? settings.dimension : viewport.clone(),
             tiled,
             isShown = false,
             module = {
