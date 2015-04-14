@@ -1,6 +1,7 @@
 bento.define('bento/components/animation', [
+    'bento',
     'bento/utils',
-], function (Utils) {
+], function (Bento, Utils) {
     'use strict';
     return function (entity, settings) {
         var spriteImage,
@@ -38,17 +39,30 @@ bento.define('bento/components/animation', [
                             frames: [0]
                         };
                     }
-                    spriteImage = settings.image;
+                    // get image
+                    if (settings.image) {
+                        spriteImage = settings.image;
+                    } else if (settings.imageName) {
+                        // load from string
+                        if (Bento.assets) {
+                            spriteImage = Bento.assets.getImage(settings.imageName);
+                        } else {
+                            throw 'Bento asset manager not loaded';
+                        }
+                    }
                     // use frameWidth if specified (overrides frameCountX and frameCountY)
-                    if (animationSettings.frameWidth && animationSettings.frameHeight) {
+                    if (animationSettings.frameWidth) {
                         frameWidth = animationSettings.frameWidth;
-                        frameHeight = animationSettings.frameHeight;
                         frameCountX = Math.floor(spriteImage.width / frameWidth);
-                        frameCountY = Math.floor(spriteImage.height / frameHeight);
                     } else {
                         frameCountX = animationSettings.frameCountX || 1;
-                        frameCountY = animationSettings.frameCountY || 1;
                         frameWidth = spriteImage.width / frameCountX;
+                    }
+                    if (animationSettings.frameHeight) {
+                        frameHeight = animationSettings.frameHeight;
+                        frameCountY = Math.floor(spriteImage.height / frameHeight);
+                    } else {
+                        frameCountY = animationSettings.frameCountY || 1;
                         frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of entity object
