@@ -59,6 +59,16 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
             this.y /= vector.y;
             return this;
         },
+        scalarMultiply = function (value) {
+            var v = this.clone();
+            v.scalarMultiplyWith(value);
+            return v;
+        },
+        scalarMultiplyWith = function (value) {
+            this.x *= value;
+            this.y *= value;
+            return this;
+        },
         scale = function (value) {
             this.x *= value;
             this.y *= value;
@@ -112,6 +122,8 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
                 multiplyWith: multiplyWith,
                 divide: divide,
                 divideBy: divideBy,
+                scalarMultiply: scalarMultiply,
+                scalarMultiplyWith: scalarMultiplyWith,
                 scale: scale,
                 length: length,
                 normalize: normalize,

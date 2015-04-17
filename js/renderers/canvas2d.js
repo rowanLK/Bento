@@ -49,7 +49,7 @@ bento.define('bento/renderers/canvas2d', [
                     if (colorArray[3] !== 1) {
                         context.globalAlpha = colorArray[3];
                     }
-                    context.fillStyle = colorStr;
+                    context.strokeStyle = colorStr;
                     context.strokeRect(x, y, w, h);
                     if (colorArray[3] !== 1) {
                         context.globalAlpha = oldOpacity;

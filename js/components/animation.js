@@ -100,6 +100,9 @@ bento.define('bento/components/animation', [
                 setFrame: function (frameNumber) {
                     currentFrame = frameNumber;
                 },
+                setCurrentSpeed: function (value) {
+                    currentAnimation.speed = value;
+                },
                 getCurrentFrame: function () {
                     return currentFrame;
                 },

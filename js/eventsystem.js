@@ -27,7 +27,20 @@ bento.define('bento/eventsystem', [
                 }
             }
             removedEvents = [];
+        },
+        addEventListener = function (eventName, callback) {
+            if (Utils.isUndefined(events[eventName])) {
+                events[eventName] = [];
+            }
+            events[eventName].push(callback);
+        },
+        removeEventListener = function (eventName, callback) {
+            removedEvents.push({
+                eventName: eventName,
+                callback: callback
+            });
         };
+        
     return {
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
@@ -49,17 +62,9 @@ bento.define('bento/eventsystem', [
                 }
             }
         },
-        addEventListener: function (eventName, callback) {
-            if (Utils.isUndefined(events[eventName])) {
-                events[eventName] = [];
-            }
-            events[eventName].push(callback);
-        },
-        removeEventListener: function (eventName, callback) {
-            removedEvents.push({
-                eventName: eventName,
-                callback: callback
-            });
-        }
+        addEventListener: addEventListener,
+        removeEventListener: removeEventListener,
+        on: addEventListener,
+        off: removeEventListener
     };
 });

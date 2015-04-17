@@ -26,14 +26,23 @@ bento.define('bento/entity', [
             parent = null,
             uniqueId = ++globalId,
             cleanComponents = function () {
-                var i, component;
+                /*var i, component;
                 while (removedComponents.length) {
                     component = removedComponents.pop();
                     // should destroy be called?
-                    /*if (component.destroy) {
+                    if (component.destroy) {
                         component.destroy();
-                    }*/
+                    }
                     Utils.removeObject(components, component);
+                }
+                */
+
+                // remove null components
+                var i;
+                for (i = components.length - 1; i >= 0; --i) {
+                    if (!components[i]) {
+                        components.splice(i, 1);
+                    }
                 }
             },
             entity = {
@@ -242,6 +251,7 @@ bento.define('bento/entity', [
                         if (component.destroy) {
                             component.destroy();
                         }
+                        // TODO: clean component
                         components[index] = null;
                     }
                     return entity;
@@ -256,6 +266,23 @@ bento.define('bento/entity', [
                         if (component.name === name) {
                             return component;
                         }
+                    }
+                },
+                getComponentIndex: function (component) {
+                    return components.indexOf(component);
+                },
+                moveComponentTo: function (component, newIndex) {
+                    // note: currently dangerous to do during an update loop
+                    var i, type, index;
+                    if (!component) {
+                        return;
+                    }
+                    index = components.indexOf(component);
+                    if (index >= 0) {
+                        // remove old
+                        components.splice(index, 1);
+                        // insert at new place
+                        components.splice(newIndex, 0, component);
                     }
                 },
                 setParent: function (obj) {

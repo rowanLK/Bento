@@ -37,6 +37,7 @@ bento.define('bento', [
         styleScaling = true,
         canvasRatio = 0,
         windowRatio,
+        manualResize = false,
         canvasScale = {
             x: 1,
             y: 1
@@ -114,6 +115,10 @@ bento.define('bento', [
                 innerWidth = window.innerWidth,
                 innerHeight = window.innerHeight;
 
+            if (manualResize) {
+                return;
+            }
+
             windowRatio = innerHeight / innerWidth;
             // resize to fill screen
             if (windowRatio < canvasRatio) {
@@ -151,6 +156,7 @@ bento.define('bento', [
                     }
                     setupCanvas(settings, function () {
                         // window resize listeners
+                        manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
