@@ -53,7 +53,7 @@ bento.define('bento/managers/object', [
                     return;
                 }
 
-                if (settings.debug) {
+                if (settings.debug && fpsMeter) {
                     fpsMeter.tickStart();
                 }
 
@@ -83,7 +83,7 @@ bento.define('bento/managers/object', [
                 draw();
 
                 lastFrameTime = time;
-                if (settings.debug) {
+                if (settings.debug && fpsMeter) {
                     fpsMeter.tick();
                 }
 
@@ -275,7 +275,7 @@ bento.define('bento/managers/object', [
             };
         }
         gameData = data;
-        if (settings.debug) {
+        if (settings.debug && Utils.isDefined(window.FPSMeter)) {
             FPSMeter.defaults.graph = 1;
             fpsMeter = new FPSMeter();
         }

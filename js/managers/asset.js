@@ -30,11 +30,17 @@ bento.define('bento/managers/asset', [
                         source[i] = path + 'audio/' + source[i];
                     }
                 }
-                asset = new Howl({
-                    urls: source,
-                    onload: callback
-                });
-                assets.audio[name] = asset;
+                // TEMP: use howler
+                if (Utils.isDefined(window.Howl)) {
+                    asset = new Howl({
+                        urls: source,
+                        onload: callback
+                    });
+                    assets.audio[name] = asset;
+                } else {
+                    // TODO: load audio and add audio manager
+                    callback();
+                }
             },
             loadJSON = function (name, source, callback) {
                 var xhr = new XMLHttpRequest();

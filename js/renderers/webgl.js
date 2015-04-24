@@ -96,7 +96,7 @@ bento.define('bento/renderers/webgl', [
         console.log('Init webgl as renderer');
 
         // fallback
-        if (canWebGl) {
+        if (canWebGl && Utils.isDefined(window.GLSprites)) {
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
             glRenderer = window.GlSprites.SpriteRenderer(context);

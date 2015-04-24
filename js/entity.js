@@ -382,7 +382,8 @@ bento.define('bento/entity', [
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;
             entity.float = settings.float || false;
-            entity.useHsgh = settings.Hsgh || false;
+            entity.useHsgh = settings.useHsgh || false;
+            entity.onCollide = settings.onCollide;
 
             if (settings.addNow) {
                 Bento.objects.add(entity);
