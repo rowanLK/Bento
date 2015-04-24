@@ -1,6 +1,6 @@
 // https://gist.github.com/kirbysayshi/1760774
 
-bento.define('hsgh', [], function () {
+bento.define('hshg', [], function () {
 
     //---------------------------------------------------------------------
     // GLOBAL FUNCTIONS
@@ -156,7 +156,7 @@ bento.define('hsgh', [], function () {
             globalObjectsIndex, replacementObj;
 
         if (meta === undefined) {
-            throw Error(obj + ' was not in the HSHG.');
+            //throw Error(obj + ' was not in the HSHG.');
             return;
         }
 
@@ -198,6 +198,9 @@ bento.define('hsgh', [], function () {
                 // collide all objects within the occupied cell
                 for (k = 0; k < cell.objectContainer.length; k++) {
                     objA = cell.objectContainer[k];
+                    if (objA.staticHshg) {
+                        continue;
+                    }
                     for (l = k + 1; l < cell.objectContainer.length; l++) {
                         objB = cell.objectContainer[l];
                         if (broadOverlapTest(objA, objB) === true) {
@@ -217,6 +220,9 @@ bento.define('hsgh', [], function () {
                     // collide all objects in cell with adjacent cell
                     for (k = 0; k < cell.objectContainer.length; k++) {
                         objA = cell.objectContainer[k];
+                        if (objA.staticHshg) {
+                            continue;
+                        }
                         for (l = 0; l < adjacentCell.objectContainer.length; l++) {
                             objB = adjacentCell.objectContainer[l];
                             if (broadOverlapTest(objA, objB) === true) {
@@ -230,6 +236,9 @@ bento.define('hsgh', [], function () {
             // forall objects that are stored in this grid
             for (j = 0; j < grid.allObjects.length; j++) {
                 objA = grid.allObjects[j];
+                if (objA.staticHshg) {
+                    continue;
+                }
                 objAAABB = objA.getAABB();
 
                 // for all grids with cellsize larger than grid

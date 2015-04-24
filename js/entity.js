@@ -52,7 +52,7 @@ bento.define('bento/entity', [
                 updateWhenPaused: false,
                 name: '',
                 isAdded: false,
-                useHsgh: false,
+                useHshg: false,
                 start: function (data) {
                     var i,
                         l,
@@ -382,7 +382,8 @@ bento.define('bento/entity', [
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;
             entity.float = settings.float || false;
-            entity.useHsgh = settings.useHsgh || false;
+            entity.useHshg = settings.useHshg || false;
+            entity.staticHshg = settings.staticHshg || false;
             entity.onCollide = settings.onCollide;
 
             if (settings.addNow) {

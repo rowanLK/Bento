@@ -4,9 +4,9 @@
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/object', [
-    'hsgh',
+    'hshg',
     'bento/utils'
-], function (Hsgh, Utils) {
+], function (Hshg, Utils) {
     'use strict';
     return function (data, settings) {
         var objects = [],
@@ -21,7 +21,7 @@ bento.define('bento/managers/object', [
             isPaused = false,
             isStopped = false,
             fpsMeter,
-            hsgh = new Hsgh(),
+            hshg = new Hshg(),
             sort = function () {
                 if (!settings.defaultSort) {
                     Utils.stableSort.inplace(objects, function (a, b) {
@@ -93,8 +93,8 @@ bento.define('bento/managers/object', [
                 var object,
                     i;
                 if (!isPaused) {
-                    hsgh.update();
-                    hsgh.queryForCollisionPairs();
+                    hshg.update();
+                    hshg.queryForCollisionPairs();
                 }
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
@@ -133,8 +133,8 @@ bento.define('bento/managers/object', [
                         object.start();
                     }
                     object.isAdded = true;
-                    if (object.useHsgh && object.getAABB) {
-                        hsgh.addObject(object);
+                    if (object.useHshg && object.getAABB) {
+                        hshg.addObject(object);
                     }
                     // add object to access pools
                     if (object.getFamily) {
@@ -161,8 +161,8 @@ bento.define('bento/managers/object', [
                         }
                         object.isAdded = false;
                     }
-                    if (object.useHsgh && object.getAABB) {
-                        hsgh.removeObject(object);
+                    if (object.useHshg && object.getAABB) {
+                        hshg.removeObject(object);
                     }
                     // remove from access pools
                     if (object.getFamily) {

@@ -11284,7 +11284,7 @@ bento.define('bento/entity', [
                 updateWhenPaused: false,
                 name: '',
                 isAdded: false,
-                useHsgh: false,
+                useHshg: false,
                 start: function (data) {
                     var i,
                         l,
@@ -11614,7 +11614,8 @@ bento.define('bento/entity', [
             entity.updateWhenPaused = settings.updateWhenPaused || false;
             entity.global = settings.global || false;
             entity.float = settings.float || false;
-            entity.useHsgh = settings.useHsgh || false;
+            entity.useHshg = settings.useHshg || false;
+            entity.staticHshg = settings.staticHshg || false;
             entity.onCollide = settings.onCollide;
 
             if (settings.addNow) {
@@ -12800,7 +12801,7 @@ bento.define('bento/lib/domready', [], function () {
 
 // https://gist.github.com/kirbysayshi/1760774
 
-bento.define('hsgh', [], function () {
+bento.define('hshg', [], function () {
 
     //---------------------------------------------------------------------
     // GLOBAL FUNCTIONS
@@ -12956,7 +12957,7 @@ bento.define('hsgh', [], function () {
             globalObjectsIndex, replacementObj;
 
         if (meta === undefined) {
-            throw Error(obj + ' was not in the HSHG.');
+            //throw Error(obj + ' was not in the HSHG.');
             return;
         }
 
@@ -12998,6 +12999,9 @@ bento.define('hsgh', [], function () {
                 // collide all objects within the occupied cell
                 for (k = 0; k < cell.objectContainer.length; k++) {
                     objA = cell.objectContainer[k];
+                    if (objA.staticHshg) {
+                        continue;
+                    }
                     for (l = k + 1; l < cell.objectContainer.length; l++) {
                         objB = cell.objectContainer[l];
                         if (broadOverlapTest(objA, objB) === true) {
@@ -13017,6 +13021,9 @@ bento.define('hsgh', [], function () {
                     // collide all objects in cell with adjacent cell
                     for (k = 0; k < cell.objectContainer.length; k++) {
                         objA = cell.objectContainer[k];
+                        if (objA.staticHshg) {
+                            continue;
+                        }
                         for (l = 0; l < adjacentCell.objectContainer.length; l++) {
                             objB = adjacentCell.objectContainer[l];
                             if (broadOverlapTest(objA, objB) === true) {
@@ -13030,6 +13037,9 @@ bento.define('hsgh', [], function () {
             // forall objects that are stored in this grid
             for (j = 0; j < grid.allObjects.length; j++) {
                 objA = grid.allObjects[j];
+                if (objA.staticHshg) {
+                    continue;
+                }
                 objAAABB = objA.getAABB();
 
                 // for all grids with cellsize larger than grid
@@ -14173,9 +14183,9 @@ bento.define('bento/managers/input', [
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/object', [
-    'hsgh',
+    'hshg',
     'bento/utils'
-], function (Hsgh, Utils) {
+], function (Hshg, Utils) {
     'use strict';
     return function (data, settings) {
         var objects = [],
@@ -14190,7 +14200,7 @@ bento.define('bento/managers/object', [
             isPaused = false,
             isStopped = false,
             fpsMeter,
-            hsgh = new Hsgh(),
+            hshg = new Hshg(),
             sort = function () {
                 if (!settings.defaultSort) {
                     Utils.stableSort.inplace(objects, function (a, b) {
@@ -14262,8 +14272,8 @@ bento.define('bento/managers/object', [
                 var object,
                     i;
                 if (!isPaused) {
-                    hsgh.update();
-                    hsgh.queryForCollisionPairs();
+                    hshg.update();
+                    hshg.queryForCollisionPairs();
                 }
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
@@ -14302,8 +14312,8 @@ bento.define('bento/managers/object', [
                         object.start();
                     }
                     object.isAdded = true;
-                    if (object.useHsgh && object.getAABB) {
-                        hsgh.addObject(object);
+                    if (object.useHshg && object.getAABB) {
+                        hshg.addObject(object);
                     }
                     // add object to access pools
                     if (object.getFamily) {
@@ -14330,8 +14340,8 @@ bento.define('bento/managers/object', [
                         }
                         object.isAdded = false;
                     }
-                    if (object.useHsgh && object.getAABB) {
-                        hsgh.removeObject(object);
+                    if (object.useHshg && object.getAABB) {
+                        hshg.removeObject(object);
                     }
                     // remove from access pools
                     if (object.getFamily) {
@@ -15559,7 +15569,9 @@ define('bento/tiled', [
                     obj = Entity({
                         z: 0,
                         name: type,
-                        family: [type]
+                        family: [type],
+                        useHshg: true,
+                        staticHshg: true
                     }).extend({
                         update: function () {},
                         draw: function () {}
@@ -16149,7 +16161,7 @@ bento.define('bento/renderers/webgl', [
         console.log('Init webgl as renderer');
 
         // fallback
-        if (canWebGl && Utils.isDefined(window.GLSprites)) {
+        if (canWebGl && Utils.isDefined(window.GlSprites)) {
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
             glRenderer = window.GlSprites.SpriteRenderer(context);

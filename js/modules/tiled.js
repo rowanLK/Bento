@@ -190,7 +190,9 @@ define('bento/tiled', [
                     obj = Entity({
                         z: 0,
                         name: type,
-                        family: [type]
+                        family: [type],
+                        useHshg: true,
+                        staticHshg: true
                     }).extend({
                         update: function () {},
                         draw: function () {}
