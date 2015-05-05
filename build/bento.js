@@ -15387,8 +15387,9 @@ define('bento/tiled', [
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/math/polygon',
-    'bento/packedimage'
-], function (Bento, Entity, Vector2, Rectangle, Polygon, PackedImage) {
+    'bento/packedimage',
+    'bento/utils'
+], function (Bento, Entity, Vector2, Rectangle, Polygon, PackedImage, Utils) {
     'use strict';
     return function (settings, onReady) {
         /*settings = {
@@ -15489,27 +15490,14 @@ define('bento/tiled', [
             spawn = function (name, obj, tilesetProperties) {
                 var x = obj.x,
                     y = obj.y,
-                    params = [],
-                    getParams = function (properties) {
-                        var prop;
-                        for (prop in properties) {
-                            if (!prop.match(/param\d+/)) {
-                                continue;
-                            }
-                            if (isNaN(properties[prop])) {
-                                params.push(properties[prop]);
-                            } else {
-                                params.push((+properties[prop]));
-                            }
-                        }
-                    };
+                    params = {};
 
-                // search params
-                getParams(tilesetProperties);
-                getParams(obj.properties);
+                // collect parameters
+                Utils.extend(params, tilesetProperties);
+                Utils.extend(params, obj.properties);
 
                 require([name], function (Instance) {
-                    var instance = Instance.apply(this, params),
+                    var instance = Instance.apply(this, [params]),
                         origin = instance.getOrigin(),
                         dimension = instance.getDimension(),
                         prop,
@@ -15535,10 +15523,12 @@ define('bento/tiled', [
                         x: x + (origin.x),
                         y: y + (origin.y - dimension.height)
                     });
+
                     // add in tileset properties
-                    addProperties(tilesetProperties);
+                    //addProperties(tilesetProperties);
                     // add tile properties
-                    addProperties(obj.properties);
+                    //addProperties(obj.properties);
+
                     // add to game
                     if (settings.spawn) {
                         Bento.objects.add(instance);
