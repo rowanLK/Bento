@@ -39,7 +39,7 @@ bento.define('bento/managers/screen', [
                             }
                             screenManager.add(screenObj);
                             // try again
-                            screenManager.show(name, callback);
+                            screenManager.show(name, data, callback);
                         });
                     }
                 },
