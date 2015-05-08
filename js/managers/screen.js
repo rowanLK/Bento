@@ -19,14 +19,14 @@ bento.define('bento/managers/screen', [
                     }
                     screens[screen.name] = screen;
                 },
-                show: function (name, callback) {
+                show: function (name, data, callback) {
                     if (currentScreen !== null) {
                         screenManager.hide();
                     }
                     currentScreen = screens[name];
                     if (currentScreen) {
                         if (currentScreen.onShow) {
-                            currentScreen.onShow();
+                            currentScreen.onShow(data);
                         }
                         if (callback) {
                             callback();
@@ -43,11 +43,11 @@ bento.define('bento/managers/screen', [
                         });
                     }
                 },
-                hide: function () {
+                hide: function (data) {
                     if (!currentScreen) {
                         return;
                     }
-                    currentScreen.onHide();
+                    currentScreen.onHide(data);
                     currentScreen = null;
                 },
                 getCurrentScreen: function () {
