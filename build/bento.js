@@ -12254,6 +12254,7 @@ bento.define('bento/components/clickable', [
     return function (entity, settings) {
         var mixin = {},
             isPointerDown = false,
+            initialized = false,
             component = {
                 name: 'clickable',
                 isHovering: false,
@@ -12276,11 +12277,18 @@ bento.define('bento/components/clickable', [
                     EventSystem.removeEventListener('pointerDown', pointerDown);
                     EventSystem.removeEventListener('pointerUp', pointerUp);
                     EventSystem.removeEventListener('pointerMove', pointerMove);
+                    initialized = false;
                 },
                 start: function () {
+                    if (initialized) {
+                        // TODO: this is caused by calling start when objects are attached, fix this later!
+                        // console.log('warning: trying to init twice')
+                        return;
+                    }
                     EventSystem.addEventListener('pointerDown', pointerDown);
                     EventSystem.addEventListener('pointerUp', pointerUp);
                     EventSystem.addEventListener('pointerMove', pointerMove);
+                    initialized = true;
                 },
                 update: function () {
                     if (this.isHovering && isPointerDown && this.onHold) {
