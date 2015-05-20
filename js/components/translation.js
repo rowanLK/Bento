@@ -6,15 +6,23 @@ bento.define('bento/components/translation', [
     return function (entity) {
         var set = false,
             mixin = {},
+            subPixel = false,
             component = {
                 name: 'translation',
+                setSubPixel: function (bool) {
+                    subPixel = bool;
+                },
                 draw: function (data) {
                     var parent = entity.getParent(),
                         position = entity.getPosition(),
                         origin = entity.getOrigin(),
                         scroll = data.viewport;
                     data.renderer.save(entity);
-                    data.renderer.translate(Math.round(position.x), Math.round(position.y));
+                    if (subPixel) {
+                        data.renderer.translate(position.x, position.y);
+                    } else {
+                        data.renderer.translate(Math.round(position.x), Math.round(position.y));                        
+                    }
 
                     // scroll (only applies to parent objects)
                     if (parent === null && !entity.float) {
