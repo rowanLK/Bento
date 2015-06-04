@@ -61,7 +61,7 @@ define('bento/managers/audio', [
                  * @function
                  * @param {String} name: name of the soundfile
                  */
-                playMusic: function (name, loop, onEnd) {
+                playMusic: function (name, loop, onEnd, time) {
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
                         musicLoop = loop;
@@ -74,7 +74,7 @@ define('bento/managers/audio', [
                     }
                     if (!mutedMusic && lastMusicPlayed !== '') {
                         if (Utils.isCocoonJS()) {
-                            assetManager.getAudio(name)._audioNode[0].currentTime = 0;
+                            assetManager.getAudio(name)._audioNode[0].currentTime = time || 0;
                             assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
                             assetManager.getAudio(name)._audioNode[0].play();
                             return;

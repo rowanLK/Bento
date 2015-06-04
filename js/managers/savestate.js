@@ -70,6 +70,9 @@ function (Utils) {
         },
         isEmpty: function () {
             return storage.length === 0;
+        },
+        setId: function (str) {
+            uniqueID = str;
         }
     };
 });
