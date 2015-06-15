@@ -26,11 +26,8 @@ bento.define('bento/renderers/canvas2d', [
                     context.rotate(angle);
                 },
                 fillRect: function (colorArray, x, y, w, h) {
-                    var colorStr = '#',
+                    var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
-                    colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                    colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                    colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
                     if (colorArray[3] !== 1) {
                         context.globalAlpha = colorArray[3];
                     }
@@ -40,12 +37,22 @@ bento.define('bento/renderers/canvas2d', [
                         context.globalAlpha = oldOpacity;
                     }
                 },
-                strokeRect: function (colorArray, x, y, w, h) {
-                    var colorStr = '#',
+                fillCircle: function (colorArray, x, y, radius) {
+                    var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
-                    colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                    colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                    colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
+                    context.fillStyle = colorStr;
+                    context.beginPath();
+                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.fill();
+                    context.closePath();
+
+                },
+                strokeRect: function (colorArray, x, y, w, h) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
                         context.globalAlpha = colorArray[3];
                     }
@@ -81,6 +88,13 @@ bento.define('bento/renderers/canvas2d', [
                 restoreContext: function () {
                     context = original;
                 }
+            },
+            getColor = function (colorArray) {
+                var colorStr = '#';
+                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                return colorStr;
             };
         console.log('Init canvas2d as renderer');
 

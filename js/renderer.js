@@ -13,6 +13,7 @@ bento.define('bento/renderer', [
             scale: function (x, y) {},
             rotate: function (angle) {},
             fillRect: function (color, x, y, w, h) {},
+            fillCircle: function (color, x, y, radius) {},
             strokeRect: function (color, x, y, w, h) {},
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},

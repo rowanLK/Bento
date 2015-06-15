@@ -46,10 +46,10 @@ bento.define('bento/gui/togglebutton', [
                 },
                 clickable: {
                     onClick: function () {
-                        entity.sprite.setAnimation(!toggled ? 'down' : 'up');
+                        entity.sprite.setAnimation('down');
                     },
                     onHoldEnter: function () {
-                        entity.sprite.setAnimation(!toggled ? 'down' : 'up');
+                        entity.sprite.setAnimation('down');
                     },
                     onHoldLeave: function () {
                         entity.sprite.setAnimation(toggled ? 'down' : 'up');
@@ -81,6 +81,23 @@ bento.define('bento/gui/togglebutton', [
             entity = Entity(entitySettings).extend({
                 isToggled: function () {
                     return toggled;
+                },
+                toggle: function (state, doCallback) {
+                    if (Utils.isDefined(state)) {
+                        toggled = state;
+                    } else {
+                        toggled = !toggled;
+                    }
+                    if (doCallback) {
+                        if (settings.onToggle) {
+                            settings.onToggle.apply(entity);
+                            if (settings.sfx) {
+                                Bento.audio.stopSound(settings.sfx);
+                                Bento.audio.playSound(settings.sfx);
+                            }
+                        }
+                    }
+                    entity.sprite.setAnimation(toggled ? 'down' : 'up');
                 }
             });
 

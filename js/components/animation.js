@@ -7,9 +7,7 @@ bento.define('bento/components/animation', [
         var spriteImage,
             animationSettings,
             animations = {},
-            currentAnimation = {
-                frames: [0]
-            },
+            currentAnimation,
             mixin = {},
             currentFrame = 0,
             frameCountX = 1,
@@ -49,6 +47,9 @@ bento.define('bento/components/animation', [
                         } else {
                             throw 'Bento asset manager not loaded';
                         }
+                    } else {
+                        // no image specified
+                        return;
                     }
                     // use frameWidth if specified (overrides frameCountX and frameCountY)
                     if (animationSettings.frameWidth) {
@@ -131,9 +132,14 @@ bento.define('bento/components/animation', [
                     }
                 },
                 draw: function (data) {
-                    var cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1),
-                        sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth,
-                        sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
+                    var cf, sx, sy;
+                    if (!currentAnimation) {
+                        return;
+                    }
+                    cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1);
+                    sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth;
+                    sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
+                    
                     data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
                     data.renderer.drawImage(
                         spriteImage,

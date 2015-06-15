@@ -28,6 +28,7 @@ bento.define('bento/renderers/pixi', [
                 scale: function (x, y) {},
                 rotate: function (angle) {},
                 fillRect: function (color, x, y, w, h) {},
+                fillCircle: function (color, x, y, radius) {},
                 drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {
                     currentObject.pixiTexture.setFrame(new PIXI.Rectangle(sx, sy, sw, sh));
                 },
