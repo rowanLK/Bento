@@ -23,46 +23,39 @@ bento.define('bento/autoresize', [
                 if (windowRatio < 1) {
                     canvasRatio = windowRatio;
                     screenHeight = deviceHeight;
-                    // console.log('correct')
                 } else {
                     // user is holding device wrong
                     canvasRatio = deviceWidth / deviceHeight;
                     screenHeight = deviceWidth;
-                    // console.log('incorrect')
                 }
 
-                // console.log(canvasRatio, 'screenHeight = ' + screenHeight);
-
                 height = screenHeight;
-
+                // real screenheight is not reported correctly
+                screenHeight *= window.devicePixelRatio || 1;
+                console.log(screenHeight);
+                
                 // dynamic height
                 while (height > maxSize) {
                     height = Math.floor(screenHeight / i);
                     i += 1;
-                    console.log(height);
                     // too small: give up
                     if (height < minSize) {
-                        console.log('cannot fit pixels');
-                        height = originalDimension.height;
+                        height = isLandscape ? originalDimension.height : originalDimension.width;
                         break;
                     }
                 }
-                console.log(height);
 
-                //canvasRatio = Math.min(Math.max(canvasRatio, 0.5), 1.5)
                 canvasDimension.width = height / canvasRatio;
                 canvasDimension.height = height;
                 if (!isLandscape) {
                     swap();
                 }
-                console.log(canvasDimension.width, canvasDimension.height);
                 return canvasDimension;
             },
             scrollAndResize = function () {
                 window.scrollTo(0, 0);
             };
         window.addEventListener('orientationchange', scrollAndResize, false);
-        //window.addEventListener('resize', onResize, false);
         if (!isLandscape) {
             swap();
         }
