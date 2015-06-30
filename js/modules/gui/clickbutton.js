@@ -6,7 +6,8 @@ bento.define('bento/gui/clickbutton', [
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
-    'bento/tween'
+    'bento/tween',
+    'bento/eventsystem'
 ], function (
     Bento,
     Vector2,
@@ -15,7 +16,8 @@ bento.define('bento/gui/clickbutton', [
     Clickable,
     Entity,
     Utils,
-    Tween
+    Tween,
+    EventSystem
 ) {
     'use strict';
     return function (settings) {
@@ -63,6 +65,7 @@ bento.define('bento/gui/clickbutton', [
                                 Bento.audio.stopSound(settings.sfx);
                                 Bento.audio.playSound(settings.sfx);
                             }
+                            EventSystem.fire('clickButton', entity);
                         }
                     }
                 },
