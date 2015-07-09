@@ -1,10 +1,11 @@
 {
     "name": "bento",
-    "version": "0.0.1",
+    "version": "0.8.0",
     "author": {
         "name": "Hernan Zhou"
     },
     "devDependencies": {
+        "gulp-jsdoc": "",
         "gulp-rename": "*",
         "gulp-concat": "*",
         "gulp-uglify": "*",

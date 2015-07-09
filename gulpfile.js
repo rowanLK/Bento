@@ -4,6 +4,7 @@ var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var jshint = require('gulp-jshint');
 var addsrc = require('gulp-add-src');
+var jsdoc = require("gulp-jsdoc");
 
 gulp.task('default', function () {
     // place code for your default task here
@@ -66,4 +67,18 @@ gulp.task('check', function () {
 
 gulp.task('watch', function () {
     gulp.watch(['js/**/*.js'], ['default']);
+});
+
+gulp.task('doc', function () {
+    gulp.src('js/main.js')
+        .pipe(jsdoc.generator('./documentation', {
+            path: 'ink-docstrap',
+            footer: "Bento game engine",
+            copyright: "LuckyKat",
+            navType: "vertical",
+            theme: "journal",
+            linenums: true,
+            collapseSymbols: false,
+            inverseNav: false
+        }));
 });

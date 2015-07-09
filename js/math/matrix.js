@@ -1,6 +1,7 @@
-/*
+/**
  * Matrix
- * @copyright (C) HeiGames
+ * @module bento/math/matrix
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/math/matrix', [
     'bento/utils'
@@ -16,6 +17,12 @@ bento.define('bento/math/matrix', [
             newMatrix.multiplyWith(other);
             return newMatrix;
         },
+        /**
+         * @alias module:bento/math/matrix
+         * @function Matrix
+         * @param: {Number} width - horizontal size of matrix
+         * @param: {Number} height - vertical size of matrix
+         */
         module = function (width, height) {
             var matrix = [],
                 n = width || 0,
@@ -141,6 +148,7 @@ bento.define('bento/math/matrix', [
                 /**
                  * Addition of another matrix
                  * @param {Matrix} matrix - matrix to add
+                 * @return {Matrix} self
                  */
                 addTo: function (other) {
                     var i, j;
@@ -154,6 +162,11 @@ bento.define('bento/math/matrix', [
                     }
                     return this;
                 },
+                /**
+                 * Addition of another matrix
+                 * @param {Matrix} matrix - matrix to add
+                 * @return {Matrix} A new matrix
+                 */
                 add: add,
                 /**
                  * Multiply with another matrix

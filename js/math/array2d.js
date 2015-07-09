@@ -1,6 +1,6 @@
-/*
+/**
  * 2 dimensional array 
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/math/array2d', function () {
     'use strict';

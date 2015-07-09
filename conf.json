@@ -1,0 +1,25 @@
+{
+    "tags": {
+        "allowUnknownTags": true,
+        "dictionaries": ["jsdoc"]
+    },
+    "source": {
+        "include": ["js", "js/components", "js/managers", "js/math", "js/modules", "js/renderers"],
+        "exclude": ["js/lib"]
+    },
+    "templates": {
+        "cleverLinks": false,
+        "monospaceLinks": false,
+        "default": {
+            "outputSourceFiles": true
+        },
+        "systemName": "Bento",
+        "footer": "",
+        "copyright": "LuckyKat © 2015",
+        "navType": "vertical",
+        "theme": "cerulean",
+        "linenums": true,
+        "collapseSymbols": false,
+        "inverseNav": true
+    }
+}

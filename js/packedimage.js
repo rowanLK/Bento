@@ -1,6 +1,7 @@
-/*
- * Wrapper for images, holds data for image atlas
- * @copyright (C) HeiGames
+/**
+ * A wrapper for module images, holds data for image atlas
+ * @module bento/packedimage
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/packedimage', [
     'bento/math/rectangle'

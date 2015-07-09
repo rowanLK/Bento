@@ -1,6 +1,6 @@
-/*
+/**
  * Canvas 2d renderer
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/renderers/canvas2d', [
     'bento/utils'

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: math/matrix.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: math/matrix.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Matrix
+ * @module bento/math/matrix
+ * @copyright (C) 2015 LuckyKat
+ */
+bento.define('bento/math/matrix', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var add = function (other) {
+            var newMatrix = this.clone();
+            newMatrix.addTo(other);
+            return newMatrix;
+        },
+        multiply = function (matrix1, matrix2) {
+            var newMatrix = this.clone();
+            newMatrix.multiplyWith(other);
+            return newMatrix;
+        },
+        /**
+         * @alias module:bento/math/matrix
+         * @function Matrix
+         * @param: {Number} width - horizontal size of matrix
+         * @param: {Number} height - vertical size of matrix
+         */
+        module = function (width, height) {
+            var matrix = [],
+                n = width || 0,
+                m = height || 0,
+                i,
+                j,
+                set = function (x, y, value) {
+                    matrix[y * n + x] = value;
+                },
+                get = function (x, y) {
+                    return matrix[y * n + x];
+                };
+
+            // initialize as identity matrix
+            for (j = 0; j &lt; m; ++j) {
+                for (i = 0; i &lt; n; ++i) {
+                    if (i === j) {
+                        set(i, j, 1);
+                    } else {
+                        set(i, j, 0);
+                    }
+                }
+            }
+
+            return {
+                isMatrix: function () {
+                    return true;
+                },
+                /**
+                 * Returns a string representation of the matrix (useful for debugging purposes)
+                 */
+                stringify: function () {
+                    var i,
+                        j,
+                        str = '',
+                        row = '';
+                    for (j = 0; j &lt; m; ++j) {
+                        for (i = 0; i &lt; n; ++i) {
+                            row += get(i, j) + '\t';
+                        }
+                        str += row + '\n';
+                        row = '';
+                    }
+                    return str;
+                },
+                /**
+                 * Get the value inside matrix
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 */
+                get: function (x, y) {
+                    return get(x, y);
+                },
+                /**
+                 * Set the value inside matrix
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 * @param {Number} value - new value
+                 */
+                set: function (x, y, value) {
+                    set(x, y, value);
+                },
+                /**
+                 * Set the values inside matrix using an array
+                 * If the matrix is 2x2 in size, then supplying an array with
+                 * values [1, 2, 3, 4] will result in a matrix
+                 * [1 2]
+                 * [3 4]
+                 * If the array has more elements than the matrix, the
+                 * rest of the array is ignored.
+                 * @param {Array} array - array with Numbers
+                 */
+                setValues: function (array) {
+                    var i, l = Math.min(matrix.length, array.length);
+                    for (i = 0; i &lt; l; ++i) {
+                        matrix[i] = array[i];
+                    }
+                    return this;
+                },
+                /**
+                 * Get the matrix width
+                 */
+                getWidth: function () {
+                    return n;
+                },
+                /**
+                 * Get the matrix height
+                 */
+                getHeight: function () {
+                    return m;
+                },
+                /**
+                 * Iterate through matrix
+                 */
+                iterate: function (callback) {
+                    var i, j;
+                    for (j = 0; j &lt; m; ++j) {
+                        for (i = 0; i &lt; n; ++i) {
+                            if (!Utils.isFunction(callback)) {
+                                throw ('Please supply a callback function');
+                            }
+                            callback(i, j, get(i, j));
+                        }
+                    }
+                },
+                /**
+                 * Transposes the current matrix
+                 */
+                transpose: function () {
+                    var i, j, newMat = [];
+                    // reverse loop so m becomes n
+                    for (i = 0; i &lt; n; ++i) {
+                        for (j = 0; j &lt; m; ++j) {
+                            newMat[i * m + j] = get(i, j);
+                        }
+                    }
+                    // set new matrix
+                    matrix = newMat;
+                    // swap width and height
+                    m = [n, n = m][0];
+                    return this;
+                },
+                /**
+                 * Addition of another matrix
+                 * @param {Matrix} matrix - matrix to add
+                 * @return {Matrix} self
+                 */
+                addTo: function (other) {
+                    var i, j;
+                    if (m != other.getHeight() || n != other.getWidth()) {
+                        throw 'Matrix sizes incorrect';
+                    }
+                    for (j = 0; j &lt; m; ++j) {
+                        for (i = 0; i &lt; n; ++i) {
+                            set(i, j, get(i, j) + other.get(i, j));
+                        }
+                    }
+                    return this;
+                },
+                /**
+                 * Addition of another matrix
+                 * @param {Matrix} matrix - matrix to add
+                 * @return {Matrix} A new matrix
+                 */
+                add: add,
+                /**
+                 * Multiply with another matrix
+                 * If a new matrix C is the result of A * B = C
+                 * then B is the current matrix and becomes C, A is the input matrix
+                 * @param {Matrix} matrix - input matrix to multiply with
+                 */
+                multiplyWith: function (other) {
+                    var i, j,
+                        newMat = [],
+                        newWidth = n, // B.n
+                        oldHeight = m, // B.m
+                        newHeight = other.getHeight(), // A.m
+                        oldWidth = other.getWidth(), // A.n
+                        newValue = 0,
+                        k;
+                    if (oldHeight != oldWidth) {
+                        throw 'Matrix sizes incorrect';
+                    }
+
+                    for (j = 0; j &lt; newHeight; ++j) {
+                        for (i = 0; i &lt; newWidth; ++i) {
+                            newValue = 0;
+                            // loop through matbentos
+                            for (k = 0; k &lt; oldWidth; ++k) {
+                                newValue += other.get(k, j) * get(i, k);
+                            }
+                            newMat[j * newWidth + i] = newValue;
+                        }
+                    }
+                    // set to new matrix
+                    matrix = newMat;
+                    // update matrix size
+                    n = newWidth;
+                    m = newHeight;
+                    return this;
+                },
+                multiply: multiply,
+                /**
+                 * Returns a clone of the current matrix
+                 */
+                clone: function () {
+                    var newMatrix = module(n, m);
+                    newMatrix.setValues(matrix);
+                    return newMatrix;
+                }
+            };
+        };
+    return module;
+});</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-bento.html">bento</a></li><li><a href="module-bento_color.html">bento/color</a></li><li><a href="module-bento_entity.html">bento/entity</a></li><li><a href="module-bento_eventsystem.html">bento/eventsystem</a></li><li><a href="module-bento_math_matrix.html">bento/math/matrix</a></li><li><a href="module-bento_packedimage.html">bento/packedimage</a></li><li><a href="module-bento_renderer.html">bento/renderer</a></li><li><a href="module-bento_utils.html">bento/utils</a></li></ul><h3>Global</h3><ul><li><a href="global.html#bento">bento</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.2</a> on Thu Jul 09 2015 17:38:06 GMT+0200 (CEST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
-/*
+/**
  * Creates a tween object
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/tween', [
     'bento',

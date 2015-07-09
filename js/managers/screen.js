@@ -1,6 +1,6 @@
-/*
+/**
  * Screen manager 
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/managers/screen', [
     'bento/utils'

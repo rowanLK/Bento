@@ -1,6 +1,6 @@
-/*
+/**
  * Reads tiled json files
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 define('bento/tiled', [
     'bento',

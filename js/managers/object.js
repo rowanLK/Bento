@@ -1,6 +1,6 @@
 /**
  *  Manager that controls mainloop and all objects
- *  @copyright (C) 2014 HeiGames
+ *  @copyright (C) 2015 LuckyKat
  *  @author Hernan Zhou
  */
 bento.define('bento/managers/object', [

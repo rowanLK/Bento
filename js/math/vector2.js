@@ -1,6 +1,6 @@
-/*
+/**
  * 2 dimensional vector
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     'use strict';

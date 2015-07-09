@@ -1,6 +1,6 @@
-/*
+/**
  * Rectangle
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';

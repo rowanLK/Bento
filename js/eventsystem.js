@@ -1,6 +1,7 @@
-/*
+/**
  * Sends custom events
- * @copyright (C) HeiGames
+ * <br>Exports: Object
+ * @module bento/eventsystem
  */
 bento.define('bento/eventsystem', [
     'bento/utils'

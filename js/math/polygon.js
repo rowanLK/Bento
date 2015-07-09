@@ -1,6 +1,6 @@
-/*
+/**
  * Polygon
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/math/polygon', [
     'bento/utils',

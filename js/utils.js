@@ -1,10 +1,12 @@
-/*
- * Useful functions
- * @copyright (C) HeiGames
+/**
+ * A collection of useful functions
+ * Export type: Object
+ * @module bento/utils
  */
 bento.define('bento/utils', [], function () {
     'use strict';
-    var isString = function (value) {
+    var utils,
+        isString = function (value) {
             return typeof value === 'string' || value instanceof String;
         },
         isArray = Array.prototype.isArray || function (value) {
@@ -83,9 +85,6 @@ bento.define('bento/utils', [], function () {
 
             animationFrame();
             return {
-                /**
-                 * On supported browsers cancel this timeout.
-                 */
                 cancel: function () {
                     if (typeof cancelAnimationFrame !== 'undefined') {
                         cancelAnimationFrame(rafID);
@@ -286,27 +285,123 @@ bento.define('bento/utils', [], function () {
             return keys;
         })();
 
-    return {
+    utils = {
+        /**
+         * @function
+         * @instance
+         * @name isString
+         */
         isString: isString,
+        /**
+         * @function
+         * @instance
+         * @name isArray
+         */
         isArray: isArray,
+        /**
+         * @function
+         * @instance
+         * @name isObject
+         */
         isObject: isObject,
+        /**
+         * @function
+         * @instance
+         * @name isFunction
+         */
         isFunction: isFunction,
+        /**
+         * @function
+         * @instance
+         * @name isNumber
+         */
         isNumber: isNumber,
+        /**
+         * @function
+         * @instance
+         * @name isBoolean
+         */
         isBoolean: isBoolean,
+        /**
+         * @function
+         * @instance
+         * @name isInt
+         */
         isInt: isInt,
+        /**
+         * @function
+         * @name isUndefined
+         * @instance
+         */
         isUndefined: isUndefined,
+        /**
+         * @function
+         * @instance
+         * @name isDefined
+         */
         isDefined: isDefined,
+        /**
+         * Removes entry from array
+         * @function
+         * @instance
+         * @param {Array} array - array
+         * @param {Anything} value - any type
+         * @return {Array} The updated array
+         * @name removeObject
+         */
         removeObject: removeObject,
+        /**
+         * Extends object literal properties with another object
+         * If the objects have the same property name, then the old one is pushed to a property called "base"
+         * @function
+         * @instance
+         * @name extend
+         * @param {Object} object1 - original object
+         * @param {Object} object2 - new object
+         * @param {Bool} [overwrite] - Overwrites properties
+         * @return {Array} The updated array
+         */
         extend: extend,
+        /**
+         * Counts the number of keys in an object literal
+         * @function
+         * @instance
+         * @name getKeyLength
+         * @param {Object} object - object literal
+         * @return {Number} Number of keys
+         */
         getKeyLength: getKeyLength,
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
+        /**
+         * Returns a random number [0...n)
+         * @function
+         * @instance
+         * @name getRandom
+         * @param {Number} n - limit of random number
+         * @return {Number} Randomized number
+         */
         getRandom: function (n) {
             return Math.floor(Math.random() * n);
         },
+        /**
+         * Turns degrees into radians
+         * @function
+         * @instance
+         * @name toRadian
+         * @param {Number} degree - value in degrees
+         * @return {Number} radians
+         */
         toRadian: function (degree) {
             return degree * Math.PI / 180;
         },
+        /**
+         * Sign of  anumber
+         * @function
+         * @instance
+         * @param {Number} value - value to check
+         * @name sign
+         */
         sign: function (value) {
             if (value > 0) {
                 return 1;
@@ -316,6 +411,15 @@ bento.define('bento/utils', [], function () {
                 return 0;
             }
         },
+        /**
+         * Steps towards a number without going over the limit
+         * @function
+         * @instance
+         * @param {Number} start - current value
+         * @param {Number} end - target value
+         * @param {Number} step - step to take
+         * @name approach
+         */
         approach: function (start, end, max) {
             if (start < end) {
                 return Math.min(start + max, end);
@@ -323,16 +427,34 @@ bento.define('bento/utils', [], function () {
                 return Math.max(start - max, end);
             }
         },
+        /**
+         * Checks useragent if device is an apple device
+         * @function
+         * @instance
+         * @name isApple
+         */
         isApple: function () {
             var device = (navigator.userAgent).match(/iPhone|iPad|iPod/i);
             return /iPhone/i.test(device) || /iPad/i.test(device) || /iPod/i.test(device);
         },
+        /**
+         * Checks useragent if device is an android device
+         * @function
+         * @instance
+         * @name isAndroid
+         */
         isAndroid: function () {
             return /Android/i.test(navigator.userAgent);
         },
+        /**
+         * Checks if environment is cocoon
+         * @function
+         * @instance
+         * @name isCocoonJS
+         */
         isCocoonJS: function () {
             return navigator.isCocoonJS;
         }
     };
-
+    return utils;
 });

@@ -1,6 +1,6 @@
-/*
+/**
  * WebGL renderer using gl-sprites by Matt DesLauriers
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/renderers/webgl', [
     'bento/utils',

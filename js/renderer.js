@@ -1,6 +1,7 @@
-/*
+/**
  * Base functions for renderer
- * @copyright (C) HeiGames
+ * @module bento/renderer
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/renderer', [
     'bento/utils'

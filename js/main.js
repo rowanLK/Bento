@@ -1,6 +1,8 @@
 /**
  *  Main entry point for Bento engine
- *  @copyright (C) 2014 HeiGames
+ *  Defines global bento namespace, use bento.require and define
+ *  @name bento
+ *  @copyright (C) 2015 LuckyKat
  *  @author Hernan Zhou
  */
 (function () {

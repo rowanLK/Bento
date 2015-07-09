@@ -1,7 +1,7 @@
 /**
- *  Bento module, main entry point to game modules
- *  @copyright (C) 2014 HeiGames
- *  @author Hernan Zhou
+ * Bento module, main entry point to game modules and managers
+ * <br>Exports: Object
+ * @module bento
  */
 bento.define('bento', [
     'bento/utils',
@@ -103,7 +103,8 @@ bento.define('bento', [
                     canvas: canvas,
                     renderer: rend,
                     canvasScale: canvasScale,
-                    viewport: viewport
+                    viewport: viewport,
+                    entity: null
                 };
                 callback();
             });
@@ -139,6 +140,18 @@ bento.define('bento', [
             canvasScale.y = height / viewport.height;
         },
         module = {
+            /**
+             * Setup game. Initializes Bento managers.
+             * @name setup
+             * @function
+             * @instance
+             * @param {Object} settings - settings for the game
+             * @param {Object} settings.assetGroups - Asset groups to load. Key: group name, value: path to json file
+             * @see AssetGroup
+             * @param {Rectangle} settings.canvasDimension - base resolution for the game
+             * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
+             * @param {Function} callback - Called when game is loaded (not implemented yet)
+             */
             setup: function (settings, callback) {
                 DomReady(function () {
                     var runGame = function () {
@@ -179,14 +192,61 @@ bento.define('bento', [
                     });
                 });
             },
+            /**
+             * Returns the current viewport (reference).
+             * The viewport is a Rectangle.
+             * viewport.x and viewport.y indicate its current position in the world (upper left corner)
+             * viewport.width and viewport.height can be used to determine the size of the canvas
+             * @function
+             * @instance
+             * @returns Rectangle
+             * @name getViewport
+             */
             getViewport: function () {
                 return viewport;
             },
+            /**
+             * Returns the canvas element
+             * @function
+             * @instance
+             * @returns HTML Canvas Element
+             * @name getCanvas
+             */
             getCanvas: function () {
                 return canvas;
             },
+            /**
+             * Returns the current renderer engine
+             * @function
+             * @instance
+             * @returns Renderer
+             * @name getRenderer
+             */
             getRenderer: function () {
                 return renderer;
+            },
+            /**
+             * Returns a gameData object
+             * A gameData object is passed through every object during the update and draw
+             * and contains all necessary information to render
+             * @function
+             * @instance
+             * @returns {Object} data
+             * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
+             * @returns {Renderer} data.renderer - Reference to current Renderer
+             * @returns {Vector2} data.canvasScale - Reference to current canvas scale
+             * @returns {Rectangle} data.viewport - Reference to viewport object
+             * @returns {Entity} data.entity - The current entity passing the data object (injected by Entity objects)
+             * @name getGameData
+             */
+            getGameData: function () {
+                return {
+                    canvas: canvas,
+                    renderer: renderer,
+                    canvasScale: canvasScale,
+                    viewport: viewport,
+                    entity: null
+                };
             },
             assets: null,
             objects: null,

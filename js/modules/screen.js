@@ -1,6 +1,6 @@
-/*
+/**
  * Screen/state object
- * @copyright (C) HeiGames
+ * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/screen', [
     'bento/utils',

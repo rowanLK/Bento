@@ -1,4 +1,4 @@
-/*
+/**
  * Audio manager, will be rewritten in the future
  */
 
