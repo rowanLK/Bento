@@ -71,21 +71,9 @@ gulp.task('watch', function () {
 });
 
 gulp.task('doc', function () {
-    // ??
-    // gulp.src('js/**/*.js')
-    //     .pipe(jsdoc.generator('documentation', {
-    //         path: './node_modules/minami',
-    //         footer: "Bento game engine",
-    //         copyright: "LuckyKat",
-    //         navType: "vertical",
-    //         theme: "journal",
-    //         linenums: true,
-    //         collapseSymbols: false,
-    //         inverseNav: false
-    //     }));
-
-    gulp.src('./**/**')
-    .pipe(exec('jsdoc -c conf.json -r ./readme.md -d documentation -t ./node_modules/minami'));
+    gulp.src('./js/**/*.js')
+    .pipe(exec('jsdoc -r -c conf.json ./readme.md -d documentation -t ./node_modules/minami')
+)
 });
 
 gulp.task('docwatch', function () {

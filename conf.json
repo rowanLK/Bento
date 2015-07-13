@@ -4,7 +4,7 @@
         "dictionaries": ["jsdoc"]
     },
     "source": {
-        "include": ["js", "js/components", "js/managers", "js/math", "js/modules", "js/renderers"],
+        "include": ["js"],
         "exclude": ["js/lib"]
     },
     "templates": {
