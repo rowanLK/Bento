@@ -1,7 +1,7 @@
 /**
  * A base object to hold components
  * <br>Exports: Function
- * @module bento/entity
+ * @module {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized 
  * @param {Function} settings.onCollide - Called when object collides in HSHG
@@ -16,6 +16,7 @@
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - Should entity use HSHG for collisions
  * @param {Boolean} settings.staticHshg - Is entity a static object in HSHG
+ * @returns {Entity} Returns a new entity object
  */
 bento.define('bento/entity', [
     'bento',

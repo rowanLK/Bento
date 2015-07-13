@@ -41,8 +41,16 @@ bento.define('bento/eventsystem', [
                 callback: callback
             });
         };
-        
+
     return {
+        /**
+         * Fires an event
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @param {Object} [eventData] - Extra data to pass with event
+         * @name fire
+         */
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
             cleanEventListeners();
@@ -65,7 +73,31 @@ bento.define('bento/eventsystem', [
         },
         addEventListener: addEventListener,
         removeEventListener: removeEventListener,
+        /**
+         * Callback function
+         *
+         * @callback Callback
+         * @param {Object} eventData - Any data that is passed 
+         */
+        /**
+         * Listen to event
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Callback function.
+         * Be careful about adding anonymous functions here, you should consider removing the event listener
+         * to prevent memory leaks.
+         * @name on
+         */
         on: addEventListener,
+        /**
+         * Removes event listener
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Reference to the callback function
+         * @name off
+         */
         off: removeEventListener
     };
 });

@@ -1,7 +1,7 @@
 /**
- * Base functions for renderer
+ * Base functions for renderer. Has many equivalent functions to a canvas context.
+ * <br>Exports: Function
  * @module bento/renderer
- * @copyright (C) 2015 LuckyKat
  */
 bento.define('bento/renderer', [
     'bento/utils'

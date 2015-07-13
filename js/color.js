@@ -1,10 +1,11 @@
 /**
  * Returns a color array, for use in renderer
  * <br>Exports: Function
- * @param {Number} r - red value [0...255]
- * @param {Number} g - green value [0...255]
- * @param {Number} b - blue value [0...255]
- * @param {Number} a - alpha value [0...1]
+ * @param {Number} r - Red value [0...255]
+ * @param {Number} g - Green value [0...255]
+ * @param {Number} b - Blue value [0...255]
+ * @param {Number} a - Alpha value [0...1]
+ * @returns {Array} Returns a color array
  * @module bento/color
  */
 bento.define('bento/color', ['bento/utils'], function (Utils) {

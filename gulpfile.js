@@ -5,6 +5,7 @@ var rename = require('gulp-rename');
 var jshint = require('gulp-jshint');
 var addsrc = require('gulp-add-src');
 var jsdoc = require("gulp-jsdoc");
+var exec = require('gulp-exec');
 
 gulp.task('default', function () {
     // place code for your default task here
@@ -70,15 +71,23 @@ gulp.task('watch', function () {
 });
 
 gulp.task('doc', function () {
-    gulp.src('js/main.js')
-        .pipe(jsdoc.generator('./documentation', {
-            path: 'ink-docstrap',
-            footer: "Bento game engine",
-            copyright: "LuckyKat",
-            navType: "vertical",
-            theme: "journal",
-            linenums: true,
-            collapseSymbols: false,
-            inverseNav: false
-        }));
+    // ??
+    // gulp.src('js/**/*.js')
+    //     .pipe(jsdoc.generator('documentation', {
+    //         path: './node_modules/minami',
+    //         footer: "Bento game engine",
+    //         copyright: "LuckyKat",
+    //         navType: "vertical",
+    //         theme: "journal",
+    //         linenums: true,
+    //         collapseSymbols: false,
+    //         inverseNav: false
+    //     }));
+
+    gulp.src('./**/**')
+    .pipe(exec('jsdoc -c conf.json -r ./readme.md -d documentation -t ./node_modules/minami'));
+});
+
+gulp.task('docwatch', function () {
+    gulp.watch(['js/**/*.js', './readme.md'], ['doc']);
 });

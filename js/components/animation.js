@@ -1,3 +1,11 @@
+/**
+ * Animation component. Draws an animated sprite on screen at the entity position.
+ * <br>Exports: Function
+ * @module bento/components/animation
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
 bento.define('bento/components/animation', [
     'bento',
     'bento/utils',
@@ -17,7 +25,20 @@ bento.define('bento/components/animation', [
             onCompleteCallback,
             origin = entity.getOrigin(),
             component = {
+                /**
+                 * Name of the component
+                 * @instance
+                 * @default 'animation'
+                 * @name name
+                 */
                 name: 'animation',
+                /**
+                 * Sets up animation
+                 * @function
+                 * @instance
+                 * @param {Object} settings - Settings object
+                 * @name setup
+                 */
                 setup: function (settings) {
                     if (settings) {
                         animationSettings = settings;
@@ -73,6 +94,15 @@ bento.define('bento/components/animation', [
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
                 },
+                /**
+                 * Set component to a different animation
+                 * @function
+                 * @instance
+                 * @param {String} name - Name of the animation.
+                 * @param {Function} callback - Called when animation ends.
+                 * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+                 * @name setAnimation
+                 */
                 setAnimation: function (name, callback, keepCurrentFrame) {
                     var anim = animations[name];
                     if (!anim) {
@@ -95,21 +125,63 @@ bento.define('bento/components/animation', [
                         }
                     }
                 },
+                /**
+                 * Returns the name of current animation playing
+                 * @function
+                 * @instance
+                 * @returns {String} Name of the animation playing, null if not playing anything
+                 * @name getAnimation
+                 */
                 getAnimation: function () {
                     return currentAnimation ? currentAnimation.name : null;
                 },
+                /**
+                 * Set current animation to a certain frame
+                 * @function
+                 * @instance
+                 * @param {Number} frameNumber - Frame number.
+                 * @name setFrame
+                 */
                 setFrame: function (frameNumber) {
                     currentFrame = frameNumber;
                 },
+                /**
+                 * Set speed of the current animation.
+                 * @function
+                 * @instance
+                 * @param {Number} speed - Speed at which the animation plays.
+                 * @name setCurrentSpeed
+                 */
                 setCurrentSpeed: function (value) {
                     currentAnimation.speed = value;
                 },
+                /**
+                 * Returns the current frame number
+                 * @function
+                 * @instance
+                 * @returns {Number} frameNumber - Not necessarily a round number.
+                 * @name getCurrentFrame
+                 */
                 getCurrentFrame: function () {
                     return currentFrame;
                 },
+                /**
+                 * Returns the frame width
+                 * @function
+                 * @instance
+                 * @returns {Number} width - Width of the image frame.
+                 * @name getFrameWidth
+                 */
                 getFrameWidth: function () {
                     return frameWidth;
                 },
+                /**
+                 * Updates the component. Called by the entity holding the component every tick.
+                 * @function
+                 * @instance
+                 * @param {Object} data - Game data object
+                 * @name update
+                 */
                 update: function () {
                     var reachedEnd;
                     if (!currentAnimation) {
@@ -131,6 +203,13 @@ bento.define('bento/components/animation', [
                         onCompleteCallback();
                     }
                 },
+                /**
+                 * Draws the component. Called by the entity holding the component every tick.
+                 * @function
+                 * @instance
+                 * @param {Object} data - Game data object
+                 * @name draw
+                 */
                 draw: function (data) {
                     var cf, sx, sy;
                     if (!currentAnimation) {
@@ -139,7 +218,7 @@ bento.define('bento/components/animation', [
                     cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1);
                     sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth;
                     sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
-                    
+
                     data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
                     data.renderer.drawImage(
                         spriteImage,

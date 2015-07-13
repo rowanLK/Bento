@@ -1,16 +1,19 @@
 {
-    "name": "bento",
-    "version": "0.8.0",
-    "author": {
-        "name": "Hernan Zhou"
-    },
-    "devDependencies": {
-        "gulp-jsdoc": "",
-        "gulp-rename": "*",
-        "gulp-concat": "*",
-        "gulp-uglify": "*",
-        "gulp-jshint": "*",
-        "gulp-add-src": "*",
-        "gulp": "*"
-    }
+  "name": "bento",
+  "version": "0.8.0",
+  "author": {
+    "name": "Hernan Zhou"
+  },
+  "devDependencies": {
+    "gulp": "*",
+    "gulp-exec": "*",
+    "gulp-add-src": "*",
+    "gulp-concat": "*",
+    "gulp-jsdoc": "",
+    "gulp-jshint": "*",
+    "gulp-rename": "*",
+    "gulp-uglify": "*",
+    "jsdoc": "*",
+    "minami": "^1.1.0"
+  }
 }

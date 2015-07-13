@@ -1,7 +1,11 @@
 /**
  * A wrapper for module images, holds data for image atlas
+ * <br>Exports: Function
  * @module bento/packedimage
- * @copyright (C) 2015 LuckyKat
+ * @param {HTMLImageElement} image - HTML Image Element
+ * @param {Rectangle} frame - Frame boundaries in the image
+ * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
+ * @returns {HTMLImage} rectangle.image - Reference to the image 
  */
 bento.define('bento/packedimage', [
     'bento/math/rectangle'
