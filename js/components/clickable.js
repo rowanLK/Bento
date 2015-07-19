@@ -1,3 +1,11 @@
+/**
+ * Component that helps with detecting clicks on an entity
+ * <br>Exports: Function
+ * @module bento/components/clickable
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
 bento.define('bento/components/clickable', [
     'bento',
     'bento/utils',
@@ -11,9 +19,27 @@ bento.define('bento/components/clickable', [
             isPointerDown = false,
             initialized = false,
             component = {
+                /**
+                 * Name of the component
+                 * @instance
+                 * @default 'clickable'
+                 * @name name 
+                 */
                 name: 'clickable',
+                /**
+                 * Whether the pointer is over the entity
+                 * @instance
+                 * @default false
+                 * @name isHovering
+                 */
                 isHovering: false,
                 hasTouched: false,
+                /**
+                 * Id number of the pointer holding entity 
+                 * @instance
+                 * @default null
+                 * @name holdId
+                 */
                 holdId: null,
                 pointerDown: function (evt) {},
                 pointerUp: function (evt) {},
@@ -28,12 +54,24 @@ bento.define('bento/components/clickable', [
                 onHoldEnd: function () {},
                 onHoverLeave: function () {},
                 onHoverEnter: function () {},
+                /**
+                 * Destructs the component. Called by the entity holding the component.
+                 * @function
+                 * @instance
+                 * @name destroy
+                 */
                 destroy: function () {
                     EventSystem.removeEventListener('pointerDown', pointerDown);
                     EventSystem.removeEventListener('pointerUp', pointerUp);
                     EventSystem.removeEventListener('pointerMove', pointerMove);
                     initialized = false;
                 },
+                /**
+                 * Starts the component. Called by the entity holding the component.
+                 * @function
+                 * @instance
+                 * @name start
+                 */
                 start: function () {
                     if (initialized) {
                         // TODO: this is caused by calling start when objects are attached, fix this later!
@@ -45,6 +83,13 @@ bento.define('bento/components/clickable', [
                     EventSystem.addEventListener('pointerMove', pointerMove);
                     initialized = true;
                 },
+                /**
+                 * Updates the component. Called by the entity holding the component every tick.
+                 * @function
+                 * @instance
+                 * @param {Object} data - Game data object
+                 * @name update
+                 */
                 update: function () {
                     if (this.isHovering && isPointerDown && this.onHold) {
                         this.onHold();

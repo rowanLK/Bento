@@ -1,7 +1,8 @@
 /**
- *  Manager that controls all assets
- *  @copyright (C) 2015 LuckyKat
- *  @author Hernan Zhou
+ * Manager that loads and controls assets
+ * <br>Exports: Function
+ * @module bento/managers/asset
+ * @returns AssetManager
  */
 bento.define('bento/managers/asset', [
     'bento/packedimage',
@@ -102,10 +103,13 @@ bento.define('bento/managers/asset', [
                 }, false);
             },
             /**
-             * Loads json files containing asset paths
-             * @param {Object} jsonFiles: name with json path
-             * @param {Function} onReady: callback when ready
-             * @param {Function} onLoaded: callback when json file is loaded
+             * Loads json files containing asset paths to load
+             * @function
+             * @instance
+             * @param {Object} jsonFiles - Name with json path
+             * @param {Function} onReady - Callback when ready
+             * @param {Function} onLoaded - Callback when json file is loaded
+             * @name loadAssetGroups
              */
             loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
                 var jsonName,
@@ -132,10 +136,13 @@ bento.define('bento/managers/asset', [
                 }
             },
             /**
-             * Loads assets from group
-             * @param {String} groupName: name of asset group
-             * @param {Function} onReady: callback when ready
-             * @param {Function} onLoaded: callback when asset file is loaded
+             * Loads assets from asset group
+             * @function
+             * @instance
+             * @param {String} groupName - Name of asset group
+             * @param {Function} onReady - Callback when ready
+             * @param {Function} onLoaded - Callback when asset file is loaded
+             * @name load
              */
             load = function (groupName, onReady, onLoaded) {
                 var group = assetGroups[groupName],
@@ -243,7 +250,22 @@ bento.define('bento/managers/asset', [
                 }
 
             },
+            /**
+             * Unloads assets (not implemented yet)
+             * @function
+             * @instance
+             * @param {String} groupName - Name of asset group
+             * @name unload
+             */
             unload = function (groupName) {},
+            /**
+             * Returns a previously loaded image
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {PackedImage} Image
+             * @name getImage
+             */
             getImage = function (name) {
                 var image, packedImage = texturePacker[name];
                 if (!packedImage) {
@@ -256,6 +278,14 @@ bento.define('bento/managers/asset', [
                 }
                 return packedImage;
             },
+            /**
+             * Returns a previously loaded image element
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {HTMLImage} Html Image element
+             * @name getImageElement
+             */
             getImageElement = function (name) {
                 var asset = assets.images[name];
                 if (!Utils.isDefined(asset)) {
@@ -263,6 +293,14 @@ bento.define('bento/managers/asset', [
                 }
                 return asset;
             },
+            /**
+             * Returns a previously loaded json object
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Object} Json object
+             * @name getJson
+             */
             getJson = function (name) {
                 var asset = assets.json[name];
                 if (!Utils.isDefined(asset)) {
@@ -270,6 +308,14 @@ bento.define('bento/managers/asset', [
                 }
                 return asset;
             },
+            /**
+             * Returns a previously loaded audio element (currently by howler)
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Howl} Howler object
+             * @name getAudio
+             */
             getAudio = function (name) {
                 var asset = assets.audio[name];
                 if (!Utils.isDefined(asset)) {
@@ -277,6 +323,14 @@ bento.define('bento/managers/asset', [
                 }
                 return asset;
             },
+            /**
+             * Returns all assets
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Object} assets - Object with reference to all loaded assets
+             * @name getAssets
+             */
             getAssets = function () {
                 return assets;
             },

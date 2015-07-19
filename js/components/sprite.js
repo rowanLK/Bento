@@ -1,3 +1,11 @@
+/**
+ * Helper function that attaches the translate, scale, rotation, opacity and animation components
+ * <br>Exports: Function
+ * @module bento/components/sprite
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
 bento.define('bento/components/sprite', [
     'bento/utils',
     'bento/components/translation',

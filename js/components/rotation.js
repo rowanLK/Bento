@@ -1,3 +1,11 @@
+/**
+ * Component that sets the rotation
+ * <br>Exports: Function
+ * @module bento/components/rotation
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
 bento.define('bento/components/rotation', [
     'bento/utils',
 ], function (Utils) {

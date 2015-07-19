@@ -1,4 +1,4 @@
-define('bento/managers/savestate', [
+bento.define('bento/managers/savestate', [
     'bento/utils'
 ],
 function (Utils) {

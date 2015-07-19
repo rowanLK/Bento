@@ -1,5 +1,8 @@
 /**
- * Audio manager, will be rewritten in the future
+ * Audio manager (To be rewritten)
+ * <br>Exports: Function
+ * @module bento/managers/audio
+ * @returns AssetManager
  */
 
 define('bento/managers/audio', [

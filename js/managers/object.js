@@ -1,7 +1,13 @@
 /**
- *  Manager that controls mainloop and all objects
- *  @copyright (C) 2015 LuckyKat
- *  @author Hernan Zhou
+ * Manager that controls mainloop and all objects
+ * <br>Exports: Function
+ * @module bento/managers/input
+ * @param {Object} data - gameData object
+ * @param {Object} settings - Settings object
+ * @param {Object} settings.defaultSort - Use javascript default sorting (not recommended)
+ * @param {Object} settings.debug - Show debug info
+ * @param {Object} settings.useDeltaT - Use delta time (untested)
+ * @returns ObjectManager
  */
 bento.define('bento/managers/object', [
     'hshg',
@@ -121,33 +127,50 @@ bento.define('bento/managers/object', [
                 }
                 gameData.renderer.flush();
             },
-            module = {
-                add: function (object) {
-                    var i, type, family;
-                    object.z = object.z || 0;
-                    objects.push(object);
-                    if (object.init) {
-                        object.init();
-                    }
-                    if (object.start) {
-                        object.start();
-                    }
-                    object.isAdded = true;
-                    if (object.useHshg && object.getAABB) {
-                        hshg.addObject(object);
-                    }
-                    // add object to access pools
-                    if (object.getFamily) {
-                        family = object.getFamily();
-                        for (i = 0; i < family.length; ++i) {
-                            type = family[i];
-                            if (!quickAccess[type]) {
-                                quickAccess[type] = [];
-                            }
-                            quickAccess[type].push(object);
+            attach = function (object) {
+                var i, type, family;
+                object.z = object.z || 0;
+                objects.push(object);
+                if (object.init) {
+                    object.init();
+                }
+                if (object.start) {
+                    object.start();
+                }
+                object.isAdded = true;
+                if (object.useHshg && object.getAABB) {
+                    hshg.addObject(object);
+                }
+                // add object to access pools
+                if (object.getFamily) {
+                    family = object.getFamily();
+                    for (i = 0; i < family.length; ++i) {
+                        type = family[i];
+                        if (!quickAccess[type]) {
+                            quickAccess[type] = [];
                         }
+                        quickAccess[type].push(object);
                     }
-                },
+                }
+            },
+            module = {
+                /**
+                 * Adds entity/object
+                 * @function
+                 * @instance
+                 * @param {Object} object - You can add any object, preferably an Entity
+                 * @name attach
+                 */
+                attach: attach,
+                add: attach,
+                /**
+                 * Removes entity/object
+                 * @function
+                 * @instance
+                 * @param {String} name - Name of image
+                 * @returns {Object} assets - Object with reference to all loaded assets
+                 * @name attach
+                 */
                 remove: function (object) {
                     var i, type, index, family;
                     if (!object) {

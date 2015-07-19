@@ -1,3 +1,11 @@
+/**
+ * Component that translates the entity visually
+ * <br>Exports: Function
+ * @module bento/components/translation
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
 bento.define('bento/components/translation', [
     'bento/utils',
     'bento/math/vector2'

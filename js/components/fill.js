@@ -1,3 +1,11 @@
+/**
+ * Component that fills the screen
+ * <br>Exports: Function
+ * @module bento/components/clickable
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
 bento.define('bento/components/fill', [
     'bento/utils',
     'bento'

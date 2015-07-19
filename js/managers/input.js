@@ -1,7 +1,12 @@
 /**
- *  Manager that controls all events for input
- *  @copyright (C) 2015 LuckyKat
- *  @author Hernan Zhou
+ * Manager that tracks mouse/touch and keyboard input
+ * <br>Exports: Function
+ * @module bento/managers/input
+ * @param {Object} settings - Settings
+ * @param {Vector2} settings.canvasScale - Reference to the current canvas scale.
+ * @param {HtmlCanvas} settings.canvas - Reference to the canvas element.
+ * @param {Rectangle} settings.viewport - Reference to viewport.
+ * @returns InputManager
  */
 bento.define('bento/managers/input', [
     'bento/utils',
@@ -220,15 +225,42 @@ bento.define('bento/managers/input', [
         initKeyboard();
 
         return {
+            /**
+             * Returns current pointers down
+             * @function
+             * @instance
+             * @returns {Array} pointers - Array with pointer positions
+             * @name getPointers
+             */
             getPointers: function () {
                 return pointers;
             },
+            /**
+             * Removes all current pointers down
+             * @function
+             * @instance
+             * @returns {Array} pointers - Array with pointer positions
+             * @name resetPointers
+             */
             resetPointers: function () {
                 pointers.length = 0;
             },
+            /**
+             * Checks if a keyboard key is down
+             * @function
+             * @instance
+             * @param {String} name - name of the key
+             * @name isKeyDown
+             */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
             },
+            /**
+             * Stop all pointer input
+             * @function
+             * @instance
+             * @name stop
+             */
             stop: function () {
                 if (!isListening) {
                     return;
@@ -241,6 +273,12 @@ bento.define('bento/managers/input', [
                 canvas.removeEventListener('mouseup', mouseUp);
                 isListening = false;
             },
+            /**
+             * Resumes all pointer input
+             * @function
+             * @instance
+             * @name stop
+             */
             resume: function () {
                 if (isListening) {
                     return;

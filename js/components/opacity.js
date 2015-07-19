@@ -1,3 +1,11 @@
+/**
+ * Component that sets the opacity
+ * <br>Exports: Function
+ * @module bento/components/opacity
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
 bento.define('bento/components/opacity', [
     'bento/utils',
     'bento/math/vector2'
