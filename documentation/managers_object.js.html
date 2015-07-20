@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento.js - Documentation</title>
+    <title>managers/object.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,7 +28,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento.js</h1>
+    <h1 class="page-title">managers/object.js</h1>
     
 
     
@@ -39,264 +39,391 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Bento module, main entry point to game modules and managers
- * &lt;br>Exports: Object
- * @module bento
+ * Manager that controls mainloop and all objects
+ * &lt;br>Exports: Function
+ * @module bento/managers/object
+ * @param {Object} data - gameData object
+ * @param {Object} settings - Settings object
+ * @param {Object} settings.defaultSort - Use javascript default sorting (not recommended)
+ * @param {Object} settings.debug - Show debug info
+ * @param {Object} settings.useDeltaT - Use delta time (untested)
+ * @returns ObjectManager
  */
-bento.define('bento', [
-    'bento/utils',
-    'bento/lib/domready',
-    'bento/managers/asset',
-    'bento/managers/input',
-    'bento/managers/object',
-    'bento/managers/audio',
-    'bento/managers/screen',
-    'bento/managers/savestate',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/renderer'
-], function (
-    Utils,
-    DomReady,
-    AssetManager,
-    InputManager,
-    ObjectManager,
-    AudioManager,
-    ScreenManager,
-    SaveState,
-    Vector2,
-    Rectangle,
-    Renderer
-) {
+bento.define('bento/managers/object', [
+    'hshg',
+    'bento/utils'
+], function (Hshg, Utils) {
     'use strict';
-    var lastTime = new Date().getTime(),
-        cumulativeTime = 1000 / 60,
-        canvas,
-        context,
-        renderer,
-        styleScaling = true,
-        canvasRatio = 0,
-        windowRatio,
-        manualResize = false,
-        canvasScale = {
-            x: 1,
-            y: 1
-        },
-        debug = {
-            debugBar: null,
-            fps: 0,
-            fpsAccumulator: 0,
-            fpsTicks: 0,
-            fpsMaxAverage: 600,
-            avg: 0,
-            lastTime: 0
-        },
-        gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
-        setupDebug = function () {
-            if (Utils.isCocoonJS()) {
-                return;
-            }
-            debug.debugBar = document.createElement('div');
-            debug.debugBar.style['font-family'] = 'Arial';
-            debug.debugBar.style.padding = '8px';
-            debug.debugBar.style.position = 'absolute';
-            debug.debugBar.style.right = '0px';
-            debug.debugBar.style.top = '0px';
-            debug.debugBar.style.color = 'white';
-            debug.debugBar.innerHTML = 'fps: 0';
-            document.body.appendChild(debug.debugBar);
-        },
-        setupCanvas = function (settings, callback) {
-            var parent;
-            canvas = document.getElementById(settings.canvasId);
-
-            if (!canvas) {
-                // no canvas, create it
-                parent = document.getElementById('wrapper');
-                if (!parent) {
-                    // just append it to the document body
-                    parent = document.body;
+    return function (data, settings) {
+        var objects = [],
+            lastTime = new Date().getTime(),
+            cumulativeTime = 0,
+            minimumFps = 30,
+            lastFrameTime = new Date().getTime(),
+            gameData,
+            quickAccess = {},
+            isRunning = false,
+            useSort = true,
+            isPaused = false,
+            isStopped = false,
+            fpsMeter,
+            hshg = new Hshg(),
+            sort = function () {
+                if (!settings.defaultSort) {
+                    Utils.stableSort.inplace(objects, function (a, b) {
+                        return a.z - b.z;
+                    });
+                } else {
+                    // default behavior
+                    objects.sort(function (a, b) {
+                        return a.z - b.z;
+                    });
                 }
-                canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
-                canvas.id = settings.canvasId;
-                parent.appendChild(canvas);
-            }
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            canvasRatio = viewport.height / viewport.width;
-
-            settings.renderer = settings.renderer || 'auto';
-
-            if (settings.renderer === 'auto') {
-                settings.renderer = 'webgl';
-                // canvas is accelerated in cocoonJS
-                // should also use canvas for android
-                if (Utils.isCocoonJS() || Utils.isAndroid()) {
-                    settings.renderer = 'canvas2d';
+            },
+            cleanObjects = function () {
+                var i;
+                // loop objects array from end to start and remove null elements
+                for (i = objects.length - 1; i >= 0; --i) {
+                    if (objects[i] === null) {
+                        objects.splice(i, 1);
+                    }
                 }
-            }
-            // setup renderer
-            Renderer(settings.renderer, canvas, settings, function (rend) {
-                renderer = rend;
-                gameData = {
-                    canvas: canvas,
-                    renderer: rend,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
-                };
-                callback();
-            });
+            },
+            mainLoop = function (time) {
+                var object,
+                    i,
+                    currentTime = new Date().getTime(),
+                    deltaT = currentTime - lastTime;
 
-        },
-        onResize = function () {
-            var width,
-                height,
-                innerWidth = window.innerWidth,
-                innerHeight = window.innerHeight;
+                if (!isRunning) {
+                    return;
+                }
 
-            if (manualResize) {
-                return;
-            }
+                if (settings.debug &amp;&amp; fpsMeter) {
+                    fpsMeter.tickStart();
+                }
 
-            windowRatio = innerHeight / innerWidth;
-            // resize to fill screen
-            if (windowRatio &lt; canvasRatio) {
-                width = innerHeight / canvasRatio;
-                height = innerHeight;
-            } else {
-                width = innerWidth;
-                height = innerWidth * canvasRatio;
-            }
-            if (styleScaling) {
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-            } else {
-                canvas.width = width;
-                canvas.height = height;
-            }
-            canvasScale.x = width / viewport.width;
-            canvasScale.y = height / viewport.height;
-        },
-        module = {
-            /**
-             * Setup game. Initializes Bento managers.
-             * @name setup
-             * @function
-             * @instance
-             * @param {Object} settings - settings for the game
-             * @param {Object} settings.assetGroups - Asset groups to load. Key: group name, value: path to json file
-             * @see AssetGroup
-             * @param {Rectangle} settings.canvasDimension - base resolution for the game
-             * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
-             * @param {Function} callback - Called when game is loaded (not implemented yet)
-             */
-            setup: function (settings, callback) {
-                DomReady(function () {
-                    var runGame = function () {
-                        module.objects.run();
-                        if (callback) {
-                            callback();
-                        }
-                    };
-                    if (settings.canvasDimension) {
-                        if (settings.canvasDimension.isRectangle) {
-                            viewport = settings.canvasDimension || viewport;
-                        } else {
-                            throw 'settings.canvasDimension must be a rectangle';
+                lastTime = currentTime;
+                cumulativeTime += deltaT;
+                gameData.deltaT = deltaT;
+                if (settings.useDeltaT) {
+                    cumulativeTime = 1000 / 60;
+                }
+                while (cumulativeTime >= 1000 / 60) {
+                    cumulativeTime -= 1000 / 60;
+                    if (cumulativeTime > 1000 / minimumFps) {
+                        // deplete cumulative time
+                        while (cumulativeTime >= 1000 / 60) {
+                            cumulativeTime -= 1000 / 60;
                         }
                     }
-                    setupCanvas(settings, function () {
-                        // window resize listeners
-                        manualResize = settings.manualResize;
-                        window.addEventListener('resize', onResize, false);
-                        window.addEventListener('orientationchange', onResize, false);
-                        onResize();
+                    if (settings.useDeltaT) {
+                        cumulativeTime = 0;
+                    }
+                    update();
+                }
+                cleanObjects();
+                if (useSort) {
+                    sort();
+                }
+                draw();
 
-                        module.input = InputManager(gameData);
-                        module.objects = ObjectManager(gameData, settings);
-                        module.assets = AssetManager();
-                        module.audio = AudioManager(module);
-                        module.screens = ScreenManager();
+                lastFrameTime = time;
+                if (settings.debug &amp;&amp; fpsMeter) {
+                    fpsMeter.tick();
+                }
 
-                        // mix functions
-                        Utils.extend(module, module.objects);
-
-                        if (settings.assetGroups) {
-                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
-                        } else {
-                            runGame();
+                requestAnimationFrame(mainLoop);
+            },
+            update = function () {
+                var object,
+                    i;
+                if (!isPaused) {
+                    hshg.update();
+                    hshg.queryForCollisionPairs();
+                }
+                for (i = 0; i &lt; objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (object.update &amp;&amp; ((isPaused &amp;&amp; object.updateWhenPaused) || !isPaused)) {
+                        object.update(gameData);
+                    }
+                }
+            },
+            draw = function () {
+                var object,
+                    i;
+                gameData.renderer.begin();
+                for (i = 0; i &lt; objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (object.draw) {
+                        object.draw(gameData);
+                    }
+                }
+                gameData.renderer.flush();
+            },
+            attach = function (object) {
+                var i, type, family;
+                object.z = object.z || 0;
+                objects.push(object);
+                if (object.init) {
+                    object.init();
+                }
+                if (object.start) {
+                    object.start();
+                }
+                object.isAdded = true;
+                if (object.useHshg &amp;&amp; object.getAABB) {
+                    hshg.addObject(object);
+                }
+                // add object to access pools
+                if (object.getFamily) {
+                    family = object.getFamily();
+                    for (i = 0; i &lt; family.length; ++i) {
+                        type = family[i];
+                        if (!quickAccess[type]) {
+                            quickAccess[type] = [];
                         }
+                        quickAccess[type].push(object);
+                    }
+                }
+            },
+            module = {
+                /**
+                 * Adds entity/object to the game. If the object has the
+                 * functions update and draw, they will be called in the loop.
+                 * @function
+                 * @instance
+                 * @param {Object} object - You can add any object, preferably an Entity
+                 * @name attach
+                 */
+                attach: attach,
+                add: attach,
+                /**
+                 * Removes entity/object
+                 * @function
+                 * @instance
+                 * @param {Object} object - Reference to the object to be removed
+                 * @name remove
+                 */
+                remove: function (object) {
+                    var i, type, index, family;
+                    if (!object) {
+                        return;
+                    }
+                    index = objects.indexOf(object);
+                    if (index >= 0) {
+                        objects[index] = null;
+                        if (object.destroy) {
+                            object.destroy(gameData);
+                        }
+                        object.isAdded = false;
+                    }
+                    if (object.useHshg &amp;&amp; object.getAABB) {
+                        hshg.removeObject(object);
+                    }
+                    // remove from access pools
+                    if (object.getFamily) {
+                        family = object.getFamily();
+                        for (i = 0; i &lt; family.length; ++i) {
+                            type = family[i];
+                            Utils.removeObject(quickAccess[type], object);
+                        }
+                    }
+                },
+                /**
+                 * Removes all entities/objects except ones that have the property "global"
+                 * @function
+                 * @instance
+                 * @param {Boolean} removeGlobal - Also remove global objects
+                 * @name removeAll
+                 */
+                removeAll: function (removeGlobal) {
+                    var i,
+                        object;
+                    for (i = 0; i &lt; objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.global || removeGlobal) {
+                            module.remove(object);
+                        }
+                    }
+                },
+                /**
+                 * Returns the first object it can find with this name
+                 * @function
+                 * @instance
+                 * @param {String} objectName - Name of the object
+                 * @param {Function} [callback] - Called if the object is found
+                 * @returns {Object} null if not found
+                 * @name get
+                 */
+                get: function (objectName, callback) {
+                    // retrieves the first object it finds by its name
+                    var i,
+                        object;
 
-                    });
-                });
-            },
-            /**
-             * Returns the current viewport (reference).
-             * The viewport is a Rectangle.
-             * viewport.x and viewport.y indicate its current position in the world (upper left corner)
-             * viewport.width and viewport.height can be used to determine the size of the canvas
-             * @function
-             * @instance
-             * @returns Rectangle
-             * @name getViewport
-             */
-            getViewport: function () {
-                return viewport;
-            },
-            /**
-             * Returns the canvas element
-             * @function
-             * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
-             */
-            getCanvas: function () {
-                return canvas;
-            },
-            /**
-             * Returns the current renderer engine
-             * @function
-             * @instance
-             * @returns Renderer
-             * @name getRenderer
-             */
-            getRenderer: function () {
-                return renderer;
-            },
-            /**
-             * Returns a gameData object
-             * A gameData object is passed through every object during the update and draw
-             * and contains all necessary information to render
-             * @function
-             * @instance
-             * @returns {Object} data
-             * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
-             * @returns {Renderer} data.renderer - Reference to current Renderer
-             * @returns {Vector2} data.canvasScale - Reference to current canvas scale
-             * @returns {Rectangle} data.viewport - Reference to viewport object
-             * @returns {Entity} data.entity - The current entity passing the data object (injected by Entity objects)
-             * @name getGameData
-             */
-            getGameData: function () {
-                return {
-                    canvas: canvas,
-                    renderer: renderer,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
-                };
-            },
-            assets: null,
-            objects: null,
-            input: null,
-            audio: null,
-            screens: null,
-            saveState: SaveState,
-            utils: Utils
-        };
-    return module;
+                    for (i = 0; i &lt; objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.name) {
+                            continue;
+                        }
+                        if (object.name === objectName) {
+                            if (callback) {
+                                callback(object);
+                            }
+                            return object;
+                        }
+                    }
+                    return null;
+                },
+                /**
+                 * Returns an array of objects with a certain name
+                 * @function
+                 * @instance
+                 * @param {String} objectName - Name of the object
+                 * @param {Function} [callback] - Called with the object array
+                 * @returns {Array} An array of objects, empty if no objects found
+                 * @name getByName
+                 */
+                getByName: function (objectName, callback) {
+                    var i,
+                        object,
+                        array = [];
+
+                    for (i = 0; i &lt; objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.name) {
+                            continue;
+                        }
+                        if (object.name === objectName) {
+                            array.push(object);
+                        }
+                    }
+                    if (callback &amp;&amp; array.length) {
+                        callback(array);
+                    }
+                    return array;
+                },
+                /**
+                 * Returns an array of objects by family name
+                 * @function
+                 * @instance
+                 * @param {String} familyName - Name of the family
+                 * @param {Function} [callback] - Called with the object array
+                 * @returns {Array} An array of objects, empty if no objects found
+                 * @name getByFamily
+                 */
+                getByFamily: function (type, callback) {
+                    var array = quickAccess[type];
+                    if (!array) {
+                        // initialize it
+                        quickAccess[type] = [];
+                        array = quickAccess[type];
+                        console.log('Warning: family called ' + type + ' does not exist');
+                    }
+                    if (callback &amp;&amp; array.length) {
+                        callback(array);
+                    }
+                    return array;
+                },
+                /**
+                 * Stops the mainloop
+                 * @function
+                 * @instance
+                 * @name stop
+                 */
+                stop: function () {
+                    isRunning = false;
+                },
+                /**
+                 * Starts the mainloop
+                 * @function
+                 * @instance
+                 * @name run
+                 */
+                run: function () {
+                    if (!isRunning) {
+                        isRunning = true;
+                        mainLoop();
+                    }
+                },
+                /**
+                 * Returns the number of objects
+                 * @function
+                 * @instance
+                 * @returns {Number} The number of objects
+                 * @name count
+                 */
+                count: function () {
+                    return objects.length;
+                },
+                /**
+                 * Stops calling update on every object. Note that draw is still
+                 * being called. Objects with the property updateWhenPaused
+                 * will still be updated.
+                 * @function
+                 * @instance
+                 * @name pause
+                 */
+                pause: function () {
+                    isPaused = true;
+                },
+                /**
+                 * Cancels the pause and resume updating objects.
+                 * @function
+                 * @instance
+                 * @name resume
+                 */
+                resume: function () {
+                    isPaused = false;
+                },
+                /**
+                 * Returns true if paused
+                 * @function
+                 * @instance
+                 * @name isPaused
+                 */
+                isPaused: function () {
+                    return isPaused;
+                },
+                /**
+                 * Forces objects to be drawn (Don't call this unless you need it)
+                 * @function
+                 * @instance
+                 * @name draw
+                 */
+                draw: function () {
+                    draw();
+                }
+            };
+
+        if (!window.performance) {
+            window.performance = {
+                now: Date.now
+            };
+        }
+        gameData = data;
+        if (settings.debug &amp;&amp; Utils.isDefined(window.FPSMeter)) {
+            FPSMeter.defaults.graph = 1;
+            fpsMeter = new FPSMeter();
+        }
+
+        return module;
+    };
 });</code></pre>
         </article>
     </section>

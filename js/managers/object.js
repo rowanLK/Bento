@@ -1,7 +1,7 @@
 /**
  * Manager that controls mainloop and all objects
  * <br>Exports: Function
- * @module bento/managers/input
+ * @module bento/managers/object
  * @param {Object} data - gameData object
  * @param {Object} settings - Settings object
  * @param {Object} settings.defaultSort - Use javascript default sorting (not recommended)
@@ -155,7 +155,8 @@ bento.define('bento/managers/object', [
             },
             module = {
                 /**
-                 * Adds entity/object
+                 * Adds entity/object to the game. If the object has the
+                 * functions update and draw, they will be called in the loop.
                  * @function
                  * @instance
                  * @param {Object} object - You can add any object, preferably an Entity
@@ -167,9 +168,8 @@ bento.define('bento/managers/object', [
                  * Removes entity/object
                  * @function
                  * @instance
-                 * @param {String} name - Name of image
-                 * @returns {Object} assets - Object with reference to all loaded assets
-                 * @name attach
+                 * @param {Object} object - Reference to the object to be removed
+                 * @name remove
                  */
                 remove: function (object) {
                     var i, type, index, family;
@@ -196,6 +196,13 @@ bento.define('bento/managers/object', [
                         }
                     }
                 },
+                /**
+                 * Removes all entities/objects except ones that have the property "global"
+                 * @function
+                 * @instance
+                 * @param {Boolean} removeGlobal - Also remove global objects
+                 * @name removeAll
+                 */
                 removeAll: function (removeGlobal) {
                     var i,
                         object;
@@ -209,6 +216,15 @@ bento.define('bento/managers/object', [
                         }
                     }
                 },
+                /**
+                 * Returns the first object it can find with this name
+                 * @function
+                 * @instance
+                 * @param {String} objectName - Name of the object
+                 * @param {Function} [callback] - Called if the object is found
+                 * @returns {Object} null if not found
+                 * @name get
+                 */
                 get: function (objectName, callback) {
                     // retrieves the first object it finds by its name
                     var i,
@@ -231,6 +247,15 @@ bento.define('bento/managers/object', [
                     }
                     return null;
                 },
+                /**
+                 * Returns an array of objects with a certain name
+                 * @function
+                 * @instance
+                 * @param {String} objectName - Name of the object
+                 * @param {Function} [callback] - Called with the object array
+                 * @returns {Array} An array of objects, empty if no objects found
+                 * @name getByName
+                 */
                 getByName: function (objectName, callback) {
                     var i,
                         object,
@@ -253,6 +278,15 @@ bento.define('bento/managers/object', [
                     }
                     return array;
                 },
+                /**
+                 * Returns an array of objects by family name
+                 * @function
+                 * @instance
+                 * @param {String} familyName - Name of the family
+                 * @param {Function} [callback] - Called with the object array
+                 * @returns {Array} An array of objects, empty if no objects found
+                 * @name getByFamily
+                 */
                 getByFamily: function (type, callback) {
                     var array = quickAccess[type];
                     if (!array) {
@@ -266,27 +300,72 @@ bento.define('bento/managers/object', [
                     }
                     return array;
                 },
+                /**
+                 * Stops the mainloop
+                 * @function
+                 * @instance
+                 * @name stop
+                 */
                 stop: function () {
                     isRunning = false;
                 },
+                /**
+                 * Starts the mainloop
+                 * @function
+                 * @instance
+                 * @name run
+                 */
                 run: function () {
                     if (!isRunning) {
                         isRunning = true;
                         mainLoop();
                     }
                 },
+                /**
+                 * Returns the number of objects
+                 * @function
+                 * @instance
+                 * @returns {Number} The number of objects
+                 * @name count
+                 */
                 count: function () {
                     return objects.length;
                 },
+                /**
+                 * Stops calling update on every object. Note that draw is still
+                 * being called. Objects with the property updateWhenPaused
+                 * will still be updated.
+                 * @function
+                 * @instance
+                 * @name pause
+                 */
                 pause: function () {
                     isPaused = true;
                 },
+                /**
+                 * Cancels the pause and resume updating objects.
+                 * @function
+                 * @instance
+                 * @name resume
+                 */
                 resume: function () {
                     isPaused = false;
                 },
+                /**
+                 * Returns true if paused
+                 * @function
+                 * @instance
+                 * @name isPaused
+                 */
                 isPaused: function () {
                     return isPaused;
                 },
+                /**
+                 * Forces objects to be drawn (Don't call this unless you need it)
+                 * @function
+                 * @instance
+                 * @name draw
+                 */
                 draw: function () {
                     draw();
                 }

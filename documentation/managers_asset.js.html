@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento.js - Documentation</title>
+    <title>managers/asset.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,7 +28,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento.js</h1>
+    <h1 class="page-title">managers/asset.js</h1>
     
 
     
@@ -39,264 +39,369 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Bento module, main entry point to game modules and managers
- * &lt;br>Exports: Object
- * @module bento
+ * Manager that loads and controls assets
+ * &lt;br>Exports: Function
+ * @module bento/managers/asset
+ * @returns AssetManager
  */
-bento.define('bento', [
-    'bento/utils',
-    'bento/lib/domready',
-    'bento/managers/asset',
-    'bento/managers/input',
-    'bento/managers/object',
-    'bento/managers/audio',
-    'bento/managers/screen',
-    'bento/managers/savestate',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/renderer'
-], function (
-    Utils,
-    DomReady,
-    AssetManager,
-    InputManager,
-    ObjectManager,
-    AudioManager,
-    ScreenManager,
-    SaveState,
-    Vector2,
-    Rectangle,
-    Renderer
-) {
+bento.define('bento/managers/asset', [
+    'bento/packedimage',
+    'bento/utils'
+], function (PackedImage, Utils) {
     'use strict';
-    var lastTime = new Date().getTime(),
-        cumulativeTime = 1000 / 60,
-        canvas,
-        context,
-        renderer,
-        styleScaling = true,
-        canvasRatio = 0,
-        windowRatio,
-        manualResize = false,
-        canvasScale = {
-            x: 1,
-            y: 1
-        },
-        debug = {
-            debugBar: null,
-            fps: 0,
-            fpsAccumulator: 0,
-            fpsTicks: 0,
-            fpsMaxAverage: 600,
-            avg: 0,
-            lastTime: 0
-        },
-        gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
-        setupDebug = function () {
-            if (Utils.isCocoonJS()) {
-                return;
-            }
-            debug.debugBar = document.createElement('div');
-            debug.debugBar.style['font-family'] = 'Arial';
-            debug.debugBar.style.padding = '8px';
-            debug.debugBar.style.position = 'absolute';
-            debug.debugBar.style.right = '0px';
-            debug.debugBar.style.top = '0px';
-            debug.debugBar.style.color = 'white';
-            debug.debugBar.innerHTML = 'fps: 0';
-            document.body.appendChild(debug.debugBar);
-        },
-        setupCanvas = function (settings, callback) {
-            var parent;
-            canvas = document.getElementById(settings.canvasId);
-
-            if (!canvas) {
-                // no canvas, create it
-                parent = document.getElementById('wrapper');
-                if (!parent) {
-                    // just append it to the document body
-                    parent = document.body;
+    return function () {
+        var assetGroups = {},
+            path = '',
+            assets = {
+                audio: {},
+                json: {},
+                images: {},
+                binary: {}
+            },
+            texturePacker = {},
+            packs = [],
+            loadAudio = function (name, source, callback) {
+                var asset,
+                    i;
+                if (!Utils.isArray(source)) {
+                    source = [path + 'audio/' + source];
+                } else {
+                    // prepend asset paths
+                    for (i = 0; i &lt; source.length; i += 1) {
+                        source[i] = path + 'audio/' + source[i];
+                    }
                 }
-                canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
-                canvas.id = settings.canvasId;
-                parent.appendChild(canvas);
-            }
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            canvasRatio = viewport.height / viewport.width;
-
-            settings.renderer = settings.renderer || 'auto';
-
-            if (settings.renderer === 'auto') {
-                settings.renderer = 'webgl';
-                // canvas is accelerated in cocoonJS
-                // should also use canvas for android
-                if (Utils.isCocoonJS() || Utils.isAndroid()) {
-                    settings.renderer = 'canvas2d';
+                // TEMP: use howler
+                if (Utils.isDefined(window.Howl)) {
+                    asset = new Howl({
+                        urls: source,
+                        onload: callback
+                    });
+                    assets.audio[name] = asset;
+                } else {
+                    // TODO: load audio and add audio manager
+                    callback();
                 }
-            }
-            // setup renderer
-            Renderer(settings.renderer, canvas, settings, function (rend) {
-                renderer = rend;
-                gameData = {
-                    canvas: canvas,
-                    renderer: rend,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
+            },
+            loadJSON = function (name, source, callback) {
+                var xhr = new XMLHttpRequest();
+                if (xhr.overrideMimeType) {
+                    xhr.overrideMimeType('application/json');
+                }
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + source);
                 };
-                callback();
-            });
-
-        },
-        onResize = function () {
-            var width,
-                height,
-                innerWidth = window.innerWidth,
-                innerHeight = window.innerHeight;
-
-            if (manualResize) {
-                return;
-            }
-
-            windowRatio = innerHeight / innerWidth;
-            // resize to fill screen
-            if (windowRatio &lt; canvasRatio) {
-                width = innerHeight / canvasRatio;
-                height = innerHeight;
-            } else {
-                width = innerWidth;
-                height = innerWidth * canvasRatio;
-            }
-            if (styleScaling) {
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-            } else {
-                canvas.width = width;
-                canvas.height = height;
-            }
-            canvasScale.x = width / viewport.width;
-            canvasScale.y = height / viewport.height;
-        },
-        module = {
-            /**
-             * Setup game. Initializes Bento managers.
-             * @name setup
-             * @function
-             * @instance
-             * @param {Object} settings - settings for the game
-             * @param {Object} settings.assetGroups - Asset groups to load. Key: group name, value: path to json file
-             * @see AssetGroup
-             * @param {Rectangle} settings.canvasDimension - base resolution for the game
-             * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
-             * @param {Function} callback - Called when game is loaded (not implemented yet)
-             */
-            setup: function (settings, callback) {
-                DomReady(function () {
-                    var runGame = function () {
-                        module.objects.run();
-                        if (callback) {
-                            callback();
-                        }
-                    };
-                    if (settings.canvasDimension) {
-                        if (settings.canvasDimension.isRectangle) {
-                            viewport = settings.canvasDimension || viewport;
+                xhr.ontimeout = function () {
+                    callback('Timeout' + source);
+                };
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) &amp;&amp; xhr.responseText)) {
+                            callback(null, name, JSON.parse(xhr.responseText));
                         } else {
-                            throw 'settings.canvasDimension must be a rectangle';
+                            callback('Error: State ' + xhr.readyState + ' ' + source);
                         }
                     }
-                    setupCanvas(settings, function () {
-                        // window resize listeners
-                        manualResize = settings.manualResize;
-                        window.addEventListener('resize', onResize, false);
-                        window.addEventListener('orientationchange', onResize, false);
-                        onResize();
-
-                        module.input = InputManager(gameData);
-                        module.objects = ObjectManager(gameData, settings);
-                        module.assets = AssetManager();
-                        module.audio = AudioManager(module);
-                        module.screens = ScreenManager();
-
-                        // mix functions
-                        Utils.extend(module, module.objects);
-
-                        if (settings.assetGroups) {
-                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
-                        } else {
-                            runGame();
-                        }
-
-                    });
-                });
-            },
-            /**
-             * Returns the current viewport (reference).
-             * The viewport is a Rectangle.
-             * viewport.x and viewport.y indicate its current position in the world (upper left corner)
-             * viewport.width and viewport.height can be used to determine the size of the canvas
-             * @function
-             * @instance
-             * @returns Rectangle
-             * @name getViewport
-             */
-            getViewport: function () {
-                return viewport;
-            },
-            /**
-             * Returns the canvas element
-             * @function
-             * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
-             */
-            getCanvas: function () {
-                return canvas;
-            },
-            /**
-             * Returns the current renderer engine
-             * @function
-             * @instance
-             * @returns Renderer
-             * @name getRenderer
-             */
-            getRenderer: function () {
-                return renderer;
-            },
-            /**
-             * Returns a gameData object
-             * A gameData object is passed through every object during the update and draw
-             * and contains all necessary information to render
-             * @function
-             * @instance
-             * @returns {Object} data
-             * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
-             * @returns {Renderer} data.renderer - Reference to current Renderer
-             * @returns {Vector2} data.canvasScale - Reference to current canvas scale
-             * @returns {Rectangle} data.viewport - Reference to viewport object
-             * @returns {Entity} data.entity - The current entity passing the data object (injected by Entity objects)
-             * @name getGameData
-             */
-            getGameData: function () {
-                return {
-                    canvas: canvas,
-                    renderer: renderer,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
                 };
+                xhr.send(null);
             },
-            assets: null,
-            objects: null,
-            input: null,
-            audio: null,
-            screens: null,
-            saveState: SaveState,
-            utils: Utils
+            loadBinary = function (name, source, success, failure) {
+                var xhr = new XMLHttpRequest(),
+                    arrayBuffer,
+                    byteArray,
+                    buffer,
+                    i = 0;
+
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + name);
+                };
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function (e) {
+                    var binary;
+                    arrayBuffer = xhr.response;
+                    if (arrayBuffer) {
+                        byteArray = new Uint8Array(arrayBuffer);
+                        buffer = [];
+                        for (i; i &lt; byteArray.byteLength; ++i) {
+                            buffer[i] = String.fromCharCode(byteArray[i]);
+                        }
+                        // loadedAssets.binary[name] = buffer.join('');
+                        binary = buffer.join('');
+                        callback(null, name, binary);
+                    }
+                };
+                xhr.send();
+            },
+            loadImage = function (name, source, callback) {
+                // TODO: Implement failure
+                var img = new Image();
+                img.src = source;
+                img.addEventListener('load', function () {
+                    callback(null, name, img);
+                }, false);
+            },
+            /**
+             * Loads json files containing asset paths to load
+             * @function
+             * @instance
+             * @param {Object} jsonFiles - Name with json path
+             * @param {Function} onReady - Callback when ready
+             * @param {Function} onLoaded - Callback when json file is loaded
+             * @name loadAssetGroups
+             */
+            loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
+                var jsonName,
+                    keyCount = Utils.getKeyLength(jsonFiles),
+                    loaded = 0,
+                    callback = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assetGroups[name] = json;
+                        loaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(loaded, keyCount);
+                        }
+                        if (keyCount === loaded &amp;&amp; Utils.isDefined(onReady)) {
+                            onReady(null);
+                        }
+                    };
+                for (jsonName in jsonFiles) {
+                    if (jsonFiles.hasOwnProperty(jsonName)) {
+                        loadJSON(jsonName, jsonFiles[jsonName], callback);
+                    }
+                }
+            },
+            /**
+             * Loads assets from asset group
+             * @function
+             * @instance
+             * @param {String} groupName - Name of asset group
+             * @param {Function} onReady - Callback when ready
+             * @param {Function} onLoaded - Callback when asset file is loaded
+             * @name load
+             */
+            load = function (groupName, onReady, onLoaded) {
+                var group = assetGroups[groupName],
+                    asset,
+                    assetsLoaded = 0,
+                    assetCount = 0,
+                    checkLoaded = function () {
+                        if (assetsLoaded === assetCount &amp;&amp; Utils.isDefined(onReady)) {
+                            initPackedImages();
+                            onReady(null);
+                        }
+                    },
+                    onLoadImage = function (err, name, image) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.images[name] = image;
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadPack = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        packs.push(name);
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadJson = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadAudio = function () {
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    };
+
+                if (!Utils.isDefined(group)) {
+                    onReady('Could not find asset group ' + groupName);
+                    return;
+                }
+                // set path
+                if (Utils.isDefined(group.path)) {
+                    path = group.path;
+                }
+                // load images
+                if (Utils.isDefined(group.images)) {
+                    assetCount += Utils.getKeyLength(group.images);
+                    for (asset in group.images) {
+                        if (!group.images.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
+                    }
+                }
+                // load packed images
+                if (Utils.isDefined(group.texturePacker)) {
+                    assetCount += Utils.getKeyLength(group.texturePacker);
+                    for (asset in group.texturePacker) {
+                        if (!group.texturePacker.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadJSON(asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                    }
+                }
+                // load audio
+                if (Utils.isDefined(group.audio)) {
+                    assetCount += Utils.getKeyLength(group.audio);
+                    for (asset in group.audio) {
+                        if (!group.audio.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadAudio(asset, group.audio[asset], onLoadAudio);
+                    }
+                }
+                // load json
+                if (Utils.isDefined(group.json)) {
+                    assetCount += Utils.getKeyLength(group.json);
+                    for (asset in group.json) {
+                        if (!group.json.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        loadJSON(asset, path + 'json/' + group.json[asset], onLoadJson);
+                    }
+                }
+
+            },
+            /**
+             * Unloads assets (not implemented yet)
+             * @function
+             * @instance
+             * @param {String} groupName - Name of asset group
+             * @name unload
+             */
+            unload = function (groupName) {},
+            /**
+             * Returns a previously loaded image
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {PackedImage} Image
+             * @name getImage
+             */
+            getImage = function (name) {
+                var image, packedImage = texturePacker[name];
+                if (!packedImage) {
+                    image = getImageElement(name);
+                    if (!image) {
+                        throw 'Can not find ' + name;
+                    }
+                    packedImage = PackedImage(image);
+                    texturePacker[name] = packedImage;
+                }
+                return packedImage;
+            },
+            /**
+             * Returns a previously loaded image element
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {HTMLImage} Html Image element
+             * @name getImageElement
+             */
+            getImageElement = function (name) {
+                var asset = assets.images[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            /**
+             * Returns a previously loaded json object
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Object} Json object
+             * @name getJson
+             */
+            getJson = function (name) {
+                var asset = assets.json[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            /**
+             * Returns a previously loaded audio element (currently by howler)
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Howl} Howler object
+             * @name getAudio
+             */
+            getAudio = function (name) {
+                var asset = assets.audio[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            /**
+             * Returns all assets
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Object} assets - Object with reference to all loaded assets
+             * @name getAssets
+             */
+            getAssets = function () {
+                return assets;
+            },
+            initPackedImages = function () {
+                var frame, pack, i, image, json;
+                while (packs.length) {
+                    pack = packs.pop();
+                    image = getImageElement(pack);
+                    json = getJson(pack);
+
+                    // parse json
+                    for (i = 0; i &lt; json.frames.length; ++i) {
+                        name = json.frames[i].filename;
+                        name = name.substring(0, name.length - 4);
+                        frame = json.frames[i].frame;
+                        texturePacker[name] = PackedImage(image, frame);
+                    }
+                    console.log(texturePacker);
+                }
+            };
+        return {
+            loadAssetGroups: loadAssetGroups,
+            load: load,
+            unload: unload,
+            getImage: getImage,
+            getImageElement: getImageElement,
+            getJson: getJson,
+            getAudio: getAudio,
+            getAssets: getAssets
         };
-    return module;
+    };
 });</code></pre>
         </article>
     </section>

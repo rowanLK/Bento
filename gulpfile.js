@@ -4,7 +4,6 @@ var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var jshint = require('gulp-jshint');
 var addsrc = require('gulp-add-src');
-var jsdoc = require("gulp-jsdoc");
 var exec = require('gulp-exec');
 
 gulp.task('default', function () {

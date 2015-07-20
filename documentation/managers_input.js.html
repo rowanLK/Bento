@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento.js - Documentation</title>
+    <title>managers/input.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,7 +28,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento.js</h1>
+    <h1 class="page-title">managers/input.js</h1>
     
 
     
@@ -39,264 +39,300 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Bento module, main entry point to game modules and managers
- * &lt;br>Exports: Object
- * @module bento
+ * Manager that tracks mouse/touch and keyboard input
+ * &lt;br>Exports: Function
+ * @module bento/managers/input
+ * @param {Object} settings - Settings
+ * @param {Vector2} settings.canvasScale - Reference to the current canvas scale.
+ * @param {HtmlCanvas} settings.canvas - Reference to the canvas element.
+ * @param {Rectangle} settings.viewport - Reference to viewport.
+ * @returns InputManager
  */
-bento.define('bento', [
+bento.define('bento/managers/input', [
     'bento/utils',
-    'bento/lib/domready',
-    'bento/managers/asset',
-    'bento/managers/input',
-    'bento/managers/object',
-    'bento/managers/audio',
-    'bento/managers/screen',
-    'bento/managers/savestate',
     'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/renderer'
-], function (
-    Utils,
-    DomReady,
-    AssetManager,
-    InputManager,
-    ObjectManager,
-    AudioManager,
-    ScreenManager,
-    SaveState,
-    Vector2,
-    Rectangle,
-    Renderer
-) {
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
     'use strict';
-    var lastTime = new Date().getTime(),
-        cumulativeTime = 1000 / 60,
-        canvas,
-        context,
-        renderer,
-        styleScaling = true,
-        canvasRatio = 0,
-        windowRatio,
-        manualResize = false,
-        canvasScale = {
-            x: 1,
-            y: 1
-        },
-        debug = {
-            debugBar: null,
-            fps: 0,
-            fpsAccumulator: 0,
-            fpsTicks: 0,
-            fpsMaxAverage: 600,
-            avg: 0,
-            lastTime: 0
-        },
-        gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
-        setupDebug = function () {
-            if (Utils.isCocoonJS()) {
-                return;
-            }
-            debug.debugBar = document.createElement('div');
-            debug.debugBar.style['font-family'] = 'Arial';
-            debug.debugBar.style.padding = '8px';
-            debug.debugBar.style.position = 'absolute';
-            debug.debugBar.style.right = '0px';
-            debug.debugBar.style.top = '0px';
-            debug.debugBar.style.color = 'white';
-            debug.debugBar.innerHTML = 'fps: 0';
-            document.body.appendChild(debug.debugBar);
-        },
-        setupCanvas = function (settings, callback) {
-            var parent;
-            canvas = document.getElementById(settings.canvasId);
-
-            if (!canvas) {
-                // no canvas, create it
-                parent = document.getElementById('wrapper');
-                if (!parent) {
-                    // just append it to the document body
-                    parent = document.body;
+    return function (settings) {
+        var isPaused = false,
+            isListening = false,
+            canvas,
+            canvasScale,
+            viewport,
+            pointers = [],
+            keyStates = {},
+            offsetLeft = 0,
+            offsetTop = 0,
+            pointerDown = function (evt) {
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition,
+                    worldPosition: evt.worldPosition
+                });
+                EventSystem.fire('pointerDown', evt);
+            },
+            pointerMove = function (evt) {
+                EventSystem.fire('pointerMove', evt);
+                updatePointer(evt);
+            },
+            pointerUp = function (evt) {
+                EventSystem.fire('pointerUp', evt);
+                removePointer(evt);
+            },
+            touchStart = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i &lt; evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i, 'start');
+                    pointerDown(evt);
                 }
-                canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
-                canvas.id = settings.canvasId;
-                parent.appendChild(canvas);
-            }
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            canvasRatio = viewport.height / viewport.width;
-
-            settings.renderer = settings.renderer || 'auto';
-
-            if (settings.renderer === 'auto') {
-                settings.renderer = 'webgl';
-                // canvas is accelerated in cocoonJS
-                // should also use canvas for android
-                if (Utils.isCocoonJS() || Utils.isAndroid()) {
-                    settings.renderer = 'canvas2d';
+            },
+            touchMove = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i &lt; evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i, 'move');
+                    pointerMove(evt);
                 }
-            }
-            // setup renderer
-            Renderer(settings.renderer, canvas, settings, function (rend) {
-                renderer = rend;
-                gameData = {
-                    canvas: canvas,
-                    renderer: rend,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
-                };
-                callback();
-            });
-
-        },
-        onResize = function () {
-            var width,
-                height,
-                innerWidth = window.innerWidth,
-                innerHeight = window.innerHeight;
-
-            if (manualResize) {
-                return;
-            }
-
-            windowRatio = innerHeight / innerWidth;
-            // resize to fill screen
-            if (windowRatio &lt; canvasRatio) {
-                width = innerHeight / canvasRatio;
-                height = innerHeight;
-            } else {
-                width = innerWidth;
-                height = innerWidth * canvasRatio;
-            }
-            if (styleScaling) {
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-            } else {
-                canvas.width = width;
-                canvas.height = height;
-            }
-            canvasScale.x = width / viewport.width;
-            canvasScale.y = height / viewport.height;
-        },
-        module = {
-            /**
-             * Setup game. Initializes Bento managers.
-             * @name setup
-             * @function
-             * @instance
-             * @param {Object} settings - settings for the game
-             * @param {Object} settings.assetGroups - Asset groups to load. Key: group name, value: path to json file
-             * @see AssetGroup
-             * @param {Rectangle} settings.canvasDimension - base resolution for the game
-             * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
-             * @param {Function} callback - Called when game is loaded (not implemented yet)
-             */
-            setup: function (settings, callback) {
-                DomReady(function () {
-                    var runGame = function () {
-                        module.objects.run();
-                        if (callback) {
-                            callback();
-                        }
-                    };
-                    if (settings.canvasDimension) {
-                        if (settings.canvasDimension.isRectangle) {
-                            viewport = settings.canvasDimension || viewport;
-                        } else {
-                            throw 'settings.canvasDimension must be a rectangle';
-                        }
+            },
+            touchEnd = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i &lt; evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i, 'end');
+                    pointerUp(evt);
+                }
+            },
+            mouseDown = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt);
+                pointerDown(evt);
+            },
+            mouseMove = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt);
+                pointerMove(evt);
+            },
+            mouseUp = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt);
+                pointerUp(evt);
+            },
+            addTouchPosition = function (evt, n, type) {
+                var touch = evt.changedTouches[n],
+                    x = (touch.pageX - offsetLeft) / canvasScale.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y;
+                evt.preventDefault();
+                evt.id = 0;
+                evt.eventType = 'touch';
+                evt.changedTouches[n].position = Vector2(x, y);
+                evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
+                evt.changedTouches[n].worldPosition.x += viewport.x;
+                evt.changedTouches[n].worldPosition.y += viewport.y;
+                evt.changedTouches[n].localPosition = evt.changedTouches[n].position.clone();
+                // add 'normal' position
+                evt.position = evt.changedTouches[n].position.clone();
+                evt.worldPosition = evt.changedTouches[n].worldPosition.clone();
+                evt.localPosition = evt.changedTouches[n].position.clone();
+                // id
+                evt.id = evt.changedTouches[n].identifier + 1;
+            },
+            addMousePosition = function (evt) {
+                var x = (evt.pageX - offsetLeft) / canvasScale.x,
+                    y = (evt.pageY - offsetTop) / canvasScale.y;
+                evt.id = 0;
+                evt.eventType = 'mouse';
+                evt.position = Vector2(x, y);
+                evt.worldPosition = evt.position.clone();
+                evt.worldPosition.x += viewport.x;
+                evt.worldPosition.y += viewport.y;
+                evt.localPosition = evt.position.clone();
+                // give it an id that doesn't clash with touch id
+                evt.id = -1;
+            },
+            updatePointer = function (evt) {
+                var i = 0;
+                for (i = 0; i &lt; pointers.length; i += 1) {
+                    if (pointers[i].id === evt.id) {
+                        pointers[i].position = evt.position;
+                        pointers[i].worldPosition = evt.worldPosition;
+                        pointers[i].localPosition = evt.position;
+                        return;
                     }
-                    setupCanvas(settings, function () {
-                        // window resize listeners
-                        manualResize = settings.manualResize;
-                        window.addEventListener('resize', onResize, false);
-                        window.addEventListener('orientationchange', onResize, false);
-                        onResize();
+                }
+            },
+            removePointer = function (evt) {
+                var i = 0;
+                for (i = 0; i &lt; pointers.length; i += 1) {
+                    if (pointers[i].id === evt.id) {
+                        pointers.splice(i, 1);
+                        return;
+                    }
+                }
+            },
+            initTouch = function () {
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
 
-                        module.input = InputManager(gameData);
-                        module.objects = ObjectManager(gameData, settings);
-                        module.assets = AssetManager();
-                        module.audio = AudioManager(module);
-                        module.screens = ScreenManager();
-
-                        // mix functions
-                        Utils.extend(module, module.objects);
-
-                        if (settings.assetGroups) {
-                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
-                        } else {
-                            runGame();
-                        }
-
-                    });
+                document.body.addEventListener('touchstart', function (evt) {
+                    if (evt &amp;&amp; evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt &amp;&amp; evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
+                });
+                document.body.addEventListener('touchmove', function (evt) {
+                    if (evt &amp;&amp; evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt &amp;&amp; evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
                 });
             },
+            initKeyboard = function () {
+                var element = settings.canvas || window,
+                    refocus = function (evt) {
+                        if (element.focus) {
+                            element.focus();
+                        }
+                    };
+                // fix for iframes
+                element.tabIndex = 0;
+                if (element.focus) {
+                    element.focus();
+                }
+                element.addEventListener('keydown', keyDown, false);
+                element.addEventListener('keyup', keyUp, false);
+                // refocus
+                element.addEventListener('mousedown', refocus, false);
+
+            },
+            keyDown = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                EventSystem.fire('keyDown', evt);
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i &lt; names.length; ++i) {
+                    keyStates[names[i]] = true;
+                    EventSystem.fire('buttonDown', names[i]);
+                }
+            },
+            keyUp = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                EventSystem.fire('keyUp', evt);
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i &lt; names.length; ++i) {
+                    keyStates[names[i]] = false;
+                    EventSystem.fire('buttonUp', names[i]);
+                }
+            },
+            destroy = function () {
+                // remove all event listeners
+            };
+
+        if (!settings) {
+            throw 'Supply a settings object';
+        }
+        // canvasScale is needed to take css scaling into account
+        canvasScale = settings.canvasScale;
+        canvas = settings.canvas;
+        viewport = settings.viewport;
+
+        if (canvas &amp;&amp; !Utils.isCocoonJS()) {
+            offsetLeft = canvas.offsetLeft;
+            offsetTop = canvas.offsetTop;
+        }
+
+        // touch device
+        initTouch();
+
+        // keyboard
+        initKeyboard();
+
+        return {
             /**
-             * Returns the current viewport (reference).
-             * The viewport is a Rectangle.
-             * viewport.x and viewport.y indicate its current position in the world (upper left corner)
-             * viewport.width and viewport.height can be used to determine the size of the canvas
+             * Returns current pointers down
              * @function
              * @instance
-             * @returns Rectangle
-             * @name getViewport
+             * @returns {Array} pointers - Array with pointer positions
+             * @name getPointers
              */
-            getViewport: function () {
-                return viewport;
+            getPointers: function () {
+                return pointers;
             },
             /**
-             * Returns the canvas element
+             * Removes all current pointers down
              * @function
              * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
+             * @returns {Array} pointers - Array with pointer positions
+             * @name resetPointers
              */
-            getCanvas: function () {
-                return canvas;
+            resetPointers: function () {
+                pointers.length = 0;
             },
             /**
-             * Returns the current renderer engine
+             * Checks if a keyboard key is down
              * @function
              * @instance
-             * @returns Renderer
-             * @name getRenderer
+             * @param {String} name - name of the key
+             * @name isKeyDown
              */
-            getRenderer: function () {
-                return renderer;
+            isKeyDown: function (name) {
+                return keyStates[name] || false;
             },
             /**
-             * Returns a gameData object
-             * A gameData object is passed through every object during the update and draw
-             * and contains all necessary information to render
+             * Stop all pointer input
              * @function
              * @instance
-             * @returns {Object} data
-             * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
-             * @returns {Renderer} data.renderer - Reference to current Renderer
-             * @returns {Vector2} data.canvasScale - Reference to current canvas scale
-             * @returns {Rectangle} data.viewport - Reference to viewport object
-             * @returns {Entity} data.entity - The current entity passing the data object (injected by Entity objects)
-             * @name getGameData
+             * @name stop
              */
-            getGameData: function () {
-                return {
-                    canvas: canvas,
-                    renderer: renderer,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
-                };
+            stop: function () {
+                if (!isListening) {
+                    return;
+                }
+                canvas.removeEventListener('touchstart', touchStart);
+                canvas.removeEventListener('touchmove', touchMove);
+                canvas.removeEventListener('touchend', touchEnd);
+                canvas.removeEventListener('mousedown', mouseDown);
+                canvas.removeEventListener('mousemove', mouseMove);
+                canvas.removeEventListener('mouseup', mouseUp);
+                isListening = false;
             },
-            assets: null,
-            objects: null,
-            input: null,
-            audio: null,
-            screens: null,
-            saveState: SaveState,
-            utils: Utils
+            /**
+             * Resumes all pointer input
+             * @function
+             * @instance
+             * @name resume
+             */
+            resume: function () {
+                if (isListening) {
+                    return;
+                }
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
+            }
         };
-    return module;
+    };
 });</code></pre>
         </article>
     </section>

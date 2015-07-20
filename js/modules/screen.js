@@ -1,6 +1,8 @@
 /**
- * Screen/state object
- * @copyright (C) 2015 LuckyKat
+ * Screen object. 
+ * <br>Exports: Function
+ * @module bento/screen
+ * @returns Screen
  */
 bento.define('bento/screen', [
     'bento/utils',
@@ -19,7 +21,18 @@ bento.define('bento/screen', [
             tiled,
             isShown = false,
             module = {
+                /**
+                 * Name of the screen
+                 * @instance
+                 * @name name
+                 */
                 name: null,
+                /**
+                 * Resumes all pointer input
+                 * @function
+                 * @instance
+                 * @name resume
+                 */
                 setDimension: function (rectangle) {
                     dimension.width = rectangle.width;
                     dimension.height = rectangle.height;

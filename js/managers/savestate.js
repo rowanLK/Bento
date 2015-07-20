@@ -1,7 +1,12 @@
+/**
+ * Manager that controls presistent variables. Wrapper for localStorage.
+ * <br>Exports: Object
+ * @module bento/managers/savestate
+ * @returns SaveState
+ */
 bento.define('bento/managers/savestate', [
     'bento/utils'
-],
-function (Utils) {
+], function (Utils) {
     'use strict';
     var uniqueID = document.URL,
         storage,
@@ -45,12 +50,29 @@ function (Utils) {
         storage = storageFallBack;
     }
     return {
+        /**
+         * Saves/serializes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number/Object/Array to be saved
+         * @name save
+         */
         save: function (elementKey, element) {
             if (typeof elementKey !== 'string') {
                 elementKey = JSON.stringify(elementKey);
             }
             storage.setItem(uniqueID + elementKey, JSON.stringify(element));
         },
+        /**
+         * Loads a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} defaultValue - The value returns if saved variable doesn't exists
+         * @returns {Object} Returns saved value, otherwise defaultValue
+         * @name load
+         */
         load: function (elementKey, defaultValue) {
             var element;
             element = storage.getItem(uniqueID + elementKey);
@@ -59,18 +81,46 @@ function (Utils) {
             }
             return JSON.parse(element);
         },
+        /**
+         * Deletes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @name remove
+         */
         remove: function (elementKey) {
             storage.removeItem(uniqueID + elementKey);
         },
+        /**
+         * Clears the savestate
+         * @function
+         * @instance
+         * @name clear
+         */
         clear: function () {
             storage.clear();
         },
         debug: function () {
             console.log(localStorage);
         },
+        /**
+         * Checks if localStorage has values
+         * @function
+         * @instance
+         * @name isEmpty
+         */
         isEmpty: function () {
             return storage.length === 0;
         },
+        /**
+         * Sets an identifier that's prepended on every key.
+         * By default this is the URL, to prevend savefile clashing.
+         * TODO: better if its the game name
+         * @function
+         * @instance
+         * @param {String} name - ID name
+         * @name setId
+         */
         setId: function (str) {
             uniqueID = str;
         }

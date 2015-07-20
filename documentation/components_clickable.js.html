@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento.js - Documentation</title>
+    <title>components/clickable.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,7 +28,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento.js</h1>
+    <h1 class="page-title">components/clickable.js</h1>
     
 
     
@@ -39,264 +39,270 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Bento module, main entry point to game modules and managers
- * &lt;br>Exports: Object
- * @module bento
+ * Component that helps with detecting clicks on an entity
+ * &lt;br>Exports: Function
+ * @module bento/components/clickable
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
  */
-bento.define('bento', [
+bento.define('bento/components/clickable', [
+    'bento',
     'bento/utils',
-    'bento/lib/domready',
-    'bento/managers/asset',
-    'bento/managers/input',
-    'bento/managers/object',
-    'bento/managers/audio',
-    'bento/managers/screen',
-    'bento/managers/savestate',
     'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/renderer'
-], function (
-    Utils,
-    DomReady,
-    AssetManager,
-    InputManager,
-    ObjectManager,
-    AudioManager,
-    ScreenManager,
-    SaveState,
-    Vector2,
-    Rectangle,
-    Renderer
-) {
+    'bento/math/matrix',
+    'bento/eventsystem'
+], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
-    var lastTime = new Date().getTime(),
-        cumulativeTime = 1000 / 60,
-        canvas,
-        context,
-        renderer,
-        styleScaling = true,
-        canvasRatio = 0,
-        windowRatio,
-        manualResize = false,
-        canvasScale = {
-            x: 1,
-            y: 1
-        },
-        debug = {
-            debugBar: null,
-            fps: 0,
-            fpsAccumulator: 0,
-            fpsTicks: 0,
-            fpsMaxAverage: 600,
-            avg: 0,
-            lastTime: 0
-        },
-        gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
-        setupDebug = function () {
-            if (Utils.isCocoonJS()) {
-                return;
-            }
-            debug.debugBar = document.createElement('div');
-            debug.debugBar.style['font-family'] = 'Arial';
-            debug.debugBar.style.padding = '8px';
-            debug.debugBar.style.position = 'absolute';
-            debug.debugBar.style.right = '0px';
-            debug.debugBar.style.top = '0px';
-            debug.debugBar.style.color = 'white';
-            debug.debugBar.innerHTML = 'fps: 0';
-            document.body.appendChild(debug.debugBar);
-        },
-        setupCanvas = function (settings, callback) {
-            var parent;
-            canvas = document.getElementById(settings.canvasId);
-
-            if (!canvas) {
-                // no canvas, create it
-                parent = document.getElementById('wrapper');
-                if (!parent) {
-                    // just append it to the document body
-                    parent = document.body;
-                }
-                canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
-                canvas.id = settings.canvasId;
-                parent.appendChild(canvas);
-            }
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            canvasRatio = viewport.height / viewport.width;
-
-            settings.renderer = settings.renderer || 'auto';
-
-            if (settings.renderer === 'auto') {
-                settings.renderer = 'webgl';
-                // canvas is accelerated in cocoonJS
-                // should also use canvas for android
-                if (Utils.isCocoonJS() || Utils.isAndroid()) {
-                    settings.renderer = 'canvas2d';
-                }
-            }
-            // setup renderer
-            Renderer(settings.renderer, canvas, settings, function (rend) {
-                renderer = rend;
-                gameData = {
-                    canvas: canvas,
-                    renderer: rend,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
-                };
-                callback();
-            });
-
-        },
-        onResize = function () {
-            var width,
-                height,
-                innerWidth = window.innerWidth,
-                innerHeight = window.innerHeight;
-
-            if (manualResize) {
-                return;
-            }
-
-            windowRatio = innerHeight / innerWidth;
-            // resize to fill screen
-            if (windowRatio &lt; canvasRatio) {
-                width = innerHeight / canvasRatio;
-                height = innerHeight;
-            } else {
-                width = innerWidth;
-                height = innerWidth * canvasRatio;
-            }
-            if (styleScaling) {
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-            } else {
-                canvas.width = width;
-                canvas.height = height;
-            }
-            canvasScale.x = width / viewport.width;
-            canvasScale.y = height / viewport.height;
-        },
-        module = {
-            /**
-             * Setup game. Initializes Bento managers.
-             * @name setup
-             * @function
-             * @instance
-             * @param {Object} settings - settings for the game
-             * @param {Object} settings.assetGroups - Asset groups to load. Key: group name, value: path to json file
-             * @see AssetGroup
-             * @param {Rectangle} settings.canvasDimension - base resolution for the game
-             * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
-             * @param {Function} callback - Called when game is loaded (not implemented yet)
-             */
-            setup: function (settings, callback) {
-                DomReady(function () {
-                    var runGame = function () {
-                        module.objects.run();
-                        if (callback) {
-                            callback();
-                        }
-                    };
-                    if (settings.canvasDimension) {
-                        if (settings.canvasDimension.isRectangle) {
-                            viewport = settings.canvasDimension || viewport;
-                        } else {
-                            throw 'settings.canvasDimension must be a rectangle';
-                        }
+    return function (entity, settings) {
+        var mixin = {},
+            isPointerDown = false,
+            initialized = false,
+            component = {
+                /**
+                 * Name of the component
+                 * @instance
+                 * @default 'clickable'
+                 * @name name 
+                 */
+                name: 'clickable',
+                /**
+                 * Whether the pointer is over the entity
+                 * @instance
+                 * @default false
+                 * @name isHovering
+                 */
+                isHovering: false,
+                hasTouched: false,
+                /**
+                 * Id number of the pointer holding entity 
+                 * @instance
+                 * @default null
+                 * @name holdId
+                 */
+                holdId: null,
+                pointerDown: function (evt) {},
+                pointerUp: function (evt) {},
+                pointerMove: function (evt) {},
+                // when clicking on the object
+                onClick: function () {},
+                onClickUp: function () {},
+                onClickMiss: function () {},
+                onHold: function () {},
+                onHoldLeave: function () {},
+                onHoldEnter: function () {},
+                onHoldEnd: function () {},
+                onHoverLeave: function () {},
+                onHoverEnter: function () {},
+                /**
+                 * Destructs the component. Called by the entity holding the component.
+                 * @function
+                 * @instance
+                 * @name destroy
+                 */
+                destroy: function () {
+                    EventSystem.removeEventListener('pointerDown', pointerDown);
+                    EventSystem.removeEventListener('pointerUp', pointerUp);
+                    EventSystem.removeEventListener('pointerMove', pointerMove);
+                    initialized = false;
+                },
+                /**
+                 * Starts the component. Called by the entity holding the component.
+                 * @function
+                 * @instance
+                 * @name start
+                 */
+                start: function () {
+                    if (initialized) {
+                        // TODO: this is caused by calling start when objects are attached, fix this later!
+                        // console.log('warning: trying to init twice')
+                        return;
                     }
-                    setupCanvas(settings, function () {
-                        // window resize listeners
-                        manualResize = settings.manualResize;
-                        window.addEventListener('resize', onResize, false);
-                        window.addEventListener('orientationchange', onResize, false);
-                        onResize();
-
-                        module.input = InputManager(gameData);
-                        module.objects = ObjectManager(gameData, settings);
-                        module.assets = AssetManager();
-                        module.audio = AudioManager(module);
-                        module.screens = ScreenManager();
-
-                        // mix functions
-                        Utils.extend(module, module.objects);
-
-                        if (settings.assetGroups) {
-                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
-                        } else {
-                            runGame();
-                        }
-
-                    });
-                });
+                    EventSystem.addEventListener('pointerDown', pointerDown);
+                    EventSystem.addEventListener('pointerUp', pointerUp);
+                    EventSystem.addEventListener('pointerMove', pointerMove);
+                    initialized = true;
+                },
+                /**
+                 * Updates the component. Called by the entity holding the component every tick.
+                 * @function
+                 * @instance
+                 * @param {Object} data - Game data object
+                 * @name update
+                 */
+                update: function () {
+                    if (this.isHovering &amp;&amp; isPointerDown &amp;&amp; this.onHold) {
+                        this.onHold();
+                    }
+                }
             },
-            /**
-             * Returns the current viewport (reference).
-             * The viewport is a Rectangle.
-             * viewport.x and viewport.y indicate its current position in the world (upper left corner)
-             * viewport.width and viewport.height can be used to determine the size of the canvas
-             * @function
-             * @instance
-             * @returns Rectangle
-             * @name getViewport
-             */
-            getViewport: function () {
-                return viewport;
-            },
-            /**
-             * Returns the canvas element
-             * @function
-             * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
-             */
-            getCanvas: function () {
-                return canvas;
-            },
-            /**
-             * Returns the current renderer engine
-             * @function
-             * @instance
-             * @returns Renderer
-             * @name getRenderer
-             */
-            getRenderer: function () {
-                return renderer;
-            },
-            /**
-             * Returns a gameData object
-             * A gameData object is passed through every object during the update and draw
-             * and contains all necessary information to render
-             * @function
-             * @instance
-             * @returns {Object} data
-             * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
-             * @returns {Renderer} data.renderer - Reference to current Renderer
-             * @returns {Vector2} data.canvasScale - Reference to current canvas scale
-             * @returns {Rectangle} data.viewport - Reference to viewport object
-             * @returns {Entity} data.entity - The current entity passing the data object (injected by Entity objects)
-             * @name getGameData
-             */
-            getGameData: function () {
+            cloneEvent = function (evt) {
                 return {
-                    canvas: canvas,
-                    renderer: renderer,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
+                    id: evt.id,
+                    position: evt.position.clone(),
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition.clone(),
+                    worldPosition: evt.worldPosition.clone()
                 };
             },
-            assets: null,
-            objects: null,
-            input: null,
-            audio: null,
-            screens: null,
-            saveState: SaveState,
-            utils: Utils
-        };
-    return module;
+            pointerDown = function (evt) {
+                var e = transformEvent(evt);
+                if (Bento.objects &amp;&amp; Bento.objects.isPaused() &amp;&amp; !entity.updateWhenPaused) {
+                    return;
+                }
+                isPointerDown = true;
+                if (component.pointerDown) {
+                    component.pointerDown(e);
+                }
+                if (entity.getBoundingBox) {
+                    checkHovering(e, true);
+                }
+            },
+            pointerUp = function (evt) {
+                var e = transformEvent(evt),
+                    mousePosition;
+                if (Bento.objects &amp;&amp; Bento.objects.isPaused() &amp;&amp; !entity.updateWhenPaused) {
+                    return;
+                }
+                mousePosition = e.localPosition;
+                isPointerDown = false;
+                if (component.pointerUp) {
+                    component.pointerUp(e);
+                }
+                if (entity.getBoundingBox().hasPosition(mousePosition)) {
+                    component.onClickUp(e);
+                    if (component.hasTouched &amp;&amp; component.holdId === e.id) {
+                        component.holdId = null;
+                        component.onHoldEnd(e);
+                    }
+                }
+                component.hasTouched = false;
+            },
+            pointerMove = function (evt) {
+                var e = transformEvent(evt);
+                if (Bento.objects &amp;&amp; Bento.objects.isPaused() &amp;&amp; !entity.updateWhenPaused) {
+                    return;
+                }
+                if (component.pointerMove) {
+                    component.pointerMove(e);
+                }
+                // hovering?
+                if (entity.getBoundingBox) {
+                    checkHovering(e);
+                }
+            },
+            checkHovering = function (evt, clicked) {
+                var mousePosition = evt.localPosition;
+                if (entity.getBoundingBox().hasPosition(mousePosition)) {
+                    if (component.hasTouched &amp;&amp; !component.isHovering &amp;&amp; component.holdId === evt.id) {
+                        component.onHoldEnter(evt);
+                    }
+                    if (!component.isHovering) {
+                        component.onHoverEnter(evt);
+                    }
+                    component.isHovering = true;
+                    if (clicked) {
+                        component.hasTouched = true;
+                        component.holdId = evt.id;
+                        component.onClick(evt);
+                    }
+                } else {
+                    if (component.hasTouched &amp;&amp; component.isHovering &amp;&amp; component.holdId === evt.id) {
+                        component.onHoldLeave(evt);
+                    }
+                    if (component.isHovering) {
+                        component.onHoverLeave(evt);
+                    }
+                    component.isHovering = false;
+                    if (clicked) {
+                        component.onClickMiss(evt);
+                    }
+                }
+            },
+            transformEvent = function (evt) {
+                var positionVector,
+                    translateMatrix = Matrix(3, 3),
+                    scaleMatrix = Matrix(3, 3),
+                    rotateMatrix = Matrix(3, 3),
+                    sin,
+                    cos,
+                    type,
+                    position,
+                    parent,
+                    parents = [],
+                    i;
+
+                // no parents
+                if (!entity.getParent || !entity.getParent()) {
+                    if (!entity.float) {
+                        evt.localPosition = evt.worldPosition.clone();
+                    } else {
+                        evt.localPosition = evt.position.clone();
+                    }
+                    return evt;
+                }
+                // make a copy
+                evt = cloneEvent(evt);
+                if (entity.float) {
+                    positionVector = evt.localPosition.toMatrix();
+                } else {
+                    positionVector = evt.worldPosition.toMatrix();
+                }
+
+                // get all parents
+                parent = entity;
+                while (parent.getParent &amp;&amp; parent.getParent()) {
+                    parent = parent.getParent();
+                    parents.unshift(parent);
+                }
+
+                /** 
+                 * reverse transform the event position vector
+                 */
+                for (i = 0; i &lt; parents.length; ++i) {
+                    parent = parents[i];
+
+                    // construct a translation matrix and apply to position vector
+                    if (parent.getPosition) {
+                        position = parent.getPosition();
+                        translateMatrix.set(2, 0, -position.x);
+                        translateMatrix.set(2, 1, -position.y);
+                        positionVector.multiplyWith(translateMatrix);
+                    }
+                    // only scale/rotatable if there is a component
+                    if (parent.rotation) {
+                        // construct a rotation matrix and apply to position vector
+                        sin = Math.sin(-parent.rotation.getAngleRadian());
+                        cos = Math.cos(-parent.rotation.getAngleRadian());
+                        rotateMatrix.set(0, 0, cos);
+                        rotateMatrix.set(1, 0, -sin);
+                        rotateMatrix.set(0, 1, sin);
+                        rotateMatrix.set(1, 1, cos);
+                        positionVector.multiplyWith(rotateMatrix);
+                    }
+                    if (parent.scale) {
+                        // construct a scaling matrix and apply to position vector
+                        scaleMatrix.set(0, 0, 1 / parent.scale.getScale().x);
+                        scaleMatrix.set(1, 1, 1 / parent.scale.getScale().y);
+                        positionVector.multiplyWith(scaleMatrix);
+                    }
+                }
+                evt.localPosition.x = positionVector.get(0, 0);
+                evt.localPosition.y = positionVector.get(0, 1);
+
+                return evt;
+            };
+
+        if (settings &amp;&amp; settings[component.name]) {
+            settings = settings[component.name];
+            Utils.extend(component, settings);
+        }
+
+        entity.attach(component);
+        mixin[component.name] = component;
+        Utils.extend(entity, mixin);
+        return entity;
+    };
 });</code></pre>
         </article>
     </section>

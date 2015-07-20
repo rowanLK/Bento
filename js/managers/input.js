@@ -277,7 +277,7 @@ bento.define('bento/managers/input', [
              * Resumes all pointer input
              * @function
              * @instance
-             * @name stop
+             * @name resume
              */
             resume: function () {
                 if (isListening) {

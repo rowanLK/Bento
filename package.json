@@ -9,7 +9,6 @@
     "gulp-exec": "*",
     "gulp-add-src": "*",
     "gulp-concat": "*",
-    "gulp-jsdoc": "",
     "gulp-jshint": "*",
     "gulp-rename": "*",
     "gulp-uglify": "*",
