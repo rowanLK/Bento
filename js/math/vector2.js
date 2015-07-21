@@ -1,6 +1,11 @@
 /**
  * 2 dimensional vector
- * @copyright (C) 2015 LuckyKat
+ * (Note: to perform matrix multiplications, one must use toMatrix)
+ * <br>Exports: Function
+ * @module bento/math/vector2
+ * @param {Number} x - x position
+ * @param {Number} y - y position
+ * @returns {Vector2} Returns a 2d vector.
  */
 bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     'use strict';

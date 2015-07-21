@@ -1,6 +1,10 @@
 /**
- * 2 dimensional array 
- * @copyright (C) 2015 LuckyKat
+ * A 2-dimensional array
+ * <br>Exports: Function
+ * @module bento/math/array2d
+ * @param {Number} width - horizontal size of array
+ * @param {Number} height - vertical size of array
+ * @returns {Array} Returns 2d array.
  */
 bento.define('bento/math/array2d', function () {
     'use strict';
@@ -18,9 +22,31 @@ bento.define('bento/math/array2d', function () {
         }
 
         return {
+            /**
+             * Returns true
+             * @function
+             * @returns {Boolean} Is always true
+             * @instance
+             * @name isArray2d
+             */
             isArray2d: function () {
                 return true;
             },
+            /**
+             * Callback at every iteration.
+             *
+             * @callback IterationCallBack
+             * @param {Number} x - The current x index
+             * @param {Number} y - The current y index
+             * @param {Number} value - The value at the x,y index
+             */
+            /**
+             * Iterate through 2d array
+             * @function
+             * @param {IterationCallback} callback - Callback function to be called every iteration
+             * @instance
+             * @name iterate
+             */
             iterate: function (callback) {
                 var i, j;
                 for (j = 0; j < height; ++j) {
@@ -29,17 +55,29 @@ bento.define('bento/math/array2d', function () {
                     }
                 }
             },
+            /**
+             * Get the value inside array
+             * @function
+             * @param {Number} x - x index
+             * @param {Number} y - y index
+             * @returns {Object} The value at the index
+             * @instance
+             * @name get
+             */
             get: function (x, y) {
                 return array[x][y];
             },
+            /**
+             * Set the value inside array
+             * @function
+             * @param {Number} x - x index
+             * @param {Number} y - y index
+             * @param {Number} value - new value
+             * @instance
+             * @name set
+             */
             set: function (x, y, value) {
                 array[x][y] = value;
-            },
-            width: function () {
-                return width;
-            },
-            height: function () {
-                return height;
             }
         };
     };

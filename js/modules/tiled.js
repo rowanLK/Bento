@@ -1,6 +1,12 @@
 /**
- * Reads tiled json files
- * @copyright (C) 2015 LuckyKat
+ * Reads Tiled JSON file and spawns entities accordingly.
+ * Backgrounds are merged into a canvas image (TODO: split canvas, split layers?)
+ * <br>Exports: Function
+ * @module bento/screen
+ * @param {Object} settings - Settings object
+ * @param {String} settings.name - Asset name of the json file
+ * @param {Boolean} [settings.spawn] - Spawns entities
+ * @returns Object
  */
 define('bento/tiled', [
     'bento',
@@ -49,7 +55,7 @@ define('bento/tiled', [
                     }
                     // only draw the part in the viewport
                     gameData.renderer.drawImage(
-                        img, ~~(Math.max(Math.min(viewport.x, canvas.width), 0)), ~~(Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
+                        img, ~~ (Math.max(Math.min(viewport.x, canvas.width), 0)), ~~ (Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
                         0,
                         0, ~~w, ~~h
                     );
@@ -247,9 +253,29 @@ define('bento/tiled', [
         }
 
         return {
+            /**
+             * All tilelayers merged into one entity
+             * @instance
+             * @name tileLayer
+             */
             tileLayer: background,
+            /**
+             * Array of entities
+             * @instance
+             * @name objects
+             */
             objects: objects,
+            /**
+             * Array of Rectangles and Polygons
+             * @instance
+             * @name shapes
+             */
             shapes: shapes,
+            /**
+             * Size of the screen
+             * @instance
+             * @name dimension
+             */
             dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
         };
     };

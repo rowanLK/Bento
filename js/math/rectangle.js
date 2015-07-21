@@ -1,6 +1,12 @@
 /**
  * Rectangle
- * @copyright (C) 2015 LuckyKat
+ * <br>Exports: Function
+ * @module bento/math/rectangle
+ * @param {Number} x - Top left x position
+ * @param {Number} y - Top left y position
+ * @param {Number} width - Width of the rectangle
+ * @param {Number} height - Height of the rectangle
+ * @returns {Rectangle} Returns a rectangle.
  */
 bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';
@@ -62,19 +68,113 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
         },
         module = function (x, y, width, height) {
             return {
+                /**
+                 * X position
+                 * @instance
+                 * @name x
+                 */
                 x: x,
+                /**
+                 * Y position
+                 * @instance
+                 * @name y
+                 */
                 y: y,
+                /**
+                 * Width of the rectangle
+                 * @instance
+                 * @name width
+                 */
                 width: width,
+                /**
+                 * Height of the rectangle
+                 * @instance
+                 * @name height
+                 */
                 height: height,
+                /**
+                 * Returns true
+                 * @function
+                 * @returns {Boolean} Is always true
+                 * @instance
+                 * @name isRectangle
+                 */
                 isRectangle: isRectangle,
+                /**
+                 * Gets the lower right x position
+                 * @function
+                 * @returns {Number} Coordinate of the lower right position
+                 * @instance
+                 * @name getX2
+                 */
                 getX2: getX2,
+                /**
+                 * Gets the lower right y position
+                 * @function
+                 * @returns {Number} Coordinate of the lower right position
+                 * @instance
+                 * @name getY2
+                 */
                 getY2: getY2,
+                /**
+                 * Returns the union of 2 rectangles
+                 * @function
+                 * @param {Rectangle} other - Other rectangle
+                 * @returns {Rectangle} Union of the 2 rectangles
+                 * @instance
+                 * @name union
+                 */
                 union: union,
+                /**
+                 * Returns true if 2 rectangles intersect
+                 * @function
+                 * @param {Rectangle} other - Other rectangle
+                 * @returns {Boolean} True of 2 rectangles intersect
+                 * @instance
+                 * @name union
+                 */
                 intersect: intersect,
+                /**
+                 * Returns the intersection of 2 rectangles
+                 * @function
+                 * @param {Rectangle} other - Other rectangle
+                 * @returns {Rectangle} Intersection of the 2 rectangles
+                 * @instance
+                 * @name union
+                 */
                 intersection: intersection,
+                /**
+                 * Moves rectangle by an offset
+                 * @function
+                 * @param {Vector2} vector - Position to offset
+                 * @returns {Rectangle} Returns a new rectangle instance
+                 * @instance
+                 * @name offset
+                 */
                 offset: offset,
+                /**
+                 * Clones rectangle
+                 * @function
+                 * @returns {Rectangle} a clone of the current rectangle
+                 * @instance
+                 * @name clone
+                 */
                 clone: clone,
+                /**
+                 * Checks if Vector2 lies within the rectangle
+                 * @function
+                 * @returns {Boolean} true if position is inside
+                 * @instance
+                 * @name hasPosition
+                 */
                 hasPosition: hasPosition,
+                /**
+                 * Increases rectangle size from the center
+                 * @function
+                 * @returns {Number} value to grow the rectangle
+                 * @instance
+                 * @name grow
+                 */
                 grow: grow
             };
         };

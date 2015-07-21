@@ -1,4 +1,15 @@
-bento.define('bento/autoresize', [
+/**
+ * A helper module that returns a rectangle as the best fit of a multiplication of the screen size.
+ * Assuming portrait mode, autoresize first tries to fit the width and then fills up the height
+ * <br>Exports: Function
+ * @module bento/autoresize
+ * @param {Rectangle} canvasDimension - Default size
+ * @param {Number} minSize - Minimal width/height
+ * @param {Number} maxSize - Maximum width/height
+ * @param {Boolean} isLandscape - Landscape or portrait
+ * @returns Rectangle
+ */
+ bento.define('bento/autoresize', [
     'bento/utils'
 ], function (Utils) {
     return function (canvasDimension, minSize, maxSize, isLandscape) {

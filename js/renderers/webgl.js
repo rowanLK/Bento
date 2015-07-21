@@ -105,6 +105,7 @@ bento.define('bento/renderers/webgl', [
             original = glRenderer;
             return renderer;
         } else {
+            console.log('webgl failed, revert to canvas');
             return Canvas2d(canvas, settings);
         }
     };

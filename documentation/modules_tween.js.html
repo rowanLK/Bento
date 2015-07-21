@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>modules/tween.js - Documentation</title>
+
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><details><summary>bento</summary><a href="module-bento.html">bento</a><ul class='methods'><li data-type='method'><a href="module-bento.html#getCanvas">getCanvas</a></li><li data-type='method'><a href="module-bento.html#getGameData">getGameData</a></li><li data-type='method'><a href="module-bento.html#getRenderer">getRenderer</a></li><li data-type='method'><a href="module-bento.html#getViewport">getViewport</a></li><li data-type='method'><a href="module-bento.html#setup">setup</a></li></ul></details></li><li><details><summary>bento/autoresize</summary><a href="module-bento_autoresize.html">bento/autoresize</a></details></li><li><details><summary>bento/color</summary><a href="module-bento_color.html">bento/color</a></details></li><li><details><summary>bento/components/animation</summary><a href="module-bento_components_animation.html">bento/components/animation</a><ul class='methods'><li data-type='method'><a href="module-bento_components_animation.html#draw">draw</a></li><li data-type='method'><a href="module-bento_components_animation.html#getAnimation">getAnimation</a></li><li data-type='method'><a href="module-bento_components_animation.html#getCurrentFrame">getCurrentFrame</a></li><li data-type='method'><a href="module-bento_components_animation.html#getFrameWidth">getFrameWidth</a></li><li data-type='method'><a href="module-bento_components_animation.html#setAnimation">setAnimation</a></li><li data-type='method'><a href="module-bento_components_animation.html#setCurrentSpeed">setCurrentSpeed</a></li><li data-type='method'><a href="module-bento_components_animation.html#setFrame">setFrame</a></li><li data-type='method'><a href="module-bento_components_animation.html#setup">setup</a></li><li data-type='method'><a href="module-bento_components_animation.html#update">update</a></li></ul></details></li><li><details><summary>bento/components/clickable</summary><a href="module-bento_components_clickable.html">bento/components/clickable</a><ul class='methods'><li data-type='method'><a href="module-bento_components_clickable.html#destroy">destroy</a></li><li data-type='method'><a href="module-bento_components_clickable.html#start">start</a></li><li data-type='method'><a href="module-bento_components_clickable.html#update">update</a></li></ul></details></li><li><details><summary>bento/components/opacity</summary><a href="module-bento_components_opacity.html">bento/components/opacity</a></details></li><li><details><summary>bento/components/rotation</summary><a href="module-bento_components_rotation.html">bento/components/rotation</a></details></li><li><details><summary>bento/components/scale</summary><a href="module-bento_components_scale.html">bento/components/scale</a></details></li><li><details><summary>bento/components/sprite</summary><a href="module-bento_components_sprite.html">bento/components/sprite</a></details></li><li><details><summary>bento/components/translation</summary><a href="module-bento_components_translation.html">bento/components/translation</a></details></li><li><details><summary>bento/entity</summary><a href="module-bento_entity.html">bento/entity</a><ul class='methods'><li data-type='method'><a href="module-bento_entity.html#addToFamily">addToFamily</a></li><li data-type='method'><a href="module-bento_entity.html#attach">attach</a></li><li data-type='method'><a href="module-bento_entity.html#collidesWith">collidesWith</a></li><li data-type='method'><a href="module-bento_entity.html#collidesWithGroup">collidesWithGroup</a></li><li data-type='method'><a href="module-bento_entity.html#destroy">destroy</a></li><li data-type='method'><a href="module-bento_entity.html#draw">draw</a></li><li data-type='method'><a href="module-bento_entity.html#extend">extend</a></li><li data-type='method'><a href="module-bento_entity.html#getBoundingBox">getBoundingBox</a></li><li data-type='method'><a href="module-bento_entity.html#getComponentByName">getComponentByName</a></li><li data-type='method'><a href="module-bento_entity.html#getComponentIndex">getComponentIndex</a></li><li data-type='method'><a href="module-bento_entity.html#getComponents">getComponents</a></li><li data-type='method'><a href="module-bento_entity.html#getDimension">getDimension</a></li><li data-type='method'><a href="module-bento_entity.html#getDimension">getDimension</a></li><li data-type='method'><a href="module-bento_entity.html#getFamily">getFamily</a></li><li data-type='method'><a href="module-bento_entity.html#getId">getId</a></li><li data-type='method'><a href="module-bento_entity.html#getOrigin">getOrigin</a></li><li data-type='method'><a href="module-bento_entity.html#getParent">getParent</a></li><li data-type='method'><a href="module-bento_entity.html#getPosition">getPosition</a></li><li data-type='method'><a href="module-bento_entity.html#getRectangle">getRectangle</a></li><li data-type='method'><a href="module-bento_entity.html#isVisible">isVisible</a></li><li data-type='method'><a href="module-bento_entity.html#moveComponentTo">moveComponentTo</a></li><li data-type='method'><a href="module-bento_entity.html#remove">remove</a></li><li data-type='method'><a href="module-bento_entity.html#setBoundingBox">setBoundingBox</a></li><li data-type='method'><a href="module-bento_entity.html#setOrigin">setOrigin</a></li><li data-type='method'><a href="module-bento_entity.html#setOriginRelative">setOriginRelative</a></li><li data-type='method'><a href="module-bento_entity.html#setParent">setParent</a></li><li data-type='method'><a href="module-bento_entity.html#setPosition">setPosition</a></li><li data-type='method'><a href="module-bento_entity.html#setPositionX">setPositionX</a></li><li data-type='method'><a href="module-bento_entity.html#setPositionY">setPositionY</a></li><li data-type='method'><a href="module-bento_entity.html#setVisible">setVisible</a></li><li data-type='method'><a href="module-bento_entity.html#start">start</a></li><li data-type='method'><a href="module-bento_entity.html#update">update</a></li></ul></details></li><li><details><summary>bento/eventsystem</summary><a href="module-bento_eventsystem.html">bento/eventsystem</a><ul class='methods'><li data-type='method'><a href="module-bento_eventsystem.html#fire">fire</a></li><li data-type='method'><a href="module-bento_eventsystem.html#off">off</a></li><li data-type='method'><a href="module-bento_eventsystem.html#on">on</a></li></ul></details></li><li><details><summary>bento/managers/asset</summary><a href="module-bento_managers_asset.html">bento/managers/asset</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_asset.html#getAssets">getAssets</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getAudio">getAudio</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getImage">getImage</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getImageElement">getImageElement</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getJson">getJson</a></li><li data-type='method'><a href="module-bento_managers_asset.html#load">load</a></li><li data-type='method'><a href="module-bento_managers_asset.html#loadAssetGroups">loadAssetGroups</a></li><li data-type='method'><a href="module-bento_managers_asset.html#unload">unload</a></li></ul></details></li><li><details><summary>bento/managers/audio</summary><a href="module-bento_managers_audio.html">bento/managers/audio</a></details></li><li><details><summary>bento/managers/input</summary><a href="module-bento_managers_input.html">bento/managers/input</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_input.html#getPointers">getPointers</a></li><li data-type='method'><a href="module-bento_managers_input.html#isKeyDown">isKeyDown</a></li><li data-type='method'><a href="module-bento_managers_input.html#resetPointers">resetPointers</a></li><li data-type='method'><a href="module-bento_managers_input.html#resume">resume</a></li><li data-type='method'><a href="module-bento_managers_input.html#stop">stop</a></li></ul></details></li><li><details><summary>bento/managers/object</summary><a href="module-bento_managers_object.html">bento/managers/object</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_object.html#attach">attach</a></li><li data-type='method'><a href="module-bento_managers_object.html#count">count</a></li><li data-type='method'><a href="module-bento_managers_object.html#draw">draw</a></li><li data-type='method'><a href="module-bento_managers_object.html#get">get</a></li><li data-type='method'><a href="module-bento_managers_object.html#getByFamily">getByFamily</a></li><li data-type='method'><a href="module-bento_managers_object.html#getByName">getByName</a></li><li data-type='method'><a href="module-bento_managers_object.html#isPaused">isPaused</a></li><li data-type='method'><a href="module-bento_managers_object.html#pause">pause</a></li><li data-type='method'><a href="module-bento_managers_object.html#remove">remove</a></li><li data-type='method'><a href="module-bento_managers_object.html#removeAll">removeAll</a></li><li data-type='method'><a href="module-bento_managers_object.html#resume">resume</a></li><li data-type='method'><a href="module-bento_managers_object.html#run">run</a></li><li data-type='method'><a href="module-bento_managers_object.html#stop">stop</a></li></ul></details></li><li><details><summary>bento/managers/savestate</summary><a href="module-bento_managers_savestate.html">bento/managers/savestate</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_savestate.html#clear">clear</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#isEmpty">isEmpty</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#load">load</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#remove">remove</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#save">save</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#setId">setId</a></li></ul></details></li><li><details><summary>bento/managers/screen</summary><a href="module-bento_managers_screen.html">bento/managers/screen</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_screen.html#add">add</a></li><li data-type='method'><a href="module-bento_managers_screen.html#getCurrentScreen">getCurrentScreen</a></li><li data-type='method'><a href="module-bento_managers_screen.html#hide">hide</a></li><li data-type='method'><a href="module-bento_managers_screen.html#show">show</a></li></ul></details></li><li><details><summary>bento/math/array2d</summary><a href="module-bento_math_array2d.html">bento/math/array2d</a><ul class='methods'><li data-type='method'><a href="module-bento_math_array2d.html#get">get</a></li><li data-type='method'><a href="module-bento_math_array2d.html#isArray2d">isArray2d</a></li><li data-type='method'><a href="module-bento_math_array2d.html#iterate">iterate</a></li><li data-type='method'><a href="module-bento_math_array2d.html#set">set</a></li></ul></details></li><li><details><summary>bento/math/matrix</summary><a href="module-bento_math_matrix.html">bento/math/matrix</a><ul class='methods'><li data-type='method'><a href="module-bento_math_matrix.html#add">add</a></li><li data-type='method'><a href="module-bento_math_matrix.html#addTo">addTo</a></li><li data-type='method'><a href="module-bento_math_matrix.html#clone">clone</a></li><li data-type='method'><a href="module-bento_math_matrix.html#get">get</a></li><li data-type='method'><a href="module-bento_math_matrix.html#getHeight">getHeight</a></li><li data-type='method'><a href="module-bento_math_matrix.html#getWidth">getWidth</a></li><li data-type='method'><a href="module-bento_math_matrix.html#isMatrix">isMatrix</a></li><li data-type='method'><a href="module-bento_math_matrix.html#iterate">iterate</a></li><li data-type='method'><a href="module-bento_math_matrix.html#multiply">multiply</a></li><li data-type='method'><a href="module-bento_math_matrix.html#multiplyWith">multiplyWith</a></li><li data-type='method'><a href="module-bento_math_matrix.html#set">set</a></li><li data-type='method'><a href="module-bento_math_matrix.html#setValues">setValues</a></li><li data-type='method'><a href="module-bento_math_matrix.html#stringify">stringify</a></li><li data-type='method'><a href="module-bento_math_matrix.html#transpose">transpose</a></li></ul></details></li><li><details><summary>bento/math/polygon</summary><a href="module-bento_math_polygon.html">bento/math/polygon</a><ul class='methods'><li data-type='method'><a href="module-bento_math_polygon.html#clone">clone</a></li><li data-type='method'><a href="module-bento_math_polygon.html#getBoundingBox">getBoundingBox</a></li><li data-type='method'><a href="module-bento_math_polygon.html#hasPosition">hasPosition</a></li><li data-type='method'><a href="module-bento_math_polygon.html#intersect">intersect</a></li><li data-type='method'><a href="module-bento_math_polygon.html#isPolygon">isPolygon</a></li><li data-type='method'><a href="module-bento_math_polygon.html#offset">offset</a></li></ul></details></li><li><details><summary>bento/math/rectangle</summary><a href="module-bento_math_rectangle.html">bento/math/rectangle</a><ul class='methods'><li data-type='method'><a href="module-bento_math_rectangle.html#clone">clone</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getX2">getX2</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getY2">getY2</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#grow">grow</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#hasPosition">hasPosition</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#isRectangle">isRectangle</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#offset">offset</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#union">union</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#union">union</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#union">union</a></li></ul></details></li><li><details><summary>bento/math/vector2</summary><a href="module-bento_math_vector2.html">bento/math/vector2</a></details></li><li><details><summary>bento/packedimage</summary><a href="module-bento_packedimage.html">bento/packedimage</a></details></li><li><details><summary>bento/renderer</summary><a href="module-bento_renderer.html">bento/renderer</a></details></li><li><details><summary>bento/screen</summary><a href="module-bento_screen.html">bento/screen</a><ul class='methods'><li data-type='method'><a href="module-bento_screen.html#getDimension">getDimension</a></li><li data-type='method'><a href="module-bento_screen.html#loadTiled">loadTiled</a></li><li data-type='method'><a href="module-bento_screen.html#onHide">onHide</a></li><li data-type='method'><a href="module-bento_screen.html#onShow">onShow</a></li><li data-type='method'><a href="module-bento_screen.html#setDimension">setDimension</a></li></ul></details></li><li><details><summary>bento/tween</summary><a href="module-bento_tween.html">bento/tween</a></details></li><li><details><summary>bento/utils</summary><a href="module-bento_utils.html">bento/utils</a><ul class='methods'><li data-type='method'><a href="module-bento_utils.html#approach">approach</a></li><li data-type='method'><a href="module-bento_utils.html#extend">extend</a></li><li data-type='method'><a href="module-bento_utils.html#getKeyLength">getKeyLength</a></li><li data-type='method'><a href="module-bento_utils.html#getRandom">getRandom</a></li><li data-type='method'><a href="module-bento_utils.html#isAndroid">isAndroid</a></li><li data-type='method'><a href="module-bento_utils.html#isApple">isApple</a></li><li data-type='method'><a href="module-bento_utils.html#isArray">isArray</a></li><li data-type='method'><a href="module-bento_utils.html#isBoolean">isBoolean</a></li><li data-type='method'><a href="module-bento_utils.html#isCocoonJS">isCocoonJS</a></li><li data-type='method'><a href="module-bento_utils.html#isDefined">isDefined</a></li><li data-type='method'><a href="module-bento_utils.html#isFunction">isFunction</a></li><li data-type='method'><a href="module-bento_utils.html#isInt">isInt</a></li><li data-type='method'><a href="module-bento_utils.html#isNumber">isNumber</a></li><li data-type='method'><a href="module-bento_utils.html#isObject">isObject</a></li><li data-type='method'><a href="module-bento_utils.html#isString">isString</a></li><li data-type='method'><a href="module-bento_utils.html#isUndefined">isUndefined</a></li><li data-type='method'><a href="module-bento_utils.html#removeObject">removeObject</a></li><li data-type='method'><a href="module-bento_utils.html#sign">sign</a></li><li data-type='method'><a href="module-bento_utils.html#toRadian">toRadian</a></li></ul></details></li></ul><h3>Global</h3><ul><li><a href="global.html#bento">bento</a></li></ul>
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">modules/tween.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The Tween is an entity that performs an interpolation within a timeframe. The entity
+ * removes itself after the tween ends.
+ * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
+ * &lt;br>Exports: Function
+ * @module bento/tween
+ * @param {Object} settings - Settings object
+ * @param {Number} settings.from - Starting value
+ * @param {Number} settings.to - End value
+ * @param {Number} settings.in - Time frame
+ * @param {String} settings.ease - Choose between default tweens or see http://easings.net/
+ * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
+ * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
+ * @param {Boolean} [settings.stay] - Don't remove the entity automatically
+ * @param {Function} [settings.do] - Called every tick during the tween lifetime. Callback parameters: (value, time)
+ * @param {Function} [settings.onComplete] - Called when tween ends
+ * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop,
+ * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) 
+ * @returns Entity
+ */
+bento.define('bento/tween', [
+    'bento',
+    'bento/utils',
+    'bento/entity'
+], function (Bento, Utils, Entity) {
+    'use strict';
+    var robbertPenner = {
+            // t: current time, b: begInnIng value, c: change In value, d: duration
+            easeInQuad: function (t, b, c, d) {
+                return c * (t /= d) * t + b;
+            },
+            easeOutQuad: function (t, b, c, d) {
+                return -c * (t /= d) * (t - 2) + b;
+            },
+            easeInOutQuad: function (t, b, c, d) {
+                if ((t /= d / 2) &lt; 1) return c / 2 * t * t + b;
+                return -c / 2 * ((--t) * (t - 2) - 1) + b;
+            },
+            easeInCubic: function (t, b, c, d) {
+                return c * (t /= d) * t * t + b;
+            },
+            easeOutCubic: function (t, b, c, d) {
+                return c * ((t = t / d - 1) * t * t + 1) + b;
+            },
+            easeInOutCubic: function (t, b, c, d) {
+                if ((t /= d / 2) &lt; 1) return c / 2 * t * t * t + b;
+                return c / 2 * ((t -= 2) * t * t + 2) + b;
+            },
+            easeInQuart: function (t, b, c, d) {
+                return c * (t /= d) * t * t * t + b;
+            },
+            easeOutQuart: function (t, b, c, d) {
+                return -c * ((t = t / d - 1) * t * t * t - 1) + b;
+            },
+            easeInOutQuart: function (t, b, c, d) {
+                if ((t /= d / 2) &lt; 1) return c / 2 * t * t * t * t + b;
+                return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
+            },
+            easeInQuint: function (t, b, c, d) {
+                return c * (t /= d) * t * t * t * t + b;
+            },
+            easeOutQuint: function (t, b, c, d) {
+                return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+            },
+            easeInOutQuint: function (t, b, c, d) {
+                if ((t /= d / 2) &lt; 1) return c / 2 * t * t * t * t * t + b;
+                return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
+            },
+            easeInSine: function (t, b, c, d) {
+                return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
+            },
+            easeOutSine: function (t, b, c, d) {
+                return c * Math.sin(t / d * (Math.PI / 2)) + b;
+            },
+            easeInOutSine: function (t, b, c, d) {
+                return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+            },
+            easeInExpo: function (t, b, c, d) {
+                return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
+            },
+            easeOutExpo: function (t, b, c, d) {
+                return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
+            },
+            easeInOutExpo: function (t, b, c, d) {
+                if (t === 0) return b;
+                if (t === d) return b + c;
+                if ((t /= d / 2) &lt; 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
+                return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
+            },
+            easeInCirc: function (t, b, c, d) {
+                return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
+            },
+            easeOutCirc: function (t, b, c, d) {
+                return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
+            },
+            easeInOutCirc: function (t, b, c, d) {
+                if ((t /= d / 2) &lt; 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
+                return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
+            },
+            easeInElastic: function (t, b, c, d) {
+                var s = 1.70158,
+                    p = 0,
+                    a = c;
+                if (t === 0) return b;
+                if ((t /= d) === 1) return b + c;
+                if (!p) p = d * 0.3;
+                if (a &lt; Math.abs(c)) {
+                    a = c;
+                    s = p / 4;
+                } else s = p / (2 * Math.PI) * Math.asin(c / a);
+                return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+            },
+            easeOutElastic: function (t, b, c, d) {
+                var s = 1.70158,
+                    p = 0,
+                    a = c;
+                if (t === 0) return b;
+                if ((t /= d) === 1) return b + c;
+                if (!p) p = d * 0.3;
+                if (a &lt; Math.abs(c)) {
+                    a = c;
+                    s = p / 4;
+                } else s = p / (2 * Math.PI) * Math.asin(c / a);
+                return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
+            },
+            easeInOutElastic: function (t, b, c, d) {
+                var s = 1.70158,
+                    p = 0,
+                    a = c;
+                if (t === 0) return b;
+                if ((t /= d / 2) === 2) return b + c;
+                if (!p) p = d * (0.3 * 1.5);
+                if (a &lt; Math.abs(c)) {
+                    a = c;
+                    s = p / 4;
+                } else s = p / (2 * Math.PI) * Math.asin(c / a);
+                if (t &lt; 1) return -0.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+                return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * 0.5 + c + b;
+            },
+            easeInBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                return c * (t /= d) * t * ((s + 1) * t - s) + b;
+            },
+            easeOutBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+            },
+            easeInOutBack: function (t, b, c, d, s) {
+                if (s === undefined) s = 1.70158;
+                if ((t /= d / 2) &lt; 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
+                return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
+            },
+            easeInBounce: function (t, b, c, d) {
+                return c - this.easeOutBounce(d - t, 0, c, d) + b;
+            },
+            easeOutBounce: function (t, b, c, d) {
+                if ((t /= d) &lt; (1 / 2.75)) {
+                    return c * (7.5625 * t * t) + b;
+                } else if (t &lt; (2 / 2.75)) {
+                    return c * (7.5625 * (t -= (1.5 / 2.75)) * t + 0.75) + b;
+                } else if (t &lt; (2.5 / 2.75)) {
+                    return c * (7.5625 * (t -= (2.25 / 2.75)) * t + 0.9375) + b;
+                } else {
+                    return c * (7.5625 * (t -= (2.625 / 2.75)) * t + 0.984375) + b;
+                }
+            },
+            easeInOutBounce: function (t, b, c, d) {
+                if (t &lt; d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
+                return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
+            }
+        },
+        interpolations = {
+            linear: function (s, e, t, alpha, beta) {
+                return (e - s) * t + s;
+            },
+            quadratic: function (s, e, t, alpha, beta) {
+                return (e - s) * t * t + s;
+            },
+            squareroot: function (s, e, t, alpha, beta) {
+                return (e - s) * Math.pow(t, 0.5) + s;
+            },
+            cubic: function (s, e, t, alpha, beta) {
+                return (e - s) * t * t * t + s;
+            },
+            cuberoot: function (s, e, t, alpha, beta) {
+                return (e - s) * Math.pow(t, 1 / 3) + s;
+            },
+            exponential: function (s, e, t, alpha, beta) {
+                //takes alpha as growth/damp factor
+                return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+            },
+            elastic: function (s, e, t, alpha, beta) {
+                //alpha=growth factor, beta=wavenumber
+                return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+            },
+            sin: function (s, e, t, alpha, beta) {
+                //s=offset, e=amplitude, alpha=wavenumber
+                return s + e * Math.sin(alpha * t * 2 * Math.PI);
+            },
+            cos: function (s, e, t, alpha, beta) {
+                //s=offset, e=amplitude, alpha=wavenumber
+                return s + e * Math.cos(alpha * t * 2 * Math.PI);
+            }
+        },
+        interpolate = function (type, s, e, t, alpha, beta) {
+            // interpolate(string type,float from,float to,float time,float alpha,float beta)
+            // s = starting value
+            // e = ending value
+            // t = time variable (going from 0 to 1)
+            var fn = interpolations[type];
+            if (fn) {
+                return fn(s, e, t, alpha, beta);
+            } else {
+                return robbertPenner[type](t, s, e - s, 1);
+            }
+        };
+    return function (settings) {
+        /* settings = {
+            from: Number
+            to: Number
+            in: Number
+            ease: String
+            alpha: Number (optional)
+            beta: Number (optional)
+            stay: Boolean (optional)
+            do: Gunction (value, time) {} (optional)
+            onComplete: function () {} (optional)
+            id: Number (optional),
+            updateWhenPaused: Boolean (optional)
+        }*/
+        var time = 0,
+            added = false,
+            running = true,
+            tween = Entity(settings).extend({
+                id: settings.id,
+                update: function (data) {
+                    if (!running) {
+                        return;
+                    }
+                    ++time;
+                    // run update
+                    if (settings.do) {
+                        settings.do.apply(this, [interpolate(
+                            settings.ease || 'linear',
+                            settings.from || 0,
+                            Utils.isDefined(settings.to) ? settings.to : 1,
+                            time / (settings.in),
+                            Utils.isDefined(settings.alpha) ? settings.alpha : 1,
+                            Utils.isDefined(settings.beta) ? settings.beta : 1
+                        ), time]);
+                    }
+                    // end
+                    if (!settings.stay &amp;&amp; time >= settings.in) {
+                        if (settings.onComplete) {
+                            settings.onComplete.apply(this);
+                        }
+                        Bento.objects.remove(tween);
+                        added = false;
+                    }
+                },
+                begin: function () {
+                    time = 0;
+                    if (!added) {
+                        Bento.objects.add(tween);
+                        added = true;
+                    }
+                    running = true;
+                    return tween;
+                },
+                stop: function () {
+                    time = 0;
+                    running = false;
+                    return tween;
+                }
+            });
+        if (settings.in === 0) {
+            settings.in = 1;
+        }
+        // tween automatically starts ?
+        tween.begin();
+        return tween;
+    };
+});</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.2</a> on Tue Jul 21 2015 17:31:29 GMT+0200 (CEST) using the Minami theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/linenumber.js"></script>
+<script src="scripts/opennav.js"></script>
+</body>
+</html>

@@ -1,6 +1,22 @@
 /**
- * Creates a tween object
- * @copyright (C) 2015 LuckyKat
+ * The Tween is an entity that performs an interpolation within a timeframe. The entity
+ * removes itself after the tween ends.
+ * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
+ * <br>Exports: Function
+ * @module bento/tween
+ * @param {Object} settings - Settings object
+ * @param {Number} settings.from - Starting value
+ * @param {Number} settings.to - End value
+ * @param {Number} settings.in - Time frame
+ * @param {String} settings.ease - Choose between default tweens or see http://easings.net/
+ * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
+ * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
+ * @param {Boolean} [settings.stay] - Don't remove the entity automatically
+ * @param {Function} [settings.do] - Called every tick during the tween lifetime. Callback parameters: (value, time)
+ * @param {Function} [settings.onComplete] - Called when tween ends
+ * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop,
+ * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) 
+ * @returns Entity
  */
 bento.define('bento/tween', [
     'bento',

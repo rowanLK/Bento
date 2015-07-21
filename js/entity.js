@@ -15,7 +15,7 @@
  * @param {Boolean} settings.global - Should entity remain after hiding a screen 
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - Should entity use HSHG for collisions
- * @param {Boolean} settings.staticHshg - Is entity a static object in HSHG
+ * @param {Boolean} settings.staticHshg - Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
  * @returns {Entity} Returns a new entity object
  */
 bento.define('bento/entity', [

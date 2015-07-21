@@ -18,7 +18,7 @@ bento.require([
     Bento.setup({
         canvasId: 'canvas',
         debug: true,
-        canvasDimension: Rectangle(0, 0, 160, 240),
+        canvasDimension: Rectangle(0, 0, 640, 960),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -77,7 +77,7 @@ bento.require([
 
                             if (position.y > viewport.height) {
                                 position.y = viewport.height;
-                                this.speed.y = -getRandom(70) / 10;
+                                this.speed.y = -getRandom(140) / 10;
                             }
                             if (position.x >= viewport.width) {
                                 position.x = viewport.width;
