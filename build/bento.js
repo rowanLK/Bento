@@ -9799,7 +9799,7 @@ bento.define('bento/screen', [
             tiled: String
         }*/
         var viewport = Bento.getViewport(),
-            dimension = settings ? settings.dimension : viewport.clone(),
+            dimension = (settings && settings.dimension) ? settings.dimension : viewport.clone(),
             tiled,
             module = {
                 /**
