@@ -129,9 +129,10 @@ bento.define('bento/math/polygon', [
             var points = this.points,
                 has = false,
                 i = 0,
-                j = points.length - 1;
+                j = points.length - 1,
+                bounds = this.getBoundingBox();
 
-            if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) {
+            if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
                 return false;
             }
             for (i, j; i < points.length; j = i++) {
