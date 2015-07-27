@@ -331,6 +331,7 @@ bento.define('bento/entity', [
                         }
                         return Rectangle(x1, y1, x2 - x1, y2 - y1);
                     } else {
+                        // TODO: cloning could be expensive for polygons
                         box = rectangle.clone();
                         scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
                         box.x *= Math.abs(scale.x);

@@ -161,6 +161,11 @@ bento.define('bento/math/polygon', [
             }
 
             return {
+                // TODO: use x and y as offset, widht and height as boundingbox
+                x: minX, 
+                y: minY, 
+                width: maxX - minX, 
+                height: maxY - minY,
                 /**
                  * Array of Vector2 points
                  * @instance

@@ -4816,6 +4816,7 @@ bento.define('bento/entity', [
                         }
                         return Rectangle(x1, y1, x2 - x1, y2 - y1);
                     } else {
+                        // TODO: cloning could be expensive for polygons
                         box = rectangle.clone();
                         scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
                         box.x *= Math.abs(scale.x);
@@ -9312,6 +9313,11 @@ bento.define('bento/math/polygon', [
             }
 
             return {
+                // TODO: use x and y as offset, widht and height as boundingbox
+                x: minX, 
+                y: minY, 
+                width: maxX - minX, 
+                height: maxY - minY,
                 /**
                  * Array of Vector2 points
                  * @instance
@@ -10122,11 +10128,12 @@ define('bento/tiled', [
                         // polygon 
                         points = [];
                         for (j = 0; j < object.polygon.length; ++j) {
-                            points.push(object.polygon[j]);
-                            points[j].x += object.x;
+                            points.push({
+                                x: object.polygon[j].x + object.x,
+                                y: object.polygon[j].y + object.y + 1
+                            });
                             // shift polygons 1 pixel down?
                             // something might be wrong with polygon definition
-                            points[j].y += object.y + 1;
                         }
                         spawnShape(Polygon(points), object.type);
                     } else {
