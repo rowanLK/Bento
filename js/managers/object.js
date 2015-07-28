@@ -135,7 +135,7 @@ bento.define('bento/managers/object', [
                     object.init();
                 }
                 if (object.start) {
-                    object.start();
+                    object.start(gameData);
                 }
                 object.isAdded = true;
                 if (object.useHshg && object.getAABB) {

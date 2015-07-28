@@ -30,6 +30,7 @@ gulp.task('webgl', function () {
 gulp.task('default', ['webgl'], function () {
     // place code for your default task here
     return gulp.src([
+            '!js/lib/pixi.js',
             'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/**/*.js'

@@ -53,6 +53,7 @@ define('bento/tiled', [
                     if (w === 0 || h === 0) {
                         return;
                     }
+                    // TODO: make pixi compatible
                     // only draw the part in the viewport
                     gameData.renderer.drawImage(
                         img, ~~ (Math.max(Math.min(viewport.x, canvas.width), 0)), ~~ (Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
