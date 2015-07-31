@@ -5142,7 +5142,7 @@
 
 		exports.toByteArray = b64ToByteArray
 		exports.fromByteArray = uint8ToBase64
-	}(false ? (this.base64js = {}) : exports))
+	}( false ? (this.base64js = {}) : exports))
 
 
 /***/ },

@@ -130,7 +130,7 @@ bento.define('bento/components/pixi', [
                         sx,
                         sy;
                     if (!currentAnimation) {
-                        //return;
+                        return;
                     }
                     cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1);
                     sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth;
@@ -155,7 +155,7 @@ bento.define('bento/components/pixi', [
                         pixiSprite.rotation = rotation;
                     }
                 },
-                destroy: function () {
+                destroy: function (data) {
                     data.renderer.removeChild(pixiSprite);
                 },
                 start: function (data) {

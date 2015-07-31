@@ -6518,7 +6518,7 @@ bento.define('bento/components/pixi', [
                         sx,
                         sy;
                     if (!currentAnimation) {
-                        //return;
+                        return;
                     }
                     cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1);
                     sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth;
@@ -6543,7 +6543,7 @@ bento.define('bento/components/pixi', [
                         pixiSprite.rotation = rotation;
                     }
                 },
-                destroy: function () {
+                destroy: function (data) {
                     data.renderer.removeChild(pixiSprite);
                 },
                 start: function (data) {
@@ -7562,6 +7562,932 @@ bento.define('bento/lib/requestanimationframe', [], function () {
             clearTimeout(id);
         };
     return window.requestAnimationFrame;
+});
+/**
+ * A 2-dimensional array
+ * <br>Exports: Function
+ * @module bento/math/array2d
+ * @param {Number} width - horizontal size of array
+ * @param {Number} height - vertical size of array
+ * @returns {Array} Returns 2d array.
+ */
+bento.define('bento/math/array2d', function () {
+    'use strict';
+    return function (width, height) {
+        var array = [],
+            i,
+            j;
+
+        // init array
+        for (i = 0; i < width; ++i) {
+            array[i] = [];
+            for (j = 0; j < height; ++j) {
+                array[i][j] = null;
+            }
+        }
+
+        return {
+            /**
+             * Returns true
+             * @function
+             * @returns {Boolean} Is always true
+             * @instance
+             * @name isArray2d
+             */
+            isArray2d: function () {
+                return true;
+            },
+            /**
+             * Callback at every iteration.
+             *
+             * @callback IterationCallBack
+             * @param {Number} x - The current x index
+             * @param {Number} y - The current y index
+             * @param {Number} value - The value at the x,y index
+             */
+            /**
+             * Iterate through 2d array
+             * @function
+             * @param {IterationCallback} callback - Callback function to be called every iteration
+             * @instance
+             * @name iterate
+             */
+            iterate: function (callback) {
+                var i, j;
+                for (j = 0; j < height; ++j) {
+                    for (i = 0; i < width; ++i) {
+                        callback(i, j, array[i][j]);
+                    }
+                }
+            },
+            /**
+             * Get the value inside array
+             * @function
+             * @param {Number} x - x index
+             * @param {Number} y - y index
+             * @returns {Object} The value at the index
+             * @instance
+             * @name get
+             */
+            get: function (x, y) {
+                return array[x][y];
+            },
+            /**
+             * Set the value inside array
+             * @function
+             * @param {Number} x - x index
+             * @param {Number} y - y index
+             * @param {Number} value - new value
+             * @instance
+             * @name set
+             */
+            set: function (x, y, value) {
+                array[x][y] = value;
+            }
+        };
+    };
+});
+/**
+ * Matrix
+ * <br>Exports: Function
+ * @module bento/math/matrix
+ * @param {Number} width - horizontal size of matrix
+ * @param {Number} height - vertical size of matrix
+ * @returns {Matrix} Returns a matrix object.
+ */
+bento.define('bento/math/matrix', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var add = function (other) {
+            var newMatrix = this.clone();
+            newMatrix.addTo(other);
+            return newMatrix;
+        },
+        multiply = function (matrix1, matrix2) {
+            var newMatrix = this.clone();
+            newMatrix.multiplyWith(other);
+            return newMatrix;
+        },
+        module = function (width, height) {
+            var matrix = [],
+                n = width || 0,
+                m = height || 0,
+                i,
+                j,
+                set = function (x, y, value) {
+                    matrix[y * n + x] = value;
+                },
+                get = function (x, y) {
+                    return matrix[y * n + x];
+                };
+
+            // initialize as identity matrix
+            for (j = 0; j < m; ++j) {
+                for (i = 0; i < n; ++i) {
+                    if (i === j) {
+                        set(i, j, 1);
+                    } else {
+                        set(i, j, 0);
+                    }
+                }
+            }
+
+            return {
+                /**
+                 * Returns true
+                 * @function
+                 * @returns {Boolean} Is always true
+                 * @instance
+                 * @name isMatrix
+                 */
+                isMatrix: function () {
+                    return true;
+                },
+                /**
+                 * Returns a string representation of the matrix (useful for debugging purposes)
+                 * @function
+                 * @returns {String} String matrix
+                 * @instance
+                 * @name stringify
+                 */
+                stringify: function () {
+                    var i,
+                        j,
+                        str = '',
+                        row = '';
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            row += get(i, j) + '\t';
+                        }
+                        str += row + '\n';
+                        row = '';
+                    }
+                    return str;
+                },
+                /**
+                 * Get the value inside matrix
+                 * @function
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 * @returns {Number} The value at the index
+                 * @instance
+                 * @name get
+                 */
+                get: function (x, y) {
+                    return get(x, y);
+                },
+                /**
+                 * Set the value inside matrix
+                 * @function
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 * @param {Number} value - new value
+                 * @instance
+                 * @name set
+                 */
+                set: function (x, y, value) {
+                    set(x, y, value);
+                },
+                /**
+                 * Set the values inside matrix using an array.
+                 * If the matrix is 2x2 in size, then supplying an array with
+                 * values [1, 2, 3, 4] will result in a matrix
+                 * <br>[1 2]
+                 * <br>[3 4]
+                 * <br>If the array has more elements than the matrix, the
+                 * rest of the array is ignored.
+                 * @function
+                 * @param {Array} array - array with Numbers
+                 * @returns {Matrix} Returns self
+                 * @instance
+                 * @name setValues
+                 */
+                setValues: function (array) {
+                    var i, l = Math.min(matrix.length, array.length);
+                    for (i = 0; i < l; ++i) {
+                        matrix[i] = array[i];
+                    }
+                    return this;
+                },
+                /**
+                 * Get the matrix width
+                 * @function
+                 * @returns {Number} The width of the matrix
+                 * @instance
+                 * @name getWidth
+                 */
+                getWidth: function () {
+                    return n;
+                },
+                /**
+                 * Get the matrix height
+                 * @function
+                 * @returns {Number} The height of the matrix
+                 * @instance
+                 * @name getHeight
+                 */
+                getHeight: function () {
+                    return m;
+                },
+                /**
+                 * Callback at every iteration.
+                 *
+                 * @callback IterationCallBack
+                 * @param {Number} x - The current x index
+                 * @param {Number} y - The current y index
+                 * @param {Number} value - The value at the x,y index
+                 */
+                /**
+                 * Iterate through matrix
+                 * @function
+                 * @param {IterationCallback} callback - Callback function to be called every iteration
+                 * @instance
+                 * @name iterate
+                 */
+                iterate: function (callback) {
+                    var i, j;
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            if (!Utils.isFunction(callback)) {
+                                throw ('Please supply a callback function');
+                            }
+                            callback(i, j, get(i, j));
+                        }
+                    }
+                },
+                /**
+                 * Transposes the current matrix
+                 * @function
+                 * @returns {Matrix} Returns self
+                 * @instance
+                 * @name transpose
+                 */
+                transpose: function () {
+                    var i, j, newMat = [];
+                    // reverse loop so m becomes n
+                    for (i = 0; i < n; ++i) {
+                        for (j = 0; j < m; ++j) {
+                            newMat[i * m + j] = get(i, j);
+                        }
+                    }
+                    // set new matrix
+                    matrix = newMat;
+                    // swap width and height
+                    m = [n, n = m][0];
+                    return this;
+                },
+                /**
+                 * Addition of another matrix
+                 * @function
+                 * @param {Matrix} matrix - matrix to add
+                 * @returns {Matrix} Updated matrix
+                 * @instance
+                 * @name addTo
+                 */
+                addTo: function (other) {
+                    var i, j;
+                    if (m != other.getHeight() || n != other.getWidth()) {
+                        throw 'Matrix sizes incorrect';
+                    }
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            set(i, j, get(i, j) + other.get(i, j));
+                        }
+                    }
+                    return this;
+                },
+                /**
+                 * Addition of another matrix
+                 * @function
+                 * @param {Matrix} matrix - matrix to add
+                 * @returns {Matrix} A new matrix
+                 * @instance
+                 * @name add
+                 */
+                add: add,
+                /**
+                 * Multiply with another matrix
+                 * If a new matrix C is the result of A * B = C
+                 * then B is the current matrix and becomes C, A is the input matrix
+                 * @function
+                 * @param {Matrix} matrix - input matrix to multiply with
+                 * @returns {Matrix} Updated matrix
+                 * @instance
+                 * @name multiplyWith
+                 */
+                multiplyWith: function (other) {
+                    var i, j,
+                        newMat = [],
+                        newWidth = n, // B.n
+                        oldHeight = m, // B.m
+                        newHeight = other.getHeight(), // A.m
+                        oldWidth = other.getWidth(), // A.n
+                        newValue = 0,
+                        k;
+                    if (oldHeight != oldWidth) {
+                        throw 'Matrix sizes incorrect';
+                    }
+
+                    for (j = 0; j < newHeight; ++j) {
+                        for (i = 0; i < newWidth; ++i) {
+                            newValue = 0;
+                            // loop through matbentos
+                            for (k = 0; k < oldWidth; ++k) {
+                                newValue += other.get(k, j) * get(i, k);
+                            }
+                            newMat[j * newWidth + i] = newValue;
+                        }
+                    }
+                    // set to new matrix
+                    matrix = newMat;
+                    // update matrix size
+                    n = newWidth;
+                    m = newHeight;
+                    return this;
+                },
+                /**
+                 * Multiply with another matrix
+                 * If a new matrix C is the result of A * B = C
+                 * then B is the current matrix and becomes C, A is the input matrix
+                 * @function
+                 * @param {Matrix} matrix - input matrix to multiply with
+                 * @returns {Matrix} A new matrix
+                 * @instance
+                 * @name multiply
+                 */
+                multiply: multiply,
+                /**
+                 * Returns a clone of the current matrix
+                 * @function
+                 * @returns {Matrix} A new matrix
+                 * @instance
+                 * @name clone
+                 */
+                clone: function () {
+                    var newMatrix = module(n, m);
+                    newMatrix.setValues(matrix);
+                    return newMatrix;
+                }
+            };
+        };
+    return module;
+});
+/**
+ * Polygon
+ * <br>Exports: Function
+ * @module bento/math/polygon
+ * @param {Array} points - An array of Vector2 with positions of all points
+ * @returns {Polygon} Returns a polygon.
+ */
+bento.define('bento/math/polygon', [
+    'bento/utils',
+    'bento/math/rectangle'
+], function (Utils, Rectangle) {
+    'use strict';
+    var isPolygon = function () {
+            return true;
+        },
+        clone = function () {
+            var clone = [],
+                points = this.points,
+                i = points.length;
+            // clone the array
+            while (i--) {
+                clone[i] = points[i];
+            }
+            return module(clone);
+        },
+        offset = function (pos) {
+            var clone = [],
+                points = this.points,
+                i = points.length;
+            while (i--) {
+                clone[i] = points[i];
+                clone[i].x += pos.x;
+                clone[i].y += pos.y;
+            }
+            return module(clone);
+        },
+        doLineSegmentsIntersect = function (p, p2, q, q2) {
+            // based on https://github.com/pgkelley4/line-segments-intersect
+            var crossProduct = function (p1, p2) {
+                    return p1.x * p2.y - p1.y * p2.x;
+                },
+                subtractPoints = function (p1, p2) {
+                    return {
+                        x: p1.x - p2.x,
+                        y: p1.y - p2.y
+                    };
+                },
+                r = subtractPoints(p2, p),
+                s = subtractPoints(q2, q),
+                uNumerator = crossProduct(subtractPoints(q, p), r),
+                denominator = crossProduct(r, s),
+                u,
+                t;
+            if (uNumerator === 0 && denominator === 0) {
+                return ((q.x - p.x < 0) !== (q.x - p2.x < 0) !== (q2.x - p.x < 0) !== (q2.x - p2.x < 0)) ||
+                    ((q.y - p.y < 0) !== (q.y - p2.y < 0) !== (q2.y - p.y < 0) !== (q2.y - p2.y < 0));
+            }
+            if (denominator === 0) {
+                return false;
+            }
+            u = uNumerator / denominator;
+            t = crossProduct(subtractPoints(q, p), s) / denominator;
+            return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
+        },
+        intersect = function (polygon) {
+            var intersect = false,
+                other = [],
+                points = this.points,
+                p1,
+                p2,
+                q1,
+                q2,
+                i,
+                j;
+
+            // is other really a polygon?
+            if (polygon.isRectangle) {
+                // before constructing a polygon, check if boxes collide in the first place 
+                if (!this.getBoundingBox().intersect(polygon)) {
+                    return false;
+                }
+                // construct a polygon out of rectangle
+                other.push({
+                    x: polygon.x,
+                    y: polygon.y
+                });
+                other.push({
+                    x: polygon.getX2(),
+                    y: polygon.y
+                });
+                other.push({
+                    x: polygon.getX2(),
+                    y: polygon.getY2()
+                });
+                other.push({
+                    x: polygon.x,
+                    y: polygon.getY2()
+                });
+                polygon = module(other);
+            } else {
+                // simplest check first: regard polygons as boxes and check collision
+                if (!this.getBoundingBox().intersect(polygon.getBoundingBox())) {
+                    return false;
+                }
+                // get polygon points
+                other = polygon.points;
+            }
+
+            // precision check
+            for (i = 0; i < points.length; ++i) {
+                for (j = 0; j < other.length; ++j) {
+                    p1 = points[i];
+                    p2 = points[(i + 1) % points.length];
+                    q1 = other[j];
+                    q2 = other[(j + 1) % other.length];
+                    if (doLineSegmentsIntersect(p1, p2, q1, q2)) {
+                        return true;
+                    }
+                }
+            }
+            // check inside one or another
+            if (this.hasPosition(other[0]) || polygon.hasPosition(points[0])) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        hasPosition = function (p) {
+            var points = this.points,
+                has = false,
+                i = 0,
+                j = points.length - 1,
+                bounds = this.getBoundingBox();
+
+            if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
+                return false;
+            }
+            for (i, j; i < points.length; j = i++) {
+                if ((points[i].y > p.y) != (points[j].y > p.y) &&
+                    p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
+                    (points[j].y - points[i].y) + points[i].x) {
+                    has = !has;
+                }
+            }
+            return has;
+        },
+        module = function (points) {
+            var minX = points[0].x,
+                maxX = points[0].x,
+                minY = points[0].y,
+                maxY = points[0].y,
+                n = 1,
+                q;
+
+            for (n = 1; n < points.length; ++n) {
+                q = points[n];
+                minX = Math.min(q.x, minX);
+                maxX = Math.max(q.x, maxX);
+                minY = Math.min(q.y, minY);
+                maxY = Math.max(q.y, maxY);
+            }
+
+            return {
+                // TODO: use x and y as offset, widht and height as boundingbox
+                x: minX, 
+                y: minY, 
+                width: maxX - minX, 
+                height: maxY - minY,
+                /**
+                 * Array of Vector2 points
+                 * @instance
+                 * @name points
+                 */
+                points: points,
+                /**
+                 * Returns true
+                 * @function
+                 * @returns {Boolean} Is always true
+                 * @instance
+                 * @name isPolygon
+                 */
+                isPolygon: isPolygon,
+                /**
+                 * Get the rectangle containing the polygon
+                 * @function
+                 * @returns {Rectangle} Rectangle containing the polygon
+                 * @instance
+                 * @name getBoundingBox
+                 */
+                getBoundingBox: function () {
+                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
+                },
+                /**
+                 * Checks if Vector2 lies within the polygon
+                 * @function
+                 * @returns {Boolean} true if position is inside
+                 * @instance
+                 * @name hasPosition
+                 */
+                hasPosition: hasPosition,
+                /**
+                 * Checks if other polygon/rectangle overlaps.
+                 * Note that this may be computationally expensive. 
+                 * @function
+                 * @param {Polygon/Rectangle} other - Other polygon or rectangle
+                 * @returns {Boolean} true if polygons overlap
+                 * @instance
+                 * @name intersect
+                 */
+                intersect: intersect,
+                /**
+                 * Moves polygon by an offset
+                 * @function
+                 * @param {Vector2} vector - Position to offset
+                 * @returns {Polygon} Returns a new polygon instance
+                 * @instance
+                 * @name offset
+                 */
+                offset: offset,
+                /**
+                 * Clones polygon
+                 * @function
+                 * @returns {Polygon} a clone of the current polygon
+                 * @instance
+                 * @name clone
+                 */
+                clone: clone
+            };
+        };
+    return module;
+});
+/**
+ * Rectangle
+ * <br>Exports: Function
+ * @module bento/math/rectangle
+ * @param {Number} x - Top left x position
+ * @param {Number} y - Top left y position
+ * @param {Number} width - Width of the rectangle
+ * @param {Number} height - Height of the rectangle
+ * @returns {Rectangle} Returns a rectangle.
+ */
+bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
+    'use strict';
+    var isRectangle = function () {
+            return true;
+        },
+        getX2 = function () {
+            return this.x + this.width;
+        },
+        getY2 = function () {
+            return this.y + this.height;
+        },
+        union = function (rectangle) {
+            var x1 = Math.min(this.x, rectangle.x),
+                y1 = Math.min(this.y, rectangle.y),
+                x2 = Math.max(this.getX2(), rectangle.getX2()),
+                y2 = Math.max(this.getY2(), rectangle.getY2());
+            return module(x1, y1, x2 - x1, y2 - y1);
+        },
+        intersect = function (other) {
+            if (other.isPolygon) {
+                return other.intersect(this);
+            } else {
+                return !(this.x + this.width <= other.x ||
+                    this.y + this.height <= other.y ||
+                    this.x >= other.x + other.width ||
+                    this.y >= other.y + other.height);
+            }
+        },
+        intersection = function (rectangle) {
+            var inter = module(0, 0, 0, 0);
+            if (this.intersect(rectangle)) {
+                inter.x = Math.max(this.x, rectangle.x);
+                inter.y = Math.max(this.y, rectangle.y);
+                inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
+                inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
+            }
+            return inter;
+        },
+        offset = function (pos) {
+            return module(this.x + pos.x, this.y + pos.y, this.width, this.height);
+        },
+        clone = function () {
+            return module(this.x, this.y, this.width, this.height);
+        },
+        hasPosition = function (vector) {
+            return !(
+                vector.x < this.x ||
+                vector.y < this.y ||
+                vector.x >= this.x + this.width ||
+                vector.y >= this.y + this.height
+            );
+        },
+        grow = function (size) {
+            this.x -= size / 2;
+            this.y -= size / 2;
+            this.width += size;
+            this.height += size;
+        },
+        module = function (x, y, width, height) {
+            return {
+                /**
+                 * X position
+                 * @instance
+                 * @name x
+                 */
+                x: x,
+                /**
+                 * Y position
+                 * @instance
+                 * @name y
+                 */
+                y: y,
+                /**
+                 * Width of the rectangle
+                 * @instance
+                 * @name width
+                 */
+                width: width,
+                /**
+                 * Height of the rectangle
+                 * @instance
+                 * @name height
+                 */
+                height: height,
+                /**
+                 * Returns true
+                 * @function
+                 * @returns {Boolean} Is always true
+                 * @instance
+                 * @name isRectangle
+                 */
+                isRectangle: isRectangle,
+                /**
+                 * Gets the lower right x position
+                 * @function
+                 * @returns {Number} Coordinate of the lower right position
+                 * @instance
+                 * @name getX2
+                 */
+                getX2: getX2,
+                /**
+                 * Gets the lower right y position
+                 * @function
+                 * @returns {Number} Coordinate of the lower right position
+                 * @instance
+                 * @name getY2
+                 */
+                getY2: getY2,
+                /**
+                 * Returns the union of 2 rectangles
+                 * @function
+                 * @param {Rectangle} other - Other rectangle
+                 * @returns {Rectangle} Union of the 2 rectangles
+                 * @instance
+                 * @name union
+                 */
+                union: union,
+                /**
+                 * Returns true if 2 rectangles intersect
+                 * @function
+                 * @param {Rectangle} other - Other rectangle
+                 * @returns {Boolean} True of 2 rectangles intersect
+                 * @instance
+                 * @name union
+                 */
+                intersect: intersect,
+                /**
+                 * Returns the intersection of 2 rectangles
+                 * @function
+                 * @param {Rectangle} other - Other rectangle
+                 * @returns {Rectangle} Intersection of the 2 rectangles
+                 * @instance
+                 * @name union
+                 */
+                intersection: intersection,
+                /**
+                 * Moves rectangle by an offset
+                 * @function
+                 * @param {Vector2} vector - Position to offset
+                 * @returns {Rectangle} Returns a new rectangle instance
+                 * @instance
+                 * @name offset
+                 */
+                offset: offset,
+                /**
+                 * Clones rectangle
+                 * @function
+                 * @returns {Rectangle} a clone of the current rectangle
+                 * @instance
+                 * @name clone
+                 */
+                clone: clone,
+                /**
+                 * Checks if Vector2 lies within the rectangle
+                 * @function
+                 * @returns {Boolean} true if position is inside
+                 * @instance
+                 * @name hasPosition
+                 */
+                hasPosition: hasPosition,
+                /**
+                 * Increases rectangle size from the center
+                 * @function
+                 * @returns {Number} value to grow the rectangle
+                 * @instance
+                 * @name grow
+                 */
+                grow: grow
+            };
+        };
+    return module;
+});
+/**
+ * 2 dimensional vector
+ * (Note: to perform matrix multiplications, one must use toMatrix)
+ * <br>Exports: Function
+ * @module bento/math/vector2
+ * @param {Number} x - x position
+ * @param {Number} y - y position
+ * @returns {Vector2} Returns a 2d vector.
+ */
+bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
+    'use strict';
+    var isVector2 = function () {
+            return true;
+        },
+        add = function (vector) {
+            var v = this.clone();
+            v.addTo(vector);
+            return v;
+        },
+        addTo = function (vector) {
+            this.x += vector.x;
+            this.y += vector.y;
+            return this;
+        },
+        substract = function (vector) {
+            var v = this.clone();
+            v.substractFrom(vector);
+            return v;
+        },
+        substractFrom = function (vector) {
+            this.x -= vector.x;
+            this.y -= vector.y;
+            return this;
+        },
+        angle = function () {
+            return Math.atan2(this.y, this.x);
+        },
+        angleBetween = function (vector) {
+            return Math.atan2(
+                vector.y - this.y,
+                vector.x - this.x
+            );
+        },
+        dotProduct = function (vector) {
+            return this.x * vector.x + this.y * vector.y;
+        },
+        multiply = function (vector) {
+            var v = this.clone();
+            v.multiplyWith(vector);
+            return v;
+        },
+        multiplyWith = function (vector) {
+            this.x *= vector.x;
+            this.y *= vector.y;
+            return this;
+        },
+        divide = function (vector) {
+            var v = this.clone();
+            v.divideBy(vector);
+            return v;
+        },
+        divideBy = function (vector) {
+            this.x /= vector.x;
+            this.y /= vector.y;
+            return this;
+        },
+        scalarMultiply = function (value) {
+            var v = this.clone();
+            v.scalarMultiplyWith(value);
+            return v;
+        },
+        scalarMultiplyWith = function (value) {
+            this.x *= value;
+            this.y *= value;
+            return this;
+        },
+        scale = function (value) {
+            this.x *= value;
+            this.y *= value;
+            return this;
+        },
+        length = function () {
+            return Math.sqrt(this.dotProduct(this));
+        },
+        normalize = function () {
+            var length = this.length();
+            this.x /= length;
+            this.y /= length;
+            return this;
+        },
+        distance = function (vector) {
+            return vector.substract(this).length();
+        },
+        rotateRadian = function (angle) {
+            var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
+                y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
+            this.x = x;
+            this.y = y;
+            return this;
+        },
+        rotateDegree = function (angle) {
+            return this.rotateRadian(angle * Math.PI / 180);
+        },
+        clone = function () {
+            return module(this.x, this.y);
+        },
+        toMatrix = function () {
+            var matrix = Matrix(1, 3);
+            matrix.set(0, 0, this.x);
+            matrix.set(0, 1, this.y);
+            matrix.set(0, 2, 1);
+            return matrix;
+        },
+        module = function (x, y) {
+            return {
+                x: x,
+                y: y,
+                isVector2: isVector2,
+                add: add,
+                addTo: addTo,
+                substract: substract,
+                substractFrom: substractFrom,
+                angle: angle,
+                angleBetween: angleBetween,
+                dotProduct: dotProduct,
+                multiply: multiply,
+                multiplyWith: multiplyWith,
+                divide: divide,
+                divideBy: divideBy,
+                scalarMultiply: scalarMultiply,
+                scalarMultiplyWith: scalarMultiplyWith,
+                scale: scale,
+                length: length,
+                normalize: normalize,
+                distance: distance,
+                rotateRadian: rotateRadian,
+                rotateDegree: rotateDegree,
+                clone: clone,
+                toMatrix: toMatrix
+            };
+        };
+    return module;
 });
 /**
  * Manager that loads and controls assets
@@ -9046,932 +9972,6 @@ bento.define('bento/managers/screen', [
     };
 });
 /**
- * A 2-dimensional array
- * <br>Exports: Function
- * @module bento/math/array2d
- * @param {Number} width - horizontal size of array
- * @param {Number} height - vertical size of array
- * @returns {Array} Returns 2d array.
- */
-bento.define('bento/math/array2d', function () {
-    'use strict';
-    return function (width, height) {
-        var array = [],
-            i,
-            j;
-
-        // init array
-        for (i = 0; i < width; ++i) {
-            array[i] = [];
-            for (j = 0; j < height; ++j) {
-                array[i][j] = null;
-            }
-        }
-
-        return {
-            /**
-             * Returns true
-             * @function
-             * @returns {Boolean} Is always true
-             * @instance
-             * @name isArray2d
-             */
-            isArray2d: function () {
-                return true;
-            },
-            /**
-             * Callback at every iteration.
-             *
-             * @callback IterationCallBack
-             * @param {Number} x - The current x index
-             * @param {Number} y - The current y index
-             * @param {Number} value - The value at the x,y index
-             */
-            /**
-             * Iterate through 2d array
-             * @function
-             * @param {IterationCallback} callback - Callback function to be called every iteration
-             * @instance
-             * @name iterate
-             */
-            iterate: function (callback) {
-                var i, j;
-                for (j = 0; j < height; ++j) {
-                    for (i = 0; i < width; ++i) {
-                        callback(i, j, array[i][j]);
-                    }
-                }
-            },
-            /**
-             * Get the value inside array
-             * @function
-             * @param {Number} x - x index
-             * @param {Number} y - y index
-             * @returns {Object} The value at the index
-             * @instance
-             * @name get
-             */
-            get: function (x, y) {
-                return array[x][y];
-            },
-            /**
-             * Set the value inside array
-             * @function
-             * @param {Number} x - x index
-             * @param {Number} y - y index
-             * @param {Number} value - new value
-             * @instance
-             * @name set
-             */
-            set: function (x, y, value) {
-                array[x][y] = value;
-            }
-        };
-    };
-});
-/**
- * Matrix
- * <br>Exports: Function
- * @module bento/math/matrix
- * @param {Number} width - horizontal size of matrix
- * @param {Number} height - vertical size of matrix
- * @returns {Matrix} Returns a matrix object.
- */
-bento.define('bento/math/matrix', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    var add = function (other) {
-            var newMatrix = this.clone();
-            newMatrix.addTo(other);
-            return newMatrix;
-        },
-        multiply = function (matrix1, matrix2) {
-            var newMatrix = this.clone();
-            newMatrix.multiplyWith(other);
-            return newMatrix;
-        },
-        module = function (width, height) {
-            var matrix = [],
-                n = width || 0,
-                m = height || 0,
-                i,
-                j,
-                set = function (x, y, value) {
-                    matrix[y * n + x] = value;
-                },
-                get = function (x, y) {
-                    return matrix[y * n + x];
-                };
-
-            // initialize as identity matrix
-            for (j = 0; j < m; ++j) {
-                for (i = 0; i < n; ++i) {
-                    if (i === j) {
-                        set(i, j, 1);
-                    } else {
-                        set(i, j, 0);
-                    }
-                }
-            }
-
-            return {
-                /**
-                 * Returns true
-                 * @function
-                 * @returns {Boolean} Is always true
-                 * @instance
-                 * @name isMatrix
-                 */
-                isMatrix: function () {
-                    return true;
-                },
-                /**
-                 * Returns a string representation of the matrix (useful for debugging purposes)
-                 * @function
-                 * @returns {String} String matrix
-                 * @instance
-                 * @name stringify
-                 */
-                stringify: function () {
-                    var i,
-                        j,
-                        str = '',
-                        row = '';
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            row += get(i, j) + '\t';
-                        }
-                        str += row + '\n';
-                        row = '';
-                    }
-                    return str;
-                },
-                /**
-                 * Get the value inside matrix
-                 * @function
-                 * @param {Number} x - x index
-                 * @param {Number} y - y index
-                 * @returns {Number} The value at the index
-                 * @instance
-                 * @name get
-                 */
-                get: function (x, y) {
-                    return get(x, y);
-                },
-                /**
-                 * Set the value inside matrix
-                 * @function
-                 * @param {Number} x - x index
-                 * @param {Number} y - y index
-                 * @param {Number} value - new value
-                 * @instance
-                 * @name set
-                 */
-                set: function (x, y, value) {
-                    set(x, y, value);
-                },
-                /**
-                 * Set the values inside matrix using an array.
-                 * If the matrix is 2x2 in size, then supplying an array with
-                 * values [1, 2, 3, 4] will result in a matrix
-                 * <br>[1 2]
-                 * <br>[3 4]
-                 * <br>If the array has more elements than the matrix, the
-                 * rest of the array is ignored.
-                 * @function
-                 * @param {Array} array - array with Numbers
-                 * @returns {Matrix} Returns self
-                 * @instance
-                 * @name setValues
-                 */
-                setValues: function (array) {
-                    var i, l = Math.min(matrix.length, array.length);
-                    for (i = 0; i < l; ++i) {
-                        matrix[i] = array[i];
-                    }
-                    return this;
-                },
-                /**
-                 * Get the matrix width
-                 * @function
-                 * @returns {Number} The width of the matrix
-                 * @instance
-                 * @name getWidth
-                 */
-                getWidth: function () {
-                    return n;
-                },
-                /**
-                 * Get the matrix height
-                 * @function
-                 * @returns {Number} The height of the matrix
-                 * @instance
-                 * @name getHeight
-                 */
-                getHeight: function () {
-                    return m;
-                },
-                /**
-                 * Callback at every iteration.
-                 *
-                 * @callback IterationCallBack
-                 * @param {Number} x - The current x index
-                 * @param {Number} y - The current y index
-                 * @param {Number} value - The value at the x,y index
-                 */
-                /**
-                 * Iterate through matrix
-                 * @function
-                 * @param {IterationCallback} callback - Callback function to be called every iteration
-                 * @instance
-                 * @name iterate
-                 */
-                iterate: function (callback) {
-                    var i, j;
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            if (!Utils.isFunction(callback)) {
-                                throw ('Please supply a callback function');
-                            }
-                            callback(i, j, get(i, j));
-                        }
-                    }
-                },
-                /**
-                 * Transposes the current matrix
-                 * @function
-                 * @returns {Matrix} Returns self
-                 * @instance
-                 * @name transpose
-                 */
-                transpose: function () {
-                    var i, j, newMat = [];
-                    // reverse loop so m becomes n
-                    for (i = 0; i < n; ++i) {
-                        for (j = 0; j < m; ++j) {
-                            newMat[i * m + j] = get(i, j);
-                        }
-                    }
-                    // set new matrix
-                    matrix = newMat;
-                    // swap width and height
-                    m = [n, n = m][0];
-                    return this;
-                },
-                /**
-                 * Addition of another matrix
-                 * @function
-                 * @param {Matrix} matrix - matrix to add
-                 * @returns {Matrix} Updated matrix
-                 * @instance
-                 * @name addTo
-                 */
-                addTo: function (other) {
-                    var i, j;
-                    if (m != other.getHeight() || n != other.getWidth()) {
-                        throw 'Matrix sizes incorrect';
-                    }
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            set(i, j, get(i, j) + other.get(i, j));
-                        }
-                    }
-                    return this;
-                },
-                /**
-                 * Addition of another matrix
-                 * @function
-                 * @param {Matrix} matrix - matrix to add
-                 * @returns {Matrix} A new matrix
-                 * @instance
-                 * @name add
-                 */
-                add: add,
-                /**
-                 * Multiply with another matrix
-                 * If a new matrix C is the result of A * B = C
-                 * then B is the current matrix and becomes C, A is the input matrix
-                 * @function
-                 * @param {Matrix} matrix - input matrix to multiply with
-                 * @returns {Matrix} Updated matrix
-                 * @instance
-                 * @name multiplyWith
-                 */
-                multiplyWith: function (other) {
-                    var i, j,
-                        newMat = [],
-                        newWidth = n, // B.n
-                        oldHeight = m, // B.m
-                        newHeight = other.getHeight(), // A.m
-                        oldWidth = other.getWidth(), // A.n
-                        newValue = 0,
-                        k;
-                    if (oldHeight != oldWidth) {
-                        throw 'Matrix sizes incorrect';
-                    }
-
-                    for (j = 0; j < newHeight; ++j) {
-                        for (i = 0; i < newWidth; ++i) {
-                            newValue = 0;
-                            // loop through matbentos
-                            for (k = 0; k < oldWidth; ++k) {
-                                newValue += other.get(k, j) * get(i, k);
-                            }
-                            newMat[j * newWidth + i] = newValue;
-                        }
-                    }
-                    // set to new matrix
-                    matrix = newMat;
-                    // update matrix size
-                    n = newWidth;
-                    m = newHeight;
-                    return this;
-                },
-                /**
-                 * Multiply with another matrix
-                 * If a new matrix C is the result of A * B = C
-                 * then B is the current matrix and becomes C, A is the input matrix
-                 * @function
-                 * @param {Matrix} matrix - input matrix to multiply with
-                 * @returns {Matrix} A new matrix
-                 * @instance
-                 * @name multiply
-                 */
-                multiply: multiply,
-                /**
-                 * Returns a clone of the current matrix
-                 * @function
-                 * @returns {Matrix} A new matrix
-                 * @instance
-                 * @name clone
-                 */
-                clone: function () {
-                    var newMatrix = module(n, m);
-                    newMatrix.setValues(matrix);
-                    return newMatrix;
-                }
-            };
-        };
-    return module;
-});
-/**
- * Polygon
- * <br>Exports: Function
- * @module bento/math/polygon
- * @param {Array} points - An array of Vector2 with positions of all points
- * @returns {Polygon} Returns a polygon.
- */
-bento.define('bento/math/polygon', [
-    'bento/utils',
-    'bento/math/rectangle'
-], function (Utils, Rectangle) {
-    'use strict';
-    var isPolygon = function () {
-            return true;
-        },
-        clone = function () {
-            var clone = [],
-                points = this.points,
-                i = points.length;
-            // clone the array
-            while (i--) {
-                clone[i] = points[i];
-            }
-            return module(clone);
-        },
-        offset = function (pos) {
-            var clone = [],
-                points = this.points,
-                i = points.length;
-            while (i--) {
-                clone[i] = points[i];
-                clone[i].x += pos.x;
-                clone[i].y += pos.y;
-            }
-            return module(clone);
-        },
-        doLineSegmentsIntersect = function (p, p2, q, q2) {
-            // based on https://github.com/pgkelley4/line-segments-intersect
-            var crossProduct = function (p1, p2) {
-                    return p1.x * p2.y - p1.y * p2.x;
-                },
-                subtractPoints = function (p1, p2) {
-                    return {
-                        x: p1.x - p2.x,
-                        y: p1.y - p2.y
-                    };
-                },
-                r = subtractPoints(p2, p),
-                s = subtractPoints(q2, q),
-                uNumerator = crossProduct(subtractPoints(q, p), r),
-                denominator = crossProduct(r, s),
-                u,
-                t;
-            if (uNumerator === 0 && denominator === 0) {
-                return ((q.x - p.x < 0) !== (q.x - p2.x < 0) !== (q2.x - p.x < 0) !== (q2.x - p2.x < 0)) ||
-                    ((q.y - p.y < 0) !== (q.y - p2.y < 0) !== (q2.y - p.y < 0) !== (q2.y - p2.y < 0));
-            }
-            if (denominator === 0) {
-                return false;
-            }
-            u = uNumerator / denominator;
-            t = crossProduct(subtractPoints(q, p), s) / denominator;
-            return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
-        },
-        intersect = function (polygon) {
-            var intersect = false,
-                other = [],
-                points = this.points,
-                p1,
-                p2,
-                q1,
-                q2,
-                i,
-                j;
-
-            // is other really a polygon?
-            if (polygon.isRectangle) {
-                // before constructing a polygon, check if boxes collide in the first place 
-                if (!this.getBoundingBox().intersect(polygon)) {
-                    return false;
-                }
-                // construct a polygon out of rectangle
-                other.push({
-                    x: polygon.x,
-                    y: polygon.y
-                });
-                other.push({
-                    x: polygon.getX2(),
-                    y: polygon.y
-                });
-                other.push({
-                    x: polygon.getX2(),
-                    y: polygon.getY2()
-                });
-                other.push({
-                    x: polygon.x,
-                    y: polygon.getY2()
-                });
-                polygon = module(other);
-            } else {
-                // simplest check first: regard polygons as boxes and check collision
-                if (!this.getBoundingBox().intersect(polygon.getBoundingBox())) {
-                    return false;
-                }
-                // get polygon points
-                other = polygon.points;
-            }
-
-            // precision check
-            for (i = 0; i < points.length; ++i) {
-                for (j = 0; j < other.length; ++j) {
-                    p1 = points[i];
-                    p2 = points[(i + 1) % points.length];
-                    q1 = other[j];
-                    q2 = other[(j + 1) % other.length];
-                    if (doLineSegmentsIntersect(p1, p2, q1, q2)) {
-                        return true;
-                    }
-                }
-            }
-            // check inside one or another
-            if (this.hasPosition(other[0]) || polygon.hasPosition(points[0])) {
-                return true;
-            } else {
-                return false;
-            }
-        },
-        hasPosition = function (p) {
-            var points = this.points,
-                has = false,
-                i = 0,
-                j = points.length - 1,
-                bounds = this.getBoundingBox();
-
-            if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
-                return false;
-            }
-            for (i, j; i < points.length; j = i++) {
-                if ((points[i].y > p.y) != (points[j].y > p.y) &&
-                    p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
-                    (points[j].y - points[i].y) + points[i].x) {
-                    has = !has;
-                }
-            }
-            return has;
-        },
-        module = function (points) {
-            var minX = points[0].x,
-                maxX = points[0].x,
-                minY = points[0].y,
-                maxY = points[0].y,
-                n = 1,
-                q;
-
-            for (n = 1; n < points.length; ++n) {
-                q = points[n];
-                minX = Math.min(q.x, minX);
-                maxX = Math.max(q.x, maxX);
-                minY = Math.min(q.y, minY);
-                maxY = Math.max(q.y, maxY);
-            }
-
-            return {
-                // TODO: use x and y as offset, widht and height as boundingbox
-                x: minX, 
-                y: minY, 
-                width: maxX - minX, 
-                height: maxY - minY,
-                /**
-                 * Array of Vector2 points
-                 * @instance
-                 * @name points
-                 */
-                points: points,
-                /**
-                 * Returns true
-                 * @function
-                 * @returns {Boolean} Is always true
-                 * @instance
-                 * @name isPolygon
-                 */
-                isPolygon: isPolygon,
-                /**
-                 * Get the rectangle containing the polygon
-                 * @function
-                 * @returns {Rectangle} Rectangle containing the polygon
-                 * @instance
-                 * @name getBoundingBox
-                 */
-                getBoundingBox: function () {
-                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
-                },
-                /**
-                 * Checks if Vector2 lies within the polygon
-                 * @function
-                 * @returns {Boolean} true if position is inside
-                 * @instance
-                 * @name hasPosition
-                 */
-                hasPosition: hasPosition,
-                /**
-                 * Checks if other polygon/rectangle overlaps.
-                 * Note that this may be computationally expensive. 
-                 * @function
-                 * @param {Polygon/Rectangle} other - Other polygon or rectangle
-                 * @returns {Boolean} true if polygons overlap
-                 * @instance
-                 * @name intersect
-                 */
-                intersect: intersect,
-                /**
-                 * Moves polygon by an offset
-                 * @function
-                 * @param {Vector2} vector - Position to offset
-                 * @returns {Polygon} Returns a new polygon instance
-                 * @instance
-                 * @name offset
-                 */
-                offset: offset,
-                /**
-                 * Clones polygon
-                 * @function
-                 * @returns {Polygon} a clone of the current polygon
-                 * @instance
-                 * @name clone
-                 */
-                clone: clone
-            };
-        };
-    return module;
-});
-/**
- * Rectangle
- * <br>Exports: Function
- * @module bento/math/rectangle
- * @param {Number} x - Top left x position
- * @param {Number} y - Top left y position
- * @param {Number} width - Width of the rectangle
- * @param {Number} height - Height of the rectangle
- * @returns {Rectangle} Returns a rectangle.
- */
-bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
-    'use strict';
-    var isRectangle = function () {
-            return true;
-        },
-        getX2 = function () {
-            return this.x + this.width;
-        },
-        getY2 = function () {
-            return this.y + this.height;
-        },
-        union = function (rectangle) {
-            var x1 = Math.min(this.x, rectangle.x),
-                y1 = Math.min(this.y, rectangle.y),
-                x2 = Math.max(this.getX2(), rectangle.getX2()),
-                y2 = Math.max(this.getY2(), rectangle.getY2());
-            return module(x1, y1, x2 - x1, y2 - y1);
-        },
-        intersect = function (other) {
-            if (other.isPolygon) {
-                return other.intersect(this);
-            } else {
-                return !(this.x + this.width <= other.x ||
-                    this.y + this.height <= other.y ||
-                    this.x >= other.x + other.width ||
-                    this.y >= other.y + other.height);
-            }
-        },
-        intersection = function (rectangle) {
-            var inter = module(0, 0, 0, 0);
-            if (this.intersect(rectangle)) {
-                inter.x = Math.max(this.x, rectangle.x);
-                inter.y = Math.max(this.y, rectangle.y);
-                inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
-                inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
-            }
-            return inter;
-        },
-        offset = function (pos) {
-            return module(this.x + pos.x, this.y + pos.y, this.width, this.height);
-        },
-        clone = function () {
-            return module(this.x, this.y, this.width, this.height);
-        },
-        hasPosition = function (vector) {
-            return !(
-                vector.x < this.x ||
-                vector.y < this.y ||
-                vector.x >= this.x + this.width ||
-                vector.y >= this.y + this.height
-            );
-        },
-        grow = function (size) {
-            this.x -= size / 2;
-            this.y -= size / 2;
-            this.width += size;
-            this.height += size;
-        },
-        module = function (x, y, width, height) {
-            return {
-                /**
-                 * X position
-                 * @instance
-                 * @name x
-                 */
-                x: x,
-                /**
-                 * Y position
-                 * @instance
-                 * @name y
-                 */
-                y: y,
-                /**
-                 * Width of the rectangle
-                 * @instance
-                 * @name width
-                 */
-                width: width,
-                /**
-                 * Height of the rectangle
-                 * @instance
-                 * @name height
-                 */
-                height: height,
-                /**
-                 * Returns true
-                 * @function
-                 * @returns {Boolean} Is always true
-                 * @instance
-                 * @name isRectangle
-                 */
-                isRectangle: isRectangle,
-                /**
-                 * Gets the lower right x position
-                 * @function
-                 * @returns {Number} Coordinate of the lower right position
-                 * @instance
-                 * @name getX2
-                 */
-                getX2: getX2,
-                /**
-                 * Gets the lower right y position
-                 * @function
-                 * @returns {Number} Coordinate of the lower right position
-                 * @instance
-                 * @name getY2
-                 */
-                getY2: getY2,
-                /**
-                 * Returns the union of 2 rectangles
-                 * @function
-                 * @param {Rectangle} other - Other rectangle
-                 * @returns {Rectangle} Union of the 2 rectangles
-                 * @instance
-                 * @name union
-                 */
-                union: union,
-                /**
-                 * Returns true if 2 rectangles intersect
-                 * @function
-                 * @param {Rectangle} other - Other rectangle
-                 * @returns {Boolean} True of 2 rectangles intersect
-                 * @instance
-                 * @name union
-                 */
-                intersect: intersect,
-                /**
-                 * Returns the intersection of 2 rectangles
-                 * @function
-                 * @param {Rectangle} other - Other rectangle
-                 * @returns {Rectangle} Intersection of the 2 rectangles
-                 * @instance
-                 * @name union
-                 */
-                intersection: intersection,
-                /**
-                 * Moves rectangle by an offset
-                 * @function
-                 * @param {Vector2} vector - Position to offset
-                 * @returns {Rectangle} Returns a new rectangle instance
-                 * @instance
-                 * @name offset
-                 */
-                offset: offset,
-                /**
-                 * Clones rectangle
-                 * @function
-                 * @returns {Rectangle} a clone of the current rectangle
-                 * @instance
-                 * @name clone
-                 */
-                clone: clone,
-                /**
-                 * Checks if Vector2 lies within the rectangle
-                 * @function
-                 * @returns {Boolean} true if position is inside
-                 * @instance
-                 * @name hasPosition
-                 */
-                hasPosition: hasPosition,
-                /**
-                 * Increases rectangle size from the center
-                 * @function
-                 * @returns {Number} value to grow the rectangle
-                 * @instance
-                 * @name grow
-                 */
-                grow: grow
-            };
-        };
-    return module;
-});
-/**
- * 2 dimensional vector
- * (Note: to perform matrix multiplications, one must use toMatrix)
- * <br>Exports: Function
- * @module bento/math/vector2
- * @param {Number} x - x position
- * @param {Number} y - y position
- * @returns {Vector2} Returns a 2d vector.
- */
-bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
-    'use strict';
-    var isVector2 = function () {
-            return true;
-        },
-        add = function (vector) {
-            var v = this.clone();
-            v.addTo(vector);
-            return v;
-        },
-        addTo = function (vector) {
-            this.x += vector.x;
-            this.y += vector.y;
-            return this;
-        },
-        substract = function (vector) {
-            var v = this.clone();
-            v.substractFrom(vector);
-            return v;
-        },
-        substractFrom = function (vector) {
-            this.x -= vector.x;
-            this.y -= vector.y;
-            return this;
-        },
-        angle = function () {
-            return Math.atan2(this.y, this.x);
-        },
-        angleBetween = function (vector) {
-            return Math.atan2(
-                vector.y - this.y,
-                vector.x - this.x
-            );
-        },
-        dotProduct = function (vector) {
-            return this.x * vector.x + this.y * vector.y;
-        },
-        multiply = function (vector) {
-            var v = this.clone();
-            v.multiplyWith(vector);
-            return v;
-        },
-        multiplyWith = function (vector) {
-            this.x *= vector.x;
-            this.y *= vector.y;
-            return this;
-        },
-        divide = function (vector) {
-            var v = this.clone();
-            v.divideBy(vector);
-            return v;
-        },
-        divideBy = function (vector) {
-            this.x /= vector.x;
-            this.y /= vector.y;
-            return this;
-        },
-        scalarMultiply = function (value) {
-            var v = this.clone();
-            v.scalarMultiplyWith(value);
-            return v;
-        },
-        scalarMultiplyWith = function (value) {
-            this.x *= value;
-            this.y *= value;
-            return this;
-        },
-        scale = function (value) {
-            this.x *= value;
-            this.y *= value;
-            return this;
-        },
-        length = function () {
-            return Math.sqrt(this.dotProduct(this));
-        },
-        normalize = function () {
-            var length = this.length();
-            this.x /= length;
-            this.y /= length;
-            return this;
-        },
-        distance = function (vector) {
-            return vector.substract(this).length();
-        },
-        rotateRadian = function (angle) {
-            var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
-                y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
-            this.x = x;
-            this.y = y;
-            return this;
-        },
-        rotateDegree = function (angle) {
-            return this.rotateRadian(angle * Math.PI / 180);
-        },
-        clone = function () {
-            return module(this.x, this.y);
-        },
-        toMatrix = function () {
-            var matrix = Matrix(1, 3);
-            matrix.set(0, 0, this.x);
-            matrix.set(0, 1, this.y);
-            matrix.set(0, 2, 1);
-            return matrix;
-        },
-        module = function (x, y) {
-            return {
-                x: x,
-                y: y,
-                isVector2: isVector2,
-                add: add,
-                addTo: addTo,
-                substract: substract,
-                substractFrom: substractFrom,
-                angle: angle,
-                angleBetween: angleBetween,
-                dotProduct: dotProduct,
-                multiply: multiply,
-                multiplyWith: multiplyWith,
-                divide: divide,
-                divideBy: divideBy,
-                scalarMultiply: scalarMultiply,
-                scalarMultiplyWith: scalarMultiplyWith,
-                scale: scale,
-                length: length,
-                normalize: normalize,
-                distance: distance,
-                rotateRadian: rotateRadian,
-                rotateDegree: rotateDegree,
-                clone: clone,
-                toMatrix: toMatrix
-            };
-        };
-    return module;
-});
-/**
  * A helper module that returns a rectangle as the best fit of a multiplication of the screen size.
  * Assuming portrait mode, autoresize first tries to fit the width and then fills up the height
  * <br>Exports: Function
@@ -10214,6 +10214,7 @@ define('bento/tiled', [
                     if (w === 0 || h === 0) {
                         return;
                     }
+                    // TODO: make pixi compatible
                     // only draw the part in the viewport
                     gameData.renderer.drawImage(
                         img, ~~ (Math.max(Math.min(viewport.x, canvas.width), 0)), ~~ (Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
@@ -10869,7 +10870,7 @@ bento.define('bento/renderers/pixi', [
                     pixiStage.addChild(child);
                 },
                 removeChild: function (child) {
-                    pixiStage.removeChild(sprite);
+                    pixiStage.removeChild(child);
                 }
             };
         if (!window.PIXI) {

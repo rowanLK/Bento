@@ -28,7 +28,7 @@ bento.define('bento/renderers/pixi', [
                     pixiStage.addChild(child);
                 },
                 removeChild: function (child) {
-                    pixiStage.removeChild(sprite);
+                    pixiStage.removeChild(child);
                 }
             };
         if (!window.PIXI) {
