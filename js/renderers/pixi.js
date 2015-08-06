@@ -1,6 +1,7 @@
 bento.define('bento/renderers/pixi', [
+    'bento',
     'bento/utils'
-], function (Utils) {
+], function (Bento, Utils) {
     return function (canvas, settings) {
         var context,
             pixiStage,
@@ -22,6 +23,9 @@ bento.define('bento/renderers/pixi', [
                 fillCircle: function (color, x, y, radius) {},
                 drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {},
                 flush: function () {
+                    var viewport = Bento.getViewport();
+                    pixiStage.x = viewport.x;
+                    pixiStage.y = viewport.y;
                     pixiRenderer.render(pixiStage);
                 },
                 addChild: function (child) {

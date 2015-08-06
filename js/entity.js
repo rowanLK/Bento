@@ -3,16 +3,16 @@
  * <br>Exports: Function
  * @module {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
- * @param {Function} settings.init - Called when entity is initialized 
+ * @param {Function} settings.init - Called when entity is initialized
  * @param {Function} settings.onCollide - Called when object collides in HSHG
- * @param {Array} settings.components - Array of component module functions 
- * @param {Array} settings.family - Array of family names 
- * @param {Vector2} settings.position - Vector2 of position to set 
- * @param {Vector2} settings.origin - Vector2 of origin to set 
- * @param {Vector2} settings.originRelative - Vector2 of relative origin to set 
- * @param {Boolean} settings.z - z-index to set 
- * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused 
- * @param {Boolean} settings.global - Should entity remain after hiding a screen 
+ * @param {Array} settings.components - Array of component module functions
+ * @param {Array} settings.family - Array of family names
+ * @param {Vector2} settings.position - Vector2 of position to set
+ * @param {Vector2} settings.origin - Vector2 of origin to set
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin to set
+ * @param {Boolean} settings.z - z-index to set
+ * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused
+ * @param {Boolean} settings.global - Should entity remain after hiding a screen
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - Should entity use HSHG for collisions
  * @param {Boolean} settings.staticHshg - Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
@@ -23,10 +23,10 @@ bento.define('bento/entity', [
     'bento/utils',
     'bento/math/vector2',
     'bento/math/rectangle'
-], function (Bento, Utils, Vector2, Rectangle) {
+], function(Bento, Utils, Vector2, Rectangle) {
     'use strict';
     var globalId = 0;
-    return function (settings) {
+    return function(settings) {
         var i,
             name,
             visible = true,
@@ -41,7 +41,7 @@ bento.define('bento/entity', [
             removedComponents = [],
             parent = null,
             uniqueId = ++globalId,
-            cleanComponents = function () {
+            cleanComponents = function() {
                 /*var i, component;
                 while (removedComponents.length) {
                     component = removedComponents.pop();
@@ -119,7 +119,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name start
                  */
-                start: function (data) {
+                start: function(data) {
                     var i,
                         l,
                         component;
@@ -141,7 +141,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name destroy
                  */
-                destroy: function (data) {
+                destroy: function(data) {
                     var i,
                         l,
                         component;
@@ -163,7 +163,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name update
                  */
-                update: function (data) {
+                update: function(data) {
                     var i,
                         l,
                         component;
@@ -190,7 +190,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name draw
                  */
-                draw: function (data) {
+                draw: function(data) {
                     var i,
                         l,
                         component;
@@ -222,7 +222,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name addToFamily
                  */
-                addToFamily: function (name) {
+                addToFamily: function(name) {
                     family.push(name);
                 },
                 /**
@@ -231,7 +231,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getFamily
                  */
-                getFamily: function () {
+                getFamily: function() {
                     return family;
                 },
                 /**
@@ -242,7 +242,7 @@ bento.define('bento/entity', [
                  * @see module:bento/utils#extend
                  * @name extend
                  */
-                extend: function (object) {
+                extend: function(object) {
                     return Utils.extend(entity, object);
                 },
                 /**
@@ -251,7 +251,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getPosition
                  */
-                getPosition: function () {
+                getPosition: function() {
                     return position;
                 },
                 /**
@@ -261,7 +261,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name setPosition
                  */
-                setPosition: function (value) {
+                setPosition: function(value) {
                     position.x = value.x;
                     position.y = value.y;
                 },
@@ -272,7 +272,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name setPositionX
                  */
-                setPositionX: function (value) {
+                setPositionX: function(value) {
                     position.x = value;
                 },
                 /**
@@ -282,7 +282,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name setPositionY
                  */
-                setPositionY: function (value) {
+                setPositionY: function(value) {
                     position.y = value;
                 },
                 /**
@@ -292,7 +292,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getDimension
                  */
-                getDimension: function () {
+                getDimension: function() {
                     return dimension;
                 },
                 /**
@@ -302,7 +302,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getDimension
                  */
-                setDimension: function (value) {
+                setDimension: function(value) {
                     dimension = value;
                 },
                 /**
@@ -313,7 +313,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getBoundingBox
                  */
-                getBoundingBox: function () {
+                getBoundingBox: function() {
                     var scale, x1, x2, y1, y2, box;
                     if (!rectangle) {
                         // TODO get rid of scale component dependency
@@ -350,7 +350,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name setBoundingBox
                  */
-                setBoundingBox: function (value) {
+                setBoundingBox: function(value) {
                     rectangle = value;
                 },
                 /**
@@ -361,7 +361,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getRectangle
                  */
-                getRectangle: function () {
+                getRectangle: function() {
                     return rectangle;
                 },
                 /**
@@ -371,7 +371,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name setOrigin
                  */
-                setOrigin: function (value) {
+                setOrigin: function(value) {
                     origin.x = value.x;
                     origin.y = value.y;
                 },
@@ -382,7 +382,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name setOriginRelative
                  */
-                setOriginRelative: function (value) {
+                setOriginRelative: function(value) {
                     origin.x = value.x * dimension.width;
                     origin.y = value.y * dimension.height;
                 },
@@ -393,7 +393,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getOrigin
                  */
-                getOrigin: function () {
+                getOrigin: function() {
                     return origin;
                 },
                 /**
@@ -403,7 +403,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name isVisible
                  */
-                isVisible: function () {
+                isVisible: function() {
                     return visible;
                 },
                 /**
@@ -413,8 +413,41 @@ bento.define('bento/entity', [
                  * @instance
                  * @name setVisible
                  */
-                setVisible: function (value) {
+                setVisible: function(value) {
                     visible = value;
+                },
+                /**
+                 * Entity was attached ()
+                 * @param {Object} data - gameData
+                 * @instance
+                 * @name attached
+                 */
+                attached: function(data) {
+                    var i,
+                        l,
+                        component;
+
+                    if (data) {
+                        data.entity = this;
+                    } else {
+                        data = {
+                            entity: entity
+                        }
+                    }
+                    // update components
+                    for (i = 0, l = components.length; i < l; ++i) {
+                        component = components[i];
+                        if (component) {
+                            // shouldnt propagate
+                            if (component.getParent) {
+                                continue;
+                            }
+                            if (component.attached) {
+                                component.attached(data);
+                            }
+                        }
+                    }
+
                 },
                 /**
                  * Attaches a child object to the entity. Entities can form a scenegraph.
@@ -426,15 +459,21 @@ bento.define('bento/entity', [
                  * @instance
                  * @name attach
                  */
-                attach: function (component, name) {
+                attach: function(component, name) {
                     var mixin = {},
                         parent = entity;
+
                     components.push(component);
                     if (component.setParent) {
                         component.setParent(entity);
                     }
                     if (component.init) {
                         component.init();
+                    }
+                    if (component.attached) {
+                        component.attached({
+                            entity: entity
+                        });
                     }
                     if (entity.isAdded) {
                         if (component.start) {
@@ -466,7 +505,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name remove
                  */
-                remove: function (component) {
+                remove: function(component) {
                     var i, type, index;
                     if (!component) {
                         return;
@@ -487,7 +526,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getComponents
                  */
-                getComponents: function () {
+                getComponents: function() {
                     return components;
                 },
                 /**
@@ -497,9 +536,9 @@ bento.define('bento/entity', [
                  * @param {String} name - name of the component
                  * @name getComponentByName
                  */
-                getComponentByName: function (name) {
+                getComponentByName: function(name) {
                     var i, l, component;
-                    for (i = 0, i = components.length; i < l; ++i) {
+                    for (i = 0, l = components.length; i < l; ++i) {
                         component = components[i];
                         if (component.name === name) {
                             return component;
@@ -513,7 +552,7 @@ bento.define('bento/entity', [
                  * @param {Object} child - reference to the child
                  * @name getComponentIndex
                  */
-                getComponentIndex: function (component) {
+                getComponentIndex: function(component) {
                     return components.indexOf(component);
                 },
                 /**
@@ -524,7 +563,7 @@ bento.define('bento/entity', [
                  * @param {Number} index - new index
                  * @name moveComponentTo
                  */
-                moveComponentTo: function (component, newIndex) {
+                moveComponentTo: function(component, newIndex) {
                     // note: currently dangerous to do during an update loop
                     var i, type, index;
                     if (!component) {
@@ -545,7 +584,7 @@ bento.define('bento/entity', [
                  * @param {Object} parent - reference to the parent object
                  * @name setParent
                  */
-                setParent: function (obj) {
+                setParent: function(obj) {
                     parent = obj;
                 },
                 /**
@@ -554,7 +593,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getParent
                  */
-                getParent: function () {
+                getParent: function() {
                     return parent;
                 },
                 /**
@@ -563,7 +602,7 @@ bento.define('bento/entity', [
                  * @instance
                  * @name getId
                  */
-                getId: function () {
+                getId: function() {
                     return uniqueId;
                 },
                 /**
@@ -581,7 +620,7 @@ bento.define('bento/entity', [
                  * @param {CollisionCallback} [callback] - Called when entities are colliding
                  * @name collidesWith
                  */
-                collidesWith: function (other, offset, callback) {
+                collidesWith: function(other, offset, callback) {
                     var intersect;
                     if (!Utils.isDefined(offset)) {
                         offset = Vector2(0, 0);
@@ -602,7 +641,7 @@ bento.define('bento/entity', [
                  * @param {CollisionCallback} [callback] - Called when entities are colliding
                  * @name collidesWithGroup
                  */
-                collidesWithGroup: function (array, offset, callback) {
+                collidesWithGroup: function(array, offset, callback) {
                     var i,
                         obj,
                         box;
@@ -632,7 +671,7 @@ bento.define('bento/entity', [
                     }
                     return null;
                 },
-                getAABB: function () {
+                getAABB: function() {
                     var box = entity.getBoundingBox();
                     return {
                         min: [box.x, box.y],

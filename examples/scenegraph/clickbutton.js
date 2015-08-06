@@ -2,10 +2,7 @@ bento.define('clickbutton', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/components/animation',
+    'bento/components/sprite',
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
@@ -14,10 +11,7 @@ bento.define('clickbutton', [
     Bento,
     Vector2,
     Rectangle,
-    Translation,
-    Rotation,
-    Scale,
-    Animation,
+    Sprite,
     Clickable,
     Entity,
     Utils,
@@ -31,9 +25,9 @@ bento.define('clickbutton', [
                 name: '',
                 originRelative: settings.originRelative || Vector2(0, 0),
                 position: settings.position || Vector2(0, 0),
-                components: [Translation, Rotation, Scale, Animation, Clickable],
+                components: [Sprite, Clickable],
                 family: ['buttons'],
-                animation: {
+                sprite: {
                     image: settings.image,
                     frameWidth: settings.frameWidth || 32,
                     frameHeight: settings.frameHeight || 32,
@@ -50,16 +44,16 @@ bento.define('clickbutton', [
                 },
                 clickable: {
                     onClick: function () {
-                        entity.animation.setAnimation('down');
+                        entity.sprite.setAnimation('down');
                     },
                     onHoldEnter: function () {
-                        entity.animation.setAnimation('down');
+                        entity.sprite.setAnimation('down');
                     },
                     onHoldLeave: function () {
-                        entity.animation.setAnimation('default');
+                        entity.sprite.setAnimation('default');
                     },
                     pointerUp: function () {
-                        entity.animation.setAnimation('default');
+                        entity.sprite.setAnimation('default');
                     },
                     onHoldEnd: function () {
                         if (settings.onClick) {

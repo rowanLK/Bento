@@ -1,6 +1,8 @@
 bento.define('bento/components/pixi', [
+    'bento',
     'bento/utils'
 ], function (
+    Bento,
     Utils
 ) {
     'use strict';
@@ -24,6 +26,7 @@ bento.define('bento/components/pixi', [
             frameHeight = 0,
             spriteImage,
             onCompleteCallback,
+            viewport = Bento.getViewport(),
             component = {
                 name: 'pixi',
                 setup: function (settings) {
@@ -118,6 +121,7 @@ bento.define('bento/components/pixi', [
                     if (reachedEnd && onCompleteCallback) {
                         onCompleteCallback();
                     }
+                    pixiSprite.visible = entity.isVisible();
                 },
                 draw: function (data) {
                     // update pixi sprite, doesnt actually draw
@@ -142,8 +146,15 @@ bento.define('bento/components/pixi', [
 
                     pixiSprite.x = position.x;
                     pixiSprite.y = position.y;
-                    pixiSprite.pivot.x = origin.x;
-                    pixiSprite.pivot.y = origin.y;
+                    // pixiSprite.pivot.x = origin.x;
+                    // pixiSprite.pivot.y = origin.y;
+                    pixiSprite.anchor.x = origin.x / frameWidth;
+                    pixiSprite.anchor.y = origin.y / frameHeight;
+                    
+                    if (entity.float) {
+                        pixiSprite.x -= viewport.x;
+                        pixiSprite.y -= viewport.y;
+                    }
 
                     if (entity.scale) {
                         scale = entity.scale.getScale();
@@ -154,21 +165,40 @@ bento.define('bento/components/pixi', [
                         rotation = entity.rotation.getAngleRadian();
                         pixiSprite.rotation = rotation;
                     }
+                    if (entity.opacity) {
+                        pixiSprite.alpha = entity.opacity.getOpacity();
+                    }
                 },
                 destroy: function (data) {
                     data.renderer.removeChild(pixiSprite);
                 },
                 start: function (data) {
                     if (!pixiSprite) {
-                        console.log('call setup first')
+                        console.log('call setup first');
                         return;
                     }
-                    if (data) {
-                        // attach to roor
+                },
+                attached: function (data) {
+                    var parent, component;
+                    if (data.renderer) {
+                        // attach to root
                         data.renderer.addChild(pixiSprite);
-                    } else {
-                        // attach to parent?
+                    } else if (data.entity) {
+                        // attach to parent
+                        parent = data.entity.getParent();
+                        // get pixi component
+                        if (parent) {
+                            component = parent.getComponentByName('pixi');
+                            if (component) {
+                                // get parents pixisprite and attach
+                                component.getPixiSprite().addChild(pixiSprite);
+                            }
+                        }
                     }
+
+                },
+                getPixiSprite: function () {
+                    return pixiSprite;
                 },
                 /**
                  * Set component to a different animation
