@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>managers/savestate.js - Documentation</title>
+    <title>bento/components/pixi - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,146 +28,1097 @@
 
 <div id="main">
     
-    <h1 class="page-title">managers/savestate.js</h1>
+    <h1 class="page-title">bento/components/pixi</h1>
     
 
     
 
 
 
-    
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>/**
- * Manager that controls presistent variables. Wrapper for localStorage.
- * &lt;br>Exports: Object
- * @module bento/managers/savestate
- * @returns SaveState
- */
-bento.define('bento/managers/savestate', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    var uniqueID = document.URL,
-        storage,
-        storageFallBack = {
-            setItem: function (key, value) {
-                var k,
-                    count = 0;
-                storageFallBack[key] = value;
-                // update length
-                for (k in storageFallBack) {
-                    if (storageFallBack.hasOwnProperty(k)) {
-                        ++count;
-                    }
-                }
-                this.length = count;
-            },
-            getItem: function (key) {
-                var item = storageFallBack[key];
-                return Utils.isDefined(item) ? item : null;
-            },
-            removeItem: function (key) {
-                delete storageFallBack[key];
-            },
-            clear: function () {
-                this.length = 0;
-            },
-            length: 0
-        };
 
-    // initialize
-    try {
-        storage = window.localStorage;
-        // try saving once
-        if (window.localStorage) {
-            window.localStorage.setItem(uniqueID + 'save', '0');
-        } else {
-            throw 'No local storage available';
-        }
-    } catch (e) {
-        console.log('Warning: you have disabled cookies on your browser. You cannot save progress in your game.');
-        storage = storageFallBack;
-    }
-    return {
-        /**
-         * Saves/serializes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} value - Number/Object/Array to be saved
-         * @name save
-         */
-        save: function (elementKey, element) {
-            if (typeof elementKey !== 'string') {
-                elementKey = JSON.stringify(elementKey);
-            }
-            storage.setItem(uniqueID + elementKey, JSON.stringify(element));
-        },
-        /**
-         * Loads a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} defaultValue - The value returns if saved variable doesn't exists
-         * @returns {Object} Returns saved value, otherwise defaultValue
-         * @name load
-         */
-        load: function (elementKey, defaultValue) {
-            var element;
-            element = storage.getItem(uniqueID + elementKey);
-            if (element === null) {
-                return defaultValue;
-            }
-            return JSON.parse(element);
-        },
-        /**
-         * Deletes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @name remove
-         */
-        remove: function (elementKey) {
-            storage.removeItem(uniqueID + elementKey);
-        },
-        /**
-         * Clears the savestate
-         * @function
-         * @instance
-         * @name clear
-         */
-        clear: function () {
-            storage.clear();
-        },
-        debug: function () {
-            console.log(localStorage);
-        },
-        /**
-         * Checks if localStorage has values
-         * @function
-         * @instance
-         * @name isEmpty
-         */
-        isEmpty: function () {
-            return storage.length === 0;
-        },
-        /**
-         * Sets an identifier that's prepended on every key.
-         * By default this is the URL, to prevend savefile clashing.
-         * TODO: better if its the game name
-         * @function
-         * @instance
-         * @param {String} name - ID name
-         * @name setId
-         */
-        setId: function (str) {
-            uniqueID = str;
-        }
-    };
-});</code></pre>
-        </article>
-    </section>
+<section>
+
+<header>
+    
+        
+            
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Sprite component that uses pixi (alternative version of animation component).
+Todo: somehow merge the 2 components? Lots of duplicate code here 
+<br>Exports: Function</div>
+        
+
+        
+            
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>entity</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Entity</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The entity to attach the component to</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>settings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Settings</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Returns the entity passed. The entity will have the component attached.
+</div>
+
+
+
+    
+
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+     
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="getAnimation"><span class="type-signature"></span>getAnimation<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Returns the name of current animation playing
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line243">line 243</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Name of the animation playing, null if not playing anything
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">String</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getCurrentFrame"><span class="type-signature"></span>getCurrentFrame<span class="signature">()</span><span class="type-signature"> &rarr; {Number}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Returns the current frame number
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line273">line 273</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    frameNumber - Not necessarily a round number.
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Number</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="getFrameWidth"><span class="type-signature"></span>getFrameWidth<span class="signature">()</span><span class="type-signature"> &rarr; {Number}</span></h4>
+
+    
+
+
+
+<div class="description">
+    Returns the frame width
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line283">line 283</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    width - Width of the image frame.
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Number</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="setAnimation"><span class="type-signature"></span>setAnimation<span class="signature">(name, callback, keepCurrentFrame)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Set component to a different animation
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Name of the animation.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Called when animation ends.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>keepCurrentFrame</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Prevents animation to jump back to frame 0</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line212">line 212</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="setCurrentSpeed"><span class="type-signature"></span>setCurrentSpeed<span class="signature">(speed)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Set speed of the current animation.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>speed</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Speed at which the animation plays.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line263">line 263</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="setFrame"><span class="type-signature"></span>setFrame<span class="signature">(frameNumber)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Set current animation to a certain frame
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>frameNumber</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Frame number.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line253">line 253</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="update"><span class="type-signature"></span>update<span class="signature">(data)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Updates the component. Called by the entity holding the component every tick.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>data</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Game data object</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_pixi.js.html">components/pixi.js</a>, <a href="components_pixi.js.html#line106">line 106</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
 
 
 

@@ -1,4 +1,13 @@
-bento.define('bento/components/pixi', [
+/**
+ * Sprite component that uses pixi (alternative version of animation component).
+ * Todo: somehow merge the 2 components? Lots of duplicate code here 
+ * <br>Exports: Function
+ * @module bento/components/pixi
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
+ bento.define('bento/components/pixi', [
     'bento',
     'bento/utils'
 ], function (

@@ -1,5 +1,5 @@
 /**
- * Helper function that attaches the translate, scale, rotation, opacity and animation components
+ * Helper component that attaches the translate, scale, rotation, opacity and animation/pixi components. Automatically detects the renderer.
  * <br>Exports: Function
  * @module bento/components/sprite
  * @param {Entity} entity - The entity to attach the component to
