@@ -2,6 +2,18 @@
 
 Bento is a modular, component based Javascript game engine. 
 
+## Installation
+
+Use `npm install`. Also install bower and use `bower install`. To build the engine, use the `gulp` command. If you don't want to build you can also just get bento.js from the build folder.
+
+## How to use
+
+Please refer to [this tutorial](http://www.lucky-kat.com/bento).
+
+## API Reference
+
+Please refer to the documentation hosted on the Lucky Kat [bitbucket page](http://luckykat.bitbucket.org/).
+
 ## Code Example
 
 Better examples can be found in the examples folder.
@@ -50,27 +62,6 @@ bento.require([
     });
 });
 ```
-
-## Motivation
-
-A short description of the motivation behind the creation and maintenance of the project. This should explain **why** the project exists.
-
-## Installation
-
-Provide code examples and explanations of how to get the project.
-
-## Getting Started
-
-## To do
-
-* Improve documentation
-* Seperate more components from the Entity module (remove some of its bulkiness)
-* Add Pixi.js as renderer
-
-
-## API Reference
-
-(Link to documentation)
 
 ## License
 
