@@ -179,7 +179,10 @@
                     }
                 },
                 destroy: function (data) {
-                    data.renderer.removeChild(pixiSprite);
+                    // remove from parent
+                    if (pixiSprite && pixiSprite.parent) {
+                        pixiSprite.parent.removeChild(pixiSprite);                        
+                    }
                 },
                 start: function (data) {
                     if (!pixiSprite) {
@@ -188,6 +191,9 @@
                     }
                 },
                 attached: function (data) {
+                    // TODO problem with attaching a child: if a bento entity parent has no sprite component,
+                    // the pixiSprite has no parent to attach to
+
                     var parent, component;
                     if (data.renderer) {
                         // attach to root

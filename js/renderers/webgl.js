@@ -19,6 +19,7 @@ bento.define('bento/renderers/webgl', [
             context,
             glRenderer,
             original,
+            resizer = 1,
             renderer = {
                 name: 'webgl',
                 save: function () {
@@ -95,13 +96,20 @@ bento.define('bento/renderers/webgl', [
                 }
             };
         console.log('Init webgl as renderer');
+        // smoothing
+        if (!settings.smoothing) {
+            resizer = window.devicePixelRatio || 2;
+            resizer *= 2;
+        }
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {
+            canvas.width *= resizer;
+            canvas.height *= resizer;
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
             glRenderer = window.GlSprites.SpriteRenderer(context);
-            glRenderer.ortho(canvas.width, canvas.height);
+            glRenderer.ortho(canvas.width / resizer, canvas.height / resizer);
             original = glRenderer;
             return renderer;
         } else {

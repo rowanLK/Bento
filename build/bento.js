@@ -6425,7 +6425,16 @@ bento.define('bento/components/opacity', [
         return entity;
     };
 });
-bento.define('bento/components/pixi', [
+/**
+ * Sprite component that uses pixi (alternative version of animation component).
+ * Todo: somehow merge the 2 components? Lots of duplicate code here 
+ * <br>Exports: Function
+ * @module bento/components/pixi
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
+ bento.define('bento/components/pixi', [
     'bento',
     'bento/utils'
 ], function (
@@ -6597,7 +6606,10 @@ bento.define('bento/components/pixi', [
                     }
                 },
                 destroy: function (data) {
-                    data.renderer.removeChild(pixiSprite);
+                    // remove from parent
+                    if (pixiSprite && pixiSprite.parent) {
+                        pixiSprite.parent.removeChild(pixiSprite);                        
+                    }
                 },
                 start: function (data) {
                     if (!pixiSprite) {
@@ -6606,6 +6618,9 @@ bento.define('bento/components/pixi', [
                     }
                 },
                 attached: function (data) {
+                    // TODO problem with attaching a child: if a bento entity parent has no sprite component,
+                    // the pixiSprite has no parent to attach to
+
                     var parent, component;
                     if (data.renderer) {
                         // attach to root
@@ -6828,7 +6843,7 @@ bento.define('bento/components/scale', [
     };
 });
 /**
- * Helper function that attaches the translate, scale, rotation, opacity and animation components
+ * Helper component that attaches the translate, scale, rotation, opacity and animation/pixi components. Automatically detects the renderer.
  * <br>Exports: Function
  * @module bento/components/sprite
  * @param {Entity} entity - The entity to attach the component to
@@ -11003,6 +11018,7 @@ bento.define('bento/renderers/webgl', [
             context,
             glRenderer,
             original,
+            resizer = 1,
             renderer = {
                 name: 'webgl',
                 save: function () {
@@ -11079,13 +11095,20 @@ bento.define('bento/renderers/webgl', [
                 }
             };
         console.log('Init webgl as renderer');
+        // smoothing
+        if (!settings.smoothing) {
+            resizer = window.devicePixelRatio || 2;
+            resizer *= 2;
+        }
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {
+            canvas.width *= resizer;
+            canvas.height *= resizer;
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
             glRenderer = window.GlSprites.SpriteRenderer(context);
-            glRenderer.ortho(canvas.width, canvas.height);
+            glRenderer.ortho(canvas.width / resizer, canvas.height / resizer);
             original = glRenderer;
             return renderer;
         } else {
