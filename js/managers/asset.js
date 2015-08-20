@@ -6,8 +6,9 @@
  */
 bento.define('bento/managers/asset', [
     'bento/packedimage',
-    'bento/utils'
-], function (PackedImage, Utils) {
+    'bento/utils',
+    'audia'
+], function (PackedImage, Utils, Audia) {
     'use strict';
     return function () {
         var assetGroups = {},
@@ -21,8 +22,10 @@ bento.define('bento/managers/asset', [
             texturePacker = {},
             packs = [],
             loadAudio = function (name, source, callback) {
-                var asset,
-                    i;
+                var audio,
+                    i,
+                    canPlay,
+                    failed = true;
                 if (!Utils.isArray(source)) {
                     source = [path + 'audio/' + source];
                 } else {
@@ -31,16 +34,24 @@ bento.define('bento/managers/asset', [
                         source[i] = path + 'audio/' + source[i];
                     }
                 }
-                // TEMP: use howler
-                if (Utils.isDefined(window.Howl)) {
-                    asset = new Howl({
-                        urls: source,
-                        onload: callback
-                    });
-                    assets.audio[name] = asset;
-                } else {
-                    // TODO: load audio and add audio manager
-                    callback();
+                // try every type
+                for (i = 0; i < source.length; ++i) {
+                    audio = new Audia();
+                    canPlay = audio.canPlayType('audio/' + source[i].slice(-3));
+                    if (!!canPlay) {
+                        // success!
+                        audio.src = source[i];
+                        callback(null, name, audio);
+                        // TODO: proper loaded event, the following event does not work for HTML5 audio
+                        // audio.addEventListener('load', function () {
+                        //     callback(null, name, audio);
+                        // }, false);
+                        failed = false;
+                        break;
+                    }
+                }
+                if (failed) {
+                    callback('This audio type is not supported:', name, source);
                 }
             },
             loadJSON = function (name, source, callback) {
@@ -149,6 +160,7 @@ bento.define('bento/managers/asset', [
                     asset,
                     assetsLoaded = 0,
                     assetCount = 0,
+                    toLoad = [],
                     checkLoaded = function () {
                         if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
                             initPackedImages();
@@ -192,12 +204,33 @@ bento.define('bento/managers/asset', [
                         }
                         checkLoaded();
                     },
-                    onLoadAudio = function () {
+                    onLoadAudio = function (err, name, audio) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.audio[name] = audio;
                         assetsLoaded += 1;
                         if (Utils.isDefined(onLoaded)) {
                             onLoaded(assetsLoaded, assetCount);
                         }
                         checkLoaded();
+                    },
+                    readyForLoading = function (fn, asset, path, callback) {
+                        toLoad.push({
+                            fn: fn,
+                            asset: asset,
+                            path: path,
+                            callback: callback
+                        })
+                    },
+                    loadAllAssets = function () {
+                        var i = 0,
+                            data;
+                        for (i = 0; i < toLoad.length; ++i) {
+                            data = toLoad[i]; 
+                            data.fn(data.asset, data.path, data.callback);
+                        }
                     };
 
                 if (!Utils.isDefined(group)) {
@@ -208,47 +241,49 @@ bento.define('bento/managers/asset', [
                 if (Utils.isDefined(group.path)) {
                     path = group.path;
                 }
-                // load images
+                // count the number of assets first
+                // get images
                 if (Utils.isDefined(group.images)) {
                     assetCount += Utils.getKeyLength(group.images);
                     for (asset in group.images) {
                         if (!group.images.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
+                        readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
                     }
                 }
-                // load packed images
+                // get packed images
                 if (Utils.isDefined(group.texturePacker)) {
                     assetCount += Utils.getKeyLength(group.texturePacker);
                     for (asset in group.texturePacker) {
                         if (!group.texturePacker.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadJSON(asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                        readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
                     }
                 }
-                // load audio
+                // get audio
                 if (Utils.isDefined(group.audio)) {
                     assetCount += Utils.getKeyLength(group.audio);
                     for (asset in group.audio) {
                         if (!group.audio.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadAudio(asset, group.audio[asset], onLoadAudio);
+                        readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
                     }
                 }
-                // load json
+                // get json
                 if (Utils.isDefined(group.json)) {
                     assetCount += Utils.getKeyLength(group.json);
                     for (asset in group.json) {
                         if (!group.json.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadJSON(asset, path + 'json/' + group.json[asset], onLoadJson);
+                        readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
                     }
                 }
-
+                // load all assets
+                loadAllAssets();
             },
             /**
              * Unloads assets (not implemented yet)
@@ -313,7 +348,7 @@ bento.define('bento/managers/asset', [
              * @function
              * @instance
              * @param {String} name - Name of image
-             * @returns {Howl} Howler object
+             * @returns {Audia} Audia object
              * @name getAudio
              */
             getAudio = function (name) {

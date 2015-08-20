@@ -30,7 +30,7 @@ gulp.task('webgl', function () {
 gulp.task('default', ['webgl'], function () {
     // place code for your default task here
     return gulp.src([
-            '!js/lib/pixi.js',
+            'js/lib/audia.js',
             'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/**/*.js'
@@ -42,7 +42,6 @@ gulp.task('default', ['webgl'], function () {
         .pipe(jshint.reporter())*/
         // add bower components
         .pipe(addsrc.prepend('bower_components/requirejs/require.js'))
-        .pipe(addsrc.prepend('bower_components/howler/howler.js'))
         // output rice.js
         .pipe(concat('bento.js'))
         .pipe(gulp.dest('build'))

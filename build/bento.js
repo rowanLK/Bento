@@ -1,1257 +1,3 @@
-/*!
- *  howler.js v1.1.21
- *  howlerjs.com
- *
- *  (c) 2013-2014, James Simpson of GoldFire Studios
- *  goldfirestudios.com
- *
- *  MIT License
- */
-
-(function() {
-  // setup
-  var cache = {};
-
-  // setup the audio context
-  var ctx = null,
-    usingWebAudio = true,
-    noAudio = false;
-  try {
-    if (typeof AudioContext !== 'undefined') {
-      ctx = new AudioContext();
-    } else if (typeof webkitAudioContext !== 'undefined') {
-      ctx = new webkitAudioContext();
-    } else {
-      usingWebAudio = false;
-    }
-  } catch(e) {
-    usingWebAudio = false;
-  }
-
-  if (!usingWebAudio) {
-    if (typeof Audio !== 'undefined') {
-      try {
-        new Audio();
-      } catch(e) {
-        noAudio = true;
-      }
-    } else {
-      noAudio = true;
-    }
-  }
-
-  // create a master gain node
-  if (usingWebAudio) {
-    var masterGain = (typeof ctx.createGain === 'undefined') ? ctx.createGainNode() : ctx.createGain();
-    masterGain.gain.value = 1;
-    masterGain.connect(ctx.destination);
-  }
-
-  // create global controller
-  var HowlerGlobal = function() {
-    this._volume = 1;
-    this._muted = false;
-    this.usingWebAudio = usingWebAudio;
-    this.noAudio = noAudio;
-    this._howls = [];
-  };
-  HowlerGlobal.prototype = {
-    /**
-     * Get/set the global volume for all sounds.
-     * @param  {Float} vol Volume from 0.0 to 1.0.
-     * @return {Howler/Float}     Returns self or current volume.
-     */
-    volume: function(vol) {
-      var self = this;
-
-      // make sure volume is a number
-      vol = parseFloat(vol);
-
-      if (vol >= 0 && vol <= 1) {
-        self._volume = vol;
-
-        if (usingWebAudio) {
-          masterGain.gain.value = vol;
-        }
-
-        // loop through cache and change volume of all nodes that are using HTML5 Audio
-        for (var key in self._howls) {
-          if (self._howls.hasOwnProperty(key) && self._howls[key]._webAudio === false) {
-            // loop through the audio nodes
-            for (var i=0; i<self._howls[key]._audioNode.length; i++) {
-              self._howls[key]._audioNode[i].volume = self._howls[key]._volume * self._volume;
-            }
-          }
-        }
-
-        return self;
-      }
-
-      // return the current global volume
-      return (usingWebAudio) ? masterGain.gain.value : self._volume;
-    },
-
-    /**
-     * Mute all sounds.
-     * @return {Howler}
-     */
-    mute: function() {
-      this._setMuted(true);
-
-      return this;
-    },
-
-    /**
-     * Unmute all sounds.
-     * @return {Howler}
-     */
-    unmute: function() {
-      this._setMuted(false);
-
-      return this;
-    },
-
-    /**
-     * Handle muting and unmuting globally.
-     * @param  {Boolean} muted Is muted or not.
-     */
-    _setMuted: function(muted) {
-      var self = this;
-
-      self._muted = muted;
-
-      if (usingWebAudio) {
-        masterGain.gain.value = muted ? 0 : self._volume;
-      }
-
-      for (var key in self._howls) {
-        if (self._howls.hasOwnProperty(key) && self._howls[key]._webAudio === false) {
-          // loop through the audio nodes
-          for (var i=0; i<self._howls[key]._audioNode.length; i++) {
-            self._howls[key]._audioNode[i].muted = muted;
-          }
-        }
-      }
-    }
-  };
-
-  // allow access to the global audio controls
-  var Howler = new HowlerGlobal();
-
-  // check for browser codec support
-  var audioTest = null;
-  if (!noAudio) {
-    audioTest = new Audio();
-    var codecs = {
-      mp3: !!audioTest.canPlayType('audio/mpeg;').replace(/^no$/, ''),
-      opus: !!audioTest.canPlayType('audio/ogg; codecs="opus"').replace(/^no$/, ''),
-      ogg: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"').replace(/^no$/, ''),
-      wav: !!audioTest.canPlayType('audio/wav; codecs="1"').replace(/^no$/, ''),
-      aac: !!audioTest.canPlayType('audio/aac;').replace(/^no$/, ''),
-      m4a: !!(audioTest.canPlayType('audio/x-m4a;') || audioTest.canPlayType('audio/m4a;') || audioTest.canPlayType('audio/aac;')).replace(/^no$/, ''),
-      mp4: !!(audioTest.canPlayType('audio/x-mp4;') || audioTest.canPlayType('audio/mp4;') || audioTest.canPlayType('audio/aac;')).replace(/^no$/, ''),
-      weba: !!audioTest.canPlayType('audio/webm; codecs="vorbis"').replace(/^no$/, '')
-    };
-  }
-
-  // setup the audio object
-  var Howl = function(o) {
-    var self = this;
-
-    // setup the defaults
-    self._autoplay = o.autoplay || false;
-    self._buffer = o.buffer || false;
-    self._duration = o.duration || 0;
-    self._format = o.format || null;
-    self._loop = o.loop || false;
-    self._loaded = false;
-    self._sprite = o.sprite || {};
-    self._src = o.src || '';
-    self._pos3d = o.pos3d || [0, 0, -0.5];
-    self._volume = o.volume !== undefined ? o.volume : 1;
-    self._urls = o.urls || [];
-    self._rate = o.rate || 1;
-
-    // allow forcing of a specific panningModel ('equalpower' or 'HRTF'),
-    // if none is specified, defaults to 'equalpower' and switches to 'HRTF'
-    // if 3d sound is used
-    self._model = o.model || null;
-
-    // setup event functions
-    self._onload = [o.onload || function() {}];
-    self._onloaderror = [o.onloaderror || function() {}];
-    self._onend = [o.onend || function() {}];
-    self._onpause = [o.onpause || function() {}];
-    self._onplay = [o.onplay || function() {}];
-
-    self._onendTimer = [];
-
-    // Web Audio or HTML5 Audio?
-    self._webAudio = usingWebAudio && !self._buffer;
-
-    // check if we need to fall back to HTML5 Audio
-    self._audioNode = [];
-    if (self._webAudio) {
-      self._setupAudioNode();
-    }
-
-    // add this to an array of Howl's to allow global control
-    Howler._howls.push(self);
-
-    // load the track
-    self.load();
-  };
-
-  // setup all of the methods
-  Howl.prototype = {
-    /**
-     * Load an audio file.
-     * @return {Howl}
-     */
-    load: function() {
-      var self = this,
-        url = null;
-
-      // if no audio is available, quit immediately
-      if (noAudio) {
-        self.on('loaderror');
-        return;
-      }
-
-      // loop through source URLs and pick the first one that is compatible
-      for (var i=0; i<self._urls.length; i++) {
-        var ext, urlItem;
-
-        if (self._format) {
-          // use specified audio format if available
-          ext = self._format;
-        } else {
-          // figure out the filetype (whether an extension or base64 data)
-          urlItem = self._urls[i].toLowerCase().split('?')[0];
-          ext = urlItem.match(/.+\.([^?]+)(\?|$)/);
-          ext = (ext && ext.length >= 2) ? ext : urlItem.match(/data\:audio\/([^?]+);/);
-
-          if (ext) {
-            ext = ext[1];
-          } else {
-            self.on('loaderror');
-            return;
-          }
-        }
-
-        if (codecs[ext]) {
-          url = self._urls[i];
-          break;
-        }
-      }
-
-      if (!url) {
-        self.on('loaderror');
-        return;
-      }
-
-      self._src = url;
-
-      if (self._webAudio) {
-        loadBuffer(self, url);
-      } else {
-        var newNode = new Audio();
-
-        // listen for errors with HTML5 audio (http://dev.w3.org/html5/spec-author-view/spec.html#mediaerror)
-        newNode.addEventListener('error', function () {
-          if (newNode.error && newNode.error.code === 4) {
-            HowlerGlobal.noAudio = true;
-          }
-
-          self.on('loaderror', {type: newNode.error ? newNode.error.code : 0});
-        }, false);
-
-        self._audioNode.push(newNode);
-
-        // setup the new audio node
-        newNode.src = url;
-        newNode._pos = 0;
-        newNode.preload = 'auto';
-        newNode.volume = (Howler._muted) ? 0 : self._volume * Howler.volume();
-
-        // add this sound to the cache
-        cache[url] = self;
-
-        // setup the event listener to start playing the sound
-        // as soon as it has buffered enough
-        var listener = function() {
-          // round up the duration when using HTML5 Audio to account for the lower precision
-          self._duration = Math.ceil(newNode.duration * 10) / 10;
-
-          // setup a sprite if none is defined
-          if (Object.getOwnPropertyNames(self._sprite).length === 0) {
-            self._sprite = {_default: [0, self._duration * 1000]};
-          }
-
-          if (!self._loaded) {
-            self._loaded = true;
-            self.on('load');
-          }
-
-          if (self._autoplay) {
-            self.play();
-          }
-
-          // clear the event listener
-          newNode.removeEventListener('canplaythrough', listener, false);
-        };
-        newNode.addEventListener('canplaythrough', listener, false);
-        newNode.load();
-      }
-
-      return self;
-    },
-
-    /**
-     * Get/set the URLs to be pulled from to play in this source.
-     * @param  {Array} urls  Arry of URLs to load from
-     * @return {Howl}        Returns self or the current URLs
-     */
-    urls: function(urls) {
-      var self = this;
-
-      if (urls) {
-        self.stop();
-        self._urls = (typeof urls === 'string') ? [urls] : urls;
-        self._loaded = false;
-        self.load();
-
-        return self;
-      } else {
-        return self._urls;
-      }
-    },
-
-    /**
-     * Play a sound from the current time (0 by default).
-     * @param  {String}   sprite   (optional) Plays from the specified position in the sound sprite definition.
-     * @param  {Function} callback (optional) Returns the unique playback id for this sound instance.
-     * @return {Howl}
-     */
-    play: function(sprite, callback) {
-      var self = this;
-
-      // if no sprite was passed but a callback was, update the variables
-      if (typeof sprite === 'function') {
-        callback = sprite;
-      }
-
-      // use the default sprite if none is passed
-      if (!sprite || typeof sprite === 'function') {
-        sprite = '_default';
-      }
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('load', function() {
-          self.play(sprite, callback);
-        });
-
-        return self;
-      }
-
-      // if the sprite doesn't exist, play nothing
-      if (!self._sprite[sprite]) {
-        if (typeof callback === 'function') callback();
-        return self;
-      }
-
-      // get the node to playback
-      self._inactiveNode(function(node) {
-        // persist the sprite being played
-        node._sprite = sprite;
-
-        // determine where to start playing from
-        var pos = (node._pos > 0) ? node._pos : self._sprite[sprite][0] / 1000;
-
-        // determine how long to play for
-        var duration = 0;
-        if (self._webAudio) {
-          duration = self._sprite[sprite][1] / 1000 - node._pos;
-          if (node._pos > 0) {
-            pos = self._sprite[sprite][0] / 1000 + pos;
-          }
-        } else {
-          duration = self._sprite[sprite][1] / 1000 - (pos - self._sprite[sprite][0] / 1000);
-        }
-
-        // determine if this sound should be looped
-        var loop = !!(self._loop || self._sprite[sprite][2]);
-
-        // set timer to fire the 'onend' event
-        var soundId = (typeof callback === 'string') ? callback : Math.round(Date.now() * Math.random()) + '',
-          timerId;
-        (function() {
-          var data = {
-            id: soundId,
-            sprite: sprite,
-            loop: loop
-          };
-          timerId = setTimeout(function() {
-            // if looping, restart the track
-            if (!self._webAudio && loop) {
-              self.stop(data.id).play(sprite, data.id);
-            }
-
-            // set web audio node to paused at end
-            if (self._webAudio && !loop) {
-              self._nodeById(data.id).paused = true;
-              self._nodeById(data.id)._pos = 0;
-            }
-
-            // end the track if it is HTML audio and a sprite
-            if (!self._webAudio && !loop) {
-              self.stop(data.id);
-            }
-
-            // fire ended event
-            self.on('end', soundId);
-          }, duration * 1000);
-
-          // store the reference to the timer
-          self._onendTimer.push({timer: timerId, id: data.id});
-        })();
-
-        if (self._webAudio) {
-          var loopStart = self._sprite[sprite][0] / 1000,
-            loopEnd = self._sprite[sprite][1] / 1000;
-
-          // set the play id to this node and load into context
-          node.id = soundId;
-          node.paused = false;
-          refreshBuffer(self, [loop, loopStart, loopEnd], soundId);
-          self._playStart = ctx.currentTime;
-          node.gain.value = self._volume;
-
-          if (typeof node.bufferSource.start === 'undefined') {
-            node.bufferSource.noteGrainOn(0, pos, duration);
-          } else {
-            node.bufferSource.start(0, pos, duration);
-          }
-        } else {
-          if (node.readyState === 4 || !node.readyState && navigator.isCocoonJS) {
-            node.readyState = 4;
-            node.id = soundId;
-            node.currentTime = pos;
-            node.muted = Howler._muted || node.muted;
-            node.volume = self._volume * Howler.volume();
-            setTimeout(function() { node.play(); }, 0);
-          } else {
-            self._clearEndTimer(soundId);
-
-            (function(){
-              var sound = self,
-                playSprite = sprite,
-                fn = callback,
-                newNode = node;
-              var listener = function() {
-                sound.play(playSprite, fn);
-
-                // clear the event listener
-                newNode.removeEventListener('canplaythrough', listener, false);
-              };
-              newNode.addEventListener('canplaythrough', listener, false);
-            })();
-
-            return self;
-          }
-        }
-
-        // fire the play event and send the soundId back in the callback
-        self.on('play');
-        if (typeof callback === 'function') callback(soundId);
-
-        return self;
-      });
-
-      return self;
-    },
-
-    /**
-     * Pause playback and save the current position.
-     * @param {String} id (optional) The play instance ID.
-     * @return {Howl}
-     */
-    pause: function(id) {
-      var self = this;
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('play', function() {
-          self.pause(id);
-        });
-
-        return self;
-      }
-
-      // clear 'onend' timer
-      self._clearEndTimer(id);
-
-      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
-      if (activeNode) {
-        activeNode._pos = self.pos(null, id);
-
-        if (self._webAudio) {
-          // make sure the sound has been created
-          if (!activeNode.bufferSource || activeNode.paused) {
-            return self;
-          }
-
-          activeNode.paused = true;
-          if (typeof activeNode.bufferSource.stop === 'undefined') {
-            activeNode.bufferSource.noteOff(0);
-          } else {
-            activeNode.bufferSource.stop(0);
-          }
-        } else {
-          activeNode.pause();
-        }
-      }
-
-      self.on('pause');
-
-      return self;
-    },
-
-    /**
-     * Stop playback and reset to start.
-     * @param  {String} id  (optional) The play instance ID.
-     * @return {Howl}
-     */
-    stop: function(id) {
-      var self = this;
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('play', function() {
-          self.stop(id);
-        });
-
-        return self;
-      }
-
-      // clear 'onend' timer
-      self._clearEndTimer(id);
-
-      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
-      if (activeNode) {
-        activeNode._pos = 0;
-
-        if (self._webAudio) {
-          // make sure the sound has been created
-          if (!activeNode.bufferSource || activeNode.paused) {
-            return self;
-          }
-
-          activeNode.paused = true;
-
-          if (typeof activeNode.bufferSource.stop === 'undefined') {
-            activeNode.bufferSource.noteOff(0);
-          } else {
-            activeNode.bufferSource.stop(0);
-          }
-        } else if (!isNaN(activeNode.duration)) {
-          activeNode.pause();
-          activeNode.currentTime = 0;
-        }
-      }
-
-      return self;
-    },
-
-    /**
-     * Mute this sound.
-     * @param  {String} id (optional) The play instance ID.
-     * @return {Howl}
-     */
-    mute: function(id) {
-      var self = this;
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('play', function() {
-          self.mute(id);
-        });
-
-        return self;
-      }
-
-      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
-      if (activeNode) {
-        if (self._webAudio) {
-          activeNode.gain.value = 0;
-        } else {
-          activeNode.muted = true;
-        }
-      }
-
-      return self;
-    },
-
-    /**
-     * Unmute this sound.
-     * @param  {String} id (optional) The play instance ID.
-     * @return {Howl}
-     */
-    unmute: function(id) {
-      var self = this;
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('play', function() {
-          self.unmute(id);
-        });
-
-        return self;
-      }
-
-      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
-      if (activeNode) {
-        if (self._webAudio) {
-          activeNode.gain.value = self._volume;
-        } else {
-          activeNode.muted = false;
-        }
-      }
-
-      return self;
-    },
-
-    /**
-     * Get/set volume of this sound.
-     * @param  {Float}  vol Volume from 0.0 to 1.0.
-     * @param  {String} id  (optional) The play instance ID.
-     * @return {Howl/Float}     Returns self or current volume.
-     */
-    volume: function(vol, id) {
-      var self = this;
-
-      // make sure volume is a number
-      vol = parseFloat(vol);
-
-      if (vol >= 0 && vol <= 1) {
-        self._volume = vol;
-
-        // if the sound hasn't been loaded, add it to the event queue
-        if (!self._loaded) {
-          self.on('play', function() {
-            self.volume(vol, id);
-          });
-
-          return self;
-        }
-
-        var activeNode = (id) ? self._nodeById(id) : self._activeNode();
-        if (activeNode) {
-          if (self._webAudio) {
-            activeNode.gain.value = vol;
-          } else {
-            activeNode.volume = vol * Howler.volume();
-          }
-        }
-
-        return self;
-      } else {
-        return self._volume;
-      }
-    },
-
-    /**
-     * Get/set whether to loop the sound.
-     * @param  {Boolean} loop To loop or not to loop, that is the question.
-     * @return {Howl/Boolean}      Returns self or current looping value.
-     */
-    loop: function(loop) {
-      var self = this;
-
-      if (typeof loop === 'boolean') {
-        self._loop = loop;
-
-        return self;
-      } else {
-        return self._loop;
-      }
-    },
-
-    /**
-     * Get/set sound sprite definition.
-     * @param  {Object} sprite Example: {spriteName: [offset, duration, loop]}
-     *                @param {Integer} offset   Where to begin playback in milliseconds
-     *                @param {Integer} duration How long to play in milliseconds
-     *                @param {Boolean} loop     (optional) Set true to loop this sprite
-     * @return {Howl}        Returns current sprite sheet or self.
-     */
-    sprite: function(sprite) {
-      var self = this;
-
-      if (typeof sprite === 'object') {
-        self._sprite = sprite;
-
-        return self;
-      } else {
-        return self._sprite;
-      }
-    },
-
-    /**
-     * Get/set the position of playback.
-     * @param  {Float}  pos The position to move current playback to.
-     * @param  {String} id  (optional) The play instance ID.
-     * @return {Howl/Float}      Returns self or current playback position.
-     */
-    pos: function(pos, id) {
-      var self = this;
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('load', function() {
-          self.pos(pos);
-        });
-
-        return typeof pos === 'number' ? self : self._pos || 0;
-      }
-
-      // make sure we are dealing with a number for pos
-      pos = parseFloat(pos);
-
-      var activeNode = (id) ? self._nodeById(id) : self._activeNode();
-      if (activeNode) {
-        if (pos >= 0) {
-          self.pause(id);
-          activeNode._pos = pos;
-          self.play(activeNode._sprite, id);
-
-          return self;
-        } else {
-          return self._webAudio ? activeNode._pos + (ctx.currentTime - self._playStart) : activeNode.currentTime;
-        }
-      } else if (pos >= 0) {
-        return self;
-      } else {
-        // find the first inactive node to return the pos for
-        for (var i=0; i<self._audioNode.length; i++) {
-          if (self._audioNode[i].paused && self._audioNode[i].readyState === 4) {
-            return (self._webAudio) ? self._audioNode[i]._pos : self._audioNode[i].currentTime;
-          }
-        }
-      }
-    },
-
-    /**
-     * Get/set the 3D position of the audio source.
-     * The most common usage is to set the 'x' position
-     * to affect the left/right ear panning. Setting any value higher than
-     * 1.0 will begin to decrease the volume of the sound as it moves further away.
-     * NOTE: This only works with Web Audio API, HTML5 Audio playback
-     * will not be affected.
-     * @param  {Float}  x  The x-position of the playback from -1000.0 to 1000.0
-     * @param  {Float}  y  The y-position of the playback from -1000.0 to 1000.0
-     * @param  {Float}  z  The z-position of the playback from -1000.0 to 1000.0
-     * @param  {String} id (optional) The play instance ID.
-     * @return {Howl/Array}   Returns self or the current 3D position: [x, y, z]
-     */
-    pos3d: function(x, y, z, id) {
-      var self = this;
-
-      // set a default for the optional 'y' & 'z'
-      y = (typeof y === 'undefined' || !y) ? 0 : y;
-      z = (typeof z === 'undefined' || !z) ? -0.5 : z;
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('play', function() {
-          self.pos3d(x, y, z, id);
-        });
-
-        return self;
-      }
-
-      if (x >= 0 || x < 0) {
-        if (self._webAudio) {
-          var activeNode = (id) ? self._nodeById(id) : self._activeNode();
-          if (activeNode) {
-            self._pos3d = [x, y, z];
-            activeNode.panner.setPosition(x, y, z);
-            activeNode.panner.panningModel = self._model || 'HRTF';
-          }
-        }
-      } else {
-        return self._pos3d;
-      }
-
-      return self;
-    },
-
-    /**
-     * Fade a currently playing sound between two volumes.
-     * @param  {Number}   from     The volume to fade from (0.0 to 1.0).
-     * @param  {Number}   to       The volume to fade to (0.0 to 1.0).
-     * @param  {Number}   len      Time in milliseconds to fade.
-     * @param  {Function} callback (optional) Fired when the fade is complete.
-     * @param  {String}   id       (optional) The play instance ID.
-     * @return {Howl}
-     */
-    fade: function(from, to, len, callback, id) {
-      var self = this,
-        diff = Math.abs(from - to),
-        dir = from > to ? 'down' : 'up',
-        steps = diff / 0.01,
-        stepTime = len / steps;
-
-      // if the sound hasn't been loaded, add it to the event queue
-      if (!self._loaded) {
-        self.on('load', function() {
-          self.fade(from, to, len, callback, id);
-        });
-
-        return self;
-      }
-
-      // set the volume to the start position
-      self.volume(from, id);
-
-      for (var i=1; i<=steps; i++) {
-        (function() {
-          var change = self._volume + (dir === 'up' ? 0.01 : -0.01) * i,
-            vol = Math.round(1000 * change) / 1000,
-            toVol = to;
-
-          setTimeout(function() {
-            self.volume(vol, id);
-
-            if (vol === toVol) {
-              if (callback) callback();
-            }
-          }, stepTime * i);
-        })();
-      }
-    },
-
-    /**
-     * [DEPRECATED] Fade in the current sound.
-     * @param  {Float}    to      Volume to fade to (0.0 to 1.0).
-     * @param  {Number}   len     Time in milliseconds to fade.
-     * @param  {Function} callback
-     * @return {Howl}
-     */
-    fadeIn: function(to, len, callback) {
-      return this.volume(0).play().fade(0, to, len, callback);
-    },
-
-    /**
-     * [DEPRECATED] Fade out the current sound and pause when finished.
-     * @param  {Float}    to       Volume to fade to (0.0 to 1.0).
-     * @param  {Number}   len      Time in milliseconds to fade.
-     * @param  {Function} callback
-     * @param  {String}   id       (optional) The play instance ID.
-     * @return {Howl}
-     */
-    fadeOut: function(to, len, callback, id) {
-      var self = this;
-
-      return self.fade(self._volume, to, len, function() {
-        if (callback) callback();
-        self.pause(id);
-
-        // fire ended event
-        self.on('end');
-      }, id);
-    },
-
-    /**
-     * Get an audio node by ID.
-     * @return {Howl} Audio node.
-     */
-    _nodeById: function(id) {
-      var self = this,
-        node = self._audioNode[0];
-
-      // find the node with this ID
-      for (var i=0; i<self._audioNode.length; i++) {
-        if (self._audioNode[i].id === id) {
-          node = self._audioNode[i];
-          break;
-        }
-      }
-
-      return node;
-    },
-
-    /**
-     * Get the first active audio node.
-     * @return {Howl} Audio node.
-     */
-    _activeNode: function() {
-      var self = this,
-        node = null;
-
-      // find the first playing node
-      for (var i=0; i<self._audioNode.length; i++) {
-        if (!self._audioNode[i].paused) {
-          node = self._audioNode[i];
-          break;
-        }
-      }
-
-      // remove excess inactive nodes
-      self._drainPool();
-
-      return node;
-    },
-
-    /**
-     * Get the first inactive audio node.
-     * If there is none, create a new one and add it to the pool.
-     * @param  {Function} callback Function to call when the audio node is ready.
-     */
-    _inactiveNode: function(callback) {
-      var self = this,
-        node = null;
-
-      // find first inactive node to recycle
-      for (var i=0; i<self._audioNode.length; i++) {
-        if (self._audioNode[i].paused && self._audioNode[i].readyState === 4) {
-          // send the node back for use by the new play instance
-          callback(self._audioNode[i]);
-          node = true;
-          break;
-        }
-      }
-
-      // remove excess inactive nodes
-      self._drainPool();
-
-      if (node) {
-        return;
-      }
-
-      // create new node if there are no inactives
-      var newNode;
-      if (self._webAudio) {
-        newNode = self._setupAudioNode();
-        callback(newNode);
-      } else {
-        self.load();
-        newNode = self._audioNode[self._audioNode.length - 1];
-
-        // listen for the correct load event and fire the callback
-        var listenerEvent = navigator.isCocoonJS ? 'canplaythrough' : 'loadedmetadata';
-        var listener = function() {
-          newNode.removeEventListener(listenerEvent, listener, false);
-          callback(newNode);
-        };
-        newNode.addEventListener(listenerEvent, listener, false);
-      }
-    },
-
-    /**
-     * If there are more than 5 inactive audio nodes in the pool, clear out the rest.
-     */
-    _drainPool: function() {
-      var self = this,
-        inactive = 0,
-        i;
-
-      // count the number of inactive nodes
-      for (i=0; i<self._audioNode.length; i++) {
-        if (self._audioNode[i].paused) {
-          inactive++;
-        }
-      }
-
-      // remove excess inactive nodes
-      for (i=self._audioNode.length-1; i>=0; i--) {
-        if (inactive <= 5) {
-          break;
-        }
-
-        if (self._audioNode[i].paused) {
-          // disconnect the audio source if using Web Audio
-          if (self._webAudio) {
-            self._audioNode[i].disconnect(0);
-          }
-
-          inactive--;
-          self._audioNode.splice(i, 1);
-        }
-      }
-    },
-
-    /**
-     * Clear 'onend' timeout before it ends.
-     * @param  {String} soundId  The play instance ID.
-     */
-    _clearEndTimer: function(soundId) {
-      var self = this,
-        index = 0;
-
-      // loop through the timers to find the one associated with this sound
-      for (var i=0; i<self._onendTimer.length; i++) {
-        if (self._onendTimer[i].id === soundId) {
-          index = i;
-          break;
-        }
-      }
-
-      var timer = self._onendTimer[index];
-      if (timer) {
-        clearTimeout(timer.timer);
-        self._onendTimer.splice(index, 1);
-      }
-    },
-
-    /**
-     * Setup the gain node and panner for a Web Audio instance.
-     * @return {Object} The new audio node.
-     */
-    _setupAudioNode: function() {
-      var self = this,
-        node = self._audioNode,
-        index = self._audioNode.length;
-
-      // create gain node
-      node[index] = (typeof ctx.createGain === 'undefined') ? ctx.createGainNode() : ctx.createGain();
-      node[index].gain.value = self._volume;
-      node[index].paused = true;
-      node[index]._pos = 0;
-      node[index].readyState = 4;
-      node[index].connect(masterGain);
-
-      // create the panner
-      node[index].panner = ctx.createPanner();
-      node[index].panner.panningModel = self._model || 'equalpower';
-      node[index].panner.setPosition(self._pos3d[0], self._pos3d[1], self._pos3d[2]);
-      node[index].panner.connect(node[index]);
-
-      return node[index];
-    },
-
-    /**
-     * Call/set custom events.
-     * @param  {String}   event Event type.
-     * @param  {Function} fn    Function to call.
-     * @return {Howl}
-     */
-    on: function(event, fn) {
-      var self = this,
-        events = self['_on' + event];
-
-      if (typeof fn === 'function') {
-        events.push(fn);
-      } else {
-        for (var i=0; i<events.length; i++) {
-          if (fn) {
-            events[i].call(self, fn);
-          } else {
-            events[i].call(self);
-          }
-        }
-      }
-
-      return self;
-    },
-
-    /**
-     * Remove a custom event.
-     * @param  {String}   event Event type.
-     * @param  {Function} fn    Listener to remove.
-     * @return {Howl}
-     */
-    off: function(event, fn) {
-      var self = this,
-        events = self['_on' + event],
-        fnString = fn.toString();
-
-      // loop through functions in the event for comparison
-      for (var i=0; i<events.length; i++) {
-        if (fnString === events[i].toString()) {
-          events.splice(i, 1);
-          break;
-        }
-      }
-
-      return self;
-    },
-
-    /**
-     * Unload and destroy the current Howl object.
-     * This will immediately stop all play instances attached to this sound.
-     */
-    unload: function() {
-      var self = this;
-
-      // stop playing any active nodes
-      var nodes = self._audioNode;
-      for (var i=0; i<self._audioNode.length; i++) {
-        // stop the sound if it is currently playing
-        if (!nodes[i].paused) {
-          self.stop(nodes[i].id);
-        }
-
-        if (!self._webAudio) {
-          // remove the source if using HTML5 Audio
-          nodes[i].src = '';
-        } else {
-          // disconnect the output from the master gain
-          nodes[i].disconnect(0);
-        }
-      }
-
-      // make sure all timeouts are cleared
-      for (i=0; i<self._onendTimer.length; i++) {
-        clearTimeout(self._onendTimer[i].timer);
-      }
-
-      // remove the reference in the global Howler object
-      var index = Howler._howls.indexOf(self);
-      if (index !== null && index >= 0) {
-        Howler._howls.splice(index, 1);
-      }
-
-      // delete this sound from the cache
-      delete cache[self._src];
-      self = null;
-    }
-
-  };
-
-  // only define these functions when using WebAudio
-  if (usingWebAudio) {
-
-    /**
-     * Buffer a sound from URL (or from cache) and decode to audio source (Web Audio API).
-     * @param  {Object} obj The Howl object for the sound to load.
-     * @param  {String} url The path to the sound file.
-     */
-    var loadBuffer = function(obj, url) {
-      // check if the buffer has already been cached
-      if (url in cache) {
-        // set the duration from the cache
-        obj._duration = cache[url].duration;
-
-        // load the sound into this object
-        loadSound(obj);
-      } else {
-        // load the buffer from the URL
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onload = function() {
-          // decode the buffer into an audio source
-          ctx.decodeAudioData(
-            xhr.response,
-            function(buffer) {
-              if (buffer) {
-                cache[url] = buffer;
-                loadSound(obj, buffer);
-              }
-            },
-            function(err) {
-              obj.on('loaderror');
-            }
-          );
-        };
-        xhr.onerror = function() {
-          // if there is an error, switch the sound to HTML Audio
-          if (obj._webAudio) {
-            obj._buffer = true;
-            obj._webAudio = false;
-            obj._audioNode = [];
-            delete obj._gainNode;
-            obj.load();
-          }
-        };
-        try {
-          xhr.send();
-        } catch (e) {
-          xhr.onerror();
-        }
-      }
-    };
-
-    /**
-     * Finishes loading the Web Audio API sound and fires the loaded event
-     * @param  {Object}  obj    The Howl object for the sound to load.
-     * @param  {Objecct} buffer The decoded buffer sound source.
-     */
-    var loadSound = function(obj, buffer) {
-      // set the duration
-      obj._duration = (buffer) ? buffer.duration : obj._duration;
-
-      // setup a sprite if none is defined
-      if (Object.getOwnPropertyNames(obj._sprite).length === 0) {
-        obj._sprite = {_default: [0, obj._duration * 1000]};
-      }
-
-      // fire the loaded event
-      if (!obj._loaded) {
-        obj._loaded = true;
-        obj.on('load');
-      }
-
-      if (obj._autoplay) {
-        obj.play();
-      }
-    };
-
-    /**
-     * Load the sound back into the buffer source.
-     * @param  {Object} obj   The sound to load.
-     * @param  {Array}  loop  Loop boolean, pos, and duration.
-     * @param  {String} id    (optional) The play instance ID.
-     */
-    var refreshBuffer = function(obj, loop, id) {
-      // determine which node to connect to
-      var node = obj._nodeById(id);
-
-      // setup the buffer source for playback
-      node.bufferSource = ctx.createBufferSource();
-      node.bufferSource.buffer = cache[obj._src];
-      node.bufferSource.connect(node.panner);
-      node.bufferSource.loop = loop[0];
-      if (loop[0]) {
-        node.bufferSource.loopStart = loop[1];
-        node.bufferSource.loopEnd = loop[1] + loop[2];
-      }
-      node.bufferSource.playbackRate.value = obj._rate;
-    };
-
-  }
-
-  /**
-   * Add support for AMD (Asynchronous Module Definition) libraries such as require.js.
-   */
-  if (typeof define === 'function' && define.amd) {
-    define(function() {
-      return {
-        Howler: Howler,
-        Howl: Howl
-      };
-    });
-  }
-
-  /**
-   * Add support for CommonJS libraries such as browserify.
-   */
-  if (typeof exports !== 'undefined') {
-    exports.Howler = Howler;
-    exports.Howl = Howl;
-  }
-
-  // define globally in case AMD is not available or available but not used
-
-  if (typeof window !== 'undefined') {
-    window.Howler = Howler;
-    window.Howl = Howl;
-  }
-
-})();
-
 /** vim: et:ts=4:sw=4:sts=4
  * @license RequireJS 2.1.9 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -5831,6 +4577,1455 @@ bento.define('bento/utils', [], function () {
     };
     return utils;
 });
+/*
+    Audia: <audio> implemented using the Web Audio API
+    by Matt Hackett of Lost Decade Games
+    AMD port by sprky0
+    https://github.com/richtaur/audia
+    https://github.com/sprky0/audia
+
+    Adapted for Bento game engine by Lucky Kat Studios
+*/
+bento.define("audia", [], function () {
+
+    // Got Web Audio API?
+    var audioContext = null;
+    if (typeof AudioContext == "function") {
+        audioContext = new AudioContext();
+    } else if (typeof webkitAudioContext == "function") {
+        audioContext = new webkitAudioContext();
+    }
+
+    // Setup
+    var Audia;
+    var hasWebAudio = Boolean(audioContext);
+
+    // Audia object creation
+    var audioId = 0;
+    var audiaObjectsCache = {};
+    var addAudiaObject = function (object) {
+        var id = ++audioId;
+        audiaObjectsCache[id] = object;
+
+        return id;
+    };
+
+    // Math helper
+    var clamp = function (value, min, max) {
+        return Math.min(Math.max(Number(value), min), max);
+    };
+
+    // Which approach are we taking?…
+
+    if (hasWebAudio) {
+
+        // Reimplement Audio using Web Audio API…
+
+        // Load audio helper
+        var buffersCache = {};
+        var loadAudioFile = function (object, url) {
+            var onLoad = function (buffer) {
+                // Duration
+                if (buffer.duration !== object._duration) {
+                    object._duration = buffer.duration;
+                    object.dispatchEvent("durationchange" /*, TODO*/ );
+                }
+
+                object.dispatchEvent("canplay" /*, TODO*/ );
+                object.dispatchEvent("canplaythrough" /*, TODO*/ );
+                object.dispatchEvent("load" /*, TODO*/ );
+
+                object._autoplay && object.play();
+            };
+
+            // Got a cached buffer or should we fetch it?
+            if (url in buffersCache) {
+                onLoad(buffersCache[url]);
+            } else {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", url, true);
+                xhr.responseType = "arraybuffer";
+                xhr.onload = function () {
+                    audioContext.decodeAudioData(xhr.response, function (buffer) {
+                        buffersCache[url] = buffer;
+                        onLoad(buffer);
+                    });
+                };
+                xhr.send();
+            }
+        };
+
+        var refreshBufferSource = function (object) {
+            // Create (or replace) buffer source
+            object.bufferSource = audioContext.createBufferSource();
+
+            // Attach buffer to buffer source
+            object.bufferSource.buffer = buffersCache[object.src];
+
+            // Connect to gain node
+            object.bufferSource.connect(object.gainNode);
+
+            // Update settings
+            object.bufferSource.loop = object._loop;
+            object.bufferSource.onended = object._onended;
+        };
+
+        // Setup a master gain node
+        var gainNode = audioContext.createGain();
+        gainNode.gain.value = 1;
+        gainNode.connect(audioContext.destination);
+
+        // Constructor
+        Audia = function (src) {
+            this.id = addAudiaObject(this);
+
+            // Setup
+            this._listenerId = 0;
+            this._listeners = {};
+
+            // Audio properties
+            this._autoplay = false;
+            this._buffered = []; // TimeRanges
+            this._currentSrc = "";
+            this._currentTime = 0;
+            this._defaultPlaybackRate = 1;
+            this._duration = NaN;
+            this._loop = false;
+            this._muted = false;
+            this._paused = true;
+            this._playbackRate = 1;
+            this._played = []; // TimeRanges
+            this._preload = "auto";
+            this._seekable = []; // TimeRanges
+            this._seeking = false;
+            this._src = "";
+            this._volume = 1;
+            this._onended = null;
+
+            // Create gain node
+            this.gainNode = audioContext.createGain();
+            this.gainNode.gain.value = this._volume;
+
+            // Connect to master gain node
+            this.gainNode.connect(gainNode);
+
+            // Support for new Audia(src)
+            if (src !== undefined) {
+                this.src = src;
+            }
+        };
+
+        // Methods…
+
+        // load
+        Audia.prototype.load = function () {
+            // TODO: find out what it takes for this to fire
+            // proably just needs src set right?
+            this._src && loadAudioFile(this, this._src);
+        };
+
+        // play()
+        Audia.prototype.play = function () {
+            // TODO: restart from this.currentTime
+            this._paused = false;
+
+            refreshBufferSource(this);
+            if (this.bufferSource.start)
+                this.bufferSource.start(0);
+            else
+                this.bufferSource.noteOn(0);
+        };
+
+        // pause()
+        Audia.prototype.pause = function () {
+            if (this._paused) {
+                return;
+            }
+            this._paused = true;
+
+            if (this.bufferSource.stop)
+                this.bufferSource.stop(0);
+            else
+                this.bufferSource.noteOff(0);
+        };
+
+        // stop()
+        Audia.prototype.stop = function () {
+            if (this._paused) {
+                return;
+            }
+
+            this.pause();
+            this.currentTime = 0;
+        };
+
+        // addEventListener()
+        Audia.prototype.addEventListener = function (eventName, callback /*, capture*/ ) {
+            this._listeners[++this._listenerKey] = {
+                eventName: eventName,
+                callback: callback
+            };
+        };
+
+        // dispatchEvent()
+        Audia.prototype.dispatchEvent = function (eventName, args) {
+            for (var id in this._listeners) {
+                var listener = this._listeners[id];
+                if (listener.eventName == eventName) {
+                    listener.callback && listener.callback.apply(listener.callback, args);
+                }
+            }
+        };
+
+        // removeEventListener()
+        Audia.prototype.removeEventListener = function (eventName, callback /*, capture*/ ) {
+            // Get the id of the listener to remove
+            var listenerId = null;
+            for (var id in this._listeners) {
+                var listener = this._listeners[id];
+                if (listener.eventName === eventName) {
+                    if (listener.callback === callback) {
+                        listenerId = id;
+                        break;
+                    }
+                }
+            }
+
+            // Delete the listener
+            if (listenerId !== null) {
+                delete this._listeners[listenerId];
+            }
+        };
+
+        // Properties…
+
+        // autoplay (Boolean)
+        Object.defineProperty(Audia.prototype, "autoplay", {
+            get: function () {
+                return this._autoplay;
+            },
+            set: function (value) {
+                this._autoplay = value;
+            }
+        });
+
+        // buffered (TimeRanges)
+        Object.defineProperty(Audia.prototype, "buffered", {
+            get: function () {
+                return this._buffered;
+            }
+        });
+
+        // currentSrc (String)
+        Object.defineProperty(Audia.prototype, "currentSrc", {
+            get: function () {
+                return this._currentSrc;
+            }
+        });
+
+        // currentTime (Number)
+        Object.defineProperty(Audia.prototype, "currentTime", {
+            get: function () {
+                return this._currentTime;
+            },
+            set: function (value) {
+                this._currentTime = value;
+                // TODO
+                // TODO: throw errors appropriately (eg DOM error)
+            }
+        });
+
+        // defaultPlaybackRate (Number) (default: 1)
+        Object.defineProperty(Audia.prototype, "defaultPlaybackRate", {
+            get: function () {
+                return Number(this._defaultPlaybackRate);
+            },
+            set: function (value) {
+                this._defaultPlaybackRate = value;
+                // todo
+            }
+        });
+
+        // duration (Number)
+        Object.defineProperty(Audia.prototype, "duration", {
+            get: function () {
+                return this._duration;
+            }
+        });
+
+        // loop (Boolean)
+        Object.defineProperty(Audia.prototype, "loop", {
+            get: function () {
+                return this._loop;
+            },
+            set: function (value) {
+                // TODO: buggy, needs revisit
+                if (this._loop === value) {
+                    return;
+                }
+                this._loop = value;
+
+                if (!this.bufferSource) {
+                    return;
+                }
+
+                if (this._paused) {
+                    refreshBufferSource(this);
+                    this.bufferSource.loop = value;
+                } else {
+                    this.pause();
+                    refreshBufferSource(this);
+                    this.bufferSource.loop = value;
+                    this.play();
+                }
+            }
+        });
+
+        // muted (Boolean)
+        Object.defineProperty(Audia.prototype, "muted", {
+            get: function () {
+                return this._muted;
+            },
+            set: function (value) {
+                this._muted = value;
+                this.gainNode.gain.value = value ? 0 : this._volume;
+            }
+        });
+
+        // paused (Boolean)
+        Object.defineProperty(Audia.prototype, "paused", {
+            get: function () {
+                return this._paused;
+            }
+        });
+
+        // playbackRate (Number) (default: 1)
+        Object.defineProperty(Audia.prototype, "playbackRate", {
+            get: function () {
+                return this._playbackRate;
+            },
+            set: function (value) {
+                this._playbackRate = value;
+                // todo
+            }
+        });
+
+        // played (Boolean)
+        Object.defineProperty(Audia.prototype, "played", {
+            get: function () {
+                return this._played;
+            }
+        });
+
+        // preload (String)
+        Object.defineProperty(Audia.prototype, "preload", {
+            get: function () {
+                return this._preload;
+            },
+            set: function (value) {
+                this._preload = value;
+                // TODO
+            }
+        });
+
+        // seekable (Boolean)
+        Object.defineProperty(Audia.prototype, "seekable", {
+            get: function () {
+                return this._seekable;
+            }
+        });
+
+        // seeking (Boolean)
+        Object.defineProperty(Audia.prototype, "seeking", {
+            get: function () {
+                return this._seeking;
+            }
+        });
+
+        // src (String)
+        Object.defineProperty(Audia.prototype, "src", {
+            get: function () {
+                return this._src;
+            },
+            set: function (value) {
+                this._src = value;
+                loadAudioFile(this, value);
+            }
+        });
+
+        // volume (Number) (range: 0-1) (default: 1)
+        Object.defineProperty(Audia.prototype, "volume", {
+            get: function () {
+                return this._volume;
+            },
+            set: function (value) {
+                // Emulate Audio by throwing an error if volume is out of bounds
+                if (!Audia.preventErrors) {
+                    if (clamp(value, 0, 1) !== value) {
+                        // TODO: throw DOM error
+                    }
+                }
+
+                if (value < 0) {
+                    value = 0;
+                }
+                this._volume = value;
+
+                // Don't bother if we're muted!
+                if (this._muted) {
+                    return;
+                }
+
+                this.gainNode.gain.value = value;
+
+                this.dispatchEvent("volumechange" /*, TODO*/ );
+            }
+        });
+
+        Object.defineProperty(Audia.prototype, "onended", {
+            get: function () {
+                return this._onended;
+            },
+            set: function (value) {
+                this._onended = value;
+            }
+        });
+
+
+    } else {
+
+        // Create a thin wrapper around the Audio object…
+
+        // Constructor
+        Audia = function (src) {
+            this.id = addAudiaObject(this);
+            this._audioNode = new Audio();
+
+            // Support for new Audia(src)
+            if (src !== undefined) {
+                this.src = src;
+            }
+        };
+
+        // Methods…
+
+        // load
+        Audia.prototype.load = function (type) {
+            this._audioNode.load();
+        };
+
+        // play()
+        Audia.prototype.play = function (currentTime) {
+            if (currentTime !== undefined) {
+                this._audioNode.currentTime = currentTime;
+            }
+            this._audioNode.play();
+        };
+
+        // pause()
+        Audia.prototype.pause = function () {
+            this._audioNode.pause();
+        };
+
+        // stop()
+        Audia.prototype.stop = function () {
+            this._audioNode.pause();
+            this._audioNode.currentTime = 0;
+        };
+
+        // addEventListener()
+        Audia.prototype.addEventListener = function (eventName, callback, capture) {
+            this._audioNode.addEventListener(eventName, callback, capture);
+        };
+
+        // removeEventListener()
+        Audia.prototype.removeEventListener = function (eventName, callback, capture) {
+            this._audioNode.removeEventListener(eventName, callback, capture);
+        };
+
+        // Properties…
+
+        // autoplay (Boolean)
+        Object.defineProperty(Audia.prototype, "autoplay", {
+            get: function () {
+                return this._audioNode.autoplay;
+            },
+            set: function (value) {
+                this._audioNode.autoplay = value;
+            }
+        });
+
+        // buffered (TimeRanges)
+        Object.defineProperty(Audia.prototype, "buffered", {
+            get: function () {
+                return this._audioNode.buffered;
+            }
+        });
+
+        // currentSrc (String)
+        Object.defineProperty(Audia.prototype, "currentSrc", {
+            get: function () {
+                return this._audioNode.src;
+            }
+        });
+
+        // currentTime (Number)
+        Object.defineProperty(Audia.prototype, "currentTime", {
+            get: function () {
+                return this._audioNode.currentTime;
+            },
+            set: function (value) {
+                this._audioNode.currentTime = value;
+            }
+        });
+
+        // defaultPlaybackRate (Number) (default: 1)
+        Object.defineProperty(Audia.prototype, "defaultPlaybackRate", {
+            get: function () {
+                return this._audioNode.defaultPlaybackRate;
+            },
+            set: function (value) {
+                // TODO: not being used ATM
+                this._audioNode.defaultPlaybackRate = value;
+            }
+        });
+
+        // duration (Number)
+        Object.defineProperty(Audia.prototype, "duration", {
+            get: function () {
+                return this._audioNode.duration;
+            }
+        });
+
+        // loop (Boolean)
+        Object.defineProperty(Audia.prototype, "loop", {
+            get: function () {
+                return this._audioNode.loop;
+            },
+            set: function (value) {
+                // Fixes a bug in Chrome where audio will not play if currentTime
+                // is at the end of the song
+                if (this._audioNode.currentTime >= this._audioNode.duration) {
+                    this._audioNode.currentTime = 0;
+                }
+
+                this._audioNode.loop = value;
+            }
+        });
+
+        // muted (Boolean)
+        Object.defineProperty(Audia.prototype, "muted", {
+            get: function () {
+                return this._audioNode.muted;
+            },
+            set: function (value) {
+                this._audioNode.muted = value;
+            }
+        });
+
+        // paused (Boolean)
+        Object.defineProperty(Audia.prototype, "paused", {
+            get: function () {
+                return this._audioNode.paused;
+            }
+        });
+
+        // playbackRate (Number) (default: 1)
+        Object.defineProperty(Audia.prototype, "playbackRate", {
+            get: function () {
+                return this._audioNode.playbackRate;
+            },
+            set: function (value) {
+                this._audioNode.playbackRate = value;
+            }
+        });
+
+        // played (Boolean)
+        Object.defineProperty(Audia.prototype, "played", {
+            get: function () {
+                return this._audioNode.played;
+            }
+        });
+
+        // preload (String)
+        Object.defineProperty(Audia.prototype, "preload", {
+            get: function () {
+                return this._audioNode.preload;
+            },
+            set: function (value) {
+                this._audioNode.preload = value;
+            }
+        });
+
+        // seekable (Boolean)
+        Object.defineProperty(Audia.prototype, "seekable", {
+            get: function () {
+                return this._audioNode.seekable;
+            }
+        });
+
+        // seeking (Boolean)
+        Object.defineProperty(Audia.prototype, "seeking", {
+            get: function () {
+                return this._audioNode.seeking;
+            }
+        });
+
+        // src (String)
+        Object.defineProperty(Audia.prototype, "src", {
+            get: function () {
+                return this._audioNode.src;
+            },
+            set: function (value) {
+                this._audioNode.src = value;
+            }
+        });
+
+        // volume (Number) (range: 0-1) (default: 1)
+        Object.defineProperty(Audia.prototype, "volume", {
+            get: function () {
+                return this._audioNode.volume;
+            },
+            set: function (value) {
+                if (Audia.preventErrors) {
+                    var value = clamp(value, 0, 1);
+                }
+                this._audioNode.volume = value;
+            }
+        });
+        Object.defineProperty(Audia.prototype, "onended", {
+            get: function () {
+                return this._audioNode.onended;
+            },
+            set: function (value) {
+                this._audioNode.onended = value;
+            }
+        });
+    }
+
+    // Prevent errors?
+    Audia.preventErrors = true;
+
+    // Public helper
+    Object.defineProperty(Audia, "hasWebAudio", {
+        get: function () {
+            return hasWebAudio;
+        }
+    });
+
+    // Audio context
+    Object.defineProperty(Audia, "audioContext", {
+        get: function () {
+            return audioContext;
+        }
+    });
+
+    // Gain node
+    Object.defineProperty(Audia, "gainNode", {
+        get: function () {
+            return gainNode;
+        }
+    });
+
+    // Version
+    Object.defineProperty(Audia, "version", {
+        get: function () {
+            return "0.3.0";
+        }
+    });
+
+    // canPlayType helper
+    // Can be called with shortcuts, e.g. "mp3" instead of "audio/mp3"
+    var audioNode;
+    Audia.canPlayType = function (type) {
+        if (audioNode === undefined) {
+            audioNode = new Audio();
+        }
+        var type = (type.match("/") === null ? "audio/" : "") + type;
+        return audioNode.canPlayType(type);
+    };
+
+    // canPlayType
+    Audia.prototype.canPlayType = function (type) {
+        return Audia.canPlayType(type);
+    };
+
+    // Lastly, wrap all "on" properties up into the events
+    var eventNames = [
+        "abort",
+        "canplay",
+        "canplaythrough",
+        "durationchange",
+        "emptied",
+        //"ended",
+        "error",
+        "loadeddata",
+        "loadedmetadata",
+        "loadstart",
+        "pause",
+        "play",
+        "playing",
+        "progress",
+        "ratechange",
+        "seeked",
+        "seeking",
+        "stalled",
+        "suspend",
+        "timeupdate",
+        "volumechange"
+    ];
+
+    for (var i = 0, j = eventNames.length; i < j; ++i) {
+        (function (eventName) {
+            var fauxPrivateName = "_on" + eventName;
+            Audia.prototype[fauxPrivateName] = null;
+            Object.defineProperty(Audia.prototype, "on" + eventName, {
+                get: function () {
+                    return this[fauxPrivateName];
+                },
+                set: function (value) {
+                    // Remove the old listener
+                    if (this[fauxPrivateName]) {
+                        this.removeEventListener(eventName, this[fauxPrivateName], false);
+                    }
+
+                    // Only set functions
+                    if (typeof value == "function") {
+                        this[fauxPrivateName] = value;
+                        this.addEventListener(eventName, value, false);
+                    } else {
+                        this[fauxPrivateName] = null;
+                    }
+                }
+            });
+        })(eventNames[i]);
+    }
+
+    return Audia;
+});
+/**
+ * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/requirejs/domReady for details
+ */
+/*jslint*/
+/*global require: false, define: false, requirejs: false,
+  window: false, clearInterval: false, document: false,
+  self: false, setInterval: false */
+
+
+bento.define('bento/lib/domready', [], function () {
+    'use strict';
+
+    var isTop, testDiv, scrollIntervalId,
+        isBrowser = typeof window !== "undefined" && window.document,
+        isPageLoaded = !isBrowser,
+        doc = isBrowser ? document : null,
+        readyCalls = [];
+
+    function runCallbacks(callbacks) {
+        var i;
+        for (i = 0; i < callbacks.length; i += 1) {
+            callbacks[i](doc);
+        }
+    }
+
+    function callReady() {
+        var callbacks = readyCalls;
+
+        if (isPageLoaded) {
+            //Call the DOM ready callbacks
+            if (callbacks.length) {
+                readyCalls = [];
+                runCallbacks(callbacks);
+            }
+        }
+    }
+
+    /**
+     * Sets the page as loaded.
+     */
+    function pageLoaded() {
+        if (!isPageLoaded) {
+            isPageLoaded = true;
+            if (scrollIntervalId) {
+                clearInterval(scrollIntervalId);
+            }
+
+            callReady();
+        }
+    }
+
+    if (isBrowser) {
+        if (document.addEventListener) {
+            //Standards. Hooray! Assumption here that if standards based,
+            //it knows about DOMContentLoaded.
+            document.addEventListener("DOMContentLoaded", pageLoaded, false);
+            window.addEventListener("load", pageLoaded, false);
+        } else if (window.attachEvent) {
+            window.attachEvent("onload", pageLoaded);
+
+            testDiv = document.createElement('div');
+            try {
+                isTop = window.frameElement === null;
+            } catch (e) {}
+
+            //DOMContentLoaded approximation that uses a doScroll, as found by
+            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
+            //but modified by other contributors, including jdalton
+            if (testDiv.doScroll && isTop && window.external) {
+                scrollIntervalId = setInterval(function () {
+                    try {
+                        testDiv.doScroll();
+                        pageLoaded();
+                    } catch (e) {}
+                }, 30);
+            }
+        }
+
+        //Check if document already complete, and if so, just trigger page load
+        //listeners. Latest webkit browsers also use "interactive", and
+        //will fire the onDOMContentLoaded before "interactive" but not after
+        //entering "interactive" or "complete". More details:
+        //http://dev.w3.org/html5/spec/the-end.html#the-end
+        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
+        //Hmm, this is more complicated on further use, see "firing too early"
+        //bug: https://github.com/requirejs/domReady/issues/1
+        //so removing the || document.readyState === "interactive" test.
+        //There is still a window.onload binding that should get fired if
+        //DOMContentLoaded is missed.
+        if (document.readyState === "complete") {
+            pageLoaded();
+        }
+    }
+
+    /** START OF PUBLIC API **/
+
+    /**
+     * Registers a callback for DOM ready. If DOM is already ready, the
+     * callback is called immediately.
+     * @param {Function} callback
+     */
+    function domReady(callback) {
+        if (isPageLoaded) {
+            callback(doc);
+        } else {
+            readyCalls.push(callback);
+        }
+        return domReady;
+    }
+
+    domReady.version = '2.0.1';
+
+    /**
+     * Loader Plugin API method
+     */
+    domReady.load = function (name, req, onLoad, config) {
+        if (config.isBuild) {
+            onLoad(null);
+        } else {
+            domReady(onLoad);
+        }
+    };
+
+    /** END OF PUBLIC API **/
+
+    return domReady;
+});
+
+// https://gist.github.com/kirbysayshi/1760774
+
+bento.define('hshg', [], function () {
+
+    //---------------------------------------------------------------------
+    // GLOBAL FUNCTIONS
+    //---------------------------------------------------------------------
+
+    /**
+     * Updates every object's position in the grid, but only if
+     * the hash value for that object has changed.
+     * This method DOES NOT take into account object expansion or
+     * contraction, just position, and does not attempt to change
+     * the grid the object is currently in; it only (possibly) changes
+     * the cell.
+     *
+     * If the object has significantly changed in size, the best bet is to
+     * call removeObject() and addObject() sequentially, outside of the
+     * normal update cycle of HSHG.
+     *
+     * @return  void   desc
+     */
+    function update_RECOMPUTE() {
+
+        var i, obj, grid, meta, objAABB, newObjHash;
+
+        // for each object
+        for (i = 0; i < this._globalObjects.length; i++) {
+            obj = this._globalObjects[i];
+            meta = obj.HSHG;
+            grid = meta.grid;
+
+            // recompute hash
+            objAABB = obj.getAABB();
+            newObjHash = grid.toHash(objAABB.min[0], objAABB.min[1]);
+
+            if (newObjHash !== meta.hash) {
+                // grid position has changed, update!
+                grid.removeObject(obj);
+                grid.addObject(obj, newObjHash);
+            }
+        }
+    }
+
+    // not implemented yet :)
+    function update_REMOVEALL() {
+
+    }
+
+    function testAABBOverlap(objA, objB) {
+        var a = objA.getAABB(),
+            b = objB.getAABB();
+
+        //if(a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.min[2] > b.max[2]
+        //|| a.max[0] < b.min[0] || a.max[1] < b.min[1] || a.max[2] < b.min[2]){
+
+        if (a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.max[0] < b.min[0] || a.max[1] < b.min[1]) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function getLongestAABBEdge(min, max) {
+        return Math.max(
+            Math.abs(max[0] - min[0]), Math.abs(max[1] - min[1])
+            //,Math.abs(max[2] - min[2])
+        );
+    }
+
+    //---------------------------------------------------------------------
+    // ENTITIES
+    //---------------------------------------------------------------------
+
+    function HSHG() {
+
+        this.MAX_OBJECT_CELL_DENSITY = 1 / 8 // objects / cells
+        this.INITIAL_GRID_LENGTH = 256 // 16x16
+        this.HIERARCHY_FACTOR = 2
+        this.HIERARCHY_FACTOR_SQRT = Math.SQRT2
+        this.UPDATE_METHOD = update_RECOMPUTE // or update_REMOVEALL
+
+        this._grids = [];
+        this._globalObjects = [];
+    }
+
+    //HSHG.prototype.init = function(){
+    //  this._grids = [];
+    //  this._globalObjects = [];
+    //}
+
+    HSHG.prototype.addObject = function (obj) {
+        var x, i, cellSize, objAABB = obj.getAABB(),
+            objSize = getLongestAABBEdge(objAABB.min, objAABB.max),
+            oneGrid, newGrid;
+
+        // for HSHG metadata
+        obj.HSHG = {
+            globalObjectsIndex: this._globalObjects.length
+        };
+
+        // add to global object array
+        this._globalObjects.push(obj);
+
+        if (this._grids.length == 0) {
+            // no grids exist yet
+            cellSize = objSize * this.HIERARCHY_FACTOR_SQRT;
+            newGrid = new Grid(cellSize, this.INITIAL_GRID_LENGTH, this);
+            newGrid.initCells();
+            newGrid.addObject(obj);
+
+            this._grids.push(newGrid);
+        } else {
+            x = 0;
+
+            // grids are sorted by cellSize, smallest to largest
+            for (i = 0; i < this._grids.length; i++) {
+                oneGrid = this._grids[i];
+                x = oneGrid.cellSize;
+                if (objSize < x) {
+                    x = x / this.HIERARCHY_FACTOR;
+                    if (objSize < x) {
+                        // find appropriate size
+                        while (objSize < x) {
+                            x = x / this.HIERARCHY_FACTOR;
+                        }
+                        newGrid = new Grid(x * this.HIERARCHY_FACTOR, this.INITIAL_GRID_LENGTH, this);
+                        newGrid.initCells();
+                        // assign obj to grid
+                        newGrid.addObject(obj)
+                        // insert grid into list of grids directly before oneGrid
+                        this._grids.splice(i, 0, newGrid);
+                    } else {
+                        // insert obj into grid oneGrid
+                        oneGrid.addObject(obj);
+                    }
+                    return;
+                }
+            }
+
+            while (objSize >= x) {
+                x = x * this.HIERARCHY_FACTOR;
+            }
+
+            newGrid = new Grid(x, this.INITIAL_GRID_LENGTH, this);
+            newGrid.initCells();
+            // insert obj into grid
+            newGrid.addObject(obj)
+            // add newGrid as last element in grid list
+            this._grids.push(newGrid);
+        }
+    }
+
+    HSHG.prototype.removeObject = function (obj) {
+        var meta = obj.HSHG,
+            globalObjectsIndex, replacementObj;
+
+        if (meta === undefined) {
+            //throw Error(obj + ' was not in the HSHG.');
+            return;
+        }
+
+        // remove object from global object list
+        globalObjectsIndex = meta.globalObjectsIndex
+        if (globalObjectsIndex === this._globalObjects.length - 1) {
+            this._globalObjects.pop();
+        } else {
+            replacementObj = this._globalObjects.pop();
+            replacementObj.HSHG.globalObjectsIndex = globalObjectsIndex;
+            this._globalObjects[globalObjectsIndex] = replacementObj;
+        }
+
+        meta.grid.removeObject(obj);
+
+        // remove meta data
+        delete obj.HSHG;
+    }
+
+    HSHG.prototype.update = function () {
+        this.UPDATE_METHOD.call(this);
+    }
+
+    HSHG.prototype.queryForCollisionPairs = function (broadOverlapTestCallback) {
+
+        var i, j, k, l, c, grid, cell, objA, objB, offset, adjacentCell, biggerGrid, objAAABB, objAHashInBiggerGrid, possibleCollisions = []
+
+        // default broad test to internal aabb overlap test
+        broadOverlapTest = broadOverlapTestCallback || testAABBOverlap;
+
+        // for all grids ordered by cell size ASC
+        for (i = 0; i < this._grids.length; i++) {
+            grid = this._grids[i];
+
+            // for each cell of the grid that is occupied
+            for (j = 0; j < grid.occupiedCells.length; j++) {
+                cell = grid.occupiedCells[j];
+
+                // collide all objects within the occupied cell
+                for (k = 0; k < cell.objectContainer.length; k++) {
+                    objA = cell.objectContainer[k];
+                    if (objA.staticHshg) {
+                        continue;
+                    }
+                    for (l = k + 1; l < cell.objectContainer.length; l++) {
+                        objB = cell.objectContainer[l];
+                        if (broadOverlapTest(objA, objB) === true) {
+                            possibleCollisions.push([objA, objB]);
+                        }
+                    }
+                }
+
+                // for the first half of all adjacent cells (offset 4 is the current cell)
+                for (c = 0; c < 4; c++) {
+                    offset = cell.neighborOffsetArray[c];
+
+                    //if(offset === null) { continue; }
+
+                    adjacentCell = grid.allCells[cell.allCellsIndex + offset];
+
+                    // collide all objects in cell with adjacent cell
+                    for (k = 0; k < cell.objectContainer.length; k++) {
+                        objA = cell.objectContainer[k];
+                        if (objA.staticHshg) {
+                            continue;
+                        }
+                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
+                            objB = adjacentCell.objectContainer[l];
+                            if (broadOverlapTest(objA, objB) === true) {
+                                possibleCollisions.push([objA, objB]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // forall objects that are stored in this grid
+            for (j = 0; j < grid.allObjects.length; j++) {
+                objA = grid.allObjects[j];
+                if (objA.staticHshg) {
+                    continue;
+                }
+                objAAABB = objA.getAABB();
+
+                // for all grids with cellsize larger than grid
+                for (k = i + 1; k < this._grids.length; k++) {
+                    biggerGrid = this._grids[k];
+                    objAHashInBiggerGrid = biggerGrid.toHash(objAAABB.min[0], objAAABB.min[1]);
+                    cell = biggerGrid.allCells[objAHashInBiggerGrid];
+
+                    // check objA against every object in all cells in offset array of cell
+                    // for all adjacent cells...
+                    for (c = 0; c < cell.neighborOffsetArray.length; c++) {
+                        offset = cell.neighborOffsetArray[c];
+
+                        //if(offset === null) { continue; }
+
+                        adjacentCell = biggerGrid.allCells[cell.allCellsIndex + offset];
+
+                        // for all objects in the adjacent cell...
+                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
+                            objB = adjacentCell.objectContainer[l];
+                            // test against object A
+                            if (broadOverlapTest(objA, objB) === true) {
+                                possibleCollisions.push([objA, objB]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //
+        for (i = 0; i < possibleCollisions.length; ++i) {
+            if (possibleCollisions[i][0].onCollide) {
+                possibleCollisions[i][0].onCollide(possibleCollisions[i][1]);
+            }
+            if (possibleCollisions[i][1].onCollide) {
+                possibleCollisions[i][1].onCollide(possibleCollisions[i][0]);
+            }
+        }
+
+        // return list of object pairs
+        return possibleCollisions;
+    }
+
+    HSHG.update_RECOMPUTE = update_RECOMPUTE;
+    HSHG.update_REMOVEALL = update_REMOVEALL;
+
+    /**
+     * Grid
+     *
+     * @constructor
+     * @param   int cellSize  the pixel size of each cell of the grid
+     * @param   int cellCount  the total number of cells for the grid (width x height)
+     * @param   HSHG parentHierarchy    the HSHG to which this grid belongs
+     * @return  void
+     */
+    function Grid(cellSize, cellCount, parentHierarchy) {
+        this.cellSize = cellSize;
+        this.inverseCellSize = 1 / cellSize;
+        this.rowColumnCount = ~~Math.sqrt(cellCount);
+        this.xyHashMask = this.rowColumnCount - 1;
+        this.occupiedCells = [];
+        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
+        this.allObjects = [];
+        this.sharedInnerOffsets = [];
+
+        this._parentHierarchy = parentHierarchy || null;
+    }
+
+    Grid.prototype.initCells = function () {
+
+        // TODO: inner/unique offset rows 0 and 2 may need to be
+        // swapped due to +y being "down" vs "up"
+
+        var i, gridLength = this.allCells.length,
+            x, y, wh = this.rowColumnCount,
+            isOnRightEdge, isOnLeftEdge, isOnTopEdge, isOnBottomEdge, innerOffsets = [
+                // y+ down offsets
+                //-1 + -wh, -wh, -wh + 1,
+                //-1, 0, 1,
+                //wh - 1, wh, wh + 1
+
+                // y+ up offsets
+                wh - 1, wh, wh + 1, -1, 0, 1, -1 + -wh, -wh, -wh + 1
+            ],
+            leftOffset, rightOffset, topOffset, bottomOffset, uniqueOffsets = [],
+            cell;
+
+        this.sharedInnerOffsets = innerOffsets;
+
+        // init all cells, creating offset arrays as needed
+
+        for (i = 0; i < gridLength; i++) {
+
+            cell = new Cell();
+            // compute row (y) and column (x) for an index
+            y = ~~ (i / this.rowColumnCount);
+            x = ~~ (i - (y * this.rowColumnCount));
+
+            // reset / init
+            isOnRightEdge = false;
+            isOnLeftEdge = false;
+            isOnTopEdge = false;
+            isOnBottomEdge = false;
+
+            // right or left edge cell
+            if ((x + 1) % this.rowColumnCount == 0) {
+                isOnRightEdge = true;
+            } else if (x % this.rowColumnCount == 0) {
+                isOnLeftEdge = true;
+            }
+
+            // top or bottom edge cell
+            if ((y + 1) % this.rowColumnCount == 0) {
+                isOnTopEdge = true;
+            } else if (y % this.rowColumnCount == 0) {
+                isOnBottomEdge = true;
+            }
+
+            // if cell is edge cell, use unique offsets, otherwise use inner offsets
+            if (isOnRightEdge || isOnLeftEdge || isOnTopEdge || isOnBottomEdge) {
+
+                // figure out cardinal offsets first
+                rightOffset = isOnRightEdge === true ? -wh + 1 : 1;
+                leftOffset = isOnLeftEdge === true ? wh - 1 : -1;
+                topOffset = isOnTopEdge === true ? -gridLength + wh : wh;
+                bottomOffset = isOnBottomEdge === true ? gridLength - wh : -wh;
+
+                // diagonals are composites of the cardinals            
+                uniqueOffsets = [
+                    // y+ down offset
+                    //leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset,
+                    //leftOffset, 0, rightOffset,
+                    //leftOffset + topOffset, topOffset, rightOffset + topOffset
+
+                    // y+ up offset
+                    leftOffset + topOffset, topOffset, rightOffset + topOffset,
+                    leftOffset, 0, rightOffset,
+                    leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset
+                ];
+
+                cell.neighborOffsetArray = uniqueOffsets;
+            } else {
+                cell.neighborOffsetArray = this.sharedInnerOffsets;
+            }
+
+            cell.allCellsIndex = i;
+            this.allCells[i] = cell;
+        }
+    }
+
+    Grid.prototype.toHash = function (x, y, z) {
+        var i, xHash, yHash, zHash;
+
+        if (x < 0) {
+            i = (-x) * this.inverseCellSize;
+            xHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
+        } else {
+            i = x * this.inverseCellSize;
+            xHash = ~~i & this.xyHashMask;
+        }
+
+        if (y < 0) {
+            i = (-y) * this.inverseCellSize;
+            yHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
+        } else {
+            i = y * this.inverseCellSize;
+            yHash = ~~i & this.xyHashMask;
+        }
+
+        //if(z < 0){
+        //  i = (-z) * this.inverseCellSize;
+        //  zHash = this.rowColumnCount - 1 - ( ~~i & this.xyHashMask );
+        //} else {
+        //  i = z * this.inverseCellSize;
+        //  zHash = ~~i & this.xyHashMask;
+        //}
+
+        return xHash + yHash * this.rowColumnCount
+            //+ zHash * this.rowColumnCount * this.rowColumnCount;
+    }
+
+    Grid.prototype.addObject = function (obj, hash) {
+        var objAABB, objHash, targetCell;
+
+        // technically, passing this in this should save some computational effort when updating objects
+        if (hash !== undefined) {
+            objHash = hash;
+        } else {
+            objAABB = obj.getAABB()
+            objHash = this.toHash(objAABB.min[0], objAABB.min[1])
+        }
+        targetCell = this.allCells[objHash];
+
+        if (targetCell.objectContainer.length === 0) {
+            // insert this cell into occupied cells list
+            targetCell.occupiedCellsIndex = this.occupiedCells.length;
+            this.occupiedCells.push(targetCell);
+        }
+
+        // add meta data to obj, for fast update/removal
+        obj.HSHG.objectContainerIndex = targetCell.objectContainer.length;
+        obj.HSHG.hash = objHash;
+        obj.HSHG.grid = this;
+        obj.HSHG.allGridObjectsIndex = this.allObjects.length;
+        // add obj to cell
+        targetCell.objectContainer.push(obj);
+
+        // we can assume that the targetCell is already a member of the occupied list
+
+        // add to grid-global object list
+        this.allObjects.push(obj);
+
+        // do test for grid density
+        if (this.allObjects.length / this.allCells.length > this._parentHierarchy.MAX_OBJECT_CELL_DENSITY) {
+            // grid must be increased in size
+            this.expandGrid();
+        }
+    }
+
+    Grid.prototype.removeObject = function (obj) {
+        var meta = obj.HSHG,
+            hash, containerIndex, allGridObjectsIndex, cell, replacementCell, replacementObj;
+
+        hash = meta.hash;
+        containerIndex = meta.objectContainerIndex;
+        allGridObjectsIndex = meta.allGridObjectsIndex;
+        cell = this.allCells[hash];
+
+        // remove object from cell object container
+        if (cell.objectContainer.length === 1) {
+            // this is the last object in the cell, so reset it
+            cell.objectContainer.length = 0;
+
+            // remove cell from occupied list
+            if (cell.occupiedCellsIndex === this.occupiedCells.length - 1) {
+                // special case if the cell is the newest in the list
+                this.occupiedCells.pop();
+            } else {
+                replacementCell = this.occupiedCells.pop();
+                replacementCell.occupiedCellsIndex = cell.occupiedCellsIndex;
+                this.occupiedCells[cell.occupiedCellsIndex] = replacementCell;
+            }
+
+            cell.occupiedCellsIndex = null;
+        } else {
+            // there is more than one object in the container
+            if (containerIndex === cell.objectContainer.length - 1) {
+                // special case if the obj is the newest in the container
+                cell.objectContainer.pop();
+            } else {
+                replacementObj = cell.objectContainer.pop();
+                replacementObj.HSHG.objectContainerIndex = containerIndex;
+                cell.objectContainer[containerIndex] = replacementObj;
+            }
+        }
+
+        // remove object from grid object list
+        if (allGridObjectsIndex === this.allObjects.length - 1) {
+            this.allObjects.pop();
+        } else {
+            replacementObj = this.allObjects.pop();
+            replacementObj.HSHG.allGridObjectsIndex = allGridObjectsIndex;
+            this.allObjects[allGridObjectsIndex] = replacementObj;
+        }
+    }
+
+    Grid.prototype.expandGrid = function () {
+        var i, j, currentCellCount = this.allCells.length,
+            currentRowColumnCount = this.rowColumnCount,
+            currentXYHashMask = this.xyHashMask
+
+        , newCellCount = currentCellCount * 4 // double each dimension
+        , newRowColumnCount = ~~Math.sqrt(newCellCount), newXYHashMask = newRowColumnCount - 1, allObjects = this.allObjects.slice(0) // duplicate array, not objects contained
+        , aCell, push = Array.prototype.push;
+
+        // remove all objects
+        for (i = 0; i < allObjects.length; i++) {
+            this.removeObject(allObjects[i]);
+        }
+
+        // reset grid values, set new grid to be 4x larger than last
+        this.rowColumnCount = newRowColumnCount;
+        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
+        this.xyHashMask = newXYHashMask;
+
+        // initialize new cells
+        this.initCells();
+
+        // re-add all objects to grid
+        for (i = 0; i < allObjects.length; i++) {
+            this.addObject(allObjects[i]);
+        }
+    }
+
+    /**
+     * A cell of the grid
+     *
+     * @constructor
+     * @return  void   desc
+     */
+    function Cell() {
+        this.objectContainer = [];
+        this.neighborOffsetArray;
+        this.occupiedCellsIndex = null;
+        this.allCellsIndex = null;
+    }
+
+    //---------------------------------------------------------------------
+    // EXPORTS
+    //---------------------------------------------------------------------
+
+    HSHG._private = {
+        Grid: Grid,
+        Cell: Cell,
+        testAABBOverlap: testAABBOverlap,
+        getLongestAABBEdge: getLongestAABBEdge
+    };
+
+    return HSHG;
+});
+// http://www.makeitgo.ws/articles/animationframe/
+// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+bento.define('bento/lib/requestanimationframe', [], function () {
+    'use strict';
+
+    var lastTime = 0,
+        vendors = ['ms', 'moz', 'webkit', 'o'];
+    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
+    }
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function (callback, element) {
+            var currTime = new Date().getTime(),
+                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
+                id = window.setTimeout(function () {
+                    callback(currTime + timeToCall);
+                }, timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
+
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function (id) {
+            clearTimeout(id);
+        };
+    return window.requestAnimationFrame;
+});
 /**
  * Animation component. Draws an animated sprite on screen at the entity position.
  * <br>Exports: Function
@@ -6942,729 +7137,6 @@ bento.define('bento/components/translation', [
     };
 });
 /**
- * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/requirejs/domReady for details
- */
-/*jslint*/
-/*global require: false, define: false, requirejs: false,
-  window: false, clearInterval: false, document: false,
-  self: false, setInterval: false */
-
-
-bento.define('bento/lib/domready', [], function () {
-    'use strict';
-
-    var isTop, testDiv, scrollIntervalId,
-        isBrowser = typeof window !== "undefined" && window.document,
-        isPageLoaded = !isBrowser,
-        doc = isBrowser ? document : null,
-        readyCalls = [];
-
-    function runCallbacks(callbacks) {
-        var i;
-        for (i = 0; i < callbacks.length; i += 1) {
-            callbacks[i](doc);
-        }
-    }
-
-    function callReady() {
-        var callbacks = readyCalls;
-
-        if (isPageLoaded) {
-            //Call the DOM ready callbacks
-            if (callbacks.length) {
-                readyCalls = [];
-                runCallbacks(callbacks);
-            }
-        }
-    }
-
-    /**
-     * Sets the page as loaded.
-     */
-    function pageLoaded() {
-        if (!isPageLoaded) {
-            isPageLoaded = true;
-            if (scrollIntervalId) {
-                clearInterval(scrollIntervalId);
-            }
-
-            callReady();
-        }
-    }
-
-    if (isBrowser) {
-        if (document.addEventListener) {
-            //Standards. Hooray! Assumption here that if standards based,
-            //it knows about DOMContentLoaded.
-            document.addEventListener("DOMContentLoaded", pageLoaded, false);
-            window.addEventListener("load", pageLoaded, false);
-        } else if (window.attachEvent) {
-            window.attachEvent("onload", pageLoaded);
-
-            testDiv = document.createElement('div');
-            try {
-                isTop = window.frameElement === null;
-            } catch (e) {}
-
-            //DOMContentLoaded approximation that uses a doScroll, as found by
-            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
-            //but modified by other contributors, including jdalton
-            if (testDiv.doScroll && isTop && window.external) {
-                scrollIntervalId = setInterval(function () {
-                    try {
-                        testDiv.doScroll();
-                        pageLoaded();
-                    } catch (e) {}
-                }, 30);
-            }
-        }
-
-        //Check if document already complete, and if so, just trigger page load
-        //listeners. Latest webkit browsers also use "interactive", and
-        //will fire the onDOMContentLoaded before "interactive" but not after
-        //entering "interactive" or "complete". More details:
-        //http://dev.w3.org/html5/spec/the-end.html#the-end
-        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
-        //Hmm, this is more complicated on further use, see "firing too early"
-        //bug: https://github.com/requirejs/domReady/issues/1
-        //so removing the || document.readyState === "interactive" test.
-        //There is still a window.onload binding that should get fired if
-        //DOMContentLoaded is missed.
-        if (document.readyState === "complete") {
-            pageLoaded();
-        }
-    }
-
-    /** START OF PUBLIC API **/
-
-    /**
-     * Registers a callback for DOM ready. If DOM is already ready, the
-     * callback is called immediately.
-     * @param {Function} callback
-     */
-    function domReady(callback) {
-        if (isPageLoaded) {
-            callback(doc);
-        } else {
-            readyCalls.push(callback);
-        }
-        return domReady;
-    }
-
-    domReady.version = '2.0.1';
-
-    /**
-     * Loader Plugin API method
-     */
-    domReady.load = function (name, req, onLoad, config) {
-        if (config.isBuild) {
-            onLoad(null);
-        } else {
-            domReady(onLoad);
-        }
-    };
-
-    /** END OF PUBLIC API **/
-
-    return domReady;
-});
-
-// https://gist.github.com/kirbysayshi/1760774
-
-bento.define('hshg', [], function () {
-
-    //---------------------------------------------------------------------
-    // GLOBAL FUNCTIONS
-    //---------------------------------------------------------------------
-
-    /**
-     * Updates every object's position in the grid, but only if
-     * the hash value for that object has changed.
-     * This method DOES NOT take into account object expansion or
-     * contraction, just position, and does not attempt to change
-     * the grid the object is currently in; it only (possibly) changes
-     * the cell.
-     *
-     * If the object has significantly changed in size, the best bet is to
-     * call removeObject() and addObject() sequentially, outside of the
-     * normal update cycle of HSHG.
-     *
-     * @return  void   desc
-     */
-    function update_RECOMPUTE() {
-
-        var i, obj, grid, meta, objAABB, newObjHash;
-
-        // for each object
-        for (i = 0; i < this._globalObjects.length; i++) {
-            obj = this._globalObjects[i];
-            meta = obj.HSHG;
-            grid = meta.grid;
-
-            // recompute hash
-            objAABB = obj.getAABB();
-            newObjHash = grid.toHash(objAABB.min[0], objAABB.min[1]);
-
-            if (newObjHash !== meta.hash) {
-                // grid position has changed, update!
-                grid.removeObject(obj);
-                grid.addObject(obj, newObjHash);
-            }
-        }
-    }
-
-    // not implemented yet :)
-    function update_REMOVEALL() {
-
-    }
-
-    function testAABBOverlap(objA, objB) {
-        var a = objA.getAABB(),
-            b = objB.getAABB();
-
-        //if(a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.min[2] > b.max[2]
-        //|| a.max[0] < b.min[0] || a.max[1] < b.min[1] || a.max[2] < b.min[2]){
-
-        if (a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.max[0] < b.min[0] || a.max[1] < b.min[1]) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    function getLongestAABBEdge(min, max) {
-        return Math.max(
-            Math.abs(max[0] - min[0]), Math.abs(max[1] - min[1])
-            //,Math.abs(max[2] - min[2])
-        );
-    }
-
-    //---------------------------------------------------------------------
-    // ENTITIES
-    //---------------------------------------------------------------------
-
-    function HSHG() {
-
-        this.MAX_OBJECT_CELL_DENSITY = 1 / 8 // objects / cells
-        this.INITIAL_GRID_LENGTH = 256 // 16x16
-        this.HIERARCHY_FACTOR = 2
-        this.HIERARCHY_FACTOR_SQRT = Math.SQRT2
-        this.UPDATE_METHOD = update_RECOMPUTE // or update_REMOVEALL
-
-        this._grids = [];
-        this._globalObjects = [];
-    }
-
-    //HSHG.prototype.init = function(){
-    //  this._grids = [];
-    //  this._globalObjects = [];
-    //}
-
-    HSHG.prototype.addObject = function (obj) {
-        var x, i, cellSize, objAABB = obj.getAABB(),
-            objSize = getLongestAABBEdge(objAABB.min, objAABB.max),
-            oneGrid, newGrid;
-
-        // for HSHG metadata
-        obj.HSHG = {
-            globalObjectsIndex: this._globalObjects.length
-        };
-
-        // add to global object array
-        this._globalObjects.push(obj);
-
-        if (this._grids.length == 0) {
-            // no grids exist yet
-            cellSize = objSize * this.HIERARCHY_FACTOR_SQRT;
-            newGrid = new Grid(cellSize, this.INITIAL_GRID_LENGTH, this);
-            newGrid.initCells();
-            newGrid.addObject(obj);
-
-            this._grids.push(newGrid);
-        } else {
-            x = 0;
-
-            // grids are sorted by cellSize, smallest to largest
-            for (i = 0; i < this._grids.length; i++) {
-                oneGrid = this._grids[i];
-                x = oneGrid.cellSize;
-                if (objSize < x) {
-                    x = x / this.HIERARCHY_FACTOR;
-                    if (objSize < x) {
-                        // find appropriate size
-                        while (objSize < x) {
-                            x = x / this.HIERARCHY_FACTOR;
-                        }
-                        newGrid = new Grid(x * this.HIERARCHY_FACTOR, this.INITIAL_GRID_LENGTH, this);
-                        newGrid.initCells();
-                        // assign obj to grid
-                        newGrid.addObject(obj)
-                        // insert grid into list of grids directly before oneGrid
-                        this._grids.splice(i, 0, newGrid);
-                    } else {
-                        // insert obj into grid oneGrid
-                        oneGrid.addObject(obj);
-                    }
-                    return;
-                }
-            }
-
-            while (objSize >= x) {
-                x = x * this.HIERARCHY_FACTOR;
-            }
-
-            newGrid = new Grid(x, this.INITIAL_GRID_LENGTH, this);
-            newGrid.initCells();
-            // insert obj into grid
-            newGrid.addObject(obj)
-            // add newGrid as last element in grid list
-            this._grids.push(newGrid);
-        }
-    }
-
-    HSHG.prototype.removeObject = function (obj) {
-        var meta = obj.HSHG,
-            globalObjectsIndex, replacementObj;
-
-        if (meta === undefined) {
-            //throw Error(obj + ' was not in the HSHG.');
-            return;
-        }
-
-        // remove object from global object list
-        globalObjectsIndex = meta.globalObjectsIndex
-        if (globalObjectsIndex === this._globalObjects.length - 1) {
-            this._globalObjects.pop();
-        } else {
-            replacementObj = this._globalObjects.pop();
-            replacementObj.HSHG.globalObjectsIndex = globalObjectsIndex;
-            this._globalObjects[globalObjectsIndex] = replacementObj;
-        }
-
-        meta.grid.removeObject(obj);
-
-        // remove meta data
-        delete obj.HSHG;
-    }
-
-    HSHG.prototype.update = function () {
-        this.UPDATE_METHOD.call(this);
-    }
-
-    HSHG.prototype.queryForCollisionPairs = function (broadOverlapTestCallback) {
-
-        var i, j, k, l, c, grid, cell, objA, objB, offset, adjacentCell, biggerGrid, objAAABB, objAHashInBiggerGrid, possibleCollisions = []
-
-        // default broad test to internal aabb overlap test
-        broadOverlapTest = broadOverlapTestCallback || testAABBOverlap;
-
-        // for all grids ordered by cell size ASC
-        for (i = 0; i < this._grids.length; i++) {
-            grid = this._grids[i];
-
-            // for each cell of the grid that is occupied
-            for (j = 0; j < grid.occupiedCells.length; j++) {
-                cell = grid.occupiedCells[j];
-
-                // collide all objects within the occupied cell
-                for (k = 0; k < cell.objectContainer.length; k++) {
-                    objA = cell.objectContainer[k];
-                    if (objA.staticHshg) {
-                        continue;
-                    }
-                    for (l = k + 1; l < cell.objectContainer.length; l++) {
-                        objB = cell.objectContainer[l];
-                        if (broadOverlapTest(objA, objB) === true) {
-                            possibleCollisions.push([objA, objB]);
-                        }
-                    }
-                }
-
-                // for the first half of all adjacent cells (offset 4 is the current cell)
-                for (c = 0; c < 4; c++) {
-                    offset = cell.neighborOffsetArray[c];
-
-                    //if(offset === null) { continue; }
-
-                    adjacentCell = grid.allCells[cell.allCellsIndex + offset];
-
-                    // collide all objects in cell with adjacent cell
-                    for (k = 0; k < cell.objectContainer.length; k++) {
-                        objA = cell.objectContainer[k];
-                        if (objA.staticHshg) {
-                            continue;
-                        }
-                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
-                            objB = adjacentCell.objectContainer[l];
-                            if (broadOverlapTest(objA, objB) === true) {
-                                possibleCollisions.push([objA, objB]);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // forall objects that are stored in this grid
-            for (j = 0; j < grid.allObjects.length; j++) {
-                objA = grid.allObjects[j];
-                if (objA.staticHshg) {
-                    continue;
-                }
-                objAAABB = objA.getAABB();
-
-                // for all grids with cellsize larger than grid
-                for (k = i + 1; k < this._grids.length; k++) {
-                    biggerGrid = this._grids[k];
-                    objAHashInBiggerGrid = biggerGrid.toHash(objAAABB.min[0], objAAABB.min[1]);
-                    cell = biggerGrid.allCells[objAHashInBiggerGrid];
-
-                    // check objA against every object in all cells in offset array of cell
-                    // for all adjacent cells...
-                    for (c = 0; c < cell.neighborOffsetArray.length; c++) {
-                        offset = cell.neighborOffsetArray[c];
-
-                        //if(offset === null) { continue; }
-
-                        adjacentCell = biggerGrid.allCells[cell.allCellsIndex + offset];
-
-                        // for all objects in the adjacent cell...
-                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
-                            objB = adjacentCell.objectContainer[l];
-                            // test against object A
-                            if (broadOverlapTest(objA, objB) === true) {
-                                possibleCollisions.push([objA, objB]);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        //
-        for (i = 0; i < possibleCollisions.length; ++i) {
-            if (possibleCollisions[i][0].onCollide) {
-                possibleCollisions[i][0].onCollide(possibleCollisions[i][1]);
-            }
-            if (possibleCollisions[i][1].onCollide) {
-                possibleCollisions[i][1].onCollide(possibleCollisions[i][0]);
-            }
-        }
-
-        // return list of object pairs
-        return possibleCollisions;
-    }
-
-    HSHG.update_RECOMPUTE = update_RECOMPUTE;
-    HSHG.update_REMOVEALL = update_REMOVEALL;
-
-    /**
-     * Grid
-     *
-     * @constructor
-     * @param   int cellSize  the pixel size of each cell of the grid
-     * @param   int cellCount  the total number of cells for the grid (width x height)
-     * @param   HSHG parentHierarchy    the HSHG to which this grid belongs
-     * @return  void
-     */
-    function Grid(cellSize, cellCount, parentHierarchy) {
-        this.cellSize = cellSize;
-        this.inverseCellSize = 1 / cellSize;
-        this.rowColumnCount = ~~Math.sqrt(cellCount);
-        this.xyHashMask = this.rowColumnCount - 1;
-        this.occupiedCells = [];
-        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
-        this.allObjects = [];
-        this.sharedInnerOffsets = [];
-
-        this._parentHierarchy = parentHierarchy || null;
-    }
-
-    Grid.prototype.initCells = function () {
-
-        // TODO: inner/unique offset rows 0 and 2 may need to be
-        // swapped due to +y being "down" vs "up"
-
-        var i, gridLength = this.allCells.length,
-            x, y, wh = this.rowColumnCount,
-            isOnRightEdge, isOnLeftEdge, isOnTopEdge, isOnBottomEdge, innerOffsets = [
-                // y+ down offsets
-                //-1 + -wh, -wh, -wh + 1,
-                //-1, 0, 1,
-                //wh - 1, wh, wh + 1
-
-                // y+ up offsets
-                wh - 1, wh, wh + 1, -1, 0, 1, -1 + -wh, -wh, -wh + 1
-            ],
-            leftOffset, rightOffset, topOffset, bottomOffset, uniqueOffsets = [],
-            cell;
-
-        this.sharedInnerOffsets = innerOffsets;
-
-        // init all cells, creating offset arrays as needed
-
-        for (i = 0; i < gridLength; i++) {
-
-            cell = new Cell();
-            // compute row (y) and column (x) for an index
-            y = ~~ (i / this.rowColumnCount);
-            x = ~~ (i - (y * this.rowColumnCount));
-
-            // reset / init
-            isOnRightEdge = false;
-            isOnLeftEdge = false;
-            isOnTopEdge = false;
-            isOnBottomEdge = false;
-
-            // right or left edge cell
-            if ((x + 1) % this.rowColumnCount == 0) {
-                isOnRightEdge = true;
-            } else if (x % this.rowColumnCount == 0) {
-                isOnLeftEdge = true;
-            }
-
-            // top or bottom edge cell
-            if ((y + 1) % this.rowColumnCount == 0) {
-                isOnTopEdge = true;
-            } else if (y % this.rowColumnCount == 0) {
-                isOnBottomEdge = true;
-            }
-
-            // if cell is edge cell, use unique offsets, otherwise use inner offsets
-            if (isOnRightEdge || isOnLeftEdge || isOnTopEdge || isOnBottomEdge) {
-
-                // figure out cardinal offsets first
-                rightOffset = isOnRightEdge === true ? -wh + 1 : 1;
-                leftOffset = isOnLeftEdge === true ? wh - 1 : -1;
-                topOffset = isOnTopEdge === true ? -gridLength + wh : wh;
-                bottomOffset = isOnBottomEdge === true ? gridLength - wh : -wh;
-
-                // diagonals are composites of the cardinals            
-                uniqueOffsets = [
-                    // y+ down offset
-                    //leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset,
-                    //leftOffset, 0, rightOffset,
-                    //leftOffset + topOffset, topOffset, rightOffset + topOffset
-
-                    // y+ up offset
-                    leftOffset + topOffset, topOffset, rightOffset + topOffset,
-                    leftOffset, 0, rightOffset,
-                    leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset
-                ];
-
-                cell.neighborOffsetArray = uniqueOffsets;
-            } else {
-                cell.neighborOffsetArray = this.sharedInnerOffsets;
-            }
-
-            cell.allCellsIndex = i;
-            this.allCells[i] = cell;
-        }
-    }
-
-    Grid.prototype.toHash = function (x, y, z) {
-        var i, xHash, yHash, zHash;
-
-        if (x < 0) {
-            i = (-x) * this.inverseCellSize;
-            xHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
-        } else {
-            i = x * this.inverseCellSize;
-            xHash = ~~i & this.xyHashMask;
-        }
-
-        if (y < 0) {
-            i = (-y) * this.inverseCellSize;
-            yHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
-        } else {
-            i = y * this.inverseCellSize;
-            yHash = ~~i & this.xyHashMask;
-        }
-
-        //if(z < 0){
-        //  i = (-z) * this.inverseCellSize;
-        //  zHash = this.rowColumnCount - 1 - ( ~~i & this.xyHashMask );
-        //} else {
-        //  i = z * this.inverseCellSize;
-        //  zHash = ~~i & this.xyHashMask;
-        //}
-
-        return xHash + yHash * this.rowColumnCount
-            //+ zHash * this.rowColumnCount * this.rowColumnCount;
-    }
-
-    Grid.prototype.addObject = function (obj, hash) {
-        var objAABB, objHash, targetCell;
-
-        // technically, passing this in this should save some computational effort when updating objects
-        if (hash !== undefined) {
-            objHash = hash;
-        } else {
-            objAABB = obj.getAABB()
-            objHash = this.toHash(objAABB.min[0], objAABB.min[1])
-        }
-        targetCell = this.allCells[objHash];
-
-        if (targetCell.objectContainer.length === 0) {
-            // insert this cell into occupied cells list
-            targetCell.occupiedCellsIndex = this.occupiedCells.length;
-            this.occupiedCells.push(targetCell);
-        }
-
-        // add meta data to obj, for fast update/removal
-        obj.HSHG.objectContainerIndex = targetCell.objectContainer.length;
-        obj.HSHG.hash = objHash;
-        obj.HSHG.grid = this;
-        obj.HSHG.allGridObjectsIndex = this.allObjects.length;
-        // add obj to cell
-        targetCell.objectContainer.push(obj);
-
-        // we can assume that the targetCell is already a member of the occupied list
-
-        // add to grid-global object list
-        this.allObjects.push(obj);
-
-        // do test for grid density
-        if (this.allObjects.length / this.allCells.length > this._parentHierarchy.MAX_OBJECT_CELL_DENSITY) {
-            // grid must be increased in size
-            this.expandGrid();
-        }
-    }
-
-    Grid.prototype.removeObject = function (obj) {
-        var meta = obj.HSHG,
-            hash, containerIndex, allGridObjectsIndex, cell, replacementCell, replacementObj;
-
-        hash = meta.hash;
-        containerIndex = meta.objectContainerIndex;
-        allGridObjectsIndex = meta.allGridObjectsIndex;
-        cell = this.allCells[hash];
-
-        // remove object from cell object container
-        if (cell.objectContainer.length === 1) {
-            // this is the last object in the cell, so reset it
-            cell.objectContainer.length = 0;
-
-            // remove cell from occupied list
-            if (cell.occupiedCellsIndex === this.occupiedCells.length - 1) {
-                // special case if the cell is the newest in the list
-                this.occupiedCells.pop();
-            } else {
-                replacementCell = this.occupiedCells.pop();
-                replacementCell.occupiedCellsIndex = cell.occupiedCellsIndex;
-                this.occupiedCells[cell.occupiedCellsIndex] = replacementCell;
-            }
-
-            cell.occupiedCellsIndex = null;
-        } else {
-            // there is more than one object in the container
-            if (containerIndex === cell.objectContainer.length - 1) {
-                // special case if the obj is the newest in the container
-                cell.objectContainer.pop();
-            } else {
-                replacementObj = cell.objectContainer.pop();
-                replacementObj.HSHG.objectContainerIndex = containerIndex;
-                cell.objectContainer[containerIndex] = replacementObj;
-            }
-        }
-
-        // remove object from grid object list
-        if (allGridObjectsIndex === this.allObjects.length - 1) {
-            this.allObjects.pop();
-        } else {
-            replacementObj = this.allObjects.pop();
-            replacementObj.HSHG.allGridObjectsIndex = allGridObjectsIndex;
-            this.allObjects[allGridObjectsIndex] = replacementObj;
-        }
-    }
-
-    Grid.prototype.expandGrid = function () {
-        var i, j, currentCellCount = this.allCells.length,
-            currentRowColumnCount = this.rowColumnCount,
-            currentXYHashMask = this.xyHashMask
-
-        , newCellCount = currentCellCount * 4 // double each dimension
-        , newRowColumnCount = ~~Math.sqrt(newCellCount), newXYHashMask = newRowColumnCount - 1, allObjects = this.allObjects.slice(0) // duplicate array, not objects contained
-        , aCell, push = Array.prototype.push;
-
-        // remove all objects
-        for (i = 0; i < allObjects.length; i++) {
-            this.removeObject(allObjects[i]);
-        }
-
-        // reset grid values, set new grid to be 4x larger than last
-        this.rowColumnCount = newRowColumnCount;
-        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
-        this.xyHashMask = newXYHashMask;
-
-        // initialize new cells
-        this.initCells();
-
-        // re-add all objects to grid
-        for (i = 0; i < allObjects.length; i++) {
-            this.addObject(allObjects[i]);
-        }
-    }
-
-    /**
-     * A cell of the grid
-     *
-     * @constructor
-     * @return  void   desc
-     */
-    function Cell() {
-        this.objectContainer = [];
-        this.neighborOffsetArray;
-        this.occupiedCellsIndex = null;
-        this.allCellsIndex = null;
-    }
-
-    //---------------------------------------------------------------------
-    // EXPORTS
-    //---------------------------------------------------------------------
-
-    HSHG._private = {
-        Grid: Grid,
-        Cell: Cell,
-        testAABBOverlap: testAABBOverlap,
-        getLongestAABBEdge: getLongestAABBEdge
-    };
-
-    return HSHG;
-});
-// http://www.makeitgo.ws/articles/animationframe/
-// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
-// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
-bento.define('bento/lib/requestanimationframe', [], function () {
-    'use strict';
-
-    var lastTime = 0,
-        vendors = ['ms', 'moz', 'webkit', 'o'];
-    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
-        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
-    }
-
-    if (!window.requestAnimationFrame)
-        window.requestAnimationFrame = function (callback, element) {
-            var currTime = new Date().getTime(),
-                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
-                id = window.setTimeout(function () {
-                    callback(currTime + timeToCall);
-                }, timeToCall);
-            lastTime = currTime + timeToCall;
-            return id;
-        };
-
-    if (!window.cancelAnimationFrame)
-        window.cancelAnimationFrame = function (id) {
-            clearTimeout(id);
-        };
-    return window.requestAnimationFrame;
-});
-/**
  * Manager that loads and controls assets
  * <br>Exports: Function
  * @module bento/managers/asset
@@ -7672,8 +7144,9 @@ bento.define('bento/lib/requestanimationframe', [], function () {
  */
 bento.define('bento/managers/asset', [
     'bento/packedimage',
-    'bento/utils'
-], function (PackedImage, Utils) {
+    'bento/utils',
+    'audia'
+], function (PackedImage, Utils, Audia) {
     'use strict';
     return function () {
         var assetGroups = {},
@@ -7687,8 +7160,10 @@ bento.define('bento/managers/asset', [
             texturePacker = {},
             packs = [],
             loadAudio = function (name, source, callback) {
-                var asset,
-                    i;
+                var audio,
+                    i,
+                    canPlay,
+                    failed = true;
                 if (!Utils.isArray(source)) {
                     source = [path + 'audio/' + source];
                 } else {
@@ -7697,16 +7172,24 @@ bento.define('bento/managers/asset', [
                         source[i] = path + 'audio/' + source[i];
                     }
                 }
-                // TEMP: use howler
-                if (Utils.isDefined(window.Howl)) {
-                    asset = new Howl({
-                        urls: source,
-                        onload: callback
-                    });
-                    assets.audio[name] = asset;
-                } else {
-                    // TODO: load audio and add audio manager
-                    callback();
+                // try every type
+                for (i = 0; i < source.length; ++i) {
+                    audio = new Audia();
+                    canPlay = audio.canPlayType('audio/' + source[i].slice(-3));
+                    if (!!canPlay) {
+                        // success!
+                        audio.src = source[i];
+                        callback(null, name, audio);
+                        // TODO: proper loaded event, the following event does not work for HTML5 audio
+                        // audio.addEventListener('load', function () {
+                        //     callback(null, name, audio);
+                        // }, false);
+                        failed = false;
+                        break;
+                    }
+                }
+                if (failed) {
+                    callback('This audio type is not supported:', name, source);
                 }
             },
             loadJSON = function (name, source, callback) {
@@ -7815,6 +7298,7 @@ bento.define('bento/managers/asset', [
                     asset,
                     assetsLoaded = 0,
                     assetCount = 0,
+                    toLoad = [],
                     checkLoaded = function () {
                         if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
                             initPackedImages();
@@ -7858,12 +7342,33 @@ bento.define('bento/managers/asset', [
                         }
                         checkLoaded();
                     },
-                    onLoadAudio = function () {
+                    onLoadAudio = function (err, name, audio) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.audio[name] = audio;
                         assetsLoaded += 1;
                         if (Utils.isDefined(onLoaded)) {
                             onLoaded(assetsLoaded, assetCount);
                         }
                         checkLoaded();
+                    },
+                    readyForLoading = function (fn, asset, path, callback) {
+                        toLoad.push({
+                            fn: fn,
+                            asset: asset,
+                            path: path,
+                            callback: callback
+                        })
+                    },
+                    loadAllAssets = function () {
+                        var i = 0,
+                            data;
+                        for (i = 0; i < toLoad.length; ++i) {
+                            data = toLoad[i]; 
+                            data.fn(data.asset, data.path, data.callback);
+                        }
                     };
 
                 if (!Utils.isDefined(group)) {
@@ -7874,47 +7379,49 @@ bento.define('bento/managers/asset', [
                 if (Utils.isDefined(group.path)) {
                     path = group.path;
                 }
-                // load images
+                // count the number of assets first
+                // get images
                 if (Utils.isDefined(group.images)) {
                     assetCount += Utils.getKeyLength(group.images);
                     for (asset in group.images) {
                         if (!group.images.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadImage(asset, path + 'images/' + group.images[asset], onLoadImage);
+                        readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
                     }
                 }
-                // load packed images
+                // get packed images
                 if (Utils.isDefined(group.texturePacker)) {
                     assetCount += Utils.getKeyLength(group.texturePacker);
                     for (asset in group.texturePacker) {
                         if (!group.texturePacker.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadJSON(asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                        readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
                     }
                 }
-                // load audio
+                // get audio
                 if (Utils.isDefined(group.audio)) {
                     assetCount += Utils.getKeyLength(group.audio);
                     for (asset in group.audio) {
                         if (!group.audio.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadAudio(asset, group.audio[asset], onLoadAudio);
+                        readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
                     }
                 }
-                // load json
+                // get json
                 if (Utils.isDefined(group.json)) {
                     assetCount += Utils.getKeyLength(group.json);
                     for (asset in group.json) {
                         if (!group.json.hasOwnProperty(asset)) {
                             continue;
                         }
-                        loadJSON(asset, path + 'json/' + group.json[asset], onLoadJson);
+                        readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
                     }
                 }
-
+                // load all assets
+                loadAllAssets();
             },
             /**
              * Unloads assets (not implemented yet)
@@ -7979,7 +7486,7 @@ bento.define('bento/managers/asset', [
              * @function
              * @instance
              * @param {String} name - Name of image
-             * @returns {Howl} Howler object
+             * @returns {Audia} Audia object
              * @name getAudio
              */
             getAudio = function (name) {
@@ -8074,16 +7581,23 @@ define('bento/managers/audio', [
                  * @param {String} name: name of the sound currently playing
                  */
                 setVolume: function (value, name) {
-                    assetManager.getAudio(name).volume(value);
+                    assetManager.getAudio(name).volume = value;
                 },
                 /* Plays a sound
                  * @name playSound
                  * @function
                  * @param {String} name: name of the soundfile
                  */
-                playSound: function (name) {
+                playSound: function (name, loop, onEnd) {
+                    var audio = assetManager.getAudio(name);
                     if (!mutedSound && !preventSounds) {
-                        assetManager.getAudio(name).play();
+                        if (Utils.isDefined(loop)) {
+                            audio.loop = loop;
+                        }
+                        if (Utils.isDefined(onEnd)) {
+                            audio.onended = onEnd;
+                        }
+                        audio.play();
                     }
                 },
                 stopSound: function (name) {
@@ -8096,6 +7610,7 @@ define('bento/managers/audio', [
                  * @param {String} name: name of the soundfile
                  */
                 playMusic: function (name, loop, onEnd, time) {
+                    var audio = assetManager.getAudio(name);
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
                         musicLoop = loop;
@@ -8103,28 +7618,16 @@ define('bento/managers/audio', [
                         musicLoop = true;
                     }
                     // set end event
-                    if (Utils.isCocoonJS() && onEnd) {
-                        assetManager.getAudio(name)._audioNode[0].onended = onEnd;
+                    if (onEnd) {
+                        audio.onended = onEnd;
                     }
                     if (!mutedMusic && lastMusicPlayed !== '') {
-                        if (Utils.isCocoonJS()) {
-                            assetManager.getAudio(name)._audioNode[0].currentTime = time || 0;
-                            assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
-                            assetManager.getAudio(name)._audioNode[0].play();
-                            return;
-                        }
-                        assetManager.getAudio(name).loop(musicLoop);
-                        assetManager.getAudio(name).play(function (id) {
-                            currentMusicId = id;
-                        });
+                        audio.loop = musicLoop;
+                        audio.play(time || 0);
                     }
                 },
                 stopMusic: function (name) {
                     var i, l, node;
-                    if (Utils.isCocoonJS()) {
-                        assetManager.getAudio(name)._audioNode[0].pause();
-                        return;
-                    }
                     assetManager.getAudio(name).stop();
                 },
                 /* Mute or unmute all sound
@@ -8164,10 +7667,10 @@ define('bento/managers/audio', [
                  */
                 stopAllSound: function () {
                     var sound,
-                        howls = assetManager.getAssets().audio;
-                    for (sound in howls) {
-                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
-                            howls[sound].stop();
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
+                            sounds[sound].stop();
                         }
                     }
                 },
@@ -8177,14 +7680,10 @@ define('bento/managers/audio', [
                  */
                 stopAllMusic: function () {
                     var sound,
-                        howls = assetManager.getAssets().audio;
-                    for (sound in howls) {
-                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
-                            if (Utils.isCocoonJS()) {
-                                howls[sound]._audioNode[0].pause();
-                                continue;
-                            }
-                            howls[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
+                            sounds[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
                         }
                     }
                     lastMusicPlayed = '';

@@ -43,16 +43,23 @@ define('bento/managers/audio', [
                  * @param {String} name: name of the sound currently playing
                  */
                 setVolume: function (value, name) {
-                    assetManager.getAudio(name).volume(value);
+                    assetManager.getAudio(name).volume = value;
                 },
                 /* Plays a sound
                  * @name playSound
                  * @function
                  * @param {String} name: name of the soundfile
                  */
-                playSound: function (name) {
+                playSound: function (name, loop, onEnd) {
+                    var audio = assetManager.getAudio(name);
                     if (!mutedSound && !preventSounds) {
-                        assetManager.getAudio(name).play();
+                        if (Utils.isDefined(loop)) {
+                            audio.loop = loop;
+                        }
+                        if (Utils.isDefined(onEnd)) {
+                            audio.onended = onEnd;
+                        }
+                        audio.play();
                     }
                 },
                 stopSound: function (name) {
@@ -65,6 +72,7 @@ define('bento/managers/audio', [
                  * @param {String} name: name of the soundfile
                  */
                 playMusic: function (name, loop, onEnd, time) {
+                    var audio = assetManager.getAudio(name);
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
                         musicLoop = loop;
@@ -72,28 +80,16 @@ define('bento/managers/audio', [
                         musicLoop = true;
                     }
                     // set end event
-                    if (Utils.isCocoonJS() && onEnd) {
-                        assetManager.getAudio(name)._audioNode[0].onended = onEnd;
+                    if (onEnd) {
+                        audio.onended = onEnd;
                     }
                     if (!mutedMusic && lastMusicPlayed !== '') {
-                        if (Utils.isCocoonJS()) {
-                            assetManager.getAudio(name)._audioNode[0].currentTime = time || 0;
-                            assetManager.getAudio(name)._audioNode[0].loop = musicLoop;
-                            assetManager.getAudio(name)._audioNode[0].play();
-                            return;
-                        }
-                        assetManager.getAudio(name).loop(musicLoop);
-                        assetManager.getAudio(name).play(function (id) {
-                            currentMusicId = id;
-                        });
+                        audio.loop = musicLoop;
+                        audio.play(time || 0);
                     }
                 },
                 stopMusic: function (name) {
                     var i, l, node;
-                    if (Utils.isCocoonJS()) {
-                        assetManager.getAudio(name)._audioNode[0].pause();
-                        return;
-                    }
                     assetManager.getAudio(name).stop();
                 },
                 /* Mute or unmute all sound
@@ -133,10 +129,10 @@ define('bento/managers/audio', [
                  */
                 stopAllSound: function () {
                     var sound,
-                        howls = assetManager.getAssets().audio;
-                    for (sound in howls) {
-                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
-                            howls[sound].stop();
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
+                            sounds[sound].stop();
                         }
                     }
                 },
@@ -146,14 +142,10 @@ define('bento/managers/audio', [
                  */
                 stopAllMusic: function () {
                     var sound,
-                        howls = assetManager.getAssets().audio;
-                    for (sound in howls) {
-                        if (howls.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
-                            if (Utils.isCocoonJS()) {
-                                howls[sound]._audioNode[0].pause();
-                                continue;
-                            }
-                            howls[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
+                            sounds[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
                         }
                     }
                     lastMusicPlayed = '';
