@@ -14,7 +14,7 @@
         "gulp-uglify": "*",
         "jsdoc": "*",
         "minami": "git://github.com/LuckyKat/minami.git",
-        "gl-sprites": "git://github.com/mattdesl/gl-sprites.git",
+        "gl-sprites": "git://github.com/LuckyKat/gl-sprites.git",
         "gl-texture2d": "^2.0.7",
         "webpack": "*"
     }

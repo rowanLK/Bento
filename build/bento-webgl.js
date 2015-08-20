@@ -239,7 +239,8 @@
 	        var gl = this.gl
 	        if (this._blendEnabled) {
 	            gl.enable(gl.BLEND)
-	            gl.blendFunc(this._blendSrc, this._blendDst)
+	            // gl.blendFunc(this._blendSrc, this._blendDst)
+	            gl.blendFuncSeparate(this._blendSrc, this._blendDst, gl.ONE, this._blendDst);
 	        }
 
 	        this._bound = true

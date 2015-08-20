@@ -52,30 +52,6 @@ gulp.task('default', ['webgl'], function () {
         .pipe(gulp.dest('build'));
 });
 
-gulp.task('light', function () {
-    // place code for your default task here
-    return gulp.src([
-            '!js/lib/fpsmeter.js',
-            'js/**/main.js',
-            'js/**/*.js'
-        ])
-        // check for mistakes
-        /*.pipe(jshint({
-            newcap: false
-        }))
-        .pipe(jshint.reporter())*/
-        // add bower components
-        .pipe(addsrc.prepend('bower_components/requirejs/require.js'))
-        .pipe(addsrc.prepend('bower_components/howler/howler.js'))
-        // output rice.js
-        .pipe(concat('bento-light.js'))
-        .pipe(gulp.dest('build'))
-        // output rice.min.js
-        .pipe(uglify())
-        .pipe(rename('bento-light.min.js'))
-        .pipe(gulp.dest('build'));
-});
-
 gulp.task('check', function () {
     // place code for your default task here
     return gulp.src(['js/**/main.js', 'js/**/*.js', '!js/lib/*.js'])
