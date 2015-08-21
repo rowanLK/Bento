@@ -12,6 +12,7 @@
         "gulp-jshint": "*",
         "gulp-rename": "*",
         "gulp-uglify": "*",
+        "requirejs": "2.1.9",
         "jsdoc": "*",
         "minami": "git://github.com/LuckyKat/minami.git",
         "gl-sprites": "git://github.com/LuckyKat/gl-sprites.git",

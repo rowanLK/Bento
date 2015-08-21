@@ -62,6 +62,13 @@ bento.require([
     });
 });
 ```
+## Acknowledgement
+
+Bento has the following dependencies:
+* Require.js by jrburke
+* gl-sprites by mattdesl
+* Audia by richaur (AMD implementation by sprky0)
+* hshg by kirbysayshi
 
 ## License
 

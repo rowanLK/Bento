@@ -19,7 +19,10 @@ bento.define('screen2', [
 ) {
     'use strict';
     var object = Screen({
-        tiled: 'level2'
+        tiled: 'level2',
+        onShow: function () {
+            console.log('screen 2 loaded');
+        }
     });
     return object;
 });

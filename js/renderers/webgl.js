@@ -98,8 +98,7 @@ bento.define('bento/renderers/webgl', [
         console.log('Init webgl as renderer');
         // smoothing
         if (!settings.smoothing) {
-            resizer = window.devicePixelRatio || 2;
-            resizer *= 2;
+            resizer = Math.floor(Math.max(window.innerWidth / canvas.width, window.innerHeight / canvas.height, 1));
         }
 
         // fallback

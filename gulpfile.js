@@ -40,12 +40,12 @@ gulp.task('default', ['webgl'], function () {
             newcap: false
         }))
         .pipe(jshint.reporter())*/
-        // add bower components
-        .pipe(addsrc.prepend('bower_components/requirejs/require.js'))
-        // output rice.js
+        // add requirejs
+        .pipe(addsrc.prepend('node_modules/requirejs/require.js'))
+        // output bento.js
         .pipe(concat('bento.js'))
         .pipe(gulp.dest('build'))
-        // output rice.min.js
+        // output bento.min.js
         .pipe(uglify())
         .pipe(rename('bento.min.js'))
         .pipe(gulp.dest('build'));
