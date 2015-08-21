@@ -3,7 +3,7 @@
  * <br>Exports: Object
  * @module bento
  */
-define('bento', [
+bento.define('bento', [
     'bento/utils',
     'bento/lib/domready',
     'bento/managers/asset',

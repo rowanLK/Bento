@@ -36,9 +36,9 @@ gulp.task('webgl', function () {
 gulp.task('default', ['webgl'], function () {
     // place code for your default task here
     return gulp.src([
-            'js/lib/audia.js',
             'js/lib/fpsmeter.js',
             'js/**/main.js',
+            'js/lib/audia.js',
             'js/**/*.js'
         ])
         // check for mistakes
