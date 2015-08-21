@@ -24,6 +24,12 @@ gulp.task('webgl', function () {
         if (err) {
             console.log(err);
         }
+        gulp.src([
+            'build/bento-webgl.js'
+        ])
+        .pipe(uglify())
+        .pipe(rename('bento-webgl.min.js'))
+        .pipe(gulp.dest('build'));
     });
 });
 
