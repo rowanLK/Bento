@@ -4,7 +4,7 @@ Bento is a modular, component based Javascript game engine.
 
 ## Installation
 
-Use `npm install`. Also install bower and use `bower install`. To build the engine, use the `gulp` command. If you don't want to build you can also just get bento.js from the build folder.
+Install Node.js and use `npm install`. To build the engine, use the `gulp` command. If you don't want to build you can also just get bento.js from the build folder and include this in your game.
 
 ## How to use
 
