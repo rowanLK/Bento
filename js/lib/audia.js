@@ -57,6 +57,7 @@ bento.define("audia", [], function () {
                 object.dispatchEvent("load" /*, TODO*/ );
 
                 object._autoplay && object.play();
+                object._onload && object.onload();
             };
 
             // Got a cached buffer or should we fetch it?
@@ -122,6 +123,7 @@ bento.define("audia", [], function () {
             this._src = "";
             this._volume = 1;
             this._onended = null;
+            this._onload = null;
 
             // Create gain node
             this.gainNode = audioContext.createGain();
@@ -411,7 +413,14 @@ bento.define("audia", [], function () {
                 this._onended = value;
             }
         });
-
+        Object.defineProperty(Audia.prototype, "onload", {
+            get: function () {
+                return this._onload;
+            },
+            set: function (value) {
+                this._onload = value;
+            }
+        });
 
     } else {
 
@@ -620,6 +629,15 @@ bento.define("audia", [], function () {
             },
             set: function (value) {
                 this._audioNode.onended = value;
+            }
+        });
+
+        Object.defineProperty(Audia.prototype, "onload", {
+            get: function () {
+                return this._audioNode.onload;
+            },
+            set: function (value) {
+                this._audioNode.onload = value;
             }
         });
     }

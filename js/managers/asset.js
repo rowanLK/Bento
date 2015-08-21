@@ -41,11 +41,9 @@ bento.define('bento/managers/asset', [
                     if (!!canPlay) {
                         // success!
                         audio.src = source[i];
-                        callback(null, name, audio);
-                        // TODO: proper loaded event, the following event does not work for HTML5 audio
-                        // audio.addEventListener('load', function () {
-                        //     callback(null, name, audio);
-                        // }, false);
+                        audio.onload = function () {
+                            callback(null, name, audio);
+                        }
                         failed = false;
                         break;
                     }
