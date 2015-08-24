@@ -40,10 +40,10 @@ bento.define('bento/managers/asset', [
                     canPlay = audio.canPlayType('audio/' + source[i].slice(-3));
                     if (!!canPlay) {
                         // success!
-                        audio.src = source[i];
                         audio.onload = function () {
                             callback(null, name, audio);
                         }
+                        audio.src = source[i];
                         failed = false;
                         break;
                     }

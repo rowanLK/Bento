@@ -72,7 +72,7 @@ define('bento/managers/audio', [
                  * @param {String} name: name of the soundfile
                  */
                 playMusic: function (name, loop, onEnd, time) {
-                    var audio = assetManager.getAudio(name);
+                    var audio;
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
                         musicLoop = loop;
@@ -80,10 +80,11 @@ define('bento/managers/audio', [
                         musicLoop = true;
                     }
                     // set end event
-                    if (onEnd) {
-                        audio.onended = onEnd;
-                    }
                     if (!mutedMusic && lastMusicPlayed !== '') {
+                        audio = assetManager.getAudio(name)
+                        if (onEnd) {
+                            audio.onended = onEnd;
+                        }
                         audio.loop = musicLoop;
                         audio.play(time || 0);
                     }

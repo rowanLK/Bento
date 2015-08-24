@@ -13,7 +13,7 @@ bento.define("audia", [], function () {
     var audioContext = null;
     if (typeof AudioContext == "function") {
         audioContext = new AudioContext();
-    } else if (typeof webkitAudioContext == "function") {
+    } else if (window.webkitAudioContext) {
         audioContext = new webkitAudioContext();
     }
 
@@ -607,7 +607,21 @@ bento.define("audia", [], function () {
                 return this._audioNode.src;
             },
             set: function (value) {
+                var self = this,
+                    listener = function () {
+                        if (self.onload) {
+                            self.onload();
+                        }
+                        // clear the event listener
+                        self._audioNode.removeEventListener('canplaythrough', listener, false);
+                    };
                 this._audioNode.src = value;
+                this._audioNode.preload = "auto";
+                this._audioNode.addEventListener('canplaythrough', listener, false);
+                this._audioNode.addEventListener('error', function (e) {
+                    console.log('audio load error', self._audioNode.error);
+                }, false);
+                this._audioNode.load();
             }
         });
 
@@ -771,4 +785,3 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The views and conclusions contained in the software and documentation are those of the
 author(s) and should not be interpreted as representing official policies, either expressed
 or implied, of the author(s).
-*/
