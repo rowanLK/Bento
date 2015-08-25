@@ -102,7 +102,7 @@ bento.define('bento/renderers/webgl', [
         // smoothing
         if (!settings.smoothing) {
             if (windowWidth > windowHeight) {
-                pixelSize = Math.round(Math.max(window.innerHeight / canvas.height, 1));
+                pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
             } else {
                 pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
 
