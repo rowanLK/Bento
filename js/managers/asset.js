@@ -381,7 +381,6 @@ bento.define('bento/managers/asset', [
                         frame = json.frames[i].frame;
                         texturePacker[name] = PackedImage(image, frame);
                     }
-                    console.log(texturePacker);
                 }
             };
         return {
