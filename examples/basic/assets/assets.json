@@ -6,5 +6,8 @@
         "buttonb": "buttonb.png",
         "buttonl": "buttonl.png",
         "buttonr": "buttonr.png"
+    },
+    "json": {
+        "bunny": "bunny.json"
     }
 }

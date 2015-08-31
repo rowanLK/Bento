@@ -45,17 +45,7 @@ bento.require([
                     components: [Translation, Animation, Clickable],
                     position: Vector2(16, 16),
                     originRelative: Vector2(0.5, 0.5),
-                    animation: {
-                        image: Bento.assets.getImage('bunnygirlsmall'),
-                        frameWidth: 32,
-                        frameHeight: 32,
-                        animations: {
-                            'idle': {
-                                speed: 0.1,
-                                frames: [0, 10, 11, 12]
-                            }
-                        },
-                    },
+                    animation: Bento.assets.getJson('bunny'),
                     clickable: {
                         pointerDown: function (evt) {
                             console.log(evt);
@@ -151,6 +141,7 @@ bento.require([
             Bento.objects.add(bunny2);
             Bento.objects.add(bunny3);
             Bento.objects.add(bunny4);
+
 
         }, function (current, total) {
             console.log(current + '/' + total);
