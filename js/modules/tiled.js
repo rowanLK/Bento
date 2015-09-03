@@ -11,12 +11,13 @@
 define('bento/tiled', [
     'bento',
     'bento/entity',
+    'bento/components/sprite',
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/math/polygon',
     'bento/packedimage',
     'bento/utils'
-], function (Bento, Entity, Vector2, Rectangle, Polygon, PackedImage, Utils) {
+], function (Bento, Entity, Sprite, Vector2, Rectangle, Polygon, PackedImage, Utils) {
     'use strict';
     return function (settings, onReady) {
         /*settings = {
@@ -43,25 +44,25 @@ define('bento/tiled', [
             objects = [],
             shapes = [],
             viewport = Bento.getViewport(),
-            background = Entity().extend({
-                z: 0,
-                draw: function (gameData) {
-                    var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
-                        h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0),
-                        img = PackedImage(canvas);
+            // background = Entity().extend({
+            //     z: 0,
+            //     draw: function (gameData) {
+            //         var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
+            //             h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0),
+            //             img = PackedImage(canvas);
 
-                    if (w === 0 || h === 0) {
-                        return;
-                    }
-                    // TODO: make pixi compatible
-                    // only draw the part in the viewport
-                    gameData.renderer.drawImage(
-                        img, ~~ (Math.max(Math.min(viewport.x, canvas.width), 0)), ~~ (Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
-                        0,
-                        0, ~~w, ~~h
-                    );
-                }
-            }),
+            //         if (w === 0 || h === 0) {
+            //             return;
+            //         }
+            //         // TODO: make pixi compatible
+            //         // only draw the part in the viewport
+            //         gameData.renderer.drawImage(
+            //             img, ~~ (Math.max(Math.min(viewport.x, canvas.width), 0)), ~~ (Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
+            //             0,
+            //             0, ~~w, ~~h
+            //         );
+            //     }
+            // }),
             getTileset = function (gid) {
                 var l,
                     tileset,
@@ -230,7 +231,7 @@ define('bento/tiled', [
                         // normal object
                         spawnObject(object);
                     } else if (object.polygon) {
-                        // polygon 
+                        // polygon
                         points = [];
                         for (j = 0; j < object.polygon.length; ++j) {
                             points.push({
@@ -248,11 +249,27 @@ define('bento/tiled', [
                 }
             }
         }
+        // TODO: turn this quickfix, into a permanent fix. DEV-95 on JIRA
+        var packedImage = PackedImage(canvas),
+            background = Entity({
+                z: 0,
+                name: '',
+                useHshg: false,
+                position: Vector2(0, 0),
+                originRelative: Vector2(0, 0),
+                components: [Sprite],
+                family: [''],
+                sprite: {
+                    image: packedImage
+                }
+            })
 
         // add background to game
         if (settings.spawn) {
             Bento.objects.add(background);
         }
+
+
 
         return {
             /**

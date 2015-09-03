@@ -1,6 +1,6 @@
 /**
  * Screen object. Screens are convenience modules that are similar to levels/rooms/scenes in games.
- * Tiled Map Editor can be used to design the levels.  
+ * Tiled Map Editor can be used to design the levels.
  * <br>Exports: Function
  * @module bento/screen
  * @param {Object} settings - Settings object

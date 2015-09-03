@@ -226,7 +226,7 @@ bento.define('bento/managers/asset', [
                         var i = 0,
                             data;
                         for (i = 0; i < toLoad.length; ++i) {
-                            data = toLoad[i]; 
+                            data = toLoad[i];
                             data.fn(data.asset, data.path, data.callback);
                         }
                     };
@@ -382,6 +382,16 @@ bento.define('bento/managers/asset', [
                         texturePacker[name] = PackedImage(image, frame);
                     }
                 }
+            },
+            /**
+             * Returns asset group
+             * @function
+             * @instance
+             * @returns {Object} assetGroups - reference to loaded JSON file
+             * @name getAssetGroups
+             */
+            getAssetGroups = function () {
+                return assetGroups;
             };
         return {
             loadAssetGroups: loadAssetGroups,
@@ -391,7 +401,8 @@ bento.define('bento/managers/asset', [
             getImageElement: getImageElement,
             getJson: getJson,
             getAudio: getAudio,
-            getAssets: getAssets
+            getAssets: getAssets,
+            getAssetGroups: getAssetGroups
         };
     };
 });
