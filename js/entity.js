@@ -432,7 +432,7 @@ bento.define('bento/entity', [
                     } else {
                         data = {
                             entity: entity
-                        }
+                        };
                     }
                     // update components
                     for (i = 0, l = components.length; i < l; ++i) {

@@ -42,7 +42,7 @@ bento.define('bento/managers/asset', [
                         // success!
                         audio.onload = function () {
                             callback(null, name, audio);
-                        }
+                        };
                         audio.src = source[i];
                         failed = false;
                         break;
@@ -220,7 +220,7 @@ bento.define('bento/managers/asset', [
                             asset: asset,
                             path: path,
                             callback: callback
-                        })
+                        });
                     },
                     loadAllAssets = function () {
                         var i = 0,

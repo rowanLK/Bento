@@ -81,7 +81,7 @@ define('bento/managers/audio', [
                     }
                     // set end event
                     if (!mutedMusic && lastMusicPlayed !== '') {
-                        audio = assetManager.getAudio(name)
+                        audio = assetManager.getAudio(name);
                         if (onEnd) {
                             audio.onended = onEnd;
                         }

@@ -4451,7 +4451,7 @@ bento.define('bento/entity', [
                     } else {
                         data = {
                             entity: entity
-                        }
+                        };
                     }
                     // update components
                     for (i = 0, l = components.length; i < l; ++i) {
@@ -7242,7 +7242,7 @@ bento.define('bento/managers/asset', [
                         // success!
                         audio.onload = function () {
                             callback(null, name, audio);
-                        }
+                        };
                         audio.src = source[i];
                         failed = false;
                         break;
@@ -7420,7 +7420,7 @@ bento.define('bento/managers/asset', [
                             asset: asset,
                             path: path,
                             callback: callback
-                        })
+                        });
                     },
                     loadAllAssets = function () {
                         var i = 0,
@@ -7689,7 +7689,7 @@ define('bento/managers/audio', [
                     }
                     // set end event
                     if (!mutedMusic && lastMusicPlayed !== '') {
-                        audio = assetManager.getAudio(name)
+                        audio = assetManager.getAudio(name);
                         if (onEnd) {
                             audio.onended = onEnd;
                         }
@@ -10097,7 +10097,7 @@ define('bento/tiled', [
                 sprite: {
                     image: packedImage
                 }
-            })
+            });
 
         // add background to game
         if (settings.spawn) {
@@ -10130,7 +10130,23 @@ define('bento/tiled', [
              * @instance
              * @name dimension
              */
-            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
+            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height),
+            /**
+             * Moves the tileLayer, objects, and shapes to the specified position.
+             * @function
+             * @instance
+             * @name moveTo
+             */
+            moveTo: function (position) {
+                background.setPosition(position);
+                for (var i = 0, len = shapes.length; i < len; i++) {
+                    shapes[i].x = position.x;
+                    shapes[i].y = position.y;
+                }
+                for (i = 0, len = objects.length; i < len; i++) {
+                    objects[i].setPosition(position);
+                }
+            }
         };
     };
 });
