@@ -9453,7 +9453,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
                  * @param {Rectangle} other - Other rectangle
                  * @returns {Boolean} True of 2 rectangles intersect
                  * @instance
-                 * @name union
+                 * @name intersect
                  */
                 intersect: intersect,
                 /**
@@ -9462,7 +9462,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
                  * @param {Rectangle} other - Other rectangle
                  * @returns {Rectangle} Intersection of the 2 rectangles
                  * @instance
-                 * @name union
+                 * @name intersection
                  */
                 intersection: intersection,
                 /**
