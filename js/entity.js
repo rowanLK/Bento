@@ -300,7 +300,7 @@ bento.define('bento/entity', [
                  * @function
                  * @param {Rectangle} dimension - Reference to entity's size rectangle
                  * @instance
-                 * @name getDimension
+                 * @name setDimension
                  */
                 setDimension: function(value) {
                     dimension = value;
