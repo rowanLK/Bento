@@ -9837,13 +9837,13 @@ bento.define('bento/screen', [
  * Reads Tiled JSON file and spawns entities accordingly.
  * Backgrounds are merged into a canvas image (TODO: split canvas, split layers?)
  * <br>Exports: Function
- * @module bento/screen
+ * @module bento/tiled
  * @param {Object} settings - Settings object
  * @param {String} settings.name - Asset name of the json file
  * @param {Boolean} [settings.spawn] - Spawns entities
  * @returns Object
  */
-define('bento/tiled', [
+bento.define('bento/tiled', [
     'bento',
     'bento/entity',
     'bento/components/sprite',
