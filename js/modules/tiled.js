@@ -303,13 +303,28 @@ bento.define('bento/tiled', [
              * @name moveTo
              */
             moveTo: function (position) {
-                background.setPosition(position);
+                this.tileLayer.setPosition(position);
                 for (var i = 0, len = shapes.length; i < len; i++) {
                     shapes[i].x = position.x;
                     shapes[i].y = position.y;
                 }
                 for (i = 0, len = objects.length; i < len; i++) {
                     objects[i].setPosition(position);
+                }
+            },
+            /**
+             * Removes the tileLayer, objects, and shapes
+             * @function
+             * @instance
+             * @name remove
+             */
+            remove: function () {
+                Bento.objects.remove(this.tileLayer);
+                for (var i = 0, len = shapes.length; i < len; i++) {
+                    Bento.objects.remove(shapes[i]);
+                }
+                for (i = 0, len = objects.length; i < len; i++) {
+                    Bento.objects.remove(objects[i]);
                 }
             }
         };
