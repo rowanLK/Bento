@@ -65,6 +65,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
             this.y -= size / 2;
             this.width += size;
             this.height += size;
+            return this;
         },
         module = function (x, y, width, height) {
             return {
