@@ -323,11 +323,11 @@ bento.define('bento/tiled', [
                 for (var i = 0, len = shapes.length; i < len; i++) {
                     Bento.objects.remove(shapes[i]);
                 }
-                shapes = [];
+                shapes.length = 0;
                 for (i = 0, len = objects.length; i < len; i++) {
                     Bento.objects.remove(objects[i]);
                 }
-                objects = [];
+                objects.length = 0;
             }
         };
     };
