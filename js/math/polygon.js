@@ -75,7 +75,7 @@ bento.define('bento/math/polygon', [
 
             // is other really a polygon?
             if (polygon.isRectangle) {
-                // before constructing a polygon, check if boxes collide in the first place 
+                // before constructing a polygon, check if boxes collide in the first place
                 if (!this.getBoundingBox().intersect(polygon)) {
                     return false;
                 }
@@ -162,9 +162,9 @@ bento.define('bento/math/polygon', [
 
             return {
                 // TODO: use x and y as offset, widht and height as boundingbox
-                x: minX, 
-                y: minY, 
-                width: maxX - minX, 
+                x: minX,
+                y: minY,
+                width: maxX - minX,
                 height: maxY - minY,
                 /**
                  * Array of Vector2 points
@@ -188,7 +188,7 @@ bento.define('bento/math/polygon', [
                  * @name getBoundingBox
                  */
                 getBoundingBox: function () {
-                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
+                    return new Rectangle(minX, minY, maxX - minX, maxY - minY);
                 },
                 /**
                  * Checks if Vector2 lies within the polygon
@@ -200,7 +200,7 @@ bento.define('bento/math/polygon', [
                 hasPosition: hasPosition,
                 /**
                  * Checks if other polygon/rectangle overlaps.
-                 * Note that this may be computationally expensive. 
+                 * Note that this may be computationally expensive.
                  * @function
                  * @param {Polygon/Rectangle} other - Other polygon or rectangle
                  * @returns {Boolean} true if polygons overlap

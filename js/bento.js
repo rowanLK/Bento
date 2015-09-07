@@ -52,7 +52,7 @@ bento.define('bento', [
             lastTime: 0
         },
         gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
+        viewport = new Rectangle(0, 0, 640, 480),
         setupDebug = function () {
             if (Utils.isCocoonJS()) {
                 return;

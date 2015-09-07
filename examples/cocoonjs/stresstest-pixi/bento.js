@@ -3552,12 +3552,12 @@ module.exports = {
   cmyk2hsl: cmyk2hsl,
   cmyk2hsv: cmyk2hsv,
   cmyk2keyword: cmyk2keyword,
-  
+
   keyword2rgb: keyword2rgb,
   keyword2hsl: keyword2hsl,
   keyword2hsv: keyword2hsv,
   keyword2cmyk: keyword2cmyk,
-  
+
   xyz2rgb: xyz2rgb,
 }
 
@@ -3573,10 +3573,10 @@ function rgb2hsl(rgb) {
 
   if (max == min)
     h = 0;
-  else if (r == max) 
-    h = (g - b) / delta; 
+  else if (r == max)
+    h = (g - b) / delta;
   else if (g == max)
-    h = 2 + (b - r) / delta; 
+    h = 2 + (b - r) / delta;
   else if (b == max)
     h = 4 + (r - g)/ delta;
 
@@ -3613,16 +3613,16 @@ function rgb2hsv(rgb) {
 
   if (max == min)
     h = 0;
-  else if (r == max) 
-    h = (g - b) / delta; 
+  else if (r == max)
+    h = (g - b) / delta;
   else if (g == max)
-    h = 2 + (b - r) / delta; 
+    h = 2 + (b - r) / delta;
   else if (b == max)
     h = 4 + (r - g) / delta;
 
   h = Math.min(h * 60, 360);
 
-  if (h < 0) 
+  if (h < 0)
     h += 360;
 
   v = ((max / 255) * 1000) / 10;
@@ -3635,7 +3635,7 @@ function rgb2cmyk(rgb) {
       g = rgb[1] / 255,
       b = rgb[2] / 255,
       c, m, y, k;
-      
+
   k = Math.min(1 - r, 1 - g, 1 - b);
   c = (1 - r - k) / (1 - k);
   m = (1 - g - k) / (1 - k);
@@ -3656,7 +3656,7 @@ function rgb2xyz(rgb) {
   r = r > 0.04045 ? Math.pow(((r + 0.055) / 1.055), 2.4) : (r / 12.92);
   g = g > 0.04045 ? Math.pow(((g + 0.055) / 1.055), 2.4) : (g / 12.92);
   b = b > 0.04045 ? Math.pow(((b + 0.055) / 1.055), 2.4) : (b / 12.92);
-  
+
   var x = (r * 0.4124) + (g * 0.3576) + (b * 0.1805);
   var y = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
   var z = (r * 0.0193) + (g * 0.1192) + (b * 0.9505);
@@ -3682,7 +3682,7 @@ function rgb2lab(rgb) {
   l = (116 * y) - 16;
   a = 500 * (x - y);
   b = 200 * (y - z);
-  
+
   return [l, a, b];
 }
 
@@ -3721,7 +3721,7 @@ function hsl2rgb(hsl) {
 
     rgb[i] = val * 255;
   }
-  
+
   return rgb;
 }
 
@@ -3780,7 +3780,7 @@ function hsv2hsl(hsv) {
       v = hsv[2] / 100,
       sl, l;
 
-  l = (2 - s) * v;  
+  l = (2 - s) * v;
   sl = s * v;
   sl /= (l <= 1) ? l : 2 - l;
   l /= 2;
@@ -3837,7 +3837,7 @@ function xyz2rgb(xyz) {
 
   g = g > 0.0031308 ? ((1.055 * Math.pow(g, 1.0 / 2.4)) - 0.055)
     : g = (g * 12.92);
-        
+
   b = b > 0.0031308 ? ((1.055 * Math.pow(b, 1.0 / 2.4)) - 0.055)
     : b = (b * 12.92);
 
@@ -4043,11 +4043,11 @@ for (var func in conversions) {
   exports[from] = exports[from] || {};
 
   // export rgb2hsl and ["rgb"]["hsl"]
-  exports[func] = exports[from][to] = (function(func) { 
+  exports[func] = exports[from][to] = (function(func) {
     return function(arg) {
       if (typeof arg == "number")
         arg = Array.prototype.slice.call(arguments);
-      
+
       var val = conversions[func](arg);
       if (typeof val == "string" || val === undefined)
         return val; // keyword
@@ -5740,9 +5740,9 @@ function SpriteRenderer(gl, opt) {
         color: true,
         texcoord: true
     })
-    this.batch = opt.batch || createBatch(gl, xtend({ 
+    this.batch = opt.batch || createBatch(gl, xtend({
         dynamic: true,
-        premultiplied: true 
+        premultiplied: true
     }, opt))
 
     this._bound = false
@@ -5803,7 +5803,7 @@ mixes(SpriteRenderer, {
         this.solid().defaults()
         this.rect(x, y, width, height)
         return this
-    },  
+    },
 
     //just pushes a single quad with current attributes
     rect: function(x, y, width, height) {
@@ -5835,7 +5835,7 @@ mixes(SpriteRenderer, {
             oldColor = text.batch.color,
             wasBound = this._bound
 
-        if (wasBound) { 
+        if (wasBound) {
         //TODO: we could always assume dynamic and remove this condition
             this.draw()
             this.unbind()
@@ -5849,7 +5849,7 @@ mixes(SpriteRenderer, {
         if (wasBound) {
             this.bind()
         }
-    }, 
+    },
 
     drawImage: function(image, x, y, width, height) {
         "use strict";
@@ -5859,11 +5859,11 @@ mixes(SpriteRenderer, {
         var uv = TEXCOORD_DEFAULT
 
         if (arguments.length >= 9) {
-            var texSize = image.shape 
+            var texSize = image.shape
             var clipPos = copy2(tmp1, arguments[1], arguments[2])
             var clipSize = copy2(tmp2, arguments[3], arguments[4])
 
-            //get UV coordinates, storing in our temp array as to not 
+            //get UV coordinates, storing in our temp array as to not
             //change constant default
             uv = texcoord(clipPos, clipSize, texSize, tmpUV)
 
@@ -5954,7 +5954,7 @@ module.exports = {
 },{"gl-mat4/clone":15,"gl-mat4/create":16,"gl-mat4/identity":17,"gl-mat4/multiply":18,"gl-mat4/ortho":19,"gl-mat4/rotateX":20,"gl-mat4/rotateY":21,"gl-mat4/rotateZ":22,"gl-mat4/scale":23,"gl-mat4/translate":24}],8:[function(require,module,exports){
 module.exports = function numtype(num, def) {
 	return typeof num === 'number'
-		? num 
+		? num
 		: (typeof def === 'number' ? def : 0)
 }
 },{}],9:[function(require,module,exports){
@@ -5969,18 +5969,18 @@ var POSITION_ATTRIBUTE = 'position',
 
 module.exports = function(gl, options) {
     options = options||{}
-    options.texcoord = typeof options.texcoord === 'number' 
+    options.texcoord = typeof options.texcoord === 'number'
                 ? options.texcoord : (options.texcoord||0)
-        
+
     var shaderSource = module.exports.generate(options),
         vert = shaderSource.vertex,
         frag = shaderSource.fragment,
         uniforms = shaderSource.uniforms,
         attribs = shaderSource.attributes
-    
+
     var shader = createShader(gl, vert, frag, uniforms, attribs)
     shader.bind()
-    for (var i=0; i<options.texcoord; i++) 
+    for (var i=0; i<options.texcoord; i++)
         shader.uniforms['texture'+i] = i
 
     var arr = identity( new Float32Array(16) )
@@ -5994,7 +5994,7 @@ module.exports = function(gl, options) {
 
 module.exports.generate = function(options) {
     options = options||{}
-    options.texcoord = typeof options.texcoord === 'number' 
+    options.texcoord = typeof options.texcoord === 'number'
                 ? options.texcoord : (options.texcoord||0)
 
     var vert = typeof options.vertex === 'string'
@@ -6046,7 +6046,7 @@ function createVertexShader(hasNormals, hasColors, numTexCoords) {
     shader += "uniform mat4 projection;\n";
     shader += "uniform mat4 view;\n";
     shader += "uniform mat4 model;\n";
-    
+
     shader += (hasColors ? "varying vec4 v_col;\n" : "");
 
     for (i = 0; i < numTexCoords; i++) {
@@ -6068,8 +6068,8 @@ function createVertexShader(hasNormals, hasColors, numTexCoords) {
 function createFragmentShader(hasColors, numTexCoords) {
     numTexCoords = numTexCoords || 0;
     var shader = "#ifdef GL_ES\n" + "precision mediump float;\n" + "#endif\n\n";
- 
-    if (hasColors) 
+
+    if (hasColors)
         shader += "varying vec4 v_col;\n";
 
     var i;
@@ -6084,7 +6084,7 @@ function createFragmentShader(hasColors, numTexCoords) {
     if (hasColors)
         shader += "v_col"
 
-    if (hasColors && numTexCoords > 0) 
+    if (hasColors && numTexCoords > 0)
         shader += " * ";
     else if (!hasColors && !numTexCoords)
         shader += "vec4(1.0)"
@@ -6174,14 +6174,14 @@ function createAttributeWrapper(gl, program, attributes, doLink) {
     var name = a.name
     var type = a.type
     var location = gl.getAttribLocation(program, name)
-    
+
     switch(type) {
       case 'bool':
       case 'int':
       case 'float':
         addVectorAttribute(gl, program, location, 1, obj, name, doLink)
       break
-      
+
       default:
         if(type.indexOf('vec') >= 0) {
           var d = type.charCodeAt(type.length-1) - 48
@@ -6215,8 +6215,8 @@ function identity(x) {
 function createUniformWrapper(gl, program, uniforms, locations) {
 
   function makeGetter(index) {
-    var proc = new Function('gl', 'prog', 'locations', 
-      'return function(){return gl.getUniform(prog,locations[' + index + '])}') 
+    var proc = new Function('gl', 'prog', 'locations',
+      'return function(){return gl.getUniform(prog,locations[' + index + '])}')
     return proc(gl, program, locations)
   }
 
@@ -6565,7 +6565,7 @@ function createShader(
   , fragSource
   , uniforms
   , attributes) {
-  
+
   //Compile vertex shader
   var vertShader = gl.createShader(gl.VERTEX_SHADER)
   gl.shaderSource(vertShader, vertSource)
@@ -6575,7 +6575,7 @@ function createShader(
     console.error('gl-shader: Error compling vertex shader:', errLog)
     throw new Error('gl-shader: Error compiling vertex shader:' + errLog)
   }
-  
+
   //Compile fragment shader
   var fragShader = gl.createShader(gl.FRAGMENT_SHADER)
   gl.shaderSource(fragShader, fragSource)
@@ -6585,7 +6585,7 @@ function createShader(
     console.error('gl-shader: Error compiling fragment shader:', errLog)
     throw new Error('gl-shader: Error compiling fragment shader:' + errLog)
   }
-  
+
   //Link program
   var program = gl.createProgram()
   gl.attachShader(program, fragShader)
@@ -6593,7 +6593,7 @@ function createShader(
 
   //Optional default attriubte locations
   attributes.forEach(function(a) {
-    if (typeof a.location === 'number') 
+    if (typeof a.location === 'number')
       gl.bindAttribLocation(program, a.location, a.name)
   })
 
@@ -6603,7 +6603,7 @@ function createShader(
     console.error('gl-shader: Error linking shader program:', errLog)
     throw new Error('gl-shader: Error linking shader program:' + errLog)
   }
-  
+
   //Return final linked shader object
   var shader = new Shader(
     gl,
@@ -6721,7 +6721,7 @@ function multiply(out, a, b) {
         a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
 
     // Cache only the current line of the second matrix
-    var b0  = b[0], b1 = b[1], b2 = b[2], b3 = b[3];  
+    var b0  = b[0], b1 = b[1], b2 = b[2], b3 = b[3];
     out[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
     out[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
     out[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
@@ -7094,7 +7094,7 @@ function SpriteBatch(gl, opt) {
         throw new Error("must specify gl context")
     this.gl = gl
     opt = opt || {}
-    
+
     this._bound = false
     this.idx = 0
 
@@ -7218,7 +7218,7 @@ mixes(SpriteBatch, {
         this._vert(x+width, y, u2, v1, c)
         this._vert(x+width, y+height, u2, v2, c)
         this._vert(x, y+height, u1, v2, c)
-        
+
         return this
     },
 
@@ -7257,7 +7257,7 @@ mixes(SpriteBatch, {
             return this
 
         var gl = this.gl
-        
+
         if (this._dirty) {
             var view = this.vertices.subarray(0, this.idx)
             this.vertexBuffer.update(view, 0)
@@ -7297,7 +7297,7 @@ function copyVec2(out, vec) {
 }
 
 function transformMat4(out, a, m) {
-    var x = a[0], 
+    var x = a[0],
         y = a[1]
     out[0] = m[0] * x + m[4] * y + m[12]
     out[1] = m[1] * x + m[5] * y + m[13]
@@ -7318,7 +7318,7 @@ function getAttributeLocation(name, shader) {
     if (!name)
         return null
     var attr = shader.attributes
-    if (attr[name]) 
+    if (attr[name])
         return attr[name].location
     return null
 }
@@ -7387,7 +7387,7 @@ function doBind(gl, elements, attributes, shader) {
             }
 
         }
-        
+
         for (i=0; i<nattribs; i++) {
           if (!bound[i])
             gl.disableVertexAttribArray(i)
@@ -7484,7 +7484,7 @@ proto.dispose = function() {
 }
 
 function updateTypeArray(gl, type, len, usage, data, offset) {
-  var dataLen = data.length * data.BYTES_PER_ELEMENT 
+  var dataLen = data.length * data.BYTES_PER_ELEMENT
   if(offset < 0) {
     gl.bufferData(type, data, usage)
     return dataLen
@@ -7546,9 +7546,9 @@ proto.update = function(array, offset) {
       var ndt = ndarray(tmp, array.shape)
       ops.assign(ndt, array)
       if(offset < 0) {
-        this.length = updateTypeArray(this.gl, this.type, this.length, this.usage, tmp, offset)  
+        this.length = updateTypeArray(this.gl, this.type, this.length, this.usage, tmp, offset)
       } else {
-        this.length = updateTypeArray(this.gl, this.type, this.length, this.usage, tmp.subarray(0, array.size), offset)  
+        this.length = updateTypeArray(this.gl, this.type, this.length, this.usage, tmp.subarray(0, array.size), offset)
       }
       pool.free(tmp)
     }
@@ -7916,7 +7916,7 @@ exports.norm2squared = compile({
   post: {args:[], localVars:[], thisVars:["this_s"], body:"return this_s"},
   funcName: "norm2squared"
 })
-  
+
 exports.norm2 = compile({
   args:["array"],
   pre: {args:[], localVars:[], thisVars:["this_s"], body:"this_s=0"},
@@ -7924,7 +7924,7 @@ exports.norm2 = compile({
   post: {args:[], localVars:[], thisVars:["this_s"], body:"return Math.sqrt(this_s)"},
   funcName: "norm2"
 })
-  
+
 
 exports.norminf = compile({
   args:["array"],
@@ -8028,7 +8028,7 @@ exports.argmax = compile({
     args:[],
     thisVars:["this_i"],
     localVars:[]}
-})  
+})
 
 exports.random = makeOp({
   args: ["array"],
@@ -8052,9 +8052,9 @@ exports.equals = compile({
   args:["array", "array"],
   pre: EmptyProc,
   body: {args:[{name:"x", lvalue:false, rvalue:true, count:1},
-               {name:"y", lvalue:false, rvalue:true, count:1}], 
-        body: "if(x!==y){return false}", 
-        localVars: [], 
+               {name:"y", lvalue:false, rvalue:true, count:1}],
+        body: "if(x!==y){return false}",
+        localVars: [],
         thisVars: []},
   post: {args:[], localVars:[], thisVars:[], body:"return true"},
   funcName: "equals"
@@ -8086,7 +8086,7 @@ function Procedure() {
 function compileCwise(user_args) {
   //Create procedure
   var proc = new Procedure()
-  
+
   //Parse blocks
   proc.pre    = user_args.pre
   proc.body   = user_args.body
@@ -8139,12 +8139,12 @@ function compileCwise(user_args) {
       throw new Error("cwise: Unknown argument type " + proc_args[i])
     }
   }
-  
+
   //Make sure at least one array argument was specified
   if(proc.arrayArgs.length <= 0) {
     throw new Error("cwise: No array arguments specified")
   }
-  
+
   //Make sure arguments are correct
   if(proc.pre.args.length > proc_args.length) {
     throw new Error("cwise: Too many arguments in pre() block")
@@ -8158,10 +8158,10 @@ function compileCwise(user_args) {
 
   //Check debug flag
   proc.debug = !!user_args.printCode || !!user_args.debug
-  
+
   //Retrieve name
   proc.funcName = user_args.funcName || "cwise"
-  
+
   //Read in block size
   proc.blockSize = user_args.blockSize || 64
 
@@ -8373,7 +8373,7 @@ function generateCWiseOp(proc, typesig) {
   var arglist = ["SS"]
   var code = ["'use strict'"]
   var vars = []
-  
+
   for(var j=0; j<dimension; ++j) {
     vars.push(["s", j, "=SS[", j, "]"].join(""))
   }
@@ -8383,7 +8383,7 @@ function generateCWiseOp(proc, typesig) {
     arglist.push("p"+i)
     dtypes[i] = typesig[2*i]
     orders[i] = typesig[2*i+1]
-    
+
     for(var j=0; j<dimension; ++j) {
       vars.push(["t",i,"p",j,"=t",i,"[",j,"]"].join(""))
     }
@@ -8408,7 +8408,7 @@ function generateCWiseOp(proc, typesig) {
       if(off_arg.offset[j] === 0) {
         continue
       } else if(off_arg.offset[j] === 1) {
-        init_string.push(["t", off_arg.array, "p", j].join(""))      
+        init_string.push(["t", off_arg.array, "p", j].join(""))
       } else {
         init_string.push([off_arg.offset[j], "*t", off_arg.array, "p", j].join(""))
       }
@@ -8429,7 +8429,7 @@ function generateCWiseOp(proc, typesig) {
   for(var i=0; i<proc.arrayArgs.length; ++i) {
     code.push("p"+i+"|=0")
   }
-  
+
   //Inline prelude
   if(proc.pre.body.length > 3) {
     code.push(processBlock(proc.pre, proc, dtypes))
@@ -8448,11 +8448,11 @@ function generateCWiseOp(proc, typesig) {
   if(proc.post.body.length > 3) {
     code.push(processBlock(proc.post, proc, dtypes))
   }
-  
+
   if(proc.debug) {
     console.log("Generated cwise routine for ", typesig, ":\n\n", code.join("\n"))
   }
-  
+
   var loopName = [(proc.funcName||"unnamed"), "_cwise_loop_", orders[0].join("s"),"m",matched,typeSummary(dtypes)].join("")
   var f = new Function(["function ",loopName,"(", arglist.join(","),"){", code.join("\n"),"} return ", loopName].join(""))
   return f()
@@ -8467,7 +8467,7 @@ function createThunk(proc) {
   var code = ["'use strict'", "var CACHED={}"]
   var vars = []
   var thunkName = proc.funcName + "_cwise_thunk"
-  
+
   //Build thunk
   code.push(["return function ", thunkName, "(", proc.shimArgs.join(","), "){"].join(""))
   var typesig = []
@@ -8491,7 +8491,7 @@ function createThunk(proc) {
   vars.push(["type=[", string_typesig.join(","), "].join()"].join(""))
   vars.push("proc=CACHED[type]")
   code.push("var " + vars.join(","))
-  
+
   code.push(["if(!proc){",
              "CACHED[type]=proc=compile([", typesig.join(","), "])}",
              "return proc(", proc_args.join(","), ")}"].join(""))
@@ -8499,7 +8499,7 @@ function createThunk(proc) {
   if(proc.debug) {
     console.log("Generated thunk:", code.join("\n"))
   }
-  
+
   //Compile thunk
   var thunk = new Function("compile", code.join("\n"))
   return thunk(compile.bind(undefined, proc))
@@ -8745,13 +8745,13 @@ exports.interleave3 = function(x, y, z) {
   y  = (y | (y<<4))  & 3272356035;
   y  = (y | (y<<2))  & 1227133513;
   x |= (y << 1);
-  
+
   z &= 0x3FF;
   z  = (z | (z<<16)) & 4278190335;
   z  = (z | (z<<8))  & 251719695;
   z  = (z | (z<<4))  & 3272356035;
   z  = (z | (z<<2))  & 1227133513;
-  
+
   return x | (z << 2);
 }
 
@@ -8848,11 +8848,11 @@ exports.freeUint32 =
 exports.freeInt8 =
 exports.freeInt16 =
 exports.freeInt32 =
-exports.freeFloat32 = 
+exports.freeFloat32 =
 exports.freeFloat =
-exports.freeFloat64 = 
-exports.freeDouble = 
-exports.freeUint8Clamped = 
+exports.freeFloat64 =
+exports.freeDouble =
+exports.freeUint8Clamped =
 exports.freeDataView = freeTypedArray
 
 exports.freeArrayBuffer = freeArrayBuffer
@@ -9738,7 +9738,7 @@ var int32 = new Int32Array(int8.buffer, 0, 1);
 var float32 = new Float32Array(int8.buffer, 0, 1);
 
 /**
- * A singleton for number utilities. 
+ * A singleton for number utilities.
  * @class NumberUtil
  */
 var NumberUtil = function() {
@@ -9814,8 +9814,8 @@ NumberUtil.isPowerOfTwo = function(n) {
 };
 
 /**
- * Returns the next highest power-of-two from the specified number. 
- * 
+ * Returns the next highest power-of-two from the specified number.
+ *
  * @param  {Number} n the number to test
  * @return {Number}   the next highest power of two
  */
@@ -10084,7 +10084,7 @@ Object.defineProperties(proto, {
   shape: {
     get: function() {
       return this._shapeVector
-    }, 
+    },
     set: function(x) {
       if(!Array.isArray(x)) {
         x = [x|0,x|0]
@@ -10138,7 +10138,7 @@ proto.dispose = function() {
 proto.generateMipmap = function() {
   this.bind()
   this.gl.generateMipmap(this.gl.TEXTURE_2D)
-  
+
   //Update mip levels
   var l = Math.min(this._shape[0], this._shape[1])
   for(var i=0; l>0; ++i, l>>>=1) {
@@ -10188,11 +10188,11 @@ proto.setPixels = function(data, x_off, y_off, mip_level) {
 
 function isPacked(shape, stride) {
   if(shape.length === 3) {
-    return  (stride[2] === 1) && 
+    return  (stride[2] === 1) &&
             (stride[1] === shape[0]*shape[2]) &&
             (stride[0] === shape[2])
   }
-  return  (stride[0] === 1) && 
+  return  (stride[0] === 1) &&
           (stride[1] === shape[0])
 }
 
@@ -10483,10 +10483,10 @@ function compileConstructor(dtype, dimension) {
     className = "View_Nil" + dtype
   }
   var useGetters = (dtype === "generic")
-  
+
   if(dimension === -1) {
     //Special case for trivial arrays
-    var code = 
+    var code =
       "function "+className+"(a){this.data=a;};\
 var proto="+className+".prototype;\
 proto.dtype='"+dtype+"';\
@@ -10537,7 +10537,7 @@ return function construct_"+className+"(a,b,c,d){return new "+className+"(a,d)}"
   }
 
   var code = ["'use strict'"]
-    
+
   //Create constructor for view
   var indices = iota(dimension)
   var args = indices.map(function(i) { return "i"+i })
@@ -10558,7 +10558,7 @@ return function construct_"+className+"(a,b,c,d){return new "+className+"(a,d)}"
     "var proto="+className+".prototype",
     "proto.dtype='"+dtype+"'",
     "proto.dimension="+dimension)
-  
+
   //view.size:
   code.push("Object.defineProperty(proto,'size',{get:function "+className+"_size(){\
 return "+indices.map(function(i) { return "this.shape["+i+"]" }).join("*"),
@@ -10596,7 +10596,7 @@ return [0,2,1];\
       code.push("ORDER})")
     }
   }
-  
+
   //view.set(i0, ..., v):
   code.push(
 "proto.set=function "+className+"_set("+args.join(",")+",v){")
@@ -10605,7 +10605,7 @@ return [0,2,1];\
   } else {
     code.push("return this.data["+index_str+"]=v}")
   }
-  
+
   //view.get(i0, ...):
   code.push("proto.get=function "+className+"_get("+args.join(",")+"){")
   if(useGetters) {
@@ -10613,7 +10613,7 @@ return [0,2,1];\
   } else {
     code.push("return this.data["+index_str+"]}")
   }
-  
+
   //view.index:
   code.push(
     "proto.index=function "+className+"_index(", args.join(), "){return "+index_str+"}")
@@ -10626,7 +10626,7 @@ return [0,2,1];\
     indices.map(function(i) {
       return "this.stride["+i + "]"
     }).join(",")+",this.offset)}")
-  
+
   //view.lo():
   var a_vars = indices.map(function(i) { return "a"+i+"=this.shape["+i+"]" })
   var c_vars = indices.map(function(i) { return "c"+i+"=this.stride["+i+"]" })
@@ -10645,7 +10645,7 @@ a"+i+"-=d}")
     indices.map(function(i) {
       return "c"+i
     }).join(",")+",b)}")
-  
+
   //view.step():
   code.push("proto.step=function "+className+"_step("+args.join(",")+"){var "+
     indices.map(function(i) {
@@ -10674,7 +10674,7 @@ b"+i+"*=d\
     indices.map(function(i) {
       return "b" + i
     }).join(",")+",c)}")
-  
+
   //view.transpose():
   var tShape = new Array(dimension)
   var tStride = new Array(dimension)
@@ -10685,14 +10685,14 @@ b"+i+"*=d\
   code.push("proto.transpose=function "+className+"_transpose("+args+"){"+
     args.map(function(n,idx) { return n + "=(" + n + "===undefined?" + idx + ":" + n + "|0)"}).join(";"),
     "var a=this.shape,b=this.stride;return new "+className+"(this.data,"+tShape.join(",")+","+tStride.join(",")+",this.offset)}")
-  
+
   //view.pick():
   code.push("proto.pick=function "+className+"_pick("+args+"){var a=[],b=[],c=this.offset")
   for(var i=0; i<dimension; ++i) {
     code.push("if(typeof i"+i+"==='number'&&i"+i+">=0){c=(c+this.stride["+i+"]*i"+i+")|0}else{a.push(this.shape["+i+"]);b.push(this.stride["+i+"])}")
   }
   code.push("var ctor=CTOR_LIST[a.length+1];return ctor(this.data,a,b,c)}")
-    
+
   //Add return statement
   code.push("return function construct_"+className+"(data,shape,stride,offset){return new "+className+"(data,"+
     indices.map(function(i) {
@@ -10998,7 +10998,7 @@ bento.define('bento', [
             lastTime: 0
         },
         gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
+        viewport = new Rectangle(0, 0, 640, 480),
         setupDebug = function () {
             if (navigator.isCocoonJS) {
                 return;
@@ -11223,9 +11223,9 @@ bento.define('bento/entity', [
         var i,
             name,
             visible = true,
-            position = Vector2(0, 0),
-            origin = Vector2(0, 0),
-            dimension = Rectangle(0, 0, 0, 0),
+            position = new Vector2(0, 0),
+            origin = new Vector2(0, 0),
+            dimension = new Rectangle(0, 0, 0, 0),
             rectangle,
             components = [],
             family = [],
@@ -11327,7 +11327,7 @@ bento.define('bento/entity', [
                     var scale, x1, x2, y1, y2, box;
                     if (!rectangle) {
                         // TODO get rid of scale component dependency
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        scale = entity.scale ? entity.scale.getScale() : new Vector2(1, 1);
                         x1 = position.x - origin.x * scale.x;
                         y1 = position.y - origin.y * scale.y;
                         x2 = position.x + (dimension.width - origin.x) * scale.x;
@@ -11339,10 +11339,10 @@ bento.define('bento/entity', [
                         if (scale.y < 0) {
                             y2 = [y1, y1 = y2][0];
                         }
-                        return Rectangle(x1, y1, x2 - x1, y2 - y1);
+                        return new Rectangle(x1, y1, x2 - x1, y2 - y1);
                     } else {
                         box = rectangle.clone();
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        scale = entity.scale ? entity.scale.getScale() : new Vector2(1, 1);
                         box.x *= Math.abs(scale.x);
                         box.y *= Math.abs(scale.y);
                         box.width *= Math.abs(scale.x);
@@ -11424,7 +11424,7 @@ bento.define('bento/entity', [
                 },
                 collidesWith: function (other, offset) {
                     if (!Utils.isDefined(offset)) {
-                        offset = Vector2(0, 0);
+                        offset = new Vector2(0, 0);
                     }
                     return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
                 },
@@ -11433,7 +11433,7 @@ bento.define('bento/entity', [
                         obj,
                         box;
                     if (!Utils.isDefined(offset)) {
-                        offset = Vector2(0, 0);
+                        offset = new Vector2(0, 0);
                     }
                     if (!Utils.isArray(array)) {
                         // throw 'Collision check must be with an Array of object';
@@ -11570,7 +11570,7 @@ bento.define('bento/subimage', [
     'bento/math/rectangle'
 ], function (Rectangle) {
     return function (image, frame) {
-        var rectangle = Rectangle(frame.x, frame.y, frame.w, frame.h);
+        var rectangle = new Rectangle(frame.x, frame.y, frame.w, frame.h);
         rectangle.image = image;
         return rectangle;
     };
@@ -11615,7 +11615,7 @@ bento.define('bento/utils', [], function () {
                 }
             }
         },
-        combine = function (obj1, obj2) {                        
+        combine = function (obj1, obj2) {
             var prop, temp;
             for (prop in obj2) {
                 if (obj2.hasOwnProperty(prop)) {
@@ -11625,7 +11625,7 @@ bento.define('bento/utils', [], function () {
                         temp = {};
                         temp[prop] = obj1[prop];
                         combine(obj1.base, temp);
-                    } 
+                    }
                     if (isObject(obj2[prop])) {
                         obj1[prop] = combine({}, obj2[prop]);
                     } else {
@@ -11641,12 +11641,12 @@ bento.define('bento/utils', [], function () {
         setAnimationFrameTimeout = function (callback, timeout) {
             var now = new Date().getTime(),
                 rafID = null;
-            
+
             if (timeout === undefined) timeout = 1;
-            
+
             function animationFrame() {
                 var later = new Date().getTime();
-                
+
                 if (later - now >= timeout) {
                     callback();
                 } else {
@@ -11914,7 +11914,7 @@ bento.define('bento/components/animation', [
                 }
             };
 
-        // call setup 
+        // call setup
         if (settings && settings[component.name]) {
             component.setup(settings[component.name]);
         }
@@ -12051,7 +12051,7 @@ bento.define('bento/components/scale', [
     'use strict';
     return function (base) {
         var set = false,
-            scale = Vector2(1, 1),
+            scale = new Vector2(1, 1),
             mixin = {},
             component = {
                 name: 'scale',
@@ -12797,7 +12797,7 @@ bento.define('bento/managers/input', [
                     y = (touch.pageY - offsetTop) / canvasScale.y;
                 evt.preventDefault();
                 evt.eventType = 'touch';
-                evt.changedTouches[n].position = Vector2(x, y);
+                evt.changedTouches[n].position = new Vector2(x, y);
                 evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
                 evt.changedTouches[n].worldPosition.x += viewport.x;
                 evt.changedTouches[n].worldPosition.y += viewport.y;
@@ -12809,7 +12809,7 @@ bento.define('bento/managers/input', [
                 var x = (evt.clientX - offsetLeft) / canvasScale.x,
                     y = (evt.clientY - offsetTop) / canvasScale.y;
                 evt.eventType = 'mouse';
-                evt.position = Vector2(x, y);
+                evt.position = new Vector2(x, y);
                 evt.worldPosition = evt.position.clone();
                 evt.worldPosition.x += viewport.x;
                 evt.worldPosition.y += viewport.y;
@@ -13394,7 +13394,7 @@ bento.define('bento/math/polygon', [
 
             // is other really a polygon?
             if (polygon.isRectangle) {
-                // before constructing a polygon, check if boxes collide in the first place 
+                // before constructing a polygon, check if boxes collide in the first place
                 if (!this.getBoundingBox().intersect(polygon)) {
                     return false;
                 }
@@ -13482,7 +13482,7 @@ bento.define('bento/math/polygon', [
                 points: points,
                 isPolygon: isPolygon,
                 getBoundingBox: function () {
-                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
+                    return new Rectangle(minX, minY, maxX - minX, maxY - minY);
                 },
                 hasPosition: hasPosition,
                 intersect: intersect,
@@ -13706,7 +13706,7 @@ bento.define('bento/screen', [
             tiled: String
         }*/
         var viewport = Bento.getViewport(),
-            dimension = settings.dimension || Rectangle(0, 0, 0, 0),
+            dimension = settings.dimension || new Rectangle(0, 0, 0, 0),
             isShown = false,
             module = {
                 setDimension: function (rectangle) {
@@ -13966,7 +13966,7 @@ define('bento/tiled', [
                         // normal object
                         spawnObject(object);
                     } else if (object.polygon) {
-                        // polygon 
+                        // polygon
                         points = [];
                         for (j = 0; j < object.polygon.length; ++j) {
                             points.push(object.polygon[j]);
@@ -13978,7 +13978,7 @@ define('bento/tiled', [
                         spawnShape(Polygon(points), object.type);
                     } else {
                         // rectangle
-                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
+                        spawnShape(new Rectangle(object.x, object.y, object.width, object.height), object.type);
                     }
                 }
             }
@@ -13991,7 +13991,7 @@ define('bento/tiled', [
             tileLayer: background,
             objects: objects,
             shapes: shapes,
-            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height)
+            dimension: new Rectangle(0, 0, tileWidth * width, tileHeight * height)
         };
     };
 });
@@ -14107,7 +14107,7 @@ bento.define('bento/renderers/webgl', [
                 },
                 fillRect: function (color, x, y, w, h) {
                     var oldColor = glRenderer.color;
-                    // 
+                    //
                     renderer.setColor(color);
                     glRenderer.fillRect(x, y, w, h);
                     glRenderer.color = oldColor;

@@ -22,7 +22,7 @@ bento.require([
     Bento.setup({
         canvasId: 'canvas',
         debug: true,
-        canvasDimension: Rectangle(0, 0, 1024, 768),
+        canvasDimension: new Rectangle(0, 0, 1024, 768),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -53,8 +53,8 @@ bento.require([
                 z: 1,
                 name: 'wall',
                 addNow: false,
-                position: Vector2(viewport.width / 2, viewport.height / 2),
-                originRelative: Vector2(0.5, 0.5),
+                position: new Vector2(viewport.width / 2, viewport.height / 2),
+                originRelative: new Vector2(0.5, 0.5),
                 components: [Sprite],
                 family: ['wall'],
                 useHshg: true,
@@ -68,11 +68,11 @@ bento.require([
                 return Math.floor(Math.random() * val);
             },
             addBunny = function () {
-                var speed = Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
+                var speed = new Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
                     entity = Entity({
                         components: [Sprite],
-                        position: Vector2(getRandom(viewport.width), getRandom(viewport.height)),
-                        originRelative: Vector2(0.5, 0.5),
+                        position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
+                        originRelative: new Vector2(0.5, 0.5),
                         family: ['bunny'],
                         sprite: {
                             image: Bento.assets.getImage('bunnygirlsmall'),
@@ -106,7 +106,7 @@ bento.require([
                         },
                         init: function () {
                             this.animation.setAnimation('idle');
-                            this.setBoundingBox(Rectangle(-8, -16, 16, 16));
+                            this.setBoundingBox(new Rectangle(-8, -16, 16, 16));
                         }
                     }).attach({
                         update: function () {
@@ -130,7 +130,7 @@ bento.require([
                             }
                             // collision
                             if (!useHshg) {
-                                entity.collidesWithGroup(Bento.objects.getByFamily('bunny'), Vector2(0, 0), function (other) {
+                                entity.collidesWithGroup(Bento.objects.getByFamily('bunny'), new Vector2(0, 0), function (other) {
                                     entity.sprite.setAnimation('collide', function () {
                                         entity.sprite.setAnimation('idle');
                                     });

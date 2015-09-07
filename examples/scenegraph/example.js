@@ -27,7 +27,7 @@ bento.require([
 ) {
     Bento.setup({
         canvasId: 'canvas',
-        canvasDimension: Rectangle(0, 0, 160, 240),
+        canvasDimension: new Rectangle(0, 0, 160, 240),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -52,8 +52,8 @@ bento.require([
                     var color = [1, 0, 0, 1],
                         button = ClickButton({
                             image: Bento.assets.getImage('bunnygirlsmall'),
-                            position: Vector2(0, 0),
-                            originRelative: Vector2(0.5, 0.5),
+                            position: new Vector2(0, 0),
+                            originRelative: new Vector2(0.5, 0.5),
                             frameWidth: 32,
                             frameHeight: 32,
                             onClick: function () {
@@ -79,7 +79,7 @@ bento.require([
 
             button1 = makeButton();
             button1.name = 'button1';
-            button1.setPosition(Vector2(80, 80));
+            button1.setPosition(new Vector2(80, 80));
             button1.attach({
                 update: function () {
                     if (Bento.input.isKeyDown('left')) {
@@ -100,11 +100,11 @@ bento.require([
             button2 = makeButton();
             button2.name = 'button2';
             // button2.rotation.setAngleDegree(45);
-            button2.setPosition(Vector2(0, 32));
+            button2.setPosition(new Vector2(0, 32));
 
             button3 = makeButton();
             button3.name = 'button3';
-            button3.setPosition(Vector2(32, 32));
+            button3.setPosition(new Vector2(32, 32));
 
             button1.attach(
                 button2.attach(
@@ -115,7 +115,7 @@ bento.require([
             // floating button by setting a fake parent
             button4 = makeButton();
             button4.name = 'button4';
-            button4.setPosition(Vector2(32, 32));
+            button4.setPosition(new Vector2(32, 32));
             button4.float = true;
 
             Bento.objects.add(button1);

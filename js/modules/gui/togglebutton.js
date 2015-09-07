@@ -25,8 +25,8 @@ bento.define('bento/gui/togglebutton', [
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
-                originRelative: Vector2(0.5, 0.5),
-                position: Vector2(0, 0),
+                originRelative: new Vector2(0.5, 0.5),
+                position: new Vector2(0, 0),
                 components: [Sprite, Clickable],
                 family: ['buttons'],
                 sprite: {

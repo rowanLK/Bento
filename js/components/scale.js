@@ -13,7 +13,7 @@ bento.define('bento/components/scale', [
     'use strict';
     return function (entity) {
         var set = false,
-            scale = Vector2(1, 1),
+            scale = new Vector2(1, 1),
             mixin = {},
             component = {
                 name: 'scale',

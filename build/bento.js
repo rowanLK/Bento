@@ -3790,7 +3790,7 @@ bento.define('bento', [
             lastTime: 0
         },
         gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
+        viewport = new Rectangle(0, 0, 640, 480),
         setupDebug = function () {
             if (Utils.isCocoonJS()) {
                 return;
@@ -4020,7 +4020,7 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
 /**
  * A base object to hold components
  * <br>Exports: Function
- * @module {Entity} bento/entity
+ * @entity {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Function} settings.onCollide - Called when object collides in HSHG
@@ -4105,13 +4105,13 @@ bento.define('bento/entity', [
          * @name useHshg
          */
         this.useHshg = false;
-        this.position = Vector2(0, 0);
-        this.origin = Vector2(0, 0);
+        this.position = new Vector2(0, 0);
+        this.origin = new Vector2(0, 0);
         this.family = [];
         this.components = [];
-        this.dimension = Rectangle(0, 0, 0, 0);
-        this.boundingBox = Rectangle(0, 0, null, null);
-        this.scale = Vector2(1, 1);
+        this.dimension = new Rectangle(0, 0, 0, 0);
+        this.boundingBox = new Rectangle(0, 0, null, null);
+        this.scale = new Vector2(1, 1);
         this.rotation = 0;
         this.visible = true;
         this.parent = null;
@@ -4290,7 +4290,7 @@ bento.define('bento/entity', [
         var scale, x1, x2, y1, y2, box;
         if (!this.boundingBox.width) {
             // TODO get rid of scale component dependency
-            scale = this.scale ? this.scale : Vector2(1, 1);
+            scale = this.scale ? this.scale : new Vector2(1, 1);
             x1 = this.position.x - this.origin.x * scale.x;
             y1 = this.position.y - this.origin.y * scale.y;
             x2 = this.position.x + (this.dimension.width - this.origin.x) * scale.x;
@@ -4302,11 +4302,11 @@ bento.define('bento/entity', [
             if (scale.y < 0) {
                 y2 = [y1, y1 = y2][0];
             }
-            return Rectangle(x1, y1, x2 - x1, y2 - y1);
+            return new Rectangle(x1, y1, x2 - x1, y2 - y1);
         } else {
             // TODO: cloning could be expensive for polygons
             box = this.boundingBox.clone();
-            scale = this.scale ? this.scale : Vector2(1, 1);
+            scale = this.scale ? this.scale : new Vector2(1, 1);
             box.x *= Math.abs(scale.x);
             box.y *= Math.abs(scale.y);
             box.width *= Math.abs(scale.x);
@@ -4482,7 +4482,7 @@ bento.define('bento/entity', [
     entity.prototype.collidesWith = function (other, offset, callback) {
         var intersect;
         if (!Utils.isDefined(offset)) {
-            offset = Vector2(0, 0);
+            offset = new Vector2(0, 0);
         }
         intersect = this.boundingBox.offset(offset).intersect(other.boundingBox);
         if (intersect && callback) {
@@ -4505,7 +4505,7 @@ bento.define('bento/entity', [
             obj,
             box;
         if (!Utils.isDefined(offset)) {
-            offset = Vector2(0, 0);
+            offset = new Vector2(0, 0);
         }
         if (!Utils.isArray(array)) {
             // throw 'Collision check must be with an Array of object';
@@ -4650,14 +4650,14 @@ bento.define('bento/eventsystem', [
  * @param {HTMLImageElement} image - HTML Image Element
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
- * @returns {HTMLImage} rectangle.image - Reference to the image 
+ * @returns {HTMLImage} rectangle.image - Reference to the image
  */
 bento.define('bento/packedimage', [
     'bento/math/rectangle'
 ], function (Rectangle) {
     return function (image, frame) {
-        var rectangle = frame ? Rectangle(frame.x, frame.y, frame.w, frame.h) :
-            Rectangle(0, 0, image.width, image.height);
+        var rectangle = frame ? new Rectangle(frame.x, frame.y, frame.w, frame.h) :
+            new Rectangle(0, 0, image.width, image.height);
         rectangle.image = image;
         return rectangle;
     };
@@ -6136,7 +6136,7 @@ bento.define('bento/components/scale', [
     'use strict';
     return function (entity) {
         var set = false,
-            scale = Vector2(1, 1),
+            scale = new Vector2(1, 1),
             mixin = {},
             component = {
                 name: 'scale',
@@ -7691,7 +7691,7 @@ bento.define('bento/managers/input', [
                 evt.preventDefault();
                 evt.id = 0;
                 evt.eventType = 'touch';
-                evt.changedTouches[n].position = Vector2(x, y);
+                evt.changedTouches[n].position = new Vector2(x, y);
                 evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
                 evt.changedTouches[n].worldPosition.x += viewport.x;
                 evt.changedTouches[n].worldPosition.y += viewport.y;
@@ -7708,7 +7708,7 @@ bento.define('bento/managers/input', [
                     y = (evt.pageY - offsetTop) / canvasScale.y;
                 evt.id = 0;
                 evt.eventType = 'mouse';
-                evt.position = Vector2(x, y);
+                evt.position = new Vector2(x, y);
                 evt.worldPosition = evt.position.clone();
                 evt.worldPosition.x += viewport.x;
                 evt.worldPosition.y += viewport.y;
@@ -8957,7 +8957,7 @@ bento.define('bento/math/polygon', [
 
             // is other really a polygon?
             if (polygon.isRectangle) {
-                // before constructing a polygon, check if boxes collide in the first place 
+                // before constructing a polygon, check if boxes collide in the first place
                 if (!this.getBoundingBox().intersect(polygon)) {
                     return false;
                 }
@@ -9044,9 +9044,9 @@ bento.define('bento/math/polygon', [
 
             return {
                 // TODO: use x and y as offset, widht and height as boundingbox
-                x: minX, 
-                y: minY, 
-                width: maxX - minX, 
+                x: minX,
+                y: minY,
+                width: maxX - minX,
                 height: maxY - minY,
                 /**
                  * Array of Vector2 points
@@ -9070,7 +9070,7 @@ bento.define('bento/math/polygon', [
                  * @name getBoundingBox
                  */
                 getBoundingBox: function () {
-                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
+                    return new Rectangle(minX, minY, maxX - minX, maxY - minY);
                 },
                 /**
                  * Checks if Vector2 lies within the polygon
@@ -9082,7 +9082,7 @@ bento.define('bento/math/polygon', [
                 hasPosition: hasPosition,
                 /**
                  * Checks if other polygon/rectangle overlaps.
-                 * Note that this may be computationally expensive. 
+                 * Note that this may be computationally expensive.
                  * @function
                  * @param {Polygon/Rectangle} other - Other polygon or rectangle
                  * @returns {Boolean} true if polygons overlap
@@ -9114,7 +9114,7 @@ bento.define('bento/math/polygon', [
 /**
  * Rectangle
  * <br>Exports: Function
- * @module bento/math/rectangle
+ * @rectangle bento/math/rectangle
  * @param {Number} x - Top left x position
  * @param {Number} y - Top left y position
  * @param {Number} width - Width of the rectangle
@@ -9123,319 +9123,285 @@ bento.define('bento/math/polygon', [
  */
 bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';
-    var isRectangle = function () {
-            return true;
-        },
-        getX2 = function () {
-            return this.x + this.width;
-        },
-        getY2 = function () {
-            return this.y + this.height;
-        },
-        union = function (rectangle) {
-            var x1 = Math.min(this.x, rectangle.x),
-                y1 = Math.min(this.y, rectangle.y),
-                x2 = Math.max(this.getX2(), rectangle.getX2()),
-                y2 = Math.max(this.getY2(), rectangle.getY2());
-            return module(x1, y1, x2 - x1, y2 - y1);
-        },
-        intersect = function (other) {
-            if (other.isPolygon) {
-                return other.intersect(this);
-            } else {
-                return !(this.x + this.width <= other.x ||
-                    this.y + this.height <= other.y ||
-                    this.x >= other.x + other.width ||
-                    this.y >= other.y + other.height);
-            }
-        },
-        intersection = function (rectangle) {
-            var inter = module(0, 0, 0, 0);
-            if (this.intersect(rectangle)) {
-                inter.x = Math.max(this.x, rectangle.x);
-                inter.y = Math.max(this.y, rectangle.y);
-                inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
-                inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
-            }
-            return inter;
-        },
-        offset = function (pos) {
-            return module(this.x + pos.x, this.y + pos.y, this.width, this.height);
-        },
-        clone = function () {
-            return module(this.x, this.y, this.width, this.height);
-        },
-        hasPosition = function (vector) {
-            return !(
-                vector.x < this.x ||
-                vector.y < this.y ||
-                vector.x >= this.x + this.width ||
-                vector.y >= this.y + this.height
-            );
-        },
-        grow = function (size) {
-            this.x -= size / 2;
-            this.y -= size / 2;
-            this.width += size;
-            this.height += size;
-            return this;
-        },
-        module = function (x, y, width, height) {
-            return {
-                /**
-                 * X position
-                 * @instance
-                 * @name x
-                 */
-                x: x,
-                /**
-                 * Y position
-                 * @instance
-                 * @name y
-                 */
-                y: y,
-                /**
-                 * Width of the rectangle
-                 * @instance
-                 * @name width
-                 */
-                width: width,
-                /**
-                 * Height of the rectangle
-                 * @instance
-                 * @name height
-                 */
-                height: height,
-                /**
-                 * Returns true
-                 * @function
-                 * @returns {Boolean} Is always true
-                 * @instance
-                 * @name isRectangle
-                 */
-                isRectangle: isRectangle,
-                /**
-                 * Gets the lower right x position
-                 * @function
-                 * @returns {Number} Coordinate of the lower right position
-                 * @instance
-                 * @name getX2
-                 */
-                getX2: getX2,
-                /**
-                 * Gets the lower right y position
-                 * @function
-                 * @returns {Number} Coordinate of the lower right position
-                 * @instance
-                 * @name getY2
-                 */
-                getY2: getY2,
-                /**
-                 * Returns the union of 2 rectangles
-                 * @function
-                 * @param {Rectangle} other - Other rectangle
-                 * @returns {Rectangle} Union of the 2 rectangles
-                 * @instance
-                 * @name union
-                 */
-                union: union,
-                /**
-                 * Returns true if 2 rectangles intersect
-                 * @function
-                 * @param {Rectangle} other - Other rectangle
-                 * @returns {Boolean} True of 2 rectangles intersect
-                 * @instance
-                 * @name intersect
-                 */
-                intersect: intersect,
-                /**
-                 * Returns the intersection of 2 rectangles
-                 * @function
-                 * @param {Rectangle} other - Other rectangle
-                 * @returns {Rectangle} Intersection of the 2 rectangles
-                 * @instance
-                 * @name intersection
-                 */
-                intersection: intersection,
-                /**
-                 * Moves rectangle by an offset
-                 * @function
-                 * @param {Vector2} vector - Position to offset
-                 * @returns {Rectangle} Returns a new rectangle instance
-                 * @instance
-                 * @name offset
-                 */
-                offset: offset,
-                /**
-                 * Clones rectangle
-                 * @function
-                 * @returns {Rectangle} a clone of the current rectangle
-                 * @instance
-                 * @name clone
-                 */
-                clone: clone,
-                /**
-                 * Checks if Vector2 lies within the rectangle
-                 * @function
-                 * @returns {Boolean} true if position is inside
-                 * @instance
-                 * @name hasPosition
-                 */
-                hasPosition: hasPosition,
-                /**
-                 * Increases rectangle size from the center
-                 * @function
-                 * @returns {Number} value to grow the rectangle
-                 * @instance
-                 * @name grow
-                 */
-                grow: grow
-            };
-        };
-    return module;
+    var rectangle = function (x, y, width, height) {
+        /**
+         * X position
+         * @instance
+         * @name x
+         */
+        this.x = x;
+        /**
+         * Y position
+         * @instance
+         * @name y
+         */
+        this.y = y;
+        /**
+         * Width of the rectangle
+         * @instance
+         * @name width
+         */
+        this.width = width;
+        /**
+         * Height of the rectangle
+         * @instance
+         * @name height
+         */
+        this.height = height;
+    };
+    /**
+     * Returns true
+     * @function
+     * @returns {Boolean} Is always true
+     * @instance
+     * @name isRectangle
+     */
+    rectangle.prototype.isRectangle = function () {
+        return true;
+    };
+    /**
+     * Gets the lower right x position
+     * @function
+     * @returns {Number} Coordinate of the lower right position
+     * @instance
+     * @name getX2
+     */
+    rectangle.prototype.getX2 = function () {
+        return this.x + this.width;
+    };
+    /**
+     * Gets the lower right y position
+     * @function
+     * @returns {Number} Coordinate of the lower right position
+     * @instance
+     * @name getY2
+     */
+    rectangle.prototype.getY2 = function () {
+        return this.y + this.height;
+    };
+    /**
+     * Returns the union of 2 rectangles
+     * @function
+     * @param {Rectangle} other - Other rectangle
+     * @returns {Rectangle} Union of the 2 rectangles
+     * @instance
+     * @name union
+     */
+    rectangle.prototype.union = function (rectangle) {
+        var x1 = Math.min(this.x, rectangle.x),
+            y1 = Math.min(this.y, rectangle.y),
+            x2 = Math.max(this.getX2(), rectangle.getX2()),
+            y2 = Math.max(this.getY2(), rectangle.getY2());
+        return rectangle(x1, y1, x2 - x1, y2 - y1);
+    };
+    /**
+     * Returns true if 2 rectangles intersect
+     * @function
+     * @param {Rectangle} other - Other rectangle
+     * @returns {Boolean} True of 2 rectangles intersect
+     * @instance
+     * @name intersect
+     */
+    rectangle.prototype.intersect = function (other) {
+        if (other.isPolygon) {
+            return other.intersect(this);
+        } else {
+            return !(this.x + this.width <= other.x ||
+                this.y + this.height <= other.y ||
+                this.x >= other.x + other.width ||
+                this.y >= other.y + other.height);
+        }
+    };
+    /**
+     * Returns the intersection of 2 rectangles
+     * @function
+     * @param {Rectangle} other - Other rectangle
+     * @returns {Rectangle} Intersection of the 2 rectangles
+     * @instance
+     * @name intersection
+     */
+    rectangle.prototype.intersection = function (rectangle) {
+        var inter = rectangle(0, 0, 0, 0);
+        if (this.intersect(rectangle)) {
+            inter.x = Math.max(this.x, rectangle.x);
+            inter.y = Math.max(this.y, rectangle.y);
+            inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
+            inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
+        }
+        return inter;
+    };
+    /**
+     * Moves rectangle by an offset
+     * @function
+     * @param {Vector2} vector - Position to offset
+     * @returns {Rectangle} Returns a new rectangle instance
+     * @instance
+     * @name offset
+     */
+    rectangle.prototype.offset = function (pos) {
+        return rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
+    };
+    /**
+     * Clones rectangle
+     * @function
+     * @returns {Rectangle} a clone of the current rectangle
+     * @instance
+     * @name clone
+     */
+    rectangle.prototype.clone = function () {
+        return rectangle(this.x, this.y, this.width, this.height);
+    };
+    /**
+     * Checks if Vector2 lies within the rectangle
+     * @function
+     * @returns {Boolean} true if position is inside
+     * @instance
+     * @name hasPosition
+     */
+    rectangle.prototype.hasPosition = function (vector) {
+        return !(
+            vector.x < this.x ||
+            vector.y < this.y ||
+            vector.x >= this.x + this.width ||
+            vector.y >= this.y + this.height
+        );
+    };
+    /**
+     * Increases rectangle size from the center
+     * @function
+     * @returns {Number} value to grow the rectangle
+     * @instance
+     * @name grow
+     */
+    rectangle.prototype.grow = function (size) {
+        this.x -= size / 2;
+        this.y -= size / 2;
+        this.width += size;
+        this.height += size;
+        return this;
+    };
+
+    return rectangle;
 });
 /**
  * 2 dimensional vector
  * (Note: to perform matrix multiplications, one must use toMatrix)
  * <br>Exports: Function
- * @module bento/math/vector2
+ * @vector2 bento/math/vector2
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
  */
 bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     'use strict';
-    var isVector2 = function () {
-            return true;
-        },
-        add = function (vector) {
-            var v = this.clone();
-            v.addTo(vector);
-            return v;
-        },
-        addTo = function (vector) {
-            this.x += vector.x;
-            this.y += vector.y;
-            return this;
-        },
-        substract = function (vector) {
-            var v = this.clone();
-            v.substractFrom(vector);
-            return v;
-        },
-        substractFrom = function (vector) {
-            this.x -= vector.x;
-            this.y -= vector.y;
-            return this;
-        },
-        angle = function () {
-            return Math.atan2(this.y, this.x);
-        },
-        angleBetween = function (vector) {
-            return Math.atan2(
-                vector.y - this.y,
-                vector.x - this.x
-            );
-        },
-        dotProduct = function (vector) {
-            return this.x * vector.x + this.y * vector.y;
-        },
-        multiply = function (vector) {
-            var v = this.clone();
-            v.multiplyWith(vector);
-            return v;
-        },
-        multiplyWith = function (vector) {
-            this.x *= vector.x;
-            this.y *= vector.y;
-            return this;
-        },
-        divide = function (vector) {
-            var v = this.clone();
-            v.divideBy(vector);
-            return v;
-        },
-        divideBy = function (vector) {
-            this.x /= vector.x;
-            this.y /= vector.y;
-            return this;
-        },
-        scalarMultiply = function (value) {
-            var v = this.clone();
-            v.scalarMultiplyWith(value);
-            return v;
-        },
-        scalarMultiplyWith = function (value) {
-            this.x *= value;
-            this.y *= value;
-            return this;
-        },
-        scale = function (value) {
-            this.x *= value;
-            this.y *= value;
-            return this;
-        },
-        length = function () {
-            return Math.sqrt(this.dotProduct(this));
-        },
-        normalize = function () {
-            var length = this.length();
-            this.x /= length;
-            this.y /= length;
-            return this;
-        },
-        distance = function (vector) {
-            return vector.substract(this).length();
-        },
-        rotateRadian = function (angle) {
-            var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
-                y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
-            this.x = x;
-            this.y = y;
-            return this;
-        },
-        rotateDegree = function (angle) {
-            return this.rotateRadian(angle * Math.PI / 180);
-        },
-        clone = function () {
-            return module(this.x, this.y);
-        },
-        toMatrix = function () {
-            var matrix = Matrix(1, 3);
-            matrix.set(0, 0, this.x);
-            matrix.set(0, 1, this.y);
-            matrix.set(0, 2, 1);
-            return matrix;
-        },
-        module = function (x, y) {
-            return {
-                x: x,
-                y: y,
-                isVector2: isVector2,
-                add: add,
-                addTo: addTo,
-                substract: substract,
-                substractFrom: substractFrom,
-                angle: angle,
-                angleBetween: angleBetween,
-                dotProduct: dotProduct,
-                multiply: multiply,
-                multiplyWith: multiplyWith,
-                divide: divide,
-                divideBy: divideBy,
-                scalarMultiply: scalarMultiply,
-                scalarMultiplyWith: scalarMultiplyWith,
-                scale: scale,
-                length: length,
-                normalize: normalize,
-                distance: distance,
-                rotateRadian: rotateRadian,
-                rotateDegree: rotateDegree,
-                clone: clone,
-                toMatrix: toMatrix
-            };
-        };
-    return module;
+    var vector2 = function (x, y) {
+        this.x = x || 0;
+        this.y = y || 0;
+    }
+
+    vector2.prototype.isVector2 = function () {
+        return true;
+    };
+    vector2.prototype.add = function (vector) {
+        var v = this.clone();
+        v.addTo(vector);
+        return v;
+    };
+    vector2.prototype.addTo = function (vector) {
+        this.x += vector.x;
+        this.y += vector.y;
+        return this;
+    };
+    vector2.prototype.substract = function (vector) {
+        var v = this.clone();
+        v.substractFrom(vector);
+        return v;
+    };
+    vector2.prototype.substractFrom = function (vector) {
+        this.x -= vector.x;
+        this.y -= vector.y;
+        return this;
+    };
+    vector2.prototype.angle = function () {
+        return Math.atan2(this.y, this.x);
+    };
+    vector2.prototype.angleBetween = function (vector) {
+        return Math.atan2(
+            vector.y - this.y,
+            vector.x - this.x
+        );
+    };
+    vector2.prototype.dotProduct = function (vector) {
+        return this.x * vector.x + this.y * vector.y;
+    };
+    vector2.prototype.multiply = function (vector) {
+        var v = this.clone();
+        v.multiplyWith(vector);
+        return v;
+    };
+    vector2.prototype.multiplyWith = function (vector) {
+        this.x *= vector.x;
+        this.y *= vector.y;
+        return this;
+    };
+    vector2.prototype.divide = function (vector) {
+        var v = this.clone();
+        v.divideBy(vector);
+        return v;
+    };
+    vector2.prototype.divideBy = function (vector) {
+        this.x /= vector.x;
+        this.y /= vector.y;
+        return this;
+    };
+    vector2.prototype.scalarMultiply = function (value) {
+        var v = this.clone();
+        v.scalarMultiplyWith(value);
+        return v;
+    };
+    vector2.prototype.scalarMultiplyWith = function (value) {
+        this.x *= value;
+        this.y *= value;
+        return this;
+    };
+    vector2.prototype.scale = function (value) {
+        this.x *= value;
+        this.y *= value;
+        return this;
+    };
+    vector2.prototype.length = function () {
+        return Math.sqrt(this.dotProduct(this));
+    };
+    vector2.prototype.normalize = function () {
+        var length = this.length();
+        this.x /= length;
+        this.y /= length;
+        return this;
+    };
+    vector2.prototype.distance = function (vector) {
+        return vector.substract(this).length();
+    };
+    vector2.prototype.rotateRadian = function (angle) {
+        var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
+            y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
+        this.x = x;
+        this.y = y;
+        return this;
+    };
+    vector2.prototype.rotateDegree = function (angle) {
+        return this.rotateRadian(angle * Math.PI / 180);
+    };
+    vector2.prototype.clone = function () {
+        return new vector2 (this.x, this.y);
+    };
+    vector2.prototype.toMatrix = function () {
+        var matrix = Matrix(1, 3);
+        matrix.set(0, 0, this.x);
+        matrix.set(0, 1, this.y);
+        matrix.set(0, 2, 1);
+        return matrix;
+    };
+    return vector2;
 });
 /**
  * A helper module that returns a rectangle as the best fit of a multiplication of the screen size.
@@ -9871,7 +9837,7 @@ bento.define('bento/tiled', [
                         spawnShape(Polygon(points), object.type);
                     } else {
                         // rectangle
-                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
+                        spawnShape(new Rectangle(object.x, object.y, object.width, object.height), object.type);
                     }
                 }
             }
@@ -9882,8 +9848,8 @@ bento.define('bento/tiled', [
                 z: 0,
                 name: '',
                 useHshg: false,
-                position: Vector2(0, 0),
-                originRelative: Vector2(0, 0),
+                position: new Vector2(0, 0),
+                originRelative: new Vector2(0, 0),
                 components: [Sprite],
                 family: [''],
                 sprite: {
@@ -9922,7 +9888,7 @@ bento.define('bento/tiled', [
              * @instance
              * @name dimension
              */
-            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height),
+            dimension: new Rectangle(0, 0, tileWidth * width, tileHeight * height),
             /**
              * Moves the entire object and its parts to the specified position.
              * @function
@@ -10564,8 +10530,8 @@ bento.define('bento/gui/clickbutton', [
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
-                originRelative: Vector2(0.5, 0.5),
-                position: Vector2(0, 0),
+                originRelative: new Vector2(0.5, 0.5),
+                position: new Vector2(0, 0),
                 components: [Sprite, Clickable],
                 family: ['buttons'],
                 sprite: {
@@ -10658,7 +10624,7 @@ bento.define('bento/gui/counter', [
             position: Vector
         }*/
         var value = settings.value || 0,
-            spacing = settings.spacing || Vector2(0, 0),
+            spacing = settings.spacing || new Vector2(0, 0),
             alignment = settings.align || settings.alignment || 'right',
             digitWidth = 0,
             children = [],
@@ -10750,7 +10716,7 @@ bento.define('bento/gui/counter', [
                 /* update animations */
                 for (i = 0; i < children.length; ++i) {
                     digit = children[i];
-                    digit.setPosition(Vector2((digitWidth + spacing.x) * i, 0));
+                    digit.setPosition(new Vector2((digitWidth + spacing.x) * i, 0));
                     digit.sprite.setAnimation(valueStr.substr(i, 1));
                 }
 
@@ -10760,14 +10726,14 @@ bento.define('bento/gui/counter', [
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
                         pos = digit.position.clone();
-                        pos.substract(Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
+                        pos.substract(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
                         digit.setPosition(pos);
                     }
                 } else if (alignment === 'center') {
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
                         pos = digit.position;
-                        pos.addTo(Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
+                        pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
                     }
                 }
             },
@@ -10839,8 +10805,8 @@ bento.define('bento/gui/togglebutton', [
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
-                originRelative: Vector2(0.5, 0.5),
-                position: Vector2(0, 0),
+                originRelative: new Vector2(0.5, 0.5),
+                position: new Vector2(0, 0),
                 components: [Sprite, Clickable],
                 family: ['buttons'],
                 sprite: {

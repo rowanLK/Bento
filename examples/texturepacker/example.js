@@ -23,7 +23,7 @@ bento.require([
 ) {
     Bento.setup({
         canvasId: 'canvas',
-        canvasDimension: Rectangle(0, 0, 160, 240),
+        canvasDimension: new Rectangle(0, 0, 160, 240),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -41,8 +41,8 @@ bento.require([
                 }),
                 bunny1 = Entity({
                     components: [Translation, Animation, Clickable],
-                    position: Vector2(16, 16),
-                    originRelative: Vector2(0.5, 0.5),
+                    position: new Vector2(16, 16),
+                    originRelative: new Vector2(0.5, 0.5),
                     animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
@@ -65,8 +65,8 @@ bento.require([
                 }),
                 bunny2 = Entity({
                     components: [Translation, Scale, Animation],
-                    position: Vector2(16 + 32, 16),
-                    originRelative: Vector2(0.5, 0.5),
+                    position: new Vector2(16 + 32, 16),
+                    originRelative: new Vector2(0.5, 0.5),
                     animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
@@ -85,8 +85,8 @@ bento.require([
                 }),
                 bunny3 = Entity({
                     components: [Translation, Rotation, Animation],
-                    position: Vector2(16 + 64, 16),
-                    originRelative: Vector2(0.5, 0.5),
+                    position: new Vector2(16 + 64, 16),
+                    originRelative: new Vector2(0.5, 0.5),
                     animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
@@ -108,8 +108,8 @@ bento.require([
                 }),
                 bunny4 = Entity({
                     components: [Translation, Rotation, Scale, Animation],
-                    position: Vector2(16 + 96, 16),
-                    originRelative: Vector2(0.5, 0.5),
+                    position: new Vector2(16 + 96, 16),
+                    originRelative: new Vector2(0.5, 0.5),
                     animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,

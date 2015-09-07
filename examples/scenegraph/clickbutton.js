@@ -23,8 +23,8 @@ bento.define('clickbutton', [
             entity = Entity({
                 z: 0,
                 name: '',
-                originRelative: settings.originRelative || Vector2(0, 0),
-                position: settings.position || Vector2(0, 0),
+                originRelative: settings.originRelative || new Vector2(0, 0),
+                position: settings.position || new Vector2(0, 0),
                 components: [Sprite, Clickable],
                 family: ['buttons'],
                 sprite: {

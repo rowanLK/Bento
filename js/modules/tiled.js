@@ -244,7 +244,7 @@ bento.define('bento/tiled', [
                         spawnShape(Polygon(points), object.type);
                     } else {
                         // rectangle
-                        spawnShape(Rectangle(object.x, object.y, object.width, object.height), object.type);
+                        spawnShape(new Rectangle(object.x, object.y, object.width, object.height), object.type);
                     }
                 }
             }
@@ -255,8 +255,8 @@ bento.define('bento/tiled', [
                 z: 0,
                 name: '',
                 useHshg: false,
-                position: Vector2(0, 0),
-                originRelative: Vector2(0, 0),
+                position: new Vector2(0, 0),
+                originRelative: new Vector2(0, 0),
                 components: [Sprite],
                 family: [''],
                 sprite: {
@@ -295,7 +295,7 @@ bento.define('bento/tiled', [
              * @instance
              * @name dimension
              */
-            dimension: Rectangle(0, 0, tileWidth * width, tileHeight * height),
+            dimension: new Rectangle(0, 0, tileWidth * width, tileHeight * height),
             /**
              * Moves the entire object and its parts to the specified position.
              * @function

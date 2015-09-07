@@ -88,7 +88,7 @@ bento.define('bento/managers/input', [
                 evt.preventDefault();
                 evt.id = 0;
                 evt.eventType = 'touch';
-                evt.changedTouches[n].position = Vector2(x, y);
+                evt.changedTouches[n].position = new Vector2(x, y);
                 evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
                 evt.changedTouches[n].worldPosition.x += viewport.x;
                 evt.changedTouches[n].worldPosition.y += viewport.y;
@@ -105,7 +105,7 @@ bento.define('bento/managers/input', [
                     y = (evt.pageY - offsetTop) / canvasScale.y;
                 evt.id = 0;
                 evt.eventType = 'mouse';
-                evt.position = Vector2(x, y);
+                evt.position = new Vector2(x, y);
                 evt.worldPosition = evt.position.clone();
                 evt.worldPosition.x += viewport.x;
                 evt.worldPosition.y += viewport.y;

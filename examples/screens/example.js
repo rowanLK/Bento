@@ -13,7 +13,7 @@ bento.require([
 ) {
     Bento.setup({
         canvasId: 'canvas',
-        canvasDimension: Rectangle(0, 0, 160, 240),
+        canvasDimension: new Rectangle(0, 0, 160, 240),
         assetGroups: {
             'assets': 'assets/assets.json'
         },

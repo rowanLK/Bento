@@ -14,7 +14,7 @@ bento.require([
     Bento.setup({
         canvasId: 'canvas',
         debug: true,
-        canvasDimension: Rectangle(0, 0, 640, 960),
+        canvasDimension: new Rectangle(0, 0, 640, 960),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -47,8 +47,8 @@ bento.require([
                 addBunny = function () {
                     var entity = new Entity({
                         components: [Animation],
-                        position: Vector2(getRandom(viewport.width), getRandom(viewport.height)),
-                        originRelative: Vector2(0.5, 0.5),
+                        position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
+                        originRelative: new Vector2(0.5, 0.5),
                         pixi: {
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
@@ -64,7 +64,7 @@ bento.require([
                             // this.pixi.setAnimation('idle');
                         }
                     }).attach({
-                        speed: Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
+                        speed: new Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
                         update: function () {
                             var position = entity.position;
                             position.y += this.speed.y;

@@ -17,7 +17,7 @@ bento.require([
 ) {
     Bento.setup({
         canvasId: 'canvas',
-        canvasDimension: Rectangle(0, 0, 160, 240),
+        canvasDimension: new Rectangle(0, 0, 160, 240),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -46,8 +46,8 @@ bento.require([
                 },
                 bunny = Entity({
                     components: [Sprite, Clickable],
-                    position: Vector2(80, 120),
-                    originRelative: Vector2(0.5, 1),
+                    position: new Vector2(80, 120),
+                    originRelative: new Vector2(0.5, 1),
                     addNow: true,
                     animation: {
                         image: Bento.assets.getImage('bunnygirlsmall'),

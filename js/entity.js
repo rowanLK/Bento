@@ -1,7 +1,7 @@
 /**
  * A base object to hold components
  * <br>Exports: Function
- * @module {Entity} bento/entity
+ * @entity {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Function} settings.onCollide - Called when object collides in HSHG
@@ -86,13 +86,13 @@ bento.define('bento/entity', [
          * @name useHshg
          */
         this.useHshg = false;
-        this.position = Vector2(0, 0);
-        this.origin = Vector2(0, 0);
+        this.position = new Vector2(0, 0);
+        this.origin = new Vector2(0, 0);
         this.family = [];
         this.components = [];
-        this.dimension = Rectangle(0, 0, 0, 0);
-        this.boundingBox = Rectangle(0, 0, null, null);
-        this.scale = Vector2(1, 1);
+        this.dimension = new Rectangle(0, 0, 0, 0);
+        this.boundingBox = new Rectangle(0, 0, null, null);
+        this.scale = new Vector2(1, 1);
         this.rotation = 0;
         this.visible = true;
         this.parent = null;
@@ -271,7 +271,7 @@ bento.define('bento/entity', [
         var scale, x1, x2, y1, y2, box;
         if (!this.boundingBox.width) {
             // TODO get rid of scale component dependency
-            scale = this.scale ? this.scale : Vector2(1, 1);
+            scale = this.scale ? this.scale : new Vector2(1, 1);
             x1 = this.position.x - this.origin.x * scale.x;
             y1 = this.position.y - this.origin.y * scale.y;
             x2 = this.position.x + (this.dimension.width - this.origin.x) * scale.x;
@@ -283,11 +283,11 @@ bento.define('bento/entity', [
             if (scale.y < 0) {
                 y2 = [y1, y1 = y2][0];
             }
-            return Rectangle(x1, y1, x2 - x1, y2 - y1);
+            return new Rectangle(x1, y1, x2 - x1, y2 - y1);
         } else {
             // TODO: cloning could be expensive for polygons
             box = this.boundingBox.clone();
-            scale = this.scale ? this.scale : Vector2(1, 1);
+            scale = this.scale ? this.scale : new Vector2(1, 1);
             box.x *= Math.abs(scale.x);
             box.y *= Math.abs(scale.y);
             box.width *= Math.abs(scale.x);
@@ -463,7 +463,7 @@ bento.define('bento/entity', [
     entity.prototype.collidesWith = function (other, offset, callback) {
         var intersect;
         if (!Utils.isDefined(offset)) {
-            offset = Vector2(0, 0);
+            offset = new Vector2(0, 0);
         }
         intersect = this.boundingBox.offset(offset).intersect(other.boundingBox);
         if (intersect && callback) {
@@ -486,7 +486,7 @@ bento.define('bento/entity', [
             obj,
             box;
         if (!Utils.isDefined(offset)) {
-            offset = Vector2(0, 0);
+            offset = new Vector2(0, 0);
         }
         if (!Utils.isArray(array)) {
             // throw 'Collision check must be with an Array of object';

@@ -27,7 +27,7 @@ bento.require([
 ) {
     Bento.setup({
         canvasId: 'canvas',
-        canvasDimension: Rectangle(0, 0, 600, 600),
+        canvasDimension: new Rectangle(0, 0, 600, 600),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
@@ -50,14 +50,14 @@ bento.require([
                     // move polygon with the object
                     var pos = object.getPosition(),
                         points = [];
-                    // 
-                    points.push(Vector2(pos.x, pos.y));
-                    points.push(Vector2(pos.x + 32, pos.y + 32));
-                    points.push(Vector2(pos.x + 8, pos.y + 32));
-                    points.push(Vector2(pos.x + 8, pos.y + 64));
-                    points.push(Vector2(pos.x - 8, pos.y + 64));
-                    points.push(Vector2(pos.x - 8, pos.y + 32));
-                    points.push(Vector2(pos.x - 32, pos.y + 32));
+                    //
+                    points.push(new Vector2(pos.x, pos.y));
+                    points.push(new Vector2(pos.x + 32, pos.y + 32));
+                    points.push(new Vector2(pos.x + 8, pos.y + 32));
+                    points.push(new Vector2(pos.x + 8, pos.y + 64));
+                    points.push(new Vector2(pos.x - 8, pos.y + 64));
+                    points.push(new Vector2(pos.x - 8, pos.y + 32));
+                    points.push(new Vector2(pos.x - 32, pos.y + 32));
                     polygon = Polygon(points);
 
                     colliding = polygon.intersect(polygonOther);
@@ -68,8 +68,8 @@ bento.require([
                     name: '',
                     addNow: false,
                     useHshg: false,
-                    position: Vector2(0, 0),
-                    originRelative: Vector2(0, 0),
+                    position: new Vector2(0, 0),
+                    originRelative: new Vector2(0, 0),
                     components: [Clickable],
                     family: [''],
                     clickable: {
@@ -82,15 +82,15 @@ bento.require([
                         pointerDown: function (e) {
                             var position = object.getPosition();
                             if (polygon.hasPosition(e.worldPosition)) {
-                                object.offset = Vector2(position.x - e.worldPosition.x, position.y - e.worldPosition.y);
-                                object.setPosition(Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y));
+                                object.offset = new Vector2(position.x - e.worldPosition.x, position.y - e.worldPosition.y);
+                                object.setPosition(new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y));
                                 object.hold = true;
                                 set();
                             }
                         },
                         pointerMove: function (e) {
                             if (object.hold) {
-                                object.setPosition(Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y));
+                                object.setPosition(new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y));
                                 set();
                             }
                         }
@@ -137,18 +137,18 @@ bento.require([
                 }
             });
             // star shape
-            pts.push(Vector2(300, 200));
-            pts.push(Vector2(350, 300));
-            pts.push(Vector2(450, 300));
-            pts.push(Vector2(370, 370));
-            pts.push(Vector2(400, 500));
-            pts.push(Vector2(300, 410));
-            pts.push(Vector2(200, 500));
-            pts.push(Vector2(230, 370));
-            pts.push(Vector2(150, 300));
-            pts.push(Vector2(250, 300));
+            pts.push(new Vector2(300, 200));
+            pts.push(new Vector2(350, 300));
+            pts.push(new Vector2(450, 300));
+            pts.push(new Vector2(370, 370));
+            pts.push(new Vector2(400, 500));
+            pts.push(new Vector2(300, 410));
+            pts.push(new Vector2(200, 500));
+            pts.push(new Vector2(230, 370));
+            pts.push(new Vector2(150, 300));
+            pts.push(new Vector2(250, 300));
             polygonOther = Polygon(pts);
-            object.setPosition(Vector2(80, 80));
+            object.setPosition(new Vector2(80, 80));
             set();
 
             Bento.objects.add(object);

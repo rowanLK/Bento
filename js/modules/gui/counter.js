@@ -29,7 +29,7 @@ bento.define('bento/gui/counter', [
             position: Vector
         }*/
         var value = settings.value || 0,
-            spacing = settings.spacing || Vector2(0, 0),
+            spacing = settings.spacing || new Vector2(0, 0),
             alignment = settings.align || settings.alignment || 'right',
             digitWidth = 0,
             children = [],
@@ -121,7 +121,7 @@ bento.define('bento/gui/counter', [
                 /* update animations */
                 for (i = 0; i < children.length; ++i) {
                     digit = children[i];
-                    digit.setPosition(Vector2((digitWidth + spacing.x) * i, 0));
+                    digit.setPosition(new Vector2((digitWidth + spacing.x) * i, 0));
                     digit.sprite.setAnimation(valueStr.substr(i, 1));
                 }
 
@@ -131,14 +131,14 @@ bento.define('bento/gui/counter', [
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
                         pos = digit.position.clone();
-                        pos.substract(Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
+                        pos.substract(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
                         digit.setPosition(pos);
                     }
                 } else if (alignment === 'center') {
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
                         pos = digit.position;
-                        pos.addTo(Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
+                        pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
                     }
                 }
             },

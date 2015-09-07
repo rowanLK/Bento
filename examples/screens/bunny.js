@@ -22,7 +22,7 @@ bento.define('bunny', [
         var object = Entity({
             z: 0,
             name: 'bunny',
-            originRelative: Vector2(0.5, 1),
+            originRelative: new Vector2(0.5, 1),
             components: [Sprite, Clickable],
             family: [''],
             sprite: {

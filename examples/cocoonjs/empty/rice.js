@@ -2144,8 +2144,8 @@ bento.define('bento/entity', [
         var i,
             name,
             visible = true,
-            position = Vector2(0, 0),
-            origin = Vector2(0, 0),
+            position = new Vector2(0, 0),
+            origin = new Vector2(0, 0),
             dimension = Rectangle(0, 0, 0, 0),
             rectangle,
             components = [],
@@ -2247,7 +2247,7 @@ bento.define('bento/entity', [
                 getBoundingBox: function () {
                     var scale, x1, x2, y1, y2, box;
                     if (!rectangle) {
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        scale = entity.scale ? entity.scale.getScale() : new Vector2(1, 1);
                         x1 = position.x - origin.x * scale.x;
                         y1 = position.y - origin.y * scale.y;
                         x2 = position.x + (dimension.width - origin.x) * scale.x;
@@ -2262,7 +2262,7 @@ bento.define('bento/entity', [
                         return Rectangle(x1, y1, x2 - x1, y2 - y1);
                     } else {
                         box = rectangle.clone();
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
+                        scale = entity.scale ? entity.scale.getScale() : new Vector2(1, 1);
                         box.x *= Math.abs(scale.x);
                         box.y *= Math.abs(scale.y);
                         box.width *= Math.abs(scale.x);
@@ -2344,7 +2344,7 @@ bento.define('bento/entity', [
                 },
                 collidesWith: function (other, offset) {
                     if (!Sugar.isDefined(offset)) {
-                        offset = Vector2(0, 0);
+                        offset = new Vector2(0, 0);
                     }
                     return entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
                 },
@@ -2353,7 +2353,7 @@ bento.define('bento/entity', [
                         obj,
                         box;
                     if (!Sugar.isDefined(offset)) {
-                        offset = Vector2(0, 0);
+                        offset = new Vector2(0, 0);
                     }
                     if (!Sugar.isArray(array)) {
                         // throw 'Collision check must be with an Array of object';
@@ -2770,7 +2770,7 @@ bento.define('bento/sugar', [], function () {
                 }
             }
         },
-        combine = function (obj1, obj2) {                        
+        combine = function (obj1, obj2) {
             var prop, temp;
             for (prop in obj2) {
                 if (obj2.hasOwnProperty(prop)) {
@@ -2780,7 +2780,7 @@ bento.define('bento/sugar', [], function () {
                         temp = {};
                         temp[prop] = obj1[prop];
                         combine(obj1.base, temp);
-                    } 
+                    }
                     if (isObject(obj2[prop])) {
                         obj1[prop] = combine({}, obj2[prop]);
                     } else {
@@ -2796,12 +2796,12 @@ bento.define('bento/sugar', [], function () {
         setAnimationFrameTimeout = function (callback, timeout) {
             var now = new Date().getTime(),
                 rafID = null;
-            
+
             if (timeout === undefined) timeout = 1;
-            
+
             function animationFrame() {
                 var later = new Date().getTime();
-                
+
                 if (later - now >= timeout) {
                     callback();
                 } else {
@@ -3138,7 +3138,7 @@ bento.define('bento/components/pixisprite', [
                 }
             };
 
-        // call setup 
+        // call setup
         if (settings && settings[component.name]) {
             component.setup(settings[component.name]);
         }
@@ -3209,7 +3209,7 @@ bento.define('bento/components/scale', [
     'use strict';
     return function (base) {
         var set = false,
-            scale = Vector2(1, 1),
+            scale = new Vector2(1, 1),
             mixin = {},
             component = {
                 name: 'scale',
@@ -3375,7 +3375,7 @@ bento.define('bento/components/sprite', [
                 }
             };
 
-        // call setup 
+        // call setup
         if (settings && settings[component.name]) {
             component.setup(settings[component.name]);
         }
@@ -3814,7 +3814,7 @@ bento.define('bento/managers/input', [
                 y = (touch.pageY - offsetTop) / canvasScale.y;
             evt.preventDefault();
             evt.eventType = 'touch';
-            evt.changedTouches[n].position = Vector2(x, y);
+            evt.changedTouches[n].position = new Vector2(x, y);
             evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
             evt.changedTouches[n].worldPosition.x += viewport.x;
             evt.changedTouches[n].worldPosition.y += viewport.y;
@@ -3826,7 +3826,7 @@ bento.define('bento/managers/input', [
             var x = (evt.clientX - offsetLeft) / canvasScale.x,
                 y = (evt.clientY - offsetTop) / canvasScale.y;
             evt.eventType = 'mouse';
-            evt.position = Vector2(x, y);
+            evt.position = new Vector2(x, y);
             evt.worldPosition = evt.position.clone();
             evt.worldPosition.x += viewport.x;
             evt.worldPosition.y += viewport.y;
@@ -4406,7 +4406,7 @@ bento.define('bento/math/polygon', [
 
             // is other really a polygon?
             if (polygon.isRectangle) {
-                // before constructing a polygon, check if boxes collide in the first place 
+                // before constructing a polygon, check if boxes collide in the first place
                 if (!this.getBoundingBox().intersect(polygon)) {
                     return false;
                 }
