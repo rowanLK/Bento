@@ -1,6 +1,6 @@
 /**
  * Sprite component that uses pixi (alternative version of animation component).
- * Todo: somehow merge the 2 components? Lots of duplicate code here 
+ * Todo: somehow merge the 2 components? Lots of duplicate code here
  * <br>Exports: Function
  * @module bento/components/pixi
  * @param {Entity} entity - The entity to attach the component to
@@ -90,8 +90,8 @@
                         frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of entity object
-                    entity.getDimension().width = frameWidth;
-                    entity.getDimension().height = frameHeight;
+                    entity.dimension.width = frameWidth;
+                    entity.dimension.height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -130,12 +130,12 @@
                     if (reachedEnd && onCompleteCallback) {
                         onCompleteCallback();
                     }
-                    pixiSprite.visible = entity.isVisible();
+                    pixiSprite.visible = entity.visible;
                 },
                 draw: function (data) {
                     // update pixi sprite, doesnt actually draw
-                    var origin = entity.getOrigin(),
-                        position = entity.getPosition(),
+                    var origin = entity.origin,
+                        position = entity.position,
                         rotation,
                         scale,
                         rectangle,
@@ -159,14 +159,14 @@
                     // pixiSprite.pivot.y = origin.y;
                     pixiSprite.anchor.x = origin.x / frameWidth;
                     pixiSprite.anchor.y = origin.y / frameHeight;
-                    
+
                     if (entity.float) {
                         pixiSprite.x -= viewport.x;
                         pixiSprite.y -= viewport.y;
                     }
 
                     if (entity.scale) {
-                        scale = entity.scale.getScale();
+                        scale = entity.scale;
                         pixiSprite.scale.x = scale.x;
                         pixiSprite.scale.y = scale.y;
                     }
@@ -181,7 +181,7 @@
                 destroy: function (data) {
                     // remove from parent
                     if (pixiSprite && pixiSprite.parent) {
-                        pixiSprite.parent.removeChild(pixiSprite);                        
+                        pixiSprite.parent.removeChild(pixiSprite);
                     }
                 },
                 start: function (data) {
@@ -200,7 +200,7 @@
                         data.renderer.addChild(pixiSprite);
                     } else if (data.entity) {
                         // attach to parent
-                        parent = data.entity.getParent();
+                        parent = data.entity.parent;
                         // get pixi component
                         if (parent) {
                             component = parent.getComponentByName('pixi');
@@ -297,7 +297,7 @@
                     return frameWidth;
                 }
             };
-        // call setup 
+        // call setup
         if (settings && settings[component.name]) {
             component.setup(settings[component.name]);
         }

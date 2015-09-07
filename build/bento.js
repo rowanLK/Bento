@@ -4042,662 +4042,79 @@ bento.define('bento/entity', [
     'bento/utils',
     'bento/math/vector2',
     'bento/math/rectangle'
-], function(Bento, Utils, Vector2, Rectangle) {
+], function (Bento, Utils, Vector2, Rectangle) {
     'use strict';
-    var globalId = 0;
-    return function(settings) {
-        var i,
-            name,
-            visible = true,
-            position = Vector2(0, 0),
-            angle = 0,
-            scale = Vector2(0, 0),
-            origin = Vector2(0, 0),
-            dimension = Rectangle(0, 0, 0, 0),
-            rectangle,
-            components = [],
-            family = [],
-            removedComponents = [],
-            parent = null,
-            uniqueId = ++globalId,
-            cleanComponents = function() {
-                /*var i, component;
-                while (removedComponents.length) {
-                    component = removedComponents.pop();
-                    // should destroy be called?
-                    if (component.destroy) {
-                        component.destroy();
-                    }
-                    Utils.removeObject(components, component);
-                }
-                */
+    var cleanComponents = function (entity) {
+        // remove null components
+        var i;
+        for (i = entity.components.length - 1; i >= 0; --i) {
+            if (!entity.components[i]) {
+                entity.components.splice(i, 1);
+            }
+        }
+    };
 
-                // remove null components
-                var i;
-                for (i = components.length - 1; i >= 0; --i) {
-                    if (!components[i]) {
-                        components.splice(i, 1);
-                    }
-                }
-            },
-            entity = {
-                /**
-                 * z-index of an object
-                 * @instance
-                 * @default 0
-                 * @name z
-                 */
-                z: 0,
-                /**
-                 * Timer value, incremented every update step
-                 * @instance
-                 * @default 0
-                 * @name timer
-                 */
-                timer: 0,
-                /**
-                 * Indicates if an object should not be destroyed when a Screen ends
-                 * @instance
-                 * @default false
-                 * @name global
-                 */
-                global: false,
-                /**
-                 * Indicates if an object should move with the scrolling of the screen
-                 * @instance
-                 * @default false
-                 * @name float
-                 */
-                float: false,
-                /**
-                 * Indicates if an object should continue updating when the game is paused
-                 * @instance
-                 * @default false
-                 * @name updateWhenPaused
-                 */
-                updateWhenPaused: false,
-                /**
-                 * Name of an object
-                 * @instance
-                 * @default ''
-                 * @name name
-                 */
-                name: '',
-                isAdded: false,
-                /**
-                 * Name of an object
-                 * @instance
-                 * @default ''
-                 * @name useHshg
-                 */
-                useHshg: false,
-                /**
-                 * Calls start on every component
-                 * @function
-                 * @param {Object} data - gameData object
-                 * @instance
-                 * @name start
-                 */
-                start: function(data) {
-                    var i,
-                        l,
-                        component;
-                    if (data) {
-                        data.entity = this;
-                    }
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.start) {
-                            component.start(data);
-                        }
-                    }
-                },
-                /**
-                 * Calls destroy on every component
-                 * @function
-                 * @param {Object} data - gameData object
-                 * @instance
-                 * @name destroy
-                 */
-                destroy: function(data) {
-                    var i,
-                        l,
-                        component;
-                    if (data) {
-                        data.entity = this;
-                    }
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.destroy) {
-                            component.destroy(data);
-                        }
-                    }
-                },
-                /**
-                 * Calls update on every component
-                 * @function
-                 * @param {Object} data - gameData object
-                 * @instance
-                 * @name update
-                 */
-                update: function(data) {
-                    var i,
-                        l,
-                        component;
-
-                    if (data) {
-                        data.entity = this;
-                    }
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.update) {
-                            component.update(data);
-                        }
-                    }
-                    ++entity.timer;
-
-                    // clean up
-                    cleanComponents();
-                },
-                /**
-                 * Calls draw on every component
-                 * @function
-                 * @param {Object} data - gameData object
-                 * @instance
-                 * @name draw
-                 */
-                draw: function(data) {
-                    var i,
-                        l,
-                        component;
-                    if (!visible) {
-                        return;
-                    }
-                    if (data) {
-                        data.entity = this;
-                    }
-                    // call components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component && component.draw) {
-                            component.draw(data);
-                        }
-                    }
-                    // post draw
-                    for (i = components.length - 1; i >= 0; i--) {
-                        component = components[i];
-                        if (component && component.postDraw) {
-                            component.postDraw(data);
-                        }
-                    }
-                },
-                /**
-                 * Pushes string to its family array (Bento adds family members during the attach)
-                 * @function
-                 * @param {String} name - family name
-                 * @instance
-                 * @name addToFamily
-                 */
-                addToFamily: function(name) {
-                    family.push(name);
-                },
-                /**
-                 * Get family array
-                 * @function
-                 * @instance
-                 * @name getFamily
-                 */
-                getFamily: function() {
-                    return family;
-                },
-                /**
-                 * Extends properties of entity
-                 * @function
-                 * @instance
-                 * @param {Object} object - other object
-                 * @see module:bento/utils#extend
-                 * @name extend
-                 */
-                extend: function(object) {
-                    return Utils.extend(entity, object);
-                },
-                /**
-                 * Returns reference to entity position
-                 * @function
-                 * @instance
-                 * @name getPosition
-                 */
-                getPosition: function() {
-                    return position;
-                },
-                /**
-                 * Sets entity position (copies vector values)
-                 * @function
-                 * @param {Vector2} vector - new position vector
-                 * @instance
-                 * @name setPosition
-                 */
-                setPosition: function(value) {
-                    position.x = value.x;
-                    position.y = value.y;
-                },
-                /**
-                 * Sets entity x position
-                 * @function
-                 * @param {Number} x - new x position
-                 * @instance
-                 * @name setPositionX
-                 */
-                setPositionX: function(value) {
-                    position.x = value;
-                },
-                /**
-                 * Sets entity y position
-                 * @function
-                 * @param {Number} y - new x position
-                 * @instance
-                 * @name setPositionY
-                 */
-                setPositionY: function(value) {
-                    position.y = value;
-                },
-                /**
-                 * Returns reference to entity's size
-                 * @function
-                 * @returns {Rectangle} dimension - Reference to entity's size rectangle
-                 * @instance
-                 * @name getDimension
-                 */
-                getDimension: function() {
-                    return dimension;
-                },
-                /**
-                 * Sets entity's size
-                 * @function
-                 * @param {Rectangle} dimension - Reference to entity's size rectangle
-                 * @instance
-                 * @name setDimension
-                 */
-                setDimension: function(value) {
-                    dimension = value;
-                },
-                /**
-                 * Returns the bounding box of an entity. If no bounding box was set
-                 * previously, the dimension is returned.
-                 * @function
-                 * @returns {Rectangle} boundingbox - Entity's boundingbox
-                 * @instance
-                 * @name getBoundingBox
-                 */
-                getBoundingBox: function() {
-                    var scale, x1, x2, y1, y2, box;
-                    if (!rectangle) {
-                        // TODO get rid of scale component dependency
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
-                        x1 = position.x - origin.x * scale.x;
-                        y1 = position.y - origin.y * scale.y;
-                        x2 = position.x + (dimension.width - origin.x) * scale.x;
-                        y2 = position.y + (dimension.height - origin.y) * scale.y;
-                        // swap variables if scale is negative
-                        if (scale.x < 0) {
-                            x2 = [x1, x1 = x2][0];
-                        }
-                        if (scale.y < 0) {
-                            y2 = [y1, y1 = y2][0];
-                        }
-                        return Rectangle(x1, y1, x2 - x1, y2 - y1);
-                    } else {
-                        // TODO: cloning could be expensive for polygons
-                        box = rectangle.clone();
-                        scale = entity.scale ? entity.scale.getScale() : Vector2(1, 1);
-                        box.x *= Math.abs(scale.x);
-                        box.y *= Math.abs(scale.y);
-                        box.width *= Math.abs(scale.x);
-                        box.height *= Math.abs(scale.y);
-                        box.x += position.x;
-                        box.y += position.y;
-                        return box;
-                    }
-                },
-                /**
-                 * Sets the entity's boundingbox
-                 * @function
-                 * @param {Rectangle} boundingbox - The entity's new bounding box
-                 * @instance
-                 * @name setBoundingBox
-                 */
-                setBoundingBox: function(value) {
-                    rectangle = value;
-                },
-                /**
-                 * Returns the bounding box of an entity. If no bounding box was set
-                 * previously, undefined is returned.
-                 * @function
-                 * @returns {Rectangle} boundingbox - Entity's boundingbox
-                 * @instance
-                 * @name getRectangle
-                 */
-                getRectangle: function() {
-                    return rectangle;
-                },
-                /**
-                 * Sets the origin (center of rotation)
-                 * @function
-                 * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
-                 * @instance
-                 * @name setOrigin
-                 */
-                setOrigin: function(value) {
-                    origin.x = value.x;
-                    origin.y = value.y;
-                },
-                /**
-                 * Sets the origin relatively (0...1)
-                 * @function
-                 * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
-                 * @instance
-                 * @name setOriginRelative
-                 */
-                setOriginRelative: function(value) {
-                    origin.x = value.x * dimension.width;
-                    origin.y = value.y * dimension.height;
-                },
-                /**
-                 * Returns the origin (center of rotation)
-                 * @function
-                 * @returns {Vector2} origin - Entity's origin
-                 * @instance
-                 * @name getOrigin
-                 */
-                getOrigin: function() {
-                    return origin;
-                },
-                /**
-                 * Whether the entity is set to visible or not
-                 * @function
-                 * @returns {Boolean} visible - Visibility state
-                 * @instance
-                 * @name isVisible
-                 */
-                isVisible: function() {
-                    return visible;
-                },
-                /**
-                 * Sets the entity's visibility state
-                 * @function
-                 * @param {Boolean} visible - Visibility state
-                 * @instance
-                 * @name setVisible
-                 */
-                setVisible: function(value) {
-                    visible = value;
-                },
-                /**
-                 * Entity was attached ()
-                 * @param {Object} data - gameData
-                 * @instance
-                 * @name attached
-                 */
-                attached: function(data) {
-                    var i,
-                        l,
-                        component;
-
-                    if (data) {
-                        data.entity = this;
-                    } else {
-                        data = {
-                            entity: entity
-                        };
-                    }
-                    // update components
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component) {
-                            // shouldnt propagate
-                            if (component.getParent) {
-                                continue;
-                            }
-                            if (component.attached) {
-                                component.attached(data);
-                            }
-                        }
-                    }
-
-                },
-                /**
-                 * Attaches a child object to the entity. Entities can form a scenegraph.
-                 * Generally, entities act as nodes while components act like leaves.
-                 * Note that start will be called in the child.
-                 * @function
-                 * @param {Object} node - The child object to attach
-                 * @param {String} [name] - Name to expose in the entity. The child object can be reached by entity[name]
-                 * @instance
-                 * @name attach
-                 */
-                attach: function(component, name) {
-                    var mixin = {},
-                        parent = entity;
-
-                    components.push(component);
-                    if (component.setParent) {
-                        component.setParent(entity);
-                    }
-                    if (component.init) {
-                        component.init();
-                    }
-                    if (component.attached) {
-                        component.attached({
-                            entity: entity
-                        });
-                    }
-                    if (entity.isAdded) {
-                        if (component.start) {
-                            component.start();
-                        }
-                    } else {
-                        if (parent.getParent) {
-                            parent = parent.getParent();
-                        }
-                        while (parent) {
-                            if (parent.isAdded) {
-                                if (component.start) {
-                                    component.start();
-                                }
-                            }
-                            parent = parent.getParent();
-                        }
-                    }
-                    if (name) {
-                        mixin[name] = component;
-                        Utils.extend(entity, mixin);
-                    }
-                    return entity;
-                },
-                /**
-                 * Removes a child object from the entity. Note that destroy will be called in the child.
-                 * @function
-                 * @param {Object} node - The child object to remove
-                 * @instance
-                 * @name remove
-                 */
-                remove: function(component) {
-                    var i, type, index;
-                    if (!component) {
-                        return;
-                    }
-                    index = components.indexOf(component);
-                    if (index >= 0) {
-                        if (component.destroy) {
-                            component.destroy();
-                        }
-                        // TODO: clean component
-                        components[index] = null;
-                    }
-                    return entity;
-                },
-                /**
-                 * Returns the reference to the components array
-                 * @function
-                 * @instance
-                 * @name getComponents
-                 */
-                getComponents: function() {
-                    return components;
-                },
-                /**
-                 * Returns the first child found with a certain name
-                 * @function
-                 * @instance
-                 * @param {String} name - name of the component
-                 * @name getComponentByName
-                 */
-                getComponentByName: function(name) {
-                    var i, l, component;
-                    for (i = 0, l = components.length; i < l; ++i) {
-                        component = components[i];
-                        if (component.name === name) {
-                            return component;
-                        }
-                    }
-                },
-                /**
-                 * Returns the index of a child
-                 * @function
-                 * @instance
-                 * @param {Object} child - reference to the child
-                 * @name getComponentIndex
-                 */
-                getComponentIndex: function(component) {
-                    return components.indexOf(component);
-                },
-                /**
-                 * Moves a child to a certain index in the array
-                 * @function
-                 * @instance
-                 * @param {Object} child - reference to the child
-                 * @param {Number} index - new index
-                 * @name moveComponentTo
-                 */
-                moveComponentTo: function(component, newIndex) {
-                    // note: currently dangerous to do during an update loop
-                    var i, type, index;
-                    if (!component) {
-                        return;
-                    }
-                    index = components.indexOf(component);
-                    if (index >= 0) {
-                        // remove old
-                        components.splice(index, 1);
-                        // insert at new place
-                        components.splice(newIndex, 0, component);
-                    }
-                },
-                /**
-                 * Assigns the parent
-                 * @function
-                 * @instance
-                 * @param {Object} parent - reference to the parent object
-                 * @name setParent
-                 */
-                setParent: function(obj) {
-                    parent = obj;
-                },
-                /**
-                 * Returns the reference to the parent object
-                 * @function
-                 * @instance
-                 * @name getParent
-                 */
-                getParent: function() {
-                    return parent;
-                },
-                /**
-                 * Returns a unique entity ID number
-                 * @function
-                 * @instance
-                 * @name getId
-                 */
-                getId: function() {
-                    return uniqueId;
-                },
-                /**
-                 * Callback when entities collide.
-                 *
-                 * @callback CollisionCallback
-                 * @param {Entity} other - The other entity colliding
-                 */
-                /**
-                 * Checks if entity is colliding with another entity
-                 * @function
-                 * @instance
-                 * @param {Entity} other - The other entity
-                 * @param {Vector2} [offset] - A position offset
-                 * @param {CollisionCallback} [callback] - Called when entities are colliding
-                 * @name collidesWith
-                 */
-                collidesWith: function(other, offset, callback) {
-                    var intersect;
-                    if (!Utils.isDefined(offset)) {
-                        offset = Vector2(0, 0);
-                    }
-                    intersect = entity.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
-                    if (intersect && callback) {
-                        callback(other);
-                    }
-                    return intersect;
-                },
-                /**
-                 * Checks if entity is colliding with any entity in an array
-                 * Returns the first entity it finds that collides with the entity.
-                 * @function
-                 * @instance
-                 * @param {Array} other - Array of entities, ignores self if present
-                 * @param {Vector2} [offset] - A position offset
-                 * @param {CollisionCallback} [callback] - Called when entities are colliding
-                 * @name collidesWithGroup
-                 */
-                collidesWithGroup: function(array, offset, callback) {
-                    var i,
-                        obj,
-                        box;
-                    if (!Utils.isDefined(offset)) {
-                        offset = Vector2(0, 0);
-                    }
-                    if (!Utils.isArray(array)) {
-                        // throw 'Collision check must be with an Array of object';
-                        console.log('Collision check must be with an Array of object');
-                        return;
-                    }
-                    if (!array.length) {
-                        return null;
-                    }
-                    box = entity.getBoundingBox().offset(offset);
-                    for (i = 0; i < array.length; ++i) {
-                        obj = array[i];
-                        if (obj === entity) {
-                            continue;
-                        }
-                        if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
-                            if (callback) {
-                                callback(obj);
-                            }
-                            return obj;
-                        }
-                    }
-                    return null;
-                },
-                getAABB: function() {
-                    var box = entity.getBoundingBox();
-                    return {
-                        min: [box.x, box.y],
-                        max: [box.x + box.width, box.y + box.height]
-                    };
-                }
-            };
+    var entity = function (settings) {
+        /**
+         * z-index of an object
+         * @instance
+         * @default 0
+         * @name z
+         */
+        this.z = 0;
+        /**
+         * Timer value, incremented every update step
+         * @instance
+         * @default 0
+         * @name timer
+         */
+        this.timer = 0;
+        /**
+         * Indicates if an object should not be destroyed when a Screen ends
+         * @instance
+         * @default false
+         * @name global
+         */
+        this.global = false;
+        /**
+         * Indicates if an object should move with the scrolling of the screen
+         * @instance
+         * @default false
+         * @name float
+         */
+        this.float = false;
+        /**
+         * Indicates if an object should continue updating when the game is paused
+         * @instance
+         * @default false
+         * @name updateWhenPaused
+         */
+        this.updateWhenPaused = false;
+        /**
+         * Name of an object
+         * @instance
+         * @default ''
+         * @name name
+         */
+        this.name = '';
+        this.isAdded = false;
+        /**
+         * Name of an object
+         * @instance
+         * @default ''
+         * @name useHshg
+         */
+        this.useHshg = false;
+        this.position = Vector2(0, 0);
+        this.origin = Vector2(0, 0);
+        this.family = [];
+        this.components = [];
+        this.dimension = Rectangle(0, 0, 0, 0);
+        this.boundingBox = Rectangle(0, 0, null, null);
+        this.scale = Vector2(1, 1);
+        this.rotation = 0;
+        this.visible = true;
+        this.parent = null;
 
         // read settings
         if (settings) {
@@ -4705,49 +4122,423 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
                 }
-                for (i = 0; i < settings.components.length; ++i) {
-                    settings.components[i](entity, settings);
+                for (var i = 0; i < settings.components.length; ++i) {
+                    settings.components[i](this, settings);
                 }
             }
             if (settings.position) {
-                entity.setPosition(settings.position);
+                this.position = settings.position;
             }
             if (settings.origin) {
-                entity.setOrigin(settings.origin);
+                this.origin = settings.origin;
             }
             if (settings.originRelative) {
-                entity.setOriginRelative(settings.originRelative);
+                this.setOriginRelative(settings.originRelative);
             }
             if (settings.name) {
-                entity.name = settings.name;
+                this.name = settings.name;
             }
             if (settings.family) {
                 if (!Utils.isArray(settings.family)) {
                     settings.family = [settings.family];
                 }
-                for (i = 0; i < settings.family.length; ++i) {
-                    entity.addToFamily(settings.family[i]);
+                for (var i = 0; i < settings.family.length; ++i) {
+                    entity.family.push(settings.family[i]);
                 }
             }
             if (settings.init) {
-                settings.init.apply(entity);
+                settings.init.apply(this);
             }
 
-            entity.z = settings.z || 0;
-            entity.updateWhenPaused = settings.updateWhenPaused || false;
-            entity.global = settings.global || false;
-            entity.float = settings.float || false;
-            entity.useHshg = settings.useHshg || false;
-            entity.staticHshg = settings.staticHshg || false;
-            entity.onCollide = settings.onCollide;
+            this.z = settings.z || 0;
+            this.updateWhenPaused = settings.updateWhenPaused || false;
+            this.global = settings.global || false;
+            this.float = settings.float || false;
+            this.useHshg = settings.useHshg || false;
+            this.staticHshg = settings.staticHshg || false;
+            this.onCollide = settings.onCollide;
 
             if (settings.addNow) {
-                Bento.objects.add(entity);
+                Bento.objects.add(this);
             }
-
         }
-        return entity;
     };
+
+    /**
+     * Calls start on every component
+     * @function
+     * @param {Object} data - gameData object
+     * @instance
+     * @name start
+     */
+    entity.prototype.start = function (data) {
+        var i,
+            l,
+            component;
+        if (data) {
+            data.entity = this;
+        }
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component && component.start) {
+                component.start(data);
+            }
+        }
+    };
+    /**
+     * Calls destroy on every component
+     * @function
+     * @param {Object} data - gameData object
+     * @instance
+     * @name destroy
+     */
+    entity.prototype.destroy = function (data) {
+        var i,
+            l,
+            component;
+        if (data) {
+            data.entity = this;
+        }
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component && component.destroy) {
+                component.destroy(data);
+            }
+        }
+    };
+    /**
+     * Calls update on every component
+     * @function
+     * @param {Object} data - gameData object
+     * @instance
+     * @name update
+     */
+    entity.prototype.update = function (data) {
+        var i,
+            l,
+            component;
+
+        if (data) {
+            data.entity = this;
+        }
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component && component.update) {
+                component.update(data);
+            }
+        }
+        ++this.timer;
+
+        // clean up
+        cleanComponents(this);
+    };
+    /**
+     * Calls draw on every component
+     * @function
+     * @param {Object} data - gameData object
+     * @instance
+     * @name draw
+     */
+    entity.prototype.draw = function (data) {
+        var i,
+            l,
+            component;
+        if (!this.visible) {
+            return;
+        }
+        if (data) {
+            data.entity = this;
+        }
+        // call components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component && component.draw) {
+                component.draw(data);
+            }
+        }
+        // post draw
+        for (i = this.components.length - 1; i >= 0; i--) {
+            component = this.components[i];
+            if (component && component.postDraw) {
+                component.postDraw(data);
+            }
+        }
+    };
+    /**
+     * Extends properties of entity
+     * @function
+     * @instance
+     * @param {Object} object - other object
+     * @see module:bento/utils#extend
+     * @name extend
+     */
+    entity.prototype.extend = function (object) {
+        return Utils.extend(this, object);
+    };
+    /**
+     * Returns the bounding box of an entity. If no bounding box was set
+     * previously, the dimension is returned.
+     * @function
+     * @returns {Rectangle} boundingbox - Entity's boundingbox
+     * @instance
+     * @name getBoundingBox
+     */
+    entity.prototype.getBoundingBox = function () {
+        var scale, x1, x2, y1, y2, box;
+        if (!this.boundingBox.width) {
+            // TODO get rid of scale component dependency
+            scale = this.scale ? this.scale : Vector2(1, 1);
+            x1 = this.position.x - this.origin.x * scale.x;
+            y1 = this.position.y - this.origin.y * scale.y;
+            x2 = this.position.x + (this.dimension.width - this.origin.x) * scale.x;
+            y2 = this.position.y + (this.dimension.height - this.origin.y) * scale.y;
+            // swap variables if scale is negative
+            if (scale.x < 0) {
+                x2 = [x1, x1 = x2][0];
+            }
+            if (scale.y < 0) {
+                y2 = [y1, y1 = y2][0];
+            }
+            return Rectangle(x1, y1, x2 - x1, y2 - y1);
+        } else {
+            // TODO: cloning could be expensive for polygons
+            box = this.boundingBox.clone();
+            scale = this.scale ? this.scale : Vector2(1, 1);
+            box.x *= Math.abs(scale.x);
+            box.y *= Math.abs(scale.y);
+            box.width *= Math.abs(scale.x);
+            box.height *= Math.abs(scale.y);
+            box.x += this.position.x;
+            box.y += this.position.y;
+            return box;
+        }
+    };
+    /**
+     * Sets the origin relatively (0...1)
+     * @function
+     * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
+     * @instance
+     * @name setOriginRelative
+     */
+    entity.prototype.setOriginRelative = function (value) {
+        this.origin.x = value.x * this.dimension.width;
+        this.origin.y = value.y * this.dimension.height;
+    };
+    /**
+     * Entity was attached ()
+     * @param {Object} data - gameData
+     * @instance
+     * @name attached
+     */
+    entity.prototype.attached = function (data) {
+        var i,
+            l,
+            component;
+
+        if (data) {
+            data.entity = this;
+        } else {
+            data = {
+                entity: this
+            };
+        }
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component) {
+                // shouldnt propagate
+                if (component.parent) {
+                    continue;
+                }
+                if (component.attached) {
+                    component.attached(data);
+                }
+            }
+        }
+    };
+    /**
+     * Attaches a child object to the entity. Entities can form a scenegraph.
+     * Generally, entities act as nodes while components act like leaves.
+     * Note that start will be called in the child.
+     * @function
+     * @param {Object} node - The child object to attach
+     * @param {String} [name] - Name to expose in the entity. The child object can be reached by entity[name]
+     * @instance
+     * @name attach
+     */
+    entity.prototype.attach = function (component, name) {
+        var mixin = {},
+            parent = this;
+
+        this.components.push(component);
+        if (component.setParent) {
+            component.setParent(entity);
+        }
+        if (component.init) {
+            component.init();
+        }
+        if (component.attached) {
+            component.attached({
+                entity: this
+            });
+        }
+        if (this.isAdded) {
+            if (component.start) {
+                component.start();
+            }
+        } else {
+            if (parent.parent) {
+                parent = parent.parent;
+            }
+            while (parent) {
+                if (parent.isAdded) {
+                    if (component.start) {
+                        component.start();
+                    }
+                }
+                parent = parent.parent;
+            }
+        }
+        return this;
+    };
+    /**
+     * Removes a child object from the entity. Note that destroy will be called in the child.
+     * @function
+     * @param {Object} node - The child object to remove
+     * @instance
+     * @name remove
+     */
+    entity.prototype.remove = function (component) {
+        var i, type, index;
+        if (!component) {
+            return;
+        }
+        index = this.components.indexOf(component);
+        if (index >= 0) {
+            if (component.destroy) {
+                component.destroy();
+            }
+            // TODO: clean component
+            this.components[index] = null;
+        }
+        return this;
+    };
+    /**
+     * Returns the first child found with a certain name
+     * @function
+     * @instance
+     * @param {String} name - name of the component
+     * @name getComponentByName
+     */
+    entity.prototype.getComponentByName = function (name) {
+        var i, l, component;
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component.name === name) {
+                return component;
+            }
+        }
+    };
+    /**
+     * Moves a child to a certain index in the array
+     * @function
+     * @instance
+     * @param {Object} child - reference to the child
+     * @param {Number} index - new index
+     * @name moveComponentTo
+     */
+    entity.prototype.moveComponentTo = function (component, newIndex) {
+        // note: currently dangerous to do during an update loop
+        var i, type, index;
+        if (!component) {
+            return;
+        }
+        index = this.components.indexOf(component);
+        if (index >= 0) {
+            // remove old
+            this.components.splice(index, 1);
+            // insert at new place
+            this.components.splice(newIndex, 0, component);
+        }
+    };
+    /**
+     * Callback when entities collide.
+     *
+     * @callback CollisionCallback
+     * @param {Entity} other - The other entity colliding
+     */
+    /**
+     * Checks if entity is colliding with another entity
+     * @function
+     * @instance
+     * @param {Entity} other - The other entity
+     * @param {Vector2} [offset] - A position offset
+     * @param {CollisionCallback} [callback] - Called when entities are colliding
+     * @name collidesWith
+     */
+    entity.prototype.collidesWith = function (other, offset, callback) {
+        var intersect;
+        if (!Utils.isDefined(offset)) {
+            offset = Vector2(0, 0);
+        }
+        intersect = this.boundingBox.offset(offset).intersect(other.boundingBox);
+        if (intersect && callback) {
+            callback(other);
+        }
+        return intersect;
+    };
+    /**
+     * Checks if entity is colliding with any entity in an array
+     * Returns the first entity it finds that collides with the entity.
+     * @function
+     * @instance
+     * @param {Array} other - Array of entities, ignores self if present
+     * @param {Vector2} [offset] - A position offset
+     * @param {CollisionCallback} [callback] - Called when entities are colliding
+     * @name collidesWithGroup
+     */
+    entity.prototype.collidesWithGroup = function (array, offset, callback) {
+        var i,
+            obj,
+            box;
+        if (!Utils.isDefined(offset)) {
+            offset = Vector2(0, 0);
+        }
+        if (!Utils.isArray(array)) {
+            // throw 'Collision check must be with an Array of object';
+            console.log('Collision check must be with an Array of object');
+            return;
+        }
+        if (!array.length) {
+            return null;
+        }
+        box = this.boundingBox.offset(offset);
+        for (i = 0; i < array.length; ++i) {
+            obj = array[i];
+            if (obj === this) {
+                continue;
+            }
+            if (obj.boundingBox && box.intersect(obj.boundingBox)) {
+                if (callback) {
+                    callback(obj);
+                }
+                return obj;
+            }
+        }
+        return null;
+    };
+    entity.prototype.getAABB = function () {
+        var box = this.boundingBox;
+        return {
+            min: [box.x, box.y],
+            max: [box.x + box.width, box.y + box.height]
+        };
+    };
+
+    return entity;
 });
 /**
  * Sends custom events
@@ -5455,8 +5246,8 @@ bento.define('bento/components/animation', [
                         frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of entity object
-                    entity.getDimension().width = frameWidth;
-                    entity.getDimension().height = frameHeight;
+                    entity.dimension.width = frameWidth;
+                    entity.dimension.height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -5602,7 +5393,7 @@ bento.define('bento/components/animation', [
                 }
             };
 
-        // call setup 
+        // call setup
         if (settings && settings[component.name]) {
             component.setup(settings[component.name]);
         }
@@ -5638,7 +5429,7 @@ bento.define('bento/components/clickable', [
                  * Name of the component
                  * @instance
                  * @default 'clickable'
-                 * @name name 
+                 * @name name
                  */
                 name: 'clickable',
                 /**
@@ -5650,7 +5441,7 @@ bento.define('bento/components/clickable', [
                 isHovering: false,
                 hasTouched: false,
                 /**
-                 * Id number of the pointer holding entity 
+                 * Id number of the pointer holding entity
                  * @instance
                  * @default null
                  * @name holdId
@@ -5808,7 +5599,7 @@ bento.define('bento/components/clickable', [
                     i;
 
                 // no parents
-                if (!entity.getParent || !entity.getParent()) {
+                if (!entity.parent) {
                     if (!entity.float) {
                         evt.localPosition = evt.worldPosition.clone();
                     } else {
@@ -5826,20 +5617,20 @@ bento.define('bento/components/clickable', [
 
                 // get all parents
                 parent = entity;
-                while (parent.getParent && parent.getParent()) {
-                    parent = parent.getParent();
+                while (parent.parent) {
+                    parent = parent.parent;
                     parents.unshift(parent);
                 }
 
-                /** 
+                /**
                  * reverse transform the event position vector
                  */
                 for (i = 0; i < parents.length; ++i) {
                     parent = parents[i];
 
                     // construct a translation matrix and apply to position vector
-                    if (parent.getPosition) {
-                        position = parent.getPosition();
+                    if (parent.position) {
+                        position = parent.position;
                         translateMatrix.set(2, 0, -position.x);
                         translateMatrix.set(2, 1, -position.y);
                         positionVector.multiplyWith(translateMatrix);
@@ -5857,8 +5648,8 @@ bento.define('bento/components/clickable', [
                     }
                     if (parent.scale) {
                         // construct a scaling matrix and apply to position vector
-                        scaleMatrix.set(0, 0, 1 / parent.scale.getScale().x);
-                        scaleMatrix.set(1, 1, 1 / parent.scale.getScale().y);
+                        scaleMatrix.set(0, 0, 1 / parent.scale.x);
+                        scaleMatrix.set(1, 1, 1 / parent.scale.y);
                         positionVector.multiplyWith(scaleMatrix);
                     }
                 }
@@ -5961,7 +5752,7 @@ bento.define('bento/components/opacity', [
 });
 /**
  * Sprite component that uses pixi (alternative version of animation component).
- * Todo: somehow merge the 2 components? Lots of duplicate code here 
+ * Todo: somehow merge the 2 components? Lots of duplicate code here
  * <br>Exports: Function
  * @module bento/components/pixi
  * @param {Entity} entity - The entity to attach the component to
@@ -6051,8 +5842,8 @@ bento.define('bento/components/opacity', [
                         frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of entity object
-                    entity.getDimension().width = frameWidth;
-                    entity.getDimension().height = frameHeight;
+                    entity.dimension.width = frameWidth;
+                    entity.dimension.height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -6091,12 +5882,12 @@ bento.define('bento/components/opacity', [
                     if (reachedEnd && onCompleteCallback) {
                         onCompleteCallback();
                     }
-                    pixiSprite.visible = entity.isVisible();
+                    pixiSprite.visible = entity.visible;
                 },
                 draw: function (data) {
                     // update pixi sprite, doesnt actually draw
-                    var origin = entity.getOrigin(),
-                        position = entity.getPosition(),
+                    var origin = entity.origin,
+                        position = entity.position,
                         rotation,
                         scale,
                         rectangle,
@@ -6120,14 +5911,14 @@ bento.define('bento/components/opacity', [
                     // pixiSprite.pivot.y = origin.y;
                     pixiSprite.anchor.x = origin.x / frameWidth;
                     pixiSprite.anchor.y = origin.y / frameHeight;
-                    
+
                     if (entity.float) {
                         pixiSprite.x -= viewport.x;
                         pixiSprite.y -= viewport.y;
                     }
 
                     if (entity.scale) {
-                        scale = entity.scale.getScale();
+                        scale = entity.scale;
                         pixiSprite.scale.x = scale.x;
                         pixiSprite.scale.y = scale.y;
                     }
@@ -6142,7 +5933,7 @@ bento.define('bento/components/opacity', [
                 destroy: function (data) {
                     // remove from parent
                     if (pixiSprite && pixiSprite.parent) {
-                        pixiSprite.parent.removeChild(pixiSprite);                        
+                        pixiSprite.parent.removeChild(pixiSprite);
                     }
                 },
                 start: function (data) {
@@ -6161,7 +5952,7 @@ bento.define('bento/components/opacity', [
                         data.renderer.addChild(pixiSprite);
                     } else if (data.entity) {
                         // attach to parent
-                        parent = data.entity.getParent();
+                        parent = data.entity.parent;
                         // get pixi component
                         if (parent) {
                             component = parent.getComponentByName('pixi');
@@ -6258,7 +6049,7 @@ bento.define('bento/components/opacity', [
                     return frameWidth;
                 }
             };
-        // call setup 
+        // call setup
         if (settings && settings[component.name]) {
             component.setup(settings[component.name]);
         }
@@ -6449,15 +6240,15 @@ bento.define('bento/components/translation', [
                     subPixel = bool;
                 },
                 draw: function (data) {
-                    var parent = entity.getParent(),
-                        position = entity.getPosition(),
-                        origin = entity.getOrigin(),
+                    var parent = entity.parent,
+                        position = entity.position,
+                        origin = entity.origin,
                         scroll = data.viewport;
                     data.renderer.save(entity);
                     if (subPixel) {
                         data.renderer.translate(position.x, position.y);
                     } else {
-                        data.renderer.translate(Math.round(position.x), Math.round(position.y));                        
+                        data.renderer.translate(Math.round(position.x), Math.round(position.y));
                     }
 
                     // scroll (only applies to parent objects)
@@ -10968,14 +10759,14 @@ bento.define('bento/gui/counter', [
                     // move all the children
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
-                        pos = digit.getPosition().clone();
+                        pos = digit.position.clone();
                         pos.substract(Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
                         digit.setPosition(pos);
                     }
                 } else if (alignment === 'center') {
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
-                        pos = digit.getPosition();
+                        pos = digit.position;
                         pos.addTo(Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
                     }
                 }

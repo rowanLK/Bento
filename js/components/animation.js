@@ -88,8 +88,8 @@ bento.define('bento/components/animation', [
                         frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of entity object
-                    entity.getDimension().width = frameWidth;
-                    entity.getDimension().height = frameHeight;
+                    entity.dimension.width = frameWidth;
+                    entity.dimension.height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -235,7 +235,7 @@ bento.define('bento/components/animation', [
                 }
             };
 
-        // call setup 
+        // call setup
         if (settings && settings[component.name]) {
             component.setup(settings[component.name]);
         }

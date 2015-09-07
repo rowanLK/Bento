@@ -23,7 +23,7 @@ bento.define('bento/components/clickable', [
                  * Name of the component
                  * @instance
                  * @default 'clickable'
-                 * @name name 
+                 * @name name
                  */
                 name: 'clickable',
                 /**
@@ -35,7 +35,7 @@ bento.define('bento/components/clickable', [
                 isHovering: false,
                 hasTouched: false,
                 /**
-                 * Id number of the pointer holding entity 
+                 * Id number of the pointer holding entity
                  * @instance
                  * @default null
                  * @name holdId
@@ -193,7 +193,7 @@ bento.define('bento/components/clickable', [
                     i;
 
                 // no parents
-                if (!entity.getParent || !entity.getParent()) {
+                if (!entity.parent) {
                     if (!entity.float) {
                         evt.localPosition = evt.worldPosition.clone();
                     } else {
@@ -211,20 +211,20 @@ bento.define('bento/components/clickable', [
 
                 // get all parents
                 parent = entity;
-                while (parent.getParent && parent.getParent()) {
-                    parent = parent.getParent();
+                while (parent.parent) {
+                    parent = parent.parent;
                     parents.unshift(parent);
                 }
 
-                /** 
+                /**
                  * reverse transform the event position vector
                  */
                 for (i = 0; i < parents.length; ++i) {
                     parent = parents[i];
 
                     // construct a translation matrix and apply to position vector
-                    if (parent.getPosition) {
-                        position = parent.getPosition();
+                    if (parent.position) {
+                        position = parent.position;
                         translateMatrix.set(2, 0, -position.x);
                         translateMatrix.set(2, 1, -position.y);
                         positionVector.multiplyWith(translateMatrix);
@@ -242,8 +242,8 @@ bento.define('bento/components/clickable', [
                     }
                     if (parent.scale) {
                         // construct a scaling matrix and apply to position vector
-                        scaleMatrix.set(0, 0, 1 / parent.scale.getScale().x);
-                        scaleMatrix.set(1, 1, 1 / parent.scale.getScale().y);
+                        scaleMatrix.set(0, 0, 1 / parent.scale.x);
+                        scaleMatrix.set(1, 1, 1 / parent.scale.y);
                         positionVector.multiplyWith(scaleMatrix);
                     }
                 }

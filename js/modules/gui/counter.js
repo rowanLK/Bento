@@ -130,14 +130,14 @@ bento.define('bento/gui/counter', [
                     // move all the children
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
-                        pos = digit.getPosition().clone();
+                        pos = digit.position.clone();
                         pos.substract(Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
                         digit.setPosition(pos);
                     }
                 } else if (alignment === 'center') {
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
-                        pos = digit.getPosition();
+                        pos = digit.position;
                         pos.addTo(Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
                     }
                 }
