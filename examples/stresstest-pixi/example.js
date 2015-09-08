@@ -25,7 +25,7 @@ bento.require([
             var viewport = Bento.getViewport(),
                 bunnies = 0,
                 renderer = Bento.getRenderer().name;
-                background = new Entity({
+                background = new new Entity({
                     components: [Fill, Clickable],
                     clickable: {
                         pointerDown: function (evt) {
@@ -45,7 +45,7 @@ bento.require([
                     return Math.floor(Math.random() * val);
                 },
                 addBunny = function () {
-                    var entity = new Entity({
+                    var entity = new new Entity({
                         components: [Animation],
                         position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
                         originRelative: new Vector2(0.5, 0.5),

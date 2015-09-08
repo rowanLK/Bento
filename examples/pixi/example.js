@@ -36,14 +36,14 @@ bento.require([
         console.log('ready');
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
-                background = Entity({
+                background = new Entity({
                     addNow: true,
                     components: [Fill],
                     fill: {
                         color: [1, 1, 1, 1]
                     }
                 }),
-                bunny1 = Entity({
+                bunny1 = new Entity({
                     components: [Translation, Pixi, Clickable],
                     position: new Vector2(16, 16),
                     originRelative: new Vector2(0.5, 0.5),
@@ -67,7 +67,7 @@ bento.require([
                                 'in': 60,
                                 ease: 'easeOutBounce',
                                 do: function (v, t) {
-                                    bunny1.setPositionY(v);
+                                    bunny1.position.y = v;
                                 },
                                 onComplete: function () {
 
@@ -79,7 +79,7 @@ bento.require([
                         this.pixi.setAnimation('idle');
                     }
                 }),
-                bunny2 = Entity({
+                bunny2 = new Entity({
                     components: [Translation, Scale, Pixi],
                     position: new Vector2(16 + 32, 16),
                     originRelative: new Vector2(0.5, 0.5),
@@ -99,7 +99,7 @@ bento.require([
                         this.scale.setScaleX(2);
                     }
                 }),
-                bunny3 = Entity({
+                bunny3 = new Entity({
                     components: [Translation, Rotation, Pixi],
                     position: new Vector2(16 + 64, 16),
                     originRelative: new Vector2(0.5, 0.5),
@@ -121,11 +121,11 @@ bento.require([
                     update: function () {
                         bunny3.rotation.addAngleDegree(1);
                         if (Bento.input.isKeyDown('down')) {
-                            bunny3.getPosition().y +=1;
+                            bunny3.position.y +=1;
                         }
                     }
                 }),
-                bunny4 = Entity({
+                bunny4 = new Entity({
                     components: [Translation, Rotation, Scale, Pixi],
                     position: new Vector2(16 + 96, 16),
                     originRelative: new Vector2(0.5, 0.5),

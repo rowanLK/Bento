@@ -12668,7 +12668,7 @@ bento.define('bento/components/animation', [
             frameWidth = 0,
             frameHeight = 0,
             onCompleteCallback,
-            origin = base.getOrigin(),
+            origin = base.origin,
             component = {
                 name: 'animation',
                 setup: function (settings) {
@@ -12704,8 +12704,8 @@ bento.define('bento/components/animation', [
                         frameHeight = spriteImage.height / frameCountY;
                     }
                     // set dimension of base object
-                    base.getDimension().width = frameWidth;
-                    base.getDimension().height = frameHeight;
+                    base.dimension.width = frameWidth;
+                    base.dimension.height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -12989,8 +12989,8 @@ bento.define('bento/components/translation', [
             component = {
                 name: 'translation',
                 draw: function (data) {
-                    var parent = base.getParent(),
-                        position = base.getPosition(),
+                    var parent = base.parent,
+                        position = base.position,
                         scroll = data.viewport;
                     data.renderer.save(base);
                     data.renderer.translate(Math.round(position.x), Math.round(position.y));
@@ -13280,7 +13280,7 @@ define('bento/tiled', [
             objects = [],
             shapes = [],
             viewport = Bento.getViewport(),
-            background = Entity().extend({
+            background = new Entity().extend({
                 z: 0,
                 draw: function (gameData) {
                     var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
@@ -13375,8 +13375,8 @@ define('bento/tiled', [
 
                 require([name], function (Instance) {
                     var instance = Instance.apply(this, params),
-                        origin = instance.getOrigin(),
-                        dimension = instance.getDimension(),
+                        origin = instance.origin,
+                        dimension = instance.dimension,
                         prop,
                         addProperties = function (properties) {
                             var prop;
@@ -13431,7 +13431,7 @@ define('bento/tiled', [
             spawnShape = function (shape, type) {
                 var obj;
                 if (settings.spawn) {
-                    obj = Entity({
+                    obj = new Entity({
                         z: 0,
                         name: type,
                         family: [type]
@@ -13723,7 +13723,7 @@ bento.define('bento/tween', [
         var time = 0,
             added = false,
             running = true,
-            tween = Entity(settings).extend({
+            tween = new Entity(settings).extend({
                 id: settings.id,
                 update: function (data) {
                     if (!running) {

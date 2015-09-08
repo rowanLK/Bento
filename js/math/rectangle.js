@@ -79,7 +79,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
             y1 = Math.min(this.y, rectangle.y),
             x2 = Math.max(this.getX2(), rectangle.getX2()),
             y2 = Math.max(this.getY2(), rectangle.getY2());
-        return rectangle(x1, y1, x2 - x1, y2 - y1);
+        return new rectangle(x1, y1, x2 - x1, y2 - y1);
     };
     /**
      * Returns true if 2 rectangles intersect
@@ -118,7 +118,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
         return inter;
     };
     /**
-     * Moves rectangle by an offset
+     * Returns a new rectangle that has been moved by the offset
      * @function
      * @param {Vector2} vector - Position to offset
      * @returns {Rectangle} Returns a new rectangle instance
@@ -126,7 +126,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @name offset
      */
     rectangle.prototype.offset = function (pos) {
-        return rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
+        return new rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
     };
     /**
      * Clones rectangle
@@ -136,7 +136,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @name clone
      */
     rectangle.prototype.clone = function () {
-        return rectangle(this.x, this.y, this.width, this.height);
+        return new rectangle(this.x, this.y, this.width, this.height);
     };
     /**
      * Checks if Vector2 lies within the rectangle

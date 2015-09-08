@@ -36,14 +36,14 @@ bento.require([
         console.log('ready');
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
-                background = Entity({
+                background = new Entity({
                     addNow: true,
                     components: [Fill],
                     fill: {
                         color: [1, 1, 1, 1]
                     }
                 }),
-                bunny1 = Entity({
+                bunny1 = new Entity({
                     components: [Translation, Animation, Clickable],
                     position: new Vector2(16, 16),
                     originRelative: new Vector2(0.5, 0.5),

@@ -127,8 +127,8 @@ bento.define('bento/tiled', [
 
                 require([name], function (Instance) {
                     var instance = Instance.apply(this, [params]),
-                        origin = instance.getOrigin(),
-                        dimension = instance.getDimension(),
+                        origin = instance.origin,
+                        dimension = instance.dimension,
                         prop,
                         addProperties = function (properties) {
                             var prop;
@@ -147,11 +147,7 @@ bento.define('bento/tiled', [
                             }
                         };
 
-                    instance.setPosition({
-                        // tiled assumes origin (0, 1)
-                        x: x + (origin.x),
-                        y: y + (origin.y - dimension.height)
-                    });
+                    instance.position = new Vector2(x + origin.x, y + (origin.y - dimension.height));
 
                     // add in tileset properties
                     //addProperties(tilesetProperties);
@@ -185,7 +181,7 @@ bento.define('bento/tiled', [
             spawnShape = function (shape, type) {
                 var obj;
                 if (settings.spawn) {
-                    obj = Entity({
+                    obj = new Entity({
                         z: 0,
                         name: type,
                         family: [type],
@@ -251,7 +247,7 @@ bento.define('bento/tiled', [
         }
         // TODO: turn this quickfix, into a permanent fix. DEV-95 on JIRA
         var packedImage = PackedImage(canvas),
-            background = Entity({
+            background = new Entity({
                 z: 0,
                 name: '',
                 useHshg: false,
@@ -303,7 +299,7 @@ bento.define('bento/tiled', [
              * @name moveTo
              */
             moveTo: function (position) {
-                this.tileLayer.setPosition(position);
+                this.tileLayer.position = position;
                 for (var i = 0, len = shapes.length; i < len; i++) {
                     shapes[i].x += position.x;
                     shapes[i].y += position.y;

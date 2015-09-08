@@ -33,7 +33,7 @@ bento.require([
             var viewport = Bento.getViewport(),
                 bunnies = 0,
                 renderer = Bento.getRenderer().name;
-            background = Entity({
+            background = new Entity({
                 components: [Fill, Clickable],
                 clickable: {
                     pointerDown: function (evt) {
@@ -49,7 +49,7 @@ bento.require([
                     color: renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1]
                 }
             }),
-            wall = Entity({
+            wall = new Entity({
                 z: 1,
                 name: 'wall',
                 addNow: false,
@@ -69,7 +69,7 @@ bento.require([
             },
             addBunny = function () {
                 var speed = new Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
-                    entity = Entity({
+                    entity = new Entity({
                         components: [Sprite],
                         position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
                         originRelative: new Vector2(0.5, 0.5),
@@ -106,12 +106,12 @@ bento.require([
                         },
                         init: function () {
                             this.animation.setAnimation('idle');
-                            this.setBoundingBox(new Rectangle(-8, -16, 16, 16));
+                            this.boundingBox = new Rectangle(-8, -16, 16, 16);
                         }
                     }).attach({
                         update: function () {
                             var self = this,
-                                position = entity.getPosition();
+                                position = entity.position;
                             position.y += speed.y;
                             position.x += speed.x;
                             speed.y += 0.05;
@@ -136,7 +136,7 @@ bento.require([
                                     });
                                     //Bento.objects.remove(other);
                                     //console.log('brute')
-                                    // var otherPos = entity.getPosition(),
+                                    // var otherPos = entity.position,
                                     //     intersection = entity.getBoundingBox().intersection(other.getBoundingBox());
 
                                     // if (position.x > otherPos.x) {

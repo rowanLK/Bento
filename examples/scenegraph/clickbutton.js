@@ -20,7 +20,7 @@ bento.define('clickbutton', [
     'use strict';
     return function (settings) {
         var viewport = Bento.getViewport(),
-            entity = Entity({
+            entity = new Entity({
                 z: 0,
                 name: '',
                 originRelative: settings.originRelative || new Vector2(0, 0),

@@ -19,7 +19,7 @@ bento.define('bunny', [
 ) {
     'use strict';
     return function () {
-        var object = Entity({
+        var object = new Entity({
             z: 0,
             name: 'bunny',
             originRelative: new Vector2(0.5, 1),

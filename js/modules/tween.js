@@ -15,7 +15,7 @@
  * @param {Function} [settings.do] - Called every tick during the tween lifetime. Callback parameters: (value, time)
  * @param {Function} [settings.onComplete] - Called when tween ends
  * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop,
- * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) 
+ * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional)
  * @returns Entity
  */
 bento.define('bento/tween', [
@@ -231,7 +231,7 @@ bento.define('bento/tween', [
         var time = 0,
             added = false,
             running = true,
-            tween = Entity(settings).extend({
+            tween = new Entity(settings).extend({
                 id: settings.id,
                 update: function (data) {
                     if (!running) {

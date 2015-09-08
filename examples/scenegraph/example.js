@@ -31,12 +31,12 @@ bento.require([
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: 'pixi'
+        renderer: 'canvas2d'
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
-                background = Entity({
+                background = new Entity({
                     z: -100,
                     addNow: true,
                     components: [Fill],
@@ -70,7 +70,8 @@ bento.require([
                     button.attach({
                         draw: function (data) {
                             var box = button.getBoundingBox(),
-                                position = button.getPosition();
+                                position = button.position;
+                                console.log(box);
                             data.renderer.strokeRect(color, box.x - position.x, box.y - position.y, box.width, box.height);
                         }
                     });
@@ -79,7 +80,7 @@ bento.require([
 
             button1 = makeButton();
             button1.name = 'button1';
-            button1.setPosition(new Vector2(80, 80));
+            button1.position = new Vector2(80, 80);
             button1.attach({
                 update: function () {
                     if (Bento.input.isKeyDown('left')) {
@@ -100,11 +101,11 @@ bento.require([
             button2 = makeButton();
             button2.name = 'button2';
             // button2.rotation.setAngleDegree(45);
-            button2.setPosition(new Vector2(0, 32));
+            button2.position = new Vector2(0, 32);
 
             button3 = makeButton();
             button3.name = 'button3';
-            button3.setPosition(new Vector2(32, 32));
+            button3.position = new Vector2(32, 32);
 
             button1.attach(
                 button2.attach(
@@ -115,7 +116,7 @@ bento.require([
             // floating button by setting a fake parent
             button4 = makeButton();
             button4.name = 'button4';
-            button4.setPosition(new Vector2(32, 32));
+            button4.position = new Vector2(32, 32);
             button4.float = true;
 
             Bento.objects.add(button1);

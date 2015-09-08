@@ -78,7 +78,7 @@ bento.define('bento/gui/togglebutton', [
                 },
                 init: function () {}
             }, settings),
-            entity = Entity(entitySettings).extend({
+            entity = new Entity(entitySettings).extend({
                 isToggled: function () {
                     return toggled;
                 },

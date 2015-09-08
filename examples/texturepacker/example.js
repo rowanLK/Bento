@@ -32,14 +32,14 @@ bento.require([
         console.log('ready');
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
-                background = Entity({
+                background = new Entity({
                     addNow: true,
                     components: [Fill],
                     fill: {
                         color: [0, 0, 0, 1]
                     }
                 }),
-                bunny1 = Entity({
+                bunny1 = new Entity({
                     components: [Translation, Animation, Clickable],
                     position: new Vector2(16, 16),
                     originRelative: new Vector2(0.5, 0.5),
@@ -63,7 +63,7 @@ bento.require([
                         this.animation.setAnimation('idle');
                     }
                 }),
-                bunny2 = Entity({
+                bunny2 = new Entity({
                     components: [Translation, Scale, Animation],
                     position: new Vector2(16 + 32, 16),
                     originRelative: new Vector2(0.5, 0.5),
@@ -83,7 +83,7 @@ bento.require([
                         this.scale.setScaleX(2);
                     }
                 }),
-                bunny3 = Entity({
+                bunny3 = new Entity({
                     components: [Translation, Rotation, Animation],
                     position: new Vector2(16 + 64, 16),
                     originRelative: new Vector2(0.5, 0.5),
@@ -106,7 +106,7 @@ bento.require([
                         bunny3.rotation.addAngleDegree(1);
                     }
                 }),
-                bunny4 = Entity({
+                bunny4 = new Entity({
                     components: [Translation, Rotation, Scale, Animation],
                     position: new Vector2(16 + 96, 16),
                     originRelative: new Vector2(0.5, 0.5),

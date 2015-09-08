@@ -14,7 +14,7 @@ bento.define('bento/renderers/pixi', [
 
                 },
                 destroy: function () {},
-                save: function (obj) {},
+                save: function () {},
                 restore: function () {},
                 translate: function (x, y) {},
                 scale: function (x, y) {},

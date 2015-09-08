@@ -25,7 +25,7 @@ bento.require([
     }, function () {
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
-                background = Entity({
+                background = new Entity({
                     addNow: true,
                     components: [Fill],
                     fill: {
@@ -35,7 +35,7 @@ bento.require([
                 gravityComponent = {
                     speed: 0,
                     update: function () {
-                        var position = bunny.getPosition();
+                        var position = bunny.position;
                         position.y += this.speed;
                         this.speed += 0.2;
                         if (position.y >= 120) {
@@ -44,7 +44,7 @@ bento.require([
                         }
                     }
                 },
-                bunny = Entity({
+                bunny = new Entity({
                     components: [Sprite, Clickable],
                     position: new Vector2(80, 120),
                     originRelative: new Vector2(0.5, 1),
@@ -66,7 +66,7 @@ bento.require([
                     },
                     clickable: {
                         pointerDown: function (evt) {
-                            if (bunny.getPosition().y >= 120) {
+                            if (bunny.position.y >= 120) {
                                 Bento.audio.playSound('sfx_jump');
                                 bunny.animation.setAnimation('jump');
                                 gravityComponent.speed = -5;

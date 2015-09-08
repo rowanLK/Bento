@@ -23,7 +23,6 @@ bento.define('bento/components/animation', [
             frameWidth = 0,
             frameHeight = 0,
             onCompleteCallback,
-            origin = entity.getOrigin(),
             component = {
                 /**
                  * Name of the component
@@ -211,7 +210,9 @@ bento.define('bento/components/animation', [
                  * @name draw
                  */
                 draw: function (data) {
-                    var cf, sx, sy;
+                    var cf, sx, sy,
+                        origin = entity.origin;
+
                     if (!currentAnimation) {
                         return;
                     }

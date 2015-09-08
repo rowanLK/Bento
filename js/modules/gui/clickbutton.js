@@ -73,7 +73,7 @@ bento.define('bento/gui/clickbutton', [
                     this.sprite.setAnimation('up');
                 }
             }, settings),
-            entity = Entity(entitySettings).extend({
+            entity = new Entity(entitySettings).extend({
                 setActive: function (bool) {
                     active = bool;
                 },

@@ -30,7 +30,7 @@ bento.require([
                 bunnies = 0,
                 renderer = Bento.getRenderer().name,
                 bgcolor = renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1],
-                background = Entity({
+                background = new Entity({
                     components: [Fill, Clickable],
                     clickable: {
                         pointerDown: function (evt) {
@@ -49,7 +49,7 @@ bento.require([
                     return Math.floor(Math.random() * val);
                 },
                 addBunny = function () {
-                    var entity = Entity({
+                    var entity = new Entity({
                         components: [Translation, Animation],
                         position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
                         originRelative: new Vector2(0.5, 0.5),
@@ -70,7 +70,7 @@ bento.require([
                     }).attach({
                         speed: new Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
                         update: function () {
-                            var position = entity.getPosition();
+                            var position = entity.position;
                             position.y += this.speed.y;
                             position.x += this.speed.x;
                             this.speed.y += 0.1;

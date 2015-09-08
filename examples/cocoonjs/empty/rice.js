@@ -2146,7 +2146,7 @@ bento.define('bento/entity', [
             visible = true,
             position = new Vector2(0, 0),
             origin = new Vector2(0, 0),
-            dimension = Rectangle(0, 0, 0, 0),
+            dimension = new Rectangle(0, 0, 0, 0),
             rectangle,
             components = [],
             family = [],
@@ -2259,7 +2259,7 @@ bento.define('bento/entity', [
                         if (scale.y < 0) {
                             y2 = [y1, y1 = y2][0];
                         }
-                        return Rectangle(x1, y1, x2 - x1, y2 - y1);
+                        return new Rectangle(x1, y1, x2 - x1, y2 - y1);
                     } else {
                         box = rectangle.clone();
                         scale = entity.scale ? entity.scale.getScale() : new Vector2(1, 1);
@@ -2510,7 +2510,7 @@ bento.define('bento', [
             lastTime: 0
         },
         gameData = {},
-        viewport = Rectangle(0, 0, 640, 480),
+        viewport = new Rectangle(0, 0, 640, 480),
         setupDebug = function () {
             debug.debugBar = document.createElement('div');
             debug.debugBar.style['font-family'] = 'Arial';
@@ -2671,7 +2671,7 @@ bento.define('bento/screen', [
     'use strict';
     return function (name) {
         var viewport = Bento.getViewport(),
-            dimension = Rectangle(0, 0, 0, 0),
+            dimension = new Rectangle(0, 0, 0, 0),
             isShown = false,
             module = {
                 setDimension: function (rectangle) {
@@ -2725,7 +2725,7 @@ bento.define('bento/subimage', [
     'bento/math/rectangle'
 ], function (Rectangle) {
     return function (image, frame) {
-        var rectangle = Rectangle(frame.x, frame.y, frame.w, frame.h);
+        var rectangle = new Rectangle(frame.x, frame.y, frame.w, frame.h);
         rectangle.image = image;
         return rectangle;
     };
@@ -3009,7 +3009,7 @@ bento.define('bento/components/pixisprite', [
             frameWidth = 0,
             frameHeight = 0,
             onCompleteCallback,
-            origin = base.getOrigin(),
+            origin = base.origin,
             mixin = {},
             component = {
                 name: 'sprite',
@@ -3046,8 +3046,8 @@ bento.define('bento/components/pixisprite', [
                         frameHeight = image.height / frameCountY;
                     }
                     // set dimension of base object
-                    base.getDimension().width = frameWidth;
-                    base.getDimension().height = frameHeight;
+                    base.dimension.width = frameWidth;
+                    base.dimension.height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -3258,7 +3258,7 @@ bento.define('bento/components/sprite', [
             frameWidth = 0,
             frameHeight = 0,
             onCompleteCallback,
-            origin = base.getOrigin(),
+            origin = base.origin,
             component = {
                 name: 'sprite',
                 setup: function (settings) {
@@ -3294,8 +3294,8 @@ bento.define('bento/components/sprite', [
                         frameHeight = image.height / frameCountY;
                     }
                     // set dimension of base object
-                    base.getDimension().width = frameWidth;
-                    base.getDimension().height = frameHeight;
+                    base.dimension.width = frameWidth;
+                    base.dimension.height = frameHeight;
                     // set to default
                     animations = animationSettings.animations;
                     currentAnimation = animations['default'];
@@ -3397,8 +3397,8 @@ bento.define('bento/components/translation', [
             component = {
                 name: 'translation',
                 draw: function (data) {
-                    var parent = base.getParent(),
-                        position = base.getPosition(),
+                    var parent = base.parent,
+                        position = base.position,
                         scroll = data.viewport;
                     data.renderer.save(base);
                     data.renderer.translate(Math.round(position.x), Math.round(position.y));
@@ -4494,7 +4494,7 @@ bento.define('bento/math/polygon', [
                 points: points,
                 isPolygon: isPolygon,
                 getBoundingBox: function () {
-                    return Rectangle(minX, minY, maxX - minX, maxY - minY);
+                    return new Rectangle(minX, minY, maxX - minX, maxY - minY);
                 },
                 hasPosition: hasPosition,
                 intersect: intersect,

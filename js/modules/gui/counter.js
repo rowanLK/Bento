@@ -43,7 +43,7 @@ bento.define('bento/gui/counter', [
              * Returns an entity with all digits as animation
              */
             createDigit = function () {
-                return Entity({
+                return new Entity({
                     components: [Sprite],
                     sprite: {
                         image: settings.image,
@@ -121,7 +121,7 @@ bento.define('bento/gui/counter', [
                 /* update animations */
                 for (i = 0; i < children.length; ++i) {
                     digit = children[i];
-                    digit.setPosition(new Vector2((digitWidth + spacing.x) * i, 0));
+                    digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
                     digit.sprite.setAnimation(valueStr.substr(i, 1));
                 }
 
@@ -132,7 +132,7 @@ bento.define('bento/gui/counter', [
                         digit = children[i];
                         pos = digit.position.clone();
                         pos.substract(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
-                        digit.setPosition(pos);
+                        digit.position = pos;
                     }
                 } else if (alignment === 'center') {
                     for (i = 0; i < children.length; ++i) {
@@ -155,7 +155,7 @@ bento.define('bento/gui/counter', [
         /*
          * Public interface
          */
-        base = Entity(entitySettings).extend({
+        base = new Entity(entitySettings).extend({
             init: function () {
                 updateDigits();
             },

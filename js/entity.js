@@ -91,7 +91,7 @@ bento.define('bento/entity', [
         this.family = [];
         this.components = [];
         this.dimension = new Rectangle(0, 0, 0, 0);
-        this.boundingBox = new Rectangle(0, 0, null, null);
+        this.boundingBox = null;
         this.scale = new Vector2(1, 1);
         this.rotation = 0;
         this.visible = true;
@@ -124,7 +124,7 @@ bento.define('bento/entity', [
                     settings.family = [settings.family];
                 }
                 for (var i = 0; i < settings.family.length; ++i) {
-                    entity.family.push(settings.family[i]);
+                    this.family.push(settings.family[i]);
                 }
             }
             if (settings.init) {
@@ -269,7 +269,7 @@ bento.define('bento/entity', [
      */
     entity.prototype.getBoundingBox = function () {
         var scale, x1, x2, y1, y2, box;
-        if (!this.boundingBox.width) {
+        if (!this.boundingBox) {
             // TODO get rid of scale component dependency
             scale = this.scale ? this.scale : new Vector2(1, 1);
             x1 = this.position.x - this.origin.x * scale.x;
@@ -355,9 +355,9 @@ bento.define('bento/entity', [
             parent = this;
 
         this.components.push(component);
-        if (component.setParent) {
-            component.setParent(entity);
-        }
+
+        component.parent = this;
+
         if (component.init) {
             component.init();
         }

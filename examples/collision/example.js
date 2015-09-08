@@ -35,7 +35,7 @@ bento.require([
     }, function () {
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
-                background = Entity({
+                background = new Entity({
                     addNow: true,
                     components: [Fill],
                     fill: {
@@ -48,7 +48,7 @@ bento.require([
                 colliding = false,
                 set = function () {
                     // move polygon with the object
-                    var pos = object.getPosition(),
+                    var pos = object.position,
                         points = [];
                     //
                     points.push(new Vector2(pos.x, pos.y));
@@ -63,7 +63,7 @@ bento.require([
                     colliding = polygon.intersect(polygonOther);
                 },
                 once,
-                object = Entity({
+                object = new Entity({
                     z: 0,
                     name: '',
                     addNow: false,
@@ -80,17 +80,17 @@ bento.require([
                             }
                         },
                         pointerDown: function (e) {
-                            var position = object.getPosition();
+                            var position = object.position;
                             if (polygon.hasPosition(e.worldPosition)) {
                                 object.offset = new Vector2(position.x - e.worldPosition.x, position.y - e.worldPosition.y);
-                                object.setPosition(new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y));
+                                object.position = new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y);
                                 object.hold = true;
                                 set();
                             }
                         },
                         pointerMove: function (e) {
                             if (object.hold) {
-                                object.setPosition(new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y));
+                                object.position = new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y);
                                 set();
                             }
                         }
@@ -148,7 +148,7 @@ bento.require([
             pts.push(new Vector2(150, 300));
             pts.push(new Vector2(250, 300));
             polygonOther = Polygon(pts);
-            object.setPosition(new Vector2(80, 80));
+            object.position = new Vector2(80, 80);
             set();
 
             Bento.objects.add(object);
