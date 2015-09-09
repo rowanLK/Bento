@@ -15,7 +15,7 @@ bento.define('bento/components/fill', [
         component = function (settings) {
             settings = settings || {};
             this.name = 'fill';
-            this.color = [0, 0, 0, 1];
+            this.color = settings.color || [0, 0, 0, 1];
             this.dimension = settings.dimension || viewport;
         };
     component.prototype.draw = function (data) {
