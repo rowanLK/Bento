@@ -39,10 +39,9 @@ bento.require([
                 background = new Entity({
                     z: -100,
                     addNow: true,
-                    components: [Fill],
-                    fill: {
+                    components: [new Fill({
                         color: [1, 1, 1, 1]
-                    }
+                    })]
                 }),
                 button1,
                 button2,
@@ -71,7 +70,6 @@ bento.require([
                         draw: function (data) {
                             var box = button.getBoundingBox(),
                                 position = button.position;
-                                console.log(box);
                             data.renderer.strokeRect(color, box.x - position.x, box.y - position.y, box.width, box.height);
                         }
                     });
@@ -84,10 +82,10 @@ bento.require([
             button1.attach({
                 update: function () {
                     if (Bento.input.isKeyDown('left')) {
-                        button1.rotation.addAngleDegree(1);
+                        button1.getComponent('rotation').addAngleDegree(1);
                     }
                     if (Bento.input.isKeyDown('right')) {
-                        button1.rotation.addAngleDegree(-1);
+                        button1.getComponent('rotation').addAngleDegree(-1);
                     }
                     if (Bento.input.isKeyDown('down')) {
                         viewport.y += 1;
