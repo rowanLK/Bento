@@ -4485,7 +4485,7 @@ bento.define('bento/entity', [
         if (!Utils.isDefined(offset)) {
             offset = new Vector2(0, 0);
         }
-        intersect = this.boundingBox.offset(offset).intersect(other.boundingBox);
+        intersect = this.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
         if (intersect && callback) {
             callback(other);
         }
@@ -4516,13 +4516,13 @@ bento.define('bento/entity', [
         if (!array.length) {
             return null;
         }
-        box = this.boundingBox.offset(offset);
+        box = this.getBoundingBox().offset(offset);
         for (i = 0; i < array.length; ++i) {
             obj = array[i];
-            if (obj === this) {
+            if (obj.id && obj.id === this.id) {
                 continue;
             }
-            if (obj.boundingBox && box.intersect(obj.boundingBox)) {
+            if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
                 if (callback) {
                     callback(obj);
                 }
@@ -4532,7 +4532,7 @@ bento.define('bento/entity', [
         return null;
     };
     entity.prototype.getAABB = function () {
-        var box = this.boundingBox;
+        var box = this.getBoundingBox();
         return {
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]
@@ -5697,8 +5697,8 @@ bento.define('bento/components/fill', [
     'bento'
 ], function (Utils, Bento) {
     'use strict';
-    var viewport = Bento.getViewport(),
-        component = function (settings) {
+    var component = function (settings) {
+            var viewport = Bento.getViewport();
             settings = settings || {};
             this.name = 'fill';
             this.color = settings.color || [0, 0, 0, 1];
@@ -8012,8 +8012,8 @@ bento.define('bento/managers/object', [
                     hshg.addObject(object);
                 }
                 // add object to access pools
-                if (object.getFamily) {
-                    family = object.getFamily();
+                if (object.family) {
+                    family = object.family;
                     for (i = 0; i < family.length; ++i) {
                         type = family[i];
                         if (!quickAccess[type]) {
@@ -8058,8 +8058,8 @@ bento.define('bento/managers/object', [
                         hshg.removeObject(object);
                     }
                     // remove from access pools
-                    if (object.getFamily) {
-                        family = object.getFamily();
+                    if (object.family) {
+                        family = object.family;
                         for (i = 0; i < family.length; ++i) {
                             type = family[i];
                             Utils.removeObject(quickAccess[type], object);

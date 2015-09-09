@@ -466,7 +466,7 @@ bento.define('bento/entity', [
         if (!Utils.isDefined(offset)) {
             offset = new Vector2(0, 0);
         }
-        intersect = this.boundingBox.offset(offset).intersect(other.boundingBox);
+        intersect = this.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
         if (intersect && callback) {
             callback(other);
         }
@@ -497,13 +497,13 @@ bento.define('bento/entity', [
         if (!array.length) {
             return null;
         }
-        box = this.boundingBox.offset(offset);
+        box = this.getBoundingBox().offset(offset);
         for (i = 0; i < array.length; ++i) {
             obj = array[i];
-            if (obj === this) {
+            if (obj.id && obj.id === this.id) {
                 continue;
             }
-            if (obj.boundingBox && box.intersect(obj.boundingBox)) {
+            if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
                 if (callback) {
                     callback(obj);
                 }
@@ -513,7 +513,7 @@ bento.define('bento/entity', [
         return null;
     };
     entity.prototype.getAABB = function () {
-        var box = this.boundingBox;
+        var box = this.getBoundingBox();
         return {
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]
