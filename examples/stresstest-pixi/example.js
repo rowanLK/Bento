@@ -3,11 +3,11 @@ bento.require([
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/entity',
-    'bento/components/pixi',
+    'bento/components/sprite',
     'bento/components/translation',
     'bento/components/fill',
     'bento/components/clickable'
-], function (Bento, Vector2, Rectangle, Entity, Animation, Translation, Fill, Clickable) {
+], function (Bento, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable) {
     var hash = window.location ? window.location.hash : '',
         renderer = 'pixi';
 
@@ -24,10 +24,9 @@ bento.require([
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
                 bunnies = 0,
-                renderer = Bento.getRenderer().name;
-                background = new new Entity({
-                    components: [Fill, Clickable],
-                    clickable: {
+                renderer = Bento.getRenderer().name,
+                background = new Entity({
+                    components: [new Clickable({
                         pointerDown: function (evt) {
                             var i;
                             for (i = 0; i < 100; ++i) {
@@ -36,20 +35,14 @@ bento.require([
                             console.log(renderer)
                             console.log('Current bunnies:', bunnies);
                         }
-                    },
-                    fill: {
-                        color: renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1]
-                    }
+                    })]
                 }),
                 getRandom = function (val) {
                     return Math.floor(Math.random() * val);
                 },
                 addBunny = function () {
-                    var entity = new new Entity({
-                        components: [Animation],
-                        position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
-                        originRelative: new Vector2(0.5, 0.5),
-                        pixi: {
+                    var entity = new Entity({
+                        components: [new Sprite({
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
                             frameHeight: 32,
@@ -59,7 +52,9 @@ bento.require([
                                     frames: [0, 10, 11, 12]
                                 }
                             },
-                        },
+                        })],
+                        position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
+                        originRelative: new Vector2(0.5, 0.5),
                         init: function () {
                             // this.pixi.setAnimation('idle');
                         }

@@ -10,42 +10,42 @@ bento.define('bento/components/rotation', [
     'bento/utils',
 ], function (Utils) {
     'use strict';
-    var component = function (settings) {
+    var Rotation = function (settings) {
             settings = settings || {};
             this.name = 'rotation';
             this.entity = null;
         };
 
-    component.prototype.draw = function (data) {
+    Rotation.prototype.draw = function (data) {
         data.renderer.save();
         data.renderer.rotate(data.entity.rotation);
     };
-    component.prototype.postDraw = function (data) {
+    Rotation.prototype.postDraw = function (data) {
         data.renderer.restore();
     };
-    component.prototype.attached = function (data) {
+    Rotation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
     
     // old angle functions
-    component.prototype.addAngleDegree = function (value) {
+    Rotation.prototype.addAngleDegree = function (value) {
         this.entity.rotation += value * Math.PI / 180;
     },
-    component.prototype.addAngleRadian = function (value) {
+    Rotation.prototype.addAngleRadian = function (value) {
         this.entity.rotation += value;
     },
-    component.prototype.setAngleDegree = function (value) {
+    Rotation.prototype.setAngleDegree = function (value) {
         this.entity.rotation = value * Math.PI / 180;
     },
-    component.prototype.setAngleRadian = function (value) {
+    Rotation.prototype.setAngleRadian = function (value) {
         this.entity.rotation = value;
     },
-    component.prototype.getAngleDegree = function () {
+    Rotation.prototype.getAngleDegree = function () {
         return this.entity.rotation * 180 / Math.PI;
     },
-    component.prototype.getAngleRadian = function () {
+    Rotation.prototype.getAngleRadian = function () {
         return this.entity.rotation;
     }
 
-    return component;
+    return Rotation;
 });

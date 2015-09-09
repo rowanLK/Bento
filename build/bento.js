@@ -4438,7 +4438,7 @@ bento.define('bento/entity', [
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
-            if (component.name === name) {
+            if (component && component.name === name) {
                 return component;
             }
         }
@@ -5186,7 +5186,7 @@ bento.define('bento/components/animation', [
     'bento/utils',
 ], function (Bento, Utils) {
     'use strict';
-    var component = function (settings) {
+    var Animation = function (settings) {
         this.entity = null;
         this.name = 'animation';
 
@@ -5216,7 +5216,7 @@ bento.define('bento/components/animation', [
      * @param {Object} settings - Settings object
      * @name setup
      */
-    component.prototype.setup = function (settings) {
+    Animation.prototype.setup = function (settings) {
         this.animationSettings = settings || this.animationSettings;
 
         // add default animation
@@ -5271,7 +5271,7 @@ bento.define('bento/components/animation', [
         }
     };
 
-    component.prototype.attached = function (data) {
+    Animation.prototype.attached = function (data) {
         this.entity = data.entity;
         // set dimension of entity object
         this.entity.dimension.width = this.frameWidth;
@@ -5286,7 +5286,7 @@ bento.define('bento/components/animation', [
      * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
      * @name setAnimation
      */
-    component.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
         if (!anim) {
             console.log('Warning: animation ' + name + ' does not exist.');
@@ -5315,7 +5315,7 @@ bento.define('bento/components/animation', [
      * @returns {String} Name of the animation playing, null if not playing anything
      * @name getAnimation
      */
-    component.prototype.getAnimation = function () {
+    Animation.prototype.getAnimation = function () {
         return this.currentAnimation;
     };
     /**
@@ -5325,7 +5325,7 @@ bento.define('bento/components/animation', [
      * @param {Number} frameNumber - Frame number.
      * @name setFrame
      */
-    component.prototype.setFrame = function (frameNumber) {
+    Animation.prototype.setFrame = function (frameNumber) {
         this.currentFrame = frameNumber;
     };
     /**
@@ -5335,7 +5335,7 @@ bento.define('bento/components/animation', [
      * @param {Number} speed - Speed at which the animation plays.
      * @name setCurrentSpeed
      */
-    component.prototype.setCurrentSpeed = function (value) {
+    Animation.prototype.setCurrentSpeed = function (value) {
         this.currentAnimation.speed = value;
     };
     /**
@@ -5345,7 +5345,7 @@ bento.define('bento/components/animation', [
      * @returns {Number} frameNumber - Not necessarily a round number.
      * @name getCurrentFrame
      */
-    component.prototype.getCurrentFrame = function () {
+    Animation.prototype.getCurrentFrame = function () {
         return this.currentFrame;
     };
     /**
@@ -5355,7 +5355,7 @@ bento.define('bento/components/animation', [
      * @returns {Number} width - Width of the image frame.
      * @name getFrameWidth
      */
-    component.prototype.getFrameWidth = function () {
+    Animation.prototype.getFrameWidth = function () {
         return this.frameWidth;
     };
     /**
@@ -5365,7 +5365,7 @@ bento.define('bento/components/animation', [
      * @param {Object} data - Game data object
      * @name update
      */
-    component.prototype.update = function () {
+    Animation.prototype.update = function () {
         var reachedEnd;
         if (!this.currentAnimation) {
             return;
@@ -5393,7 +5393,7 @@ bento.define('bento/components/animation', [
      * @param {Object} data - Game data object
      * @name draw
      */
-    component.prototype.draw = function (data) {
+    Animation.prototype.draw = function (data) {
         var cf, sx, sy,
             entity = data.entity,
             origin = entity.origin;
@@ -5419,7 +5419,7 @@ bento.define('bento/components/animation', [
         );
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
-    return component;
+    return Animation;
 });
 /**
  * Component that helps with detecting clicks on an entity
@@ -5437,7 +5437,7 @@ bento.define('bento/components/clickable', [
     'bento/eventsystem'
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
-    var component = function (settings) {
+    var Clickable = function (settings) {
         this.entity = null;
         /**
          * Name of the component
@@ -5488,7 +5488,7 @@ bento.define('bento/components/clickable', [
      * @instance
      * @name destroy
      */
-    component.prototype.destroy = function () {
+    Clickable.prototype.destroy = function () {
         EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
         EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
         EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
@@ -5500,7 +5500,7 @@ bento.define('bento/components/clickable', [
      * @instance
      * @name start
      */
-    component.prototype.start = function () {
+    Clickable.prototype.start = function () {
         if (this.initialized) {
             // TODO: this is caused by calling start when objects are attached, fix this later!
             // console.log('warning: trying to init twice')
@@ -5518,12 +5518,12 @@ bento.define('bento/components/clickable', [
      * @param {Object} data - Game data object
      * @name update
      */
-    component.prototype.update = function () {
+    Clickable.prototype.update = function () {
         if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
             this.callbacks.onHold();
         }
     };
-    component.prototype.cloneEvent = function (evt) {
+    Clickable.prototype.cloneEvent = function (evt) {
         return {
             id: evt.id,
             position: evt.position.clone(),
@@ -5532,7 +5532,7 @@ bento.define('bento/components/clickable', [
             worldPosition: evt.worldPosition.clone()
         };
     };
-    component.prototype.pointerDown = function (evt) {
+    Clickable.prototype.pointerDown = function (evt) {
         var e = this.transformEvent(evt);
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
             return;
@@ -5545,7 +5545,7 @@ bento.define('bento/components/clickable', [
             this.checkHovering(e, true);
         }
     };
-    component.prototype.pointerUp = function (evt) {
+    Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
@@ -5565,7 +5565,7 @@ bento.define('bento/components/clickable', [
         }
         this.hasTouched = false;
     };
-    component.prototype.pointerMove = function (evt) {
+    Clickable.prototype.pointerMove = function (evt) {
         var e = this.transformEvent(evt);
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
             return;
@@ -5578,7 +5578,7 @@ bento.define('bento/components/clickable', [
             this.checkHovering(e);
         }
     };
-    component.prototype.checkHovering = function (evt, clicked) {
+    Clickable.prototype.checkHovering = function (evt, clicked) {
         var mousePosition = evt.localPosition;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
@@ -5606,7 +5606,7 @@ bento.define('bento/components/clickable', [
             }
         }
     };
-    component.prototype.transformEvent = function (evt) {
+    Clickable.prototype.transformEvent = function (evt) {
         var positionVector,
             translateMatrix = Matrix(3, 3),
             scaleMatrix = Matrix(3, 3),
@@ -5679,10 +5679,10 @@ bento.define('bento/components/clickable', [
 
         return evt;
     };
-    component.prototype.attached = function (data) {
+    Clickable.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-    return component;
+    return Clickable;
 });
 /**
  * Component that fills the screen
@@ -5697,21 +5697,21 @@ bento.define('bento/components/fill', [
     'bento'
 ], function (Utils, Bento) {
     'use strict';
-    var component = function (settings) {
+    var Fill = function (settings) {
             var viewport = Bento.getViewport();
             settings = settings || {};
             this.name = 'fill';
             this.color = settings.color || [0, 0, 0, 1];
             this.dimension = settings.dimension || viewport;
         };
-    component.prototype.draw = function (data) {
+    Fill.prototype.draw = function (data) {
         var dimension = this.dimension;
         data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
     };
-    component.prototype.setup = function (settings) {
+    Fill.prototype.setup = function (settings) {
         this.color = settings.color;
     };
-    return component;
+    return Fill;
 });
 /**
  * Component that sets the opacity
@@ -5727,28 +5727,28 @@ bento.define('bento/components/opacity', [
 ], function (Utils, Vector2) {
     'use strict';
     var oldOpacity = 1,
-        component = function (settings) {
+        Opacity = function (settings) {
             settings = settings || {};
             this.name = 'opacity';
             this.set = false;
             this.opacity = settings.opacity || 1;
         };
-    component.prototype.draw = function (data) {
+    Opacity.prototype.draw = function (data) {
         if (this.set) {
             oldOpacity = data.renderer.getOpacity();
             data.renderer.setOpacity(this.opacity);
         }
     };
-    component.prototype.postDraw = function (data) {
+    Opacity.prototype.postDraw = function (data) {
         data.renderer.setOpacity(oldOpacity);
     };
-    component.prototype.setOpacity = function (value) {
+    Opacity.prototype.setOpacity = function (value) {
         this.opacity = value;
     };
-    component.prototype.getOpacity = function () {
+    Opacity.prototype.getOpacity = function () {
         return this.opacity;
     };
-    return component;
+    return Opacity;
 });
 /**
  * Sprite component that uses pixi (alternative version of animation component).
@@ -5759,7 +5759,7 @@ bento.define('bento/components/opacity', [
  * @param {Object} settings - Settings
  * @returns Returns the entity passed. The entity will have the component attached.
  */
- bento.define('bento/components/pixi', [
+bento.define('bento/components/pixi', [
     'bento',
     'bento/utils'
 ], function (
@@ -5772,291 +5772,309 @@ bento.define('bento/components/opacity', [
         return function () {};
     }
 
-    return function (entity, settings) {
-        var pixiBaseTexture,
-            pixiTexture,
-            pixiSprite,
-            animationSettings,
-            animations = {},
-            currentAnimation,
-            mixin = {},
-            currentFrame = 0,
-            frameCountX = 1,
-            frameCountY = 1,
-            frameWidth = 0,
-            frameHeight = 0,
-            spriteImage,
-            onCompleteCallback,
-            viewport = Bento.getViewport(),
-            component = {
-                name: 'pixi',
-                setup: function (settings) {
-                    var rectangle,
-                        crop;
-                    if (settings) {
-                        animationSettings = settings;
-                    } else {
-                        // create default animation
-                        animationSettings = {
-                            frameCountX: 1,
-                            frameCountY: 1
-                        };
-                    }
-                    // add default animation
-                    if (!animationSettings.animations) {
-                        animationSettings.animations = {};
-                    }
-                    if (!animationSettings.animations['default']) {
-                        animationSettings.animations['default'] = {
-                            frames: [0]
-                        };
-                    }
+    var Pixi = function (settings) {
+        this.pixiBaseTexture = null;
+        this.pixiTexture = null;
+        this.pixiSprite = null;
+        this.opacityComponent = null;
 
-                    // get image
-                    if (settings.image) {
-                        spriteImage = settings.image;
-                    } else if (settings.imageName) {
-                        // load from string
-                        if (Bento.assets) {
-                            spriteImage = Bento.assets.getImage(settings.imageName);
-                        } else {
-                            throw 'Bento asset manager not loaded';
-                        }
-                    } else {
-                        // no image specified
-                        return;
-                    }
-                    // use frameWidth if specified (overrides frameCountX and frameCountY)
-                    if (animationSettings.frameWidth) {
-                        frameWidth = animationSettings.frameWidth;
-                        frameCountX = Math.floor(spriteImage.width / frameWidth);
-                    } else {
-                        frameCountX = animationSettings.frameCountX || 1;
-                        frameWidth = spriteImage.width / frameCountX;
-                    }
-                    if (animationSettings.frameHeight) {
-                        frameHeight = animationSettings.frameHeight;
-                        frameCountY = Math.floor(spriteImage.height / frameHeight);
-                    } else {
-                        frameCountY = animationSettings.frameCountY || 1;
-                        frameHeight = spriteImage.height / frameCountY;
-                    }
-                    // set dimension of entity object
-                    entity.dimension.width = frameWidth;
-                    entity.dimension.height = frameHeight;
-                    // set to default
-                    animations = animationSettings.animations;
-                    currentAnimation = animations['default'];
+        this.entity = null;
+        this.name = 'animation';
 
-                    // PIXI
-                    // initialize pixi
-                    pixiBaseTexture = new PIXI.BaseTexture(spriteImage.image, PIXI.SCALE_MODES.NEAREST);
-                    rectangle = new PIXI.Rectangle(spriteImage.x, spriteImage.y, frameWidth, frameHeight);
-                    pixiTexture = new PIXI.Texture(pixiBaseTexture, rectangle);
-                    pixiSprite = new PIXI.Sprite(pixiTexture);
-                },
-                /**
-                 * Updates the component. Called by the entity holding the component every tick.
-                 * @function
-                 * @instance
-                 * @param {Object} data - Game data object
-                 * @name update
-                 */
-                update: function () {
-                    var reachedEnd;
-                    if (!currentAnimation) {
-                        return;
-                    }
-                    reachedEnd = false;
-                    currentFrame += currentAnimation.speed || 1;
-                    if (currentAnimation.loop) {
-                        while (currentFrame >= currentAnimation.frames.length) {
-                            currentFrame -= currentAnimation.frames.length - currentAnimation.backTo;
-                            reachedEnd = true;
-                        }
-                    } else {
-                        if (currentFrame >= currentAnimation.frames.length) {
-                            reachedEnd = true;
-                        }
-                    }
-                    if (reachedEnd && onCompleteCallback) {
-                        onCompleteCallback();
-                    }
-                    pixiSprite.visible = entity.visible;
-                },
-                draw: function (data) {
-                    // update pixi sprite, doesnt actually draw
-                    var origin = entity.origin,
-                        position = entity.position,
-                        rotation,
-                        scale,
-                        rectangle,
-                        cf,
-                        sx,
-                        sy;
-                    if (!currentAnimation) {
-                        return;
-                    }
-                    cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1);
-                    sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth;
-                    sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
 
-                    rectangle = new PIXI.Rectangle(spriteImage.x + sx, spriteImage.y + sy, frameWidth, frameHeight);
+        this.spriteImage;
 
-                    pixiTexture.frame = rectangle;
+        this.frameCountX = 1,
+        this.frameCountY = 1,
+        this.frameWidth = 0,
+        this.frameHeight = 0,
 
-                    pixiSprite.x = position.x;
-                    pixiSprite.y = position.y;
-                    // pixiSprite.pivot.x = origin.x;
-                    // pixiSprite.pivot.y = origin.y;
-                    pixiSprite.anchor.x = origin.x / frameWidth;
-                    pixiSprite.anchor.y = origin.y / frameHeight;
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
 
-                    if (entity.float) {
-                        pixiSprite.x -= viewport.x;
-                        pixiSprite.y -= viewport.y;
-                    }
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /**
+     * Sets up animation
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     */
+    Pixi.prototype.setup = function (settings) {
+        var rectangle,
+            crop;
+        this.animationSettings = settings || this.animationSettings;
 
-                    if (entity.scale) {
-                        scale = entity.scale;
-                        pixiSprite.scale.x = scale.x;
-                        pixiSprite.scale.y = scale.y;
-                    }
-                    if (entity.rotation) {
-                        rotation = entity.rotation.getAngleRadian();
-                        pixiSprite.rotation = rotation;
-                    }
-                    if (entity.opacity) {
-                        pixiSprite.alpha = entity.opacity.getOpacity();
-                    }
-                },
-                destroy: function (data) {
-                    // remove from parent
-                    if (pixiSprite && pixiSprite.parent) {
-                        pixiSprite.parent.removeChild(pixiSprite);
-                    }
-                },
-                start: function (data) {
-                    if (!pixiSprite) {
-                        console.log('call setup first');
-                        return;
-                    }
-                },
-                onParentAttached: function (data) {
-                    // Attach
-                    var parent, component;
-                    if (data.renderer) {
-                        // attach to root
-                        data.renderer.addChild(pixiSprite);
-                    } else if (data.entity) {
-                        // attach to parent
-                        parent = data.entity.parent;
-                        // get pixi component
-                        if (parent) {
-                            component = parent.getComponentByName('pixi');
-                            if (component) {
-                                // get parents pixisprite and attach
-                                component.getPixiSprite().addChild(pixiSprite);
-                            }
-                        }
-                    }
-
-                },
-                getPixiSprite: function () {
-                    return pixiSprite;
-                },
-                /**
-                 * Set component to a different animation
-                 * @function
-                 * @instance
-                 * @param {String} name - Name of the animation.
-                 * @param {Function} callback - Called when animation ends.
-                 * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-                 * @name setAnimation
-                 */
-                setAnimation: function (name, callback, keepCurrentFrame) {
-                    var anim = animations[name];
-                    if (!anim) {
-                        console.log('Warning: animation ' + name + ' does not exist.');
-                        return;
-                    }
-                    if (anim && currentAnimation !== anim) {
-                        if (!Utils.isDefined(anim.loop)) {
-                            anim.loop = true;
-                        }
-                        if (!Utils.isDefined(anim.backTo)) {
-                            anim.backTo = 0;
-                        }
-                        // set even if there is no callback
-                        onCompleteCallback = callback;
-                        currentAnimation = anim;
-                        currentAnimation.name = name;
-                        if (!keepCurrentFrame) {
-                            currentFrame = 0;
-                        }
-                    }
-                },
-                /**
-                 * Returns the name of current animation playing
-                 * @function
-                 * @instance
-                 * @returns {String} Name of the animation playing, null if not playing anything
-                 * @name getAnimation
-                 */
-                getAnimation: function () {
-                    return currentAnimation ? currentAnimation.name : null;
-                },
-                /**
-                 * Set current animation to a certain frame
-                 * @function
-                 * @instance
-                 * @param {Number} frameNumber - Frame number.
-                 * @name setFrame
-                 */
-                setFrame: function (frameNumber) {
-                    currentFrame = frameNumber;
-                },
-                /**
-                 * Set speed of the current animation.
-                 * @function
-                 * @instance
-                 * @param {Number} speed - Speed at which the animation plays.
-                 * @name setCurrentSpeed
-                 */
-                setCurrentSpeed: function (value) {
-                    currentAnimation.speed = value;
-                },
-                /**
-                 * Returns the current frame number
-                 * @function
-                 * @instance
-                 * @returns {Number} frameNumber - Not necessarily a round number.
-                 * @name getCurrentFrame
-                 */
-                getCurrentFrame: function () {
-                    return currentFrame;
-                },
-                /**
-                 * Returns the frame width
-                 * @function
-                 * @instance
-                 * @returns {Number} width - Width of the image frame.
-                 * @name getFrameWidth
-                 */
-                getFrameWidth: function () {
-                    return frameWidth;
-                }
-            };
-        // call setup
-        if (settings && settings[component.name]) {
-            component.setup(settings[component.name]);
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
         }
 
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = this.spriteImage.width / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = this.spriteImage.height / this.frameCountY;
+        }
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default')
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+
+        // PIXI
+        // initialize pixi
+        if (this.spriteImage) {
+            this.pixiBaseTexture = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
+            rectangle = new PIXI.Rectangle(this.spriteImage.x, this.spriteImage.y, this.frameWidth, this.frameHeight);
+            this.pixiTexture = new PIXI.Texture(this.pixiBaseTexture, rectangle);
+            this.pixiSprite = new PIXI.Sprite(this.pixiTexture);
+        }
     };
+
+    Pixi.prototype.attached = function (data) {
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+        this.opacityComponent = data.entity.getComponent('opacity');
+    };
+    /**
+     * Set component to a different animation
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     */
+    Pixi.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && this.currentAnimation !== anim) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+        }
+    };
+    /**
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimation
+     */
+    Pixi.prototype.getAnimation = function () {
+        return this.currentAnimation;
+    };
+    /**
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     */
+    Pixi.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Pixi.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Pixi.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Pixi.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    /**
+     * Updates the component. Called by the entity holding the component every tick.
+     * @function
+     * @instance
+     * @param {Object} data - Game data object
+     * @name update
+     */
+    Pixi.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        reachedEnd = false;
+        this.currentFrame += this.currentAnimation.speed || 1;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+        if (this.pixiSprite) {
+            this.pixiSprite.visible = data.entity.visible;
+        }
+    };
+    /**
+     * Draws the component. Called by the entity holding the component every tick.
+     * @function
+     * @instance
+     * @param {Object} data - Game data object
+     * @name draw
+     */
+    Pixi.prototype.draw = function (data) {
+        var origin = data.entity.origin,
+            position = data.entity.position,
+            rotation = data.entity.rotation,
+            scale = data.entity.scale,
+            rectangle,
+            cf,
+            sx,
+            sy;
+
+        if (!this.currentAnimation || !this.pixiSprite) {
+            return;
+        }
+        cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
+        sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
+
+        rectangle = new PIXI.Rectangle(this.spriteImage.x + sx, this.spriteImage.y + sy, this.frameWidth, this.frameHeight);
+        this.pixiTexture.frame = rectangle;
+        this.pixiSprite.x = position.x;
+        this.pixiSprite.y = position.y;
+        // pixiSprite.pivot.x = origin.x;
+        // pixiSprite.pivot.y = origin.y;
+        this.pixiSprite.anchor.x = origin.x / this.frameWidth;
+        this.pixiSprite.anchor.y = origin.y / this.frameHeight;
+
+        if (data.entity.float) {
+            this.pixiSprite.x -= viewport.x;
+            this.pixiSprite.y -= viewport.y;
+        }
+        this.pixiSprite.scale.x = scale.x;
+        this.pixiSprite.scale.y = scale.y;
+        this.pixiSprite.rotation = rotation;
+        if (this.opacityComponent) {
+            this.pixiSprite.alpha = this.opacityComponent.getOpacity();
+        }
+    };
+
+    Pixi.prototype.destroy = function (data) {
+        // remove from parent
+        if (this.pixiSprite && this.pixiSprite.parent) {
+            this.pixiSprite.parent.removeChild(this.pixiSprite);
+        }
+    };
+    Pixi.prototype.start = function (data) {
+        if (!this.pixiSprite) {
+            console.log('call setup first');
+            return;
+        }
+    };
+    Pixi.prototype.onParentAttached = function (data) {
+        var parent, component;
+
+        if (!this.pixiSprite) {
+            console.log('Warning: pixi sprite does not exist, creating pixi container');
+            this.pixiSprite = new PIXI.Container();   
+        }
+
+        if (data.renderer) {
+            // attach to root
+            data.renderer.addChild(this.pixiSprite);
+        } else if (data.entity) {
+            // attach to parent
+            parent = data.entity.parent;
+            // get pixi component
+            if (parent) {
+                component = parent.getComponent('animation');
+                if (component) {
+                    // get parents pixisprite and attach
+                    component.pixiSprite.addChild(this.pixiSprite);
+                }
+            }
+        }
+    };
+
+    return Pixi;
 });
 /**
  * Component that sets the rotation
@@ -6070,44 +6088,44 @@ bento.define('bento/components/rotation', [
     'bento/utils',
 ], function (Utils) {
     'use strict';
-    var component = function (settings) {
+    var Rotation = function (settings) {
             settings = settings || {};
             this.name = 'rotation';
             this.entity = null;
         };
 
-    component.prototype.draw = function (data) {
+    Rotation.prototype.draw = function (data) {
         data.renderer.save();
         data.renderer.rotate(data.entity.rotation);
     };
-    component.prototype.postDraw = function (data) {
+    Rotation.prototype.postDraw = function (data) {
         data.renderer.restore();
     };
-    component.prototype.attached = function (data) {
+    Rotation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
     
     // old angle functions
-    component.prototype.addAngleDegree = function (value) {
+    Rotation.prototype.addAngleDegree = function (value) {
         this.entity.rotation += value * Math.PI / 180;
     },
-    component.prototype.addAngleRadian = function (value) {
+    Rotation.prototype.addAngleRadian = function (value) {
         this.entity.rotation += value;
     },
-    component.prototype.setAngleDegree = function (value) {
+    Rotation.prototype.setAngleDegree = function (value) {
         this.entity.rotation = value * Math.PI / 180;
     },
-    component.prototype.setAngleRadian = function (value) {
+    Rotation.prototype.setAngleRadian = function (value) {
         this.entity.rotation = value;
     },
-    component.prototype.getAngleDegree = function () {
+    Rotation.prototype.getAngleDegree = function () {
         return this.entity.rotation * 180 / Math.PI;
     },
-    component.prototype.getAngleRadian = function () {
+    Rotation.prototype.getAngleRadian = function () {
         return this.entity.rotation;
     }
 
-    return component;
+    return Rotation;
 });
 /**
  * Component that scales the entity
@@ -6122,18 +6140,18 @@ bento.define('bento/components/scale', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var component = function (settings) {
+    var Scale = function (settings) {
         this.entity = null;
         this.name = 'scale';
     };
-    component.prototype.draw = function (data) {
+    Scale.prototype.draw = function (data) {
         data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
     };
-    component.prototype.attached = function (data) {
+    Scale.prototype.attached = function (data) {
         this.entity = data.entity;
     };
 
-    return component;
+    return Scale;
 });
 /**
  * Helper component that attaches the translate, scale, rotation, opacity and animation/pixi components. Automatically detects the renderer.
@@ -6161,16 +6179,16 @@ bento.define('bento/components/sprite', [
             if (!renderer) {
                 renderer = Bento.getRenderer();
             }
-            this.translation = new Translation(settings);
-            this.scale = new Scale(settings);
-            this.rotation = new Rotation(settings);
-            this.opacity = new Opacity(settings);
-
 
             // use pixi or default sprite renderer
             if (renderer.name === 'pixi') {
+                this.opacity = new Opacity(settings);
                 this.animation = new Pixi(settings);
             } else {
+                this.translation = new Translation(settings);
+                this.scale = new Scale(settings);
+                this.rotation = new Rotation(settings);
+                this.opacity = new Opacity(settings);
                 this.animation = new Animation(settings);
             }
         };
@@ -6178,14 +6196,20 @@ bento.define('bento/components/sprite', [
     component.prototype.attached = function (data) {
         this.entity = data.entity;
         // attach all components!
-        this.entity.attach(this.translation);
-        this.entity.attach(this.scale);
-        this.entity.attach(this.rotation);
+        if (this.translation) {
+            this.entity.attach(this.translation);
+        }
+        if (this.scale) {
+            this.entity.attach(this.scale);
+        }
+        if (this.rotation) {
+            this.entity.attach(this.rotation);
+        }
         this.entity.attach(this.opacity);
         this.entity.attach(this.animation);
-        
+
         // remove self?
-        // this.entity.remove(this);
+        this.entity.remove(this);
     };
     return component;
 });
@@ -6202,13 +6226,13 @@ bento.define('bento/components/translation', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var component = function (settings) {
+    var Translation = function (settings) {
         settings = settings || {};
         this.name = 'translation';
         this.subPixel = settings.subPixel || false;
         this.entity = null;
     };
-    component.prototype.draw = function (data) {
+    Translation.prototype.draw = function (data) {
         var entity = data.entity,
             parent = entity.parent,
             position = entity.position,
@@ -6226,13 +6250,13 @@ bento.define('bento/components/translation', [
             data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
         }
     };
-    component.prototype.postDraw = function (data) {
+    Translation.prototype.postDraw = function (data) {
         data.renderer.restore();
     };
-    component.prototype.attached = function (data) {
+    Translation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-    return component;
+    return Translation;
 });
 /**
  * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.

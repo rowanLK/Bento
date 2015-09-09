@@ -419,7 +419,7 @@ bento.define('bento/entity', [
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
-            if (component.name === name) {
+            if (component && component.name === name) {
                 return component;
             }
         }

@@ -14,7 +14,7 @@ bento.define('bento/components/clickable', [
     'bento/eventsystem'
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
-    var component = function (settings) {
+    var Clickable = function (settings) {
         this.entity = null;
         /**
          * Name of the component
@@ -65,7 +65,7 @@ bento.define('bento/components/clickable', [
      * @instance
      * @name destroy
      */
-    component.prototype.destroy = function () {
+    Clickable.prototype.destroy = function () {
         EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
         EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
         EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
@@ -77,7 +77,7 @@ bento.define('bento/components/clickable', [
      * @instance
      * @name start
      */
-    component.prototype.start = function () {
+    Clickable.prototype.start = function () {
         if (this.initialized) {
             // TODO: this is caused by calling start when objects are attached, fix this later!
             // console.log('warning: trying to init twice')
@@ -95,12 +95,12 @@ bento.define('bento/components/clickable', [
      * @param {Object} data - Game data object
      * @name update
      */
-    component.prototype.update = function () {
+    Clickable.prototype.update = function () {
         if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
             this.callbacks.onHold();
         }
     };
-    component.prototype.cloneEvent = function (evt) {
+    Clickable.prototype.cloneEvent = function (evt) {
         return {
             id: evt.id,
             position: evt.position.clone(),
@@ -109,7 +109,7 @@ bento.define('bento/components/clickable', [
             worldPosition: evt.worldPosition.clone()
         };
     };
-    component.prototype.pointerDown = function (evt) {
+    Clickable.prototype.pointerDown = function (evt) {
         var e = this.transformEvent(evt);
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
             return;
@@ -122,7 +122,7 @@ bento.define('bento/components/clickable', [
             this.checkHovering(e, true);
         }
     };
-    component.prototype.pointerUp = function (evt) {
+    Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
@@ -142,7 +142,7 @@ bento.define('bento/components/clickable', [
         }
         this.hasTouched = false;
     };
-    component.prototype.pointerMove = function (evt) {
+    Clickable.prototype.pointerMove = function (evt) {
         var e = this.transformEvent(evt);
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
             return;
@@ -155,7 +155,7 @@ bento.define('bento/components/clickable', [
             this.checkHovering(e);
         }
     };
-    component.prototype.checkHovering = function (evt, clicked) {
+    Clickable.prototype.checkHovering = function (evt, clicked) {
         var mousePosition = evt.localPosition;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
@@ -183,7 +183,7 @@ bento.define('bento/components/clickable', [
             }
         }
     };
-    component.prototype.transformEvent = function (evt) {
+    Clickable.prototype.transformEvent = function (evt) {
         var positionVector,
             translateMatrix = Matrix(3, 3),
             scaleMatrix = Matrix(3, 3),
@@ -256,8 +256,8 @@ bento.define('bento/components/clickable', [
 
         return evt;
     };
-    component.prototype.attached = function (data) {
+    Clickable.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-    return component;
+    return Clickable;
 });

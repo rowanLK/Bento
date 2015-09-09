@@ -11,13 +11,13 @@ bento.define('bento/components/translation', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var component = function (settings) {
+    var Translation = function (settings) {
         settings = settings || {};
         this.name = 'translation';
         this.subPixel = settings.subPixel || false;
         this.entity = null;
     };
-    component.prototype.draw = function (data) {
+    Translation.prototype.draw = function (data) {
         var entity = data.entity,
             parent = entity.parent,
             position = entity.position,
@@ -35,11 +35,11 @@ bento.define('bento/components/translation', [
             data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
         }
     };
-    component.prototype.postDraw = function (data) {
+    Translation.prototype.postDraw = function (data) {
         data.renderer.restore();
     };
-    component.prototype.attached = function (data) {
+    Translation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-    return component;
+    return Translation;
 });

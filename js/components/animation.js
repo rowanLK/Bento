@@ -11,7 +11,7 @@ bento.define('bento/components/animation', [
     'bento/utils',
 ], function (Bento, Utils) {
     'use strict';
-    var component = function (settings) {
+    var Animation = function (settings) {
         this.entity = null;
         this.name = 'animation';
 
@@ -41,7 +41,7 @@ bento.define('bento/components/animation', [
      * @param {Object} settings - Settings object
      * @name setup
      */
-    component.prototype.setup = function (settings) {
+    Animation.prototype.setup = function (settings) {
         this.animationSettings = settings || this.animationSettings;
 
         // add default animation
@@ -96,7 +96,7 @@ bento.define('bento/components/animation', [
         }
     };
 
-    component.prototype.attached = function (data) {
+    Animation.prototype.attached = function (data) {
         this.entity = data.entity;
         // set dimension of entity object
         this.entity.dimension.width = this.frameWidth;
@@ -111,7 +111,7 @@ bento.define('bento/components/animation', [
      * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
      * @name setAnimation
      */
-    component.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
         if (!anim) {
             console.log('Warning: animation ' + name + ' does not exist.');
@@ -140,7 +140,7 @@ bento.define('bento/components/animation', [
      * @returns {String} Name of the animation playing, null if not playing anything
      * @name getAnimation
      */
-    component.prototype.getAnimation = function () {
+    Animation.prototype.getAnimation = function () {
         return this.currentAnimation;
     };
     /**
@@ -150,7 +150,7 @@ bento.define('bento/components/animation', [
      * @param {Number} frameNumber - Frame number.
      * @name setFrame
      */
-    component.prototype.setFrame = function (frameNumber) {
+    Animation.prototype.setFrame = function (frameNumber) {
         this.currentFrame = frameNumber;
     };
     /**
@@ -160,7 +160,7 @@ bento.define('bento/components/animation', [
      * @param {Number} speed - Speed at which the animation plays.
      * @name setCurrentSpeed
      */
-    component.prototype.setCurrentSpeed = function (value) {
+    Animation.prototype.setCurrentSpeed = function (value) {
         this.currentAnimation.speed = value;
     };
     /**
@@ -170,7 +170,7 @@ bento.define('bento/components/animation', [
      * @returns {Number} frameNumber - Not necessarily a round number.
      * @name getCurrentFrame
      */
-    component.prototype.getCurrentFrame = function () {
+    Animation.prototype.getCurrentFrame = function () {
         return this.currentFrame;
     };
     /**
@@ -180,7 +180,7 @@ bento.define('bento/components/animation', [
      * @returns {Number} width - Width of the image frame.
      * @name getFrameWidth
      */
-    component.prototype.getFrameWidth = function () {
+    Animation.prototype.getFrameWidth = function () {
         return this.frameWidth;
     };
     /**
@@ -190,7 +190,7 @@ bento.define('bento/components/animation', [
      * @param {Object} data - Game data object
      * @name update
      */
-    component.prototype.update = function () {
+    Animation.prototype.update = function () {
         var reachedEnd;
         if (!this.currentAnimation) {
             return;
@@ -218,7 +218,7 @@ bento.define('bento/components/animation', [
      * @param {Object} data - Game data object
      * @name draw
      */
-    component.prototype.draw = function (data) {
+    Animation.prototype.draw = function (data) {
         var cf, sx, sy,
             entity = data.entity,
             origin = entity.origin;
@@ -244,5 +244,5 @@ bento.define('bento/components/animation', [
         );
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
-    return component;
+    return Animation;
 });

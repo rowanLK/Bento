@@ -12,26 +12,26 @@ bento.define('bento/components/opacity', [
 ], function (Utils, Vector2) {
     'use strict';
     var oldOpacity = 1,
-        component = function (settings) {
+        Opacity = function (settings) {
             settings = settings || {};
             this.name = 'opacity';
             this.set = false;
             this.opacity = settings.opacity || 1;
         };
-    component.prototype.draw = function (data) {
+    Opacity.prototype.draw = function (data) {
         if (this.set) {
             oldOpacity = data.renderer.getOpacity();
             data.renderer.setOpacity(this.opacity);
         }
     };
-    component.prototype.postDraw = function (data) {
+    Opacity.prototype.postDraw = function (data) {
         data.renderer.setOpacity(oldOpacity);
     };
-    component.prototype.setOpacity = function (value) {
+    Opacity.prototype.setOpacity = function (value) {
         this.opacity = value;
     };
-    component.prototype.getOpacity = function () {
+    Opacity.prototype.getOpacity = function () {
         return this.opacity;
     };
-    return component;
+    return Opacity;
 });
