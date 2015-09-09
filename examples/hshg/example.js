@@ -34,20 +34,20 @@ bento.require([
                 bunnies = 0,
                 renderer = Bento.getRenderer().name;
             background = new Entity({
-                components: [Fill, Clickable],
-                clickable: {
-                    pointerDown: function (evt) {
-                        var i;
-                        for (i = 0; i < 100; ++i) {
-                            addBunny();
+                components: [new Fill({
+                        color: renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1]
+                    }),
+                    new Clickable({
+                        pointerDown: function (evt) {
+                            var i;
+                            for (i = 0; i < 100; ++i) {
+                                addBunny();
+                            }
+                            console.log(renderer)
+                            console.log('Current bunnies:', bunnies);
                         }
-                        console.log(renderer)
-                        console.log('Current bunnies:', bunnies);
-                    }
-                },
-                fill: {
-                    color: renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1]
-                }
+                    })
+                ]
             }),
             wall = new Entity({
                 z: 1,
@@ -70,11 +70,7 @@ bento.require([
             addBunny = function () {
                 var speed = new Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
                     entity = new Entity({
-                        components: [Sprite],
-                        position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
-                        originRelative: new Vector2(0.5, 0.5),
-                        family: ['bunny'],
-                        sprite: {
+                        components: [new Sprite({
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
                             frameHeight: 32,
@@ -87,8 +83,11 @@ bento.require([
                                     speed: 0.5,
                                     frames: [2, 2]
                                 }
-                            },
-                        },
+                            }
+                        })],
+                        position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
+                        originRelative: new Vector2(0.5, 0.5),
+                        family: ['bunny'],
                         useHshg: useHshg,
                         onCollide: function (other) {
                             // collide with wall
@@ -99,13 +98,13 @@ bento.require([
                             }
 
                             //console.log('hshg');
-                            entity.sprite.setAnimation('collide', function () {
-                                entity.sprite.setAnimation('idle');
+                            entity.getComponent('animation').setAnimation('collide', function () {
+                                entity.getComponent('animation').setAnimation('idle');
                             });
                             //Bento.objects.remove(other);
                         },
                         init: function () {
-                            this.animation.setAnimation('idle');
+                            this.getComponent('animation').setAnimation('idle');
                             this.boundingBox = new Rectangle(-8, -16, 16, 16);
                         }
                     }).attach({
@@ -131,8 +130,8 @@ bento.require([
                             // collision
                             if (!useHshg) {
                                 entity.collidesWithGroup(Bento.objects.getByFamily('bunny'), new Vector2(0, 0), function (other) {
-                                    entity.sprite.setAnimation('collide', function () {
-                                        entity.sprite.setAnimation('idle');
+                                    entity.getComponent('animation').setAnimation('collide', function () {
+                                        entity.getComponent('animation').setAnimation('idle');
                                     });
                                     //Bento.objects.remove(other);
                                     //console.log('brute')
