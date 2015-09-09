@@ -11,15 +11,15 @@ bento.define('bento/components/scale', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var entity,
-        component = function (settings) {
-            this.name = 'scale';
-        };
+    var component = function (settings) {
+        this.entity = null;
+        this.name = 'scale';
+    };
     component.prototype.draw = function (data) {
         data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
     };
     component.prototype.attached = function (data) {
-        entity = data.entity;
+        this.entity = data.entity;
     };
 
     return component;
