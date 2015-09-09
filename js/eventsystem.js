@@ -23,19 +23,15 @@ bento.define('bento/eventsystem', [
                 listeners = events[eventName];
                 for (i = listeners.length - 1; i >= 0; i -= 1) {
                     if (listeners[i].callback === callback) {
-                        console.log('found callback')
-                        if (listeners[i].context) {
+                        if (context) {
                             if (listeners[i].context === context) {
-                                listeners.splice(i, 1);
-                            } else {
-                                console.log('could not find context')
-                                console.log(listeners[i].context, context)
-                                // listeners.splice(i, 1);
+                                events[eventName].splice(i, 1);
+                                break;
                             }
                         } else {
-                            listeners.splice(i, 1);
+                            events[eventName].splice(i, 1);
+                            break;
                         }
-                        break;
                     }
                 }
             }

@@ -97,16 +97,7 @@ bento.require([
                     onClick: function () {
                         console.log('clicked')
                     }
-                }).attach({
-                    test: false,
-                    draw: function (data) {
-                        if (!this.test) {
-                            console.log('draw', data.entity.getComponent('animation').getAnimation())
-                            this.test = true;
-                        }
-                    }
                 });
-                button.getComponent('animation').setAnimation('default')
             Bento.objects.add(bunny1);
             Bento.objects.add(button);
 
