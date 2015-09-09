@@ -38,30 +38,28 @@ bento.require([
             var viewport = Bento.getViewport(),
                 background = new Entity({
                     addNow: true,
-                    components: [Fill],
-                    fill: {
+                    components: [new Fill({
                         color: [1, 1, 1, 1]
-                    }
+                    })]
                 }),
                 bunny1 = new Entity({
-                    components: [Translation, Animation, Clickable],
-                    position: new Vector2(16, 16),
-                    originRelative: new Vector2(0.5, 0.5),
-                    animation: {
-                        image: Bento.assets.getImage('bunnygirlsmall'),
-                        frameWidth: 32,
-                        frameHeight: 32,
-                        animations: {
-                            'idle': {
-                                speed: 0.1,
-                                frames: [0, 10, 11, 12]
-                            }
-                        },
-                    },
-                    clickable: {
-                        pointerDown: function (evt) {
-                            console.log(this.isHovering);
-                            /*Tween({
+                    components: [
+                        new Translation(),
+                        new Animation({
+                            image: Bento.assets.getImage('bunnygirlsmall'),
+                            frameWidth: 32,
+                            frameHeight: 32,
+                            animations: {
+                                'idle': {
+                                    speed: 0.1,
+                                    frames: [0, 10, 11, 12]
+                                }
+                            },
+                        }),
+                        new Clickable({
+                            pointerDown: function (evt) {
+                                console.log(this.isHovering);
+                                /*Tween({
                                 from: 16,
                                 to: 160,
                                 'in': 60,
@@ -73,19 +71,22 @@ bento.require([
 
                                 }
                             });*/
-                        },
-                        pointerMove: function (evt) {
-                            //console.log(evt.worldPosition.x);
-                        },
-                        holding: function () {
-                            console.log('holding')
-                        },
-                        hovering: function () {
-                            console.log('hovering')
-                        }
-                    },
+                            },
+                            pointerMove: function (evt) {
+                                //console.log(evt.worldPosition.x);
+                            },
+                            holding: function () {
+                                console.log('holding')
+                            },
+                            hovering: function () {
+                                console.log('hovering')
+                            }
+                        })
+                    ],
+                    position: new Vector2(16, 16),
+                    originRelative: new Vector2(0.5, 0.5),
                     init: function () {
-                        this.animation.setAnimation('idle');
+                        this.getComponent('animation').setAnimation('idle');
                     }
                 }),
                 button = ClickButton({

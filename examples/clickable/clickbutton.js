@@ -25,42 +25,43 @@ bento.define('clickbutton', [
                 name: '',
                 originRelative: settings.originRelative || new Vector2(0, 0),
                 position: settings.position || new Vector2(0, 0),
-                components: [Sprite, Clickable],
-                family: ['buttons'],
-                sprite: {
-                    image: settings.image,
-                    frameWidth: settings.frameWidth || 32,
-                    frameHeight: settings.frameHeight || 32,
-                    animations: settings.animations || {
-                        'default': {
-                            speed: 0,
-                            frames: [0]
+                components: [
+                    new Sprite({
+                        image: settings.image,
+                        frameWidth: settings.frameWidth || 32,
+                        frameHeight: settings.frameHeight || 32,
+                        animations: settings.animations || {
+                            'default': {
+                                speed: 0,
+                                frames: [0]
+                            },
+                            'down': {
+                                speed: 0,
+                                frames: [1]
+                            }
+                        }
+                    }),
+                    new Clickable({
+                        onClick: function () {
+                            entity.getComponent('animation').setAnimation('down');
                         },
-                        'down': {
-                            speed: 0,
-                            frames: [1]
+                        onHoldEnter: function () {
+                            entity.getComponent('animation').setAnimation('down');
+                        },
+                        onHoldLeave: function () {
+                            entity.getComponent('animation').setAnimation('default');
+                        },
+                        pointerUp: function () {
+                            entity.getComponent('animation').setAnimation('default');
+                        },
+                        onHoldEnd: function () {
+                            if (settings.onClick) {
+                                settings.onClick();
+                            }
                         }
-                    }
-                },
-                clickable: {
-                    onClick: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldEnter: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldLeave: function () {
-                        entity.sprite.setAnimation('default');
-                    },
-                    pointerUp: function () {
-                        entity.sprite.setAnimation('default');
-                    },
-                    onHoldEnd: function () {
-                        if (settings.onClick) {
-                            settings.onClick();
-                        }
-                    }
-                },
+                    })
+                ],
+                family: ['buttons'],
                 init: function () {}
             });
         return entity;
