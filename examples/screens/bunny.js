@@ -23,31 +23,32 @@ bento.define('bunny', [
             z: 0,
             name: 'bunny',
             originRelative: new Vector2(0.5, 1),
-            components: [Sprite, Clickable],
+            components: [
+                new Sprite({
+                    image: Bento.assets.getImage('bunnygirlsmall'),
+                    frameWidth: 32,
+                    frameHeight: 32,
+                    animations: {
+                        'idle': {
+                            speed: 0.1,
+                            frames: [0, 10, 11, 12]
+                        }
+                    }
+                }),
+                new Clickable({
+                    pointerDown: function () {
+                        console.log('click')
+                        if (Bento.screens.getCurrentScreen().name === 'screen1') {
+                            Bento.screens.show('screen2');
+                        } else {
+                            Bento.screens.show('screen1');
+                        }
+                    }
+                })
+            ],
             family: [''],
-            sprite: {
-                image: Bento.assets.getImage('bunnygirlsmall'),
-                frameWidth: 32,
-                frameHeight: 32,
-                animations: {
-                    'idle': {
-                        speed: 0.1,
-                        frames: [0, 10, 11, 12]
-                    }
-                }
-            },
-            clickable: {
-                pointerDown: function () {
-                    console.log('click')
-                    if (Bento.screens.getCurrentScreen().name === 'screen1') {
-                        Bento.screens.show('screen2');
-                    } else {
-                        Bento.screens.show('screen1');
-                    }
-                }
-            },
             init: function () {
-                this.sprite.setAnimation('idle');
+                this.getComponent('animation').setAnimation('idle');
             }
         });
         return object;

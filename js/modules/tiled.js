@@ -253,11 +253,10 @@ bento.define('bento/tiled', [
                 useHshg: false,
                 position: new Vector2(0, 0),
                 originRelative: new Vector2(0, 0),
-                components: [Sprite],
-                family: [''],
-                sprite: {
+                components: [new Sprite({
                     image: packedImage
-                }
+                })],
+                family: ['']
             });
 
         // add background to game
