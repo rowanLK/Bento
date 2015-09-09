@@ -4055,6 +4055,7 @@ bento.define('bento/entity', [
     };
 
     var entity = function (settings) {
+        var i;
         /**
          * z-index of an object
          * @instance
@@ -4122,8 +4123,8 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
                 }
-                for (var i = 0; i < settings.components.length; ++i) {
-                    settings.components[i](this, settings);
+                for (i = 0; i < settings.components.length; ++i) {
+                    this.attach(settings.components[i]);
                 }
             }
             if (settings.position) {
@@ -4142,7 +4143,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.family)) {
                     settings.family = [settings.family];
                 }
-                for (var i = 0; i < settings.family.length; ++i) {
+                for (i = 0; i < settings.family.length; ++i) {
                     this.family.push(settings.family[i]);
                 }
             }
@@ -4429,9 +4430,9 @@ bento.define('bento/entity', [
      * @function
      * @instance
      * @param {String} name - name of the component
-     * @name getComponentByName
+     * @name getComponent
      */
-    entity.prototype.getComponentByName = function (name) {
+    entity.prototype.getComponent = function (name) {
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
@@ -4548,37 +4549,49 @@ bento.define('bento/eventsystem', [
 ], function (Utils) {
     var events = {},
         /*events = {
-            [String eventName]: [Array listeners]
+            [String eventName]: [Array listeners = {callback: Function, context: this}]
         }*/
         removedEvents = [],
         cleanEventListeners = function () {
-            var i, j, l, listeners, eventName, callback;
+            var i, j, l, listeners, eventName, callback, context;
             for (j = 0; j < removedEvents.length; j += 1) {
                 eventName = removedEvents[j].eventName;
                 callback = removedEvents[j].callback;
+                context = removedEvents[j].context;
                 if (Utils.isUndefined(events[eventName])) {
                     continue;
                 }
                 listeners = events[eventName];
                 for (i = listeners.length - 1; i >= 0; i -= 1) {
-                    if (listeners[i] === callback) {
-                        listeners.splice(i, 1);
+                    if (listeners[i].callback === callback) {
+                        if (listeners[i].context) {
+                            if (listeners[i].context === context) {
+                                listeners.splice(i, 1);
+                            }
+                        } else {
+                            listeners.splice(i, 1);
+                        }
                         break;
                     }
                 }
             }
             removedEvents = [];
         },
-        addEventListener = function (eventName, callback) {
+        addEventListener = function (eventName, callback, context) {
             if (Utils.isUndefined(events[eventName])) {
                 events[eventName] = [];
             }
-            events[eventName].push(callback);
+            events[eventName].push({
+                callback: callback,
+                context: context
+            });
         },
-        removeEventListener = function (eventName, callback) {
+        removeEventListener = function (eventName, callback, context) {
+            // TODO: check if event listeners are really removed
             removedEvents.push({
                 eventName: eventName,
-                callback: callback
+                callback: callback,
+                context: context
             });
         };
 
@@ -4604,7 +4617,11 @@ bento.define('bento/eventsystem', [
             for (i = 0, l = listeners.length; i < l; ++i) {
                 listener = listeners[i];
                 if (listener) {
-                    listener(eventData);
+                    if (listener.context) {
+                        listener.callback.apply(listener.context, [eventData]);
+                    } else {
+                        listener.callback(eventData);
+                    }
                 } else {
                     // TODO: fix this
                     console.log('Warning: listener is not a function:', listener, i);
@@ -4617,7 +4634,7 @@ bento.define('bento/eventsystem', [
          * Callback function
          *
          * @callback Callback
-         * @param {Object} eventData - Any data that is passed 
+         * @param {Object} eventData - Any data that is passed
          */
         /**
          * Listen to event
@@ -5163,245 +5180,236 @@ bento.define('bento/utils', [], function () {
  * @returns Returns the entity passed. The entity will have the component attached.
  */
 bento.define('bento/components/animation', [
-    'bento',
-    'bento/utils',
-], function (Bento, Utils) {
-    'use strict';
-    return function (entity, settings) {
-        var spriteImage,
-            animationSettings,
-            animations = {},
-            currentAnimation,
-            mixin = {},
-            currentFrame = 0,
-            frameCountX = 1,
-            frameCountY = 1,
-            frameWidth = 0,
-            frameHeight = 0,
-            onCompleteCallback,
-            component = {
-                /**
-                 * Name of the component
-                 * @instance
-                 * @default 'animation'
-                 * @name name
-                 */
-                name: 'animation',
-                /**
-                 * Sets up animation
-                 * @function
-                 * @instance
-                 * @param {Object} settings - Settings object
-                 * @name setup
-                 */
-                setup: function (settings) {
-                    if (settings) {
-                        animationSettings = settings;
-                    } else {
-                        // create default animation
-                        animationSettings = {
-                            frameCountX: 1,
-                            frameCountY: 1
-                        };
-                    }
-                    // add default animation
-                    if (!animationSettings.animations) {
-                        animationSettings.animations = {};
-                    }
-                    if (!animationSettings.animations['default']) {
-                        animationSettings.animations['default'] = {
-                            frames: [0]
-                        };
-                    }
-                    // get image
-                    if (settings.image) {
-                        spriteImage = settings.image;
-                    } else if (settings.imageName) {
-                        // load from string
-                        if (Bento.assets) {
-                            spriteImage = Bento.assets.getImage(settings.imageName);
-                        } else {
-                            throw 'Bento asset manager not loaded';
-                        }
-                    } else {
-                        // no image specified
-                        return;
-                    }
-                    // use frameWidth if specified (overrides frameCountX and frameCountY)
-                    if (animationSettings.frameWidth) {
-                        frameWidth = animationSettings.frameWidth;
-                        frameCountX = Math.floor(spriteImage.width / frameWidth);
-                    } else {
-                        frameCountX = animationSettings.frameCountX || 1;
-                        frameWidth = spriteImage.width / frameCountX;
-                    }
-                    if (animationSettings.frameHeight) {
-                        frameHeight = animationSettings.frameHeight;
-                        frameCountY = Math.floor(spriteImage.height / frameHeight);
-                    } else {
-                        frameCountY = animationSettings.frameCountY || 1;
-                        frameHeight = spriteImage.height / frameCountY;
-                    }
-                    // set dimension of entity object
-                    entity.dimension.width = frameWidth;
-                    entity.dimension.height = frameHeight;
-                    // set to default
-                    animations = animationSettings.animations;
-                    currentAnimation = animations['default'];
-                },
-                /**
-                 * Set component to a different animation
-                 * @function
-                 * @instance
-                 * @param {String} name - Name of the animation.
-                 * @param {Function} callback - Called when animation ends.
-                 * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-                 * @name setAnimation
-                 */
-                setAnimation: function (name, callback, keepCurrentFrame) {
-                    var anim = animations[name];
-                    if (!anim) {
-                        console.log('Warning: animation ' + name + ' does not exist.');
-                        return;
-                    }
-                    if (anim && currentAnimation !== anim) {
-                        if (!Utils.isDefined(anim.loop)) {
-                            anim.loop = true;
-                        }
-                        if (!Utils.isDefined(anim.backTo)) {
-                            anim.backTo = 0;
-                        }
-                        // set even if there is no callback
-                        onCompleteCallback = callback;
-                        currentAnimation = anim;
-                        currentAnimation.name = name;
-                        if (!keepCurrentFrame) {
-                            currentFrame = 0;
-                        }
-                    }
-                },
-                /**
-                 * Returns the name of current animation playing
-                 * @function
-                 * @instance
-                 * @returns {String} Name of the animation playing, null if not playing anything
-                 * @name getAnimation
-                 */
-                getAnimation: function () {
-                    return currentAnimation ? currentAnimation.name : null;
-                },
-                /**
-                 * Set current animation to a certain frame
-                 * @function
-                 * @instance
-                 * @param {Number} frameNumber - Frame number.
-                 * @name setFrame
-                 */
-                setFrame: function (frameNumber) {
-                    currentFrame = frameNumber;
-                },
-                /**
-                 * Set speed of the current animation.
-                 * @function
-                 * @instance
-                 * @param {Number} speed - Speed at which the animation plays.
-                 * @name setCurrentSpeed
-                 */
-                setCurrentSpeed: function (value) {
-                    currentAnimation.speed = value;
-                },
-                /**
-                 * Returns the current frame number
-                 * @function
-                 * @instance
-                 * @returns {Number} frameNumber - Not necessarily a round number.
-                 * @name getCurrentFrame
-                 */
-                getCurrentFrame: function () {
-                    return currentFrame;
-                },
-                /**
-                 * Returns the frame width
-                 * @function
-                 * @instance
-                 * @returns {Number} width - Width of the image frame.
-                 * @name getFrameWidth
-                 */
-                getFrameWidth: function () {
-                    return frameWidth;
-                },
-                /**
-                 * Updates the component. Called by the entity holding the component every tick.
-                 * @function
-                 * @instance
-                 * @param {Object} data - Game data object
-                 * @name update
-                 */
-                update: function () {
-                    var reachedEnd;
-                    if (!currentAnimation) {
-                        return;
-                    }
-                    reachedEnd = false;
-                    currentFrame += currentAnimation.speed || 1;
-                    if (currentAnimation.loop) {
-                        while (currentFrame >= currentAnimation.frames.length) {
-                            currentFrame -= currentAnimation.frames.length - currentAnimation.backTo;
-                            reachedEnd = true;
-                        }
-                    } else {
-                        if (currentFrame >= currentAnimation.frames.length) {
-                            reachedEnd = true;
-                        }
-                    }
-                    if (reachedEnd && onCompleteCallback) {
-                        onCompleteCallback();
-                    }
-                },
-                /**
-                 * Draws the component. Called by the entity holding the component every tick.
-                 * @function
-                 * @instance
-                 * @param {Object} data - Game data object
-                 * @name draw
-                 */
-                draw: function (data) {
-                    var cf, sx, sy,
-                        origin = entity.origin;
+        'bento',
+        'bento/utils',
+    ], function (Bento, Utils) {
+        'use strict';
+        var component = function (settings) {
+            this.entity = null;
+            this.name = 'animation';
 
-                    if (!currentAnimation) {
-                        return;
-                    }
-                    cf = Math.min(Math.floor(currentFrame), currentAnimation.frames.length - 1);
-                    sx = (currentAnimation.frames[cf] % frameCountX) * frameWidth;
-                    sy = Math.floor(currentAnimation.frames[cf] / frameCountX) * frameHeight;
-
-                    data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
-                    data.renderer.drawImage(
-                        spriteImage,
-                        sx,
-                        sy,
-                        frameWidth,
-                        frameHeight,
-                        0,
-                        0,
-                        frameWidth,
-                        frameHeight
-                    );
-                    data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-                }
+            this.animationSettings = settings || {
+                frameCountX: 1,
+                frameCountY: 1
             };
 
-        // call setup
-        if (settings && settings[component.name]) {
-            component.setup(settings[component.name]);
-        }
+            this.spriteImage;
 
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
-    };
+            this.frameCountX = 1,
+            this.frameCountY = 1,
+            this.frameWidth = 0,
+            this.frameHeight = 0,
+
+
+            // set to default
+            this.animations = this.animationSettings.animations;
+            this.currentAnimation = this.animations['default'];
+
+            this.onCompleteCallback = function () {};
+            this.setup(settings);
+        };
+        /**
+         * Sets up animation
+         * @function
+         * @instance
+         * @param {Object} settings - Settings object
+         * @name setup
+         */
+        component.prototype.setup = function (settings) {
+            // add default animation
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+            // get image
+            if (settings.image) {
+                this.spriteImage = settings.image;
+            } else if (settings.imageName) {
+                // load from string
+                if (Bento.assets) {
+                    this.spriteImage = Bento.assets.getImage(settings.imageName);
+                } else {
+                    throw 'Bento asset manager not loaded';
+                }
+            } else {
+                // no image specified
+                return;
+            }
+            // use frameWidth if specified (overrides frameCountX and frameCountY)
+            if (this.animationSettings.frameWidth) {
+                this.frameWidth = this.animationSettings.frameWidth;
+                this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+            } else {
+                this.frameCountX = this.animationSettings.frameCountX || 1;
+                this.frameWidth = this.spriteImage.width / this.frameCountX;
+            }
+            if (this.animationSettings.frameHeight) {
+                this.frameHeight = this.animationSettings.frameHeight;
+                this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+            } else {
+                this.frameCountY = this.animationSettings.frameCountY || 1;
+                this.frameHeight = this.spriteImage.height / this.frameCountY;
+            }
+            if (this.entity) {
+                // set dimension of entity object
+                this.entity.dimension.width = this.frameWidth;
+                this.entity.dimension.height = this.frameHeight;
+            }
+        };
+
+        component.prototype.attached = function (data) {
+            this.entity = data.entity;
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        };
+        /**
+         * Set component to a different animation
+         * @function
+         * @instance
+         * @param {String} name - Name of the animation.
+         * @param {Function} callback - Called when animation ends.
+         * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+         * @name setAnimation
+         */
+        component.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+            var anim = this.animations[name];
+            if (!anim) {
+                console.log('Warning: animation ' + name + ' does not exist.');
+                return;
+            }
+            if (anim && this.currentAnimation !== anim) {
+                if (!Utils.isDefined(anim.loop)) {
+                    anim.loop = true;
+                }
+                if (!Utils.isDefined(anim.backTo)) {
+                    anim.backTo = 0;
+                }
+                // set even if there is no callback
+                this.onCompleteCallback = callback;
+                this.currentAnimation = anim;
+                this.currentAnimation.name = name;
+                if (!keepCurrentFrame) {
+                    this.currentFrame = 0;
+                }
+            }
+        };
+        /**
+         * Returns the name of current animation playing
+         * @function
+         * @instance
+         * @returns {String} Name of the animation playing, null if not playing anything
+         * @name getAnimation
+         */
+        component.prototype.getAnimation = function () {
+            return this.currentAnimation ? this.currentAnimation.name : null;
+        };
+        /**
+         * Set current animation to a certain frame
+         * @function
+         * @instance
+         * @param {Number} frameNumber - Frame number.
+         * @name setFrame
+         */
+        component.prototype.setFrame = function (frameNumber) {
+            this.currentFrame = frameNumber;
+        };
+        /**
+         * Set speed of the current animation.
+         * @function
+         * @instance
+         * @param {Number} speed - Speed at which the animation plays.
+         * @name setCurrentSpeed
+         */
+        component.prototype.setCurrentSpeed = function (value) {
+            this.currentAnimation.speed = value;
+        };
+        /**
+         * Returns the current frame number
+         * @function
+         * @instance
+         * @returns {Number} frameNumber - Not necessarily a round number.
+         * @name getCurrentFrame
+         */
+        component.prototype.getCurrentFrame = function () {
+            return this.currentFrame;
+        };
+        /**
+         * Returns the frame width
+         * @function
+         * @instance
+         * @returns {Number} width - Width of the image frame.
+         * @name getFrameWidth
+         */
+        component.prototype.getFrameWidth = function () {
+            return this.frameWidth;
+        };
+        /**
+         * Updates the component. Called by the entity holding the component every tick.
+         * @function
+         * @instance
+         * @param {Object} data - Game data object
+         * @name update
+         */
+        component.prototype.update = function () {
+            var reachedEnd;
+            if (!this.currentAnimation) {
+                return;
+            }
+            reachedEnd = false;
+            this.currentFrame += this.currentAnimation.speed || 1;
+            if (this.currentAnimation.loop) {
+                while (this.currentFrame >= this.currentAnimation.frames.length) {
+                    this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                    reachedEnd = true;
+                }
+            } else {
+                if (this.currentFrame >= this.currentAnimation.frames.length) {
+                    reachedEnd = true;
+                }
+            }
+            if (reachedEnd && this.onCompleteCallback) {
+                this.onCompleteCallback();
+            }
+        };
+        /**
+         * Draws the component. Called by the entity holding the component every tick.
+         * @function
+         * @instance
+         * @param {Object} data - Game data object
+         * @name draw
+         */
+        component.prototype.draw = function (data) {
+            var cf, sx, sy,
+                entity = data.entity,
+                origin = entity.origin;
+
+            if (!this.currentAnimation) {
+                return;
+            }
+            cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+            sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
+            sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
+
+            data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+            data.renderer.drawImage(
+                this.spriteImage,
+                sx,
+                sy,
+                this.frameWidth,
+                this.frameHeight,
+                0,
+                0,
+                this.frameWidth,
+                this.frameHeight
+            );
+            data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+        };
+    return component;
 });
 /**
  * Component that helps with detecting clicks on an entity
@@ -5419,255 +5427,252 @@ bento.define('bento/components/clickable', [
     'bento/eventsystem'
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
-    return function (entity, settings) {
-        var mixin = {},
-            isPointerDown = false,
-            initialized = false,
-            component = {
-                /**
-                 * Name of the component
-                 * @instance
-                 * @default 'clickable'
-                 * @name name
-                 */
-                name: 'clickable',
-                /**
-                 * Whether the pointer is over the entity
-                 * @instance
-                 * @default false
-                 * @name isHovering
-                 */
-                isHovering: false,
-                hasTouched: false,
-                /**
-                 * Id number of the pointer holding entity
-                 * @instance
-                 * @default null
-                 * @name holdId
-                 */
-                holdId: null,
-                pointerDown: function (evt) {},
-                pointerUp: function (evt) {},
-                pointerMove: function (evt) {},
-                // when clicking on the object
-                onClick: function () {},
-                onClickUp: function () {},
-                onClickMiss: function () {},
-                onHold: function () {},
-                onHoldLeave: function () {},
-                onHoldEnter: function () {},
-                onHoldEnd: function () {},
-                onHoverLeave: function () {},
-                onHoverEnter: function () {},
-                /**
-                 * Destructs the component. Called by the entity holding the component.
-                 * @function
-                 * @instance
-                 * @name destroy
-                 */
-                destroy: function () {
-                    EventSystem.removeEventListener('pointerDown', pointerDown);
-                    EventSystem.removeEventListener('pointerUp', pointerUp);
-                    EventSystem.removeEventListener('pointerMove', pointerMove);
-                    initialized = false;
-                },
-                /**
-                 * Starts the component. Called by the entity holding the component.
-                 * @function
-                 * @instance
-                 * @name start
-                 */
-                start: function () {
-                    if (initialized) {
-                        // TODO: this is caused by calling start when objects are attached, fix this later!
-                        // console.log('warning: trying to init twice')
-                        return;
-                    }
-                    EventSystem.addEventListener('pointerDown', pointerDown);
-                    EventSystem.addEventListener('pointerUp', pointerUp);
-                    EventSystem.addEventListener('pointerMove', pointerMove);
-                    initialized = true;
-                },
-                /**
-                 * Updates the component. Called by the entity holding the component every tick.
-                 * @function
-                 * @instance
-                 * @param {Object} data - Game data object
-                 * @name update
-                 */
-                update: function () {
-                    if (this.isHovering && isPointerDown && this.onHold) {
-                        this.onHold();
-                    }
-                }
-            },
-            cloneEvent = function (evt) {
-                return {
-                    id: evt.id,
-                    position: evt.position.clone(),
-                    eventType: evt.eventType,
-                    localPosition: evt.localPosition.clone(),
-                    worldPosition: evt.worldPosition.clone()
-                };
-            },
-            pointerDown = function (evt) {
-                var e = transformEvent(evt);
-                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
-                    return;
-                }
-                isPointerDown = true;
-                if (component.pointerDown) {
-                    component.pointerDown(e);
-                }
-                if (entity.getBoundingBox) {
-                    checkHovering(e, true);
-                }
-            },
-            pointerUp = function (evt) {
-                var e = transformEvent(evt),
-                    mousePosition;
-                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
-                    return;
-                }
-                mousePosition = e.localPosition;
-                isPointerDown = false;
-                if (component.pointerUp) {
-                    component.pointerUp(e);
-                }
-                if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    component.onClickUp(e);
-                    if (component.hasTouched && component.holdId === e.id) {
-                        component.holdId = null;
-                        component.onHoldEnd(e);
-                    }
-                }
-                component.hasTouched = false;
-            },
-            pointerMove = function (evt) {
-                var e = transformEvent(evt);
-                if (Bento.objects && Bento.objects.isPaused() && !entity.updateWhenPaused) {
-                    return;
-                }
-                if (component.pointerMove) {
-                    component.pointerMove(e);
-                }
-                // hovering?
-                if (entity.getBoundingBox) {
-                    checkHovering(e);
-                }
-            },
-            checkHovering = function (evt, clicked) {
-                var mousePosition = evt.localPosition;
-                if (entity.getBoundingBox().hasPosition(mousePosition)) {
-                    if (component.hasTouched && !component.isHovering && component.holdId === evt.id) {
-                        component.onHoldEnter(evt);
-                    }
-                    if (!component.isHovering) {
-                        component.onHoverEnter(evt);
-                    }
-                    component.isHovering = true;
-                    if (clicked) {
-                        component.hasTouched = true;
-                        component.holdId = evt.id;
-                        component.onClick(evt);
-                    }
-                } else {
-                    if (component.hasTouched && component.isHovering && component.holdId === evt.id) {
-                        component.onHoldLeave(evt);
-                    }
-                    if (component.isHovering) {
-                        component.onHoverLeave(evt);
-                    }
-                    component.isHovering = false;
-                    if (clicked) {
-                        component.onClickMiss(evt);
-                    }
-                }
-            },
-            transformEvent = function (evt) {
-                var positionVector,
-                    translateMatrix = Matrix(3, 3),
-                    scaleMatrix = Matrix(3, 3),
-                    rotateMatrix = Matrix(3, 3),
-                    sin,
-                    cos,
-                    type,
-                    position,
-                    parent,
-                    parents = [],
-                    i;
+    var component = function (settings) {
+        this.entity = null;
+        /**
+         * Name of the component
+         * @instance
+         * @default 'clickable'
+         * @name name
+         */
+        this.name = 'clickable';
+        /**
+         * Whether the pointer is over the entity
+         * @instance
+         * @default false
+         * @name isHovering
+         */
+        this.isHovering = false;
+        this.hasTouched = false;
+        /**
+         * Id number of the pointer holding entity
+         * @instance
+         * @default null
+         * @name holdId
+         */
+        this.holdId = null;
+        this.isPointerDown = false;
+        this.initialized = false;
 
-                // no parents
-                if (!entity.parent) {
-                    if (!entity.float) {
-                        evt.localPosition = evt.worldPosition.clone();
-                    } else {
-                        evt.localPosition = evt.position.clone();
-                    }
-                    return evt;
-                }
-                // make a copy
-                evt = cloneEvent(evt);
-                if (entity.float) {
-                    positionVector = evt.localPosition.toMatrix();
-                } else {
-                    positionVector = evt.worldPosition.toMatrix();
-                }
+        this.callbacks = {
+            pointerDown: settings.pointerDown || function (evt) {},
+            pointerUp: settings.pointerUp || function (evt) {},
+            pointerMove: settings.pointerMove || function (evt) {},
+            // when clicking on the object
+            onClick: settings.onClick || function () {},
+            onClickUp: settings.onClickUp || function () {},
+            onClickMiss: settings.onClickMiss || function () {},
+            onHold: settings.onHold || function () {},
+            onHoldLeave: settings.onHoldLeave || function () {},
+            onHoldEnter: settings.onHoldEnter || function () {},
+            onHoldEnd: settings.onHoldEnd || function () {},
+            onHoverLeave: settings.onHoverLeave || function () {},
+            onHoverEnter: settings.onHoverEnter || function () {}
+        };
 
-                // get all parents
-                parent = entity;
-                while (parent.parent) {
-                    parent = parent.parent;
-                    parents.unshift(parent);
-                }
+    };
 
-                /**
-                 * reverse transform the event position vector
-                 */
-                for (i = 0; i < parents.length; ++i) {
-                    parent = parents[i];
+    /**
+     * Destructs the component. Called by the entity holding the component.
+     * @function
+     * @instance
+     * @name destroy
+     */
+    component.prototype.destroy = function () {
+        EventSystem.removeEventListener('pointerDown', this.pointerDown);
+        EventSystem.removeEventListener('pointerUp', this.pointerUp);
+        EventSystem.removeEventListener('pointerMove', this.pointerMove);
+        this.initialized = false;
+    };
+    /**
+     * Starts the component. Called by the entity holding the component.
+     * @function
+     * @instance
+     * @name start
+     */
+    component.prototype.start = function () {
+        if (this.initialized) {
+            // TODO: this is caused by calling start when objects are attached, fix this later!
+            // console.log('warning: trying to init twice')
+            return;
+        }
+        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
+        this.initialized = true;
+    };
+    /**
+     * Updates the component. Called by the entity holding the component every tick.
+     * @function
+     * @instance
+     * @param {Object} data - Game data object
+     * @name update
+     */
+    component.prototype.update = function () {
+        if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
+            this.callbacks.onHold();
+        }
+    };
+    component.prototype.cloneEvent = function (evt) {
+        return {
+            id: evt.id,
+            position: evt.position.clone(),
+            eventType: evt.eventType,
+            localPosition: evt.localPosition.clone(),
+            worldPosition: evt.worldPosition.clone()
+        };
+    };
+    component.prototype.pointerDown = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+            return;
+        }
+        this.isPointerDown = true;
+        if (this.callbacks.pointerDown) {
+            this.callbacks.pointerDown(e);
+        }
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e, true);
+        }
+    };
+    component.prototype.pointerUp = function (evt) {
+        var e = this.transformEvent(evt),
+            mousePosition;
+        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+            return;
+        }
+        mousePosition = e.localPosition;
+        this.isPointerDown = false;
+        if (this.callbacks.pointerUp) {
+            this.callbacks.pointerUp(e);
+        }
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            this.callbacks.onClickUp(e);
+            if (this.hasTouched && this.holdId === e.id) {
+                this.holdId = null;
+                this.callbacks.onHoldEnd(e);
+            }
+        }
+        this.hasTouched = false;
+    };
+    component.prototype.pointerMove = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+            return;
+        }
+        if (this.callbacks.pointerMove) {
+            this.callbacks.pointerMove(e);
+        }
+        // hovering?
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e);
+        }
+    };
+    component.prototype.checkHovering = function (evt, clicked) {
+        var mousePosition = evt.localPosition;
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
+                this.ocallbacks.nHoldEnter(evt);
+            }
+            if (!this.isHovering) {
+                this.callbacks.onHoverEnter(evt);
+            }
+            this.isHovering = true;
+            if (clicked) {
+                this.hasTouched = true;
+                this.holdId = evt.id;
+                this.callbacks.onClick(evt);
+            }
+        } else {
+            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldLeave(evt);
+            }
+            if (this.isHovering) {
+                this.callbacks.onHoverLeave(evt);
+            }
+            this.isHovering = false;
+            if (clicked) {
+                this.callbacks.onClickMiss(evt);
+            }
+        }
+    };
+    component.prototype.transformEvent = function (evt) {
+        var positionVector,
+            translateMatrix = Matrix(3, 3),
+            scaleMatrix = Matrix(3, 3),
+            rotateMatrix = Matrix(3, 3),
+            sin,
+            cos,
+            type,
+            position,
+            parent,
+            parents = [],
+            i;
 
-                    // construct a translation matrix and apply to position vector
-                    if (parent.position) {
-                        position = parent.position;
-                        translateMatrix.set(2, 0, -position.x);
-                        translateMatrix.set(2, 1, -position.y);
-                        positionVector.multiplyWith(translateMatrix);
-                    }
-                    // only scale/rotatable if there is a component
-                    if (parent.rotation) {
-                        // construct a rotation matrix and apply to position vector
-                        sin = Math.sin(-parent.rotation.getAngleRadian());
-                        cos = Math.cos(-parent.rotation.getAngleRadian());
-                        rotateMatrix.set(0, 0, cos);
-                        rotateMatrix.set(1, 0, -sin);
-                        rotateMatrix.set(0, 1, sin);
-                        rotateMatrix.set(1, 1, cos);
-                        positionVector.multiplyWith(rotateMatrix);
-                    }
-                    if (parent.scale) {
-                        // construct a scaling matrix and apply to position vector
-                        scaleMatrix.set(0, 0, 1 / parent.scale.x);
-                        scaleMatrix.set(1, 1, 1 / parent.scale.y);
-                        positionVector.multiplyWith(scaleMatrix);
-                    }
-                }
-                evt.localPosition.x = positionVector.get(0, 0);
-                evt.localPosition.y = positionVector.get(0, 1);
-
-                return evt;
-            };
-
-        if (settings && settings[component.name]) {
-            settings = settings[component.name];
-            Utils.extend(component, settings);
+        // no parents
+        if (!this.entity.parent) {
+            if (!this.entity.float) {
+                evt.localPosition = evt.worldPosition.clone();
+            } else {
+                evt.localPosition = evt.position.clone();
+            }
+            return evt;
+        }
+        // make a copy
+        evt = this.cloneEvent(evt);
+        if (this.entity.float) {
+            positionVector = evt.localPosition.toMatrix();
+        } else {
+            positionVector = evt.worldPosition.toMatrix();
         }
 
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
+        // get all parents
+        parent = this.entity;
+        while (parent.parent) {
+            parent = parent.parent;
+            parents.unshift(parent);
+        }
+
+        /**
+         * reverse transform the event position vector
+         */
+        for (i = 0; i < parents.length; ++i) {
+            parent = parents[i];
+
+            // construct a translation matrix and apply to position vector
+            if (parent.position) {
+                position = parent.position;
+                translateMatrix.set(2, 0, -position.x);
+                translateMatrix.set(2, 1, -position.y);
+                positionVector.multiplyWith(translateMatrix);
+            }
+            // only scale/rotatable if there is a component
+            if (parent.rotation) {
+                // construct a rotation matrix and apply to position vector
+                sin = Math.sin(-parent.rotation.getAngleRadian());
+                cos = Math.cos(-parent.rotation.getAngleRadian());
+                rotateMatrix.set(0, 0, cos);
+                rotateMatrix.set(1, 0, -sin);
+                rotateMatrix.set(0, 1, sin);
+                rotateMatrix.set(1, 1, cos);
+                positionVector.multiplyWith(rotateMatrix);
+            }
+            if (parent.scale) {
+                // construct a scaling matrix and apply to position vector
+                scaleMatrix.set(0, 0, 1 / parent.scale.x);
+                scaleMatrix.set(1, 1, 1 / parent.scale.y);
+                positionVector.multiplyWith(scaleMatrix);
+            }
+        }
+        evt.localPosition.x = positionVector.get(0, 0);
+        evt.localPosition.y = positionVector.get(0, 1);
+
+        return evt;
     };
+    component.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    return component;
 });
 /**
  * Component that fills the screen
@@ -5682,29 +5687,21 @@ bento.define('bento/components/fill', [
     'bento'
 ], function (Utils, Bento) {
     'use strict';
-    return function (entity, settings) {
-        var viewport = Bento.getViewport(),
-            mixin = {},
-            color = [0, 0, 0, 1],
-            component = {
-                name: 'fill',
-                draw: function (data) {
-                    data.renderer.fillRect(color, 0, 0, viewport.width, viewport.height);
-                },
-                setup: function (settings) {
-                    color = settings.color;
-                }
-            };
-
-        if (settings && settings[component.name]) {
-            component.setup(settings[component.name]);
-        }
-
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
+    var viewport = Bento.getViewport(),
+        component = function (settings) {
+            settings = settings || {};
+            this.name = 'fill';
+            this.color = [0, 0, 0, 1];
+            this.dimension = settings.dimension || viewport;
+        };
+    component.prototype.draw = function (data) {
+        var dimension = this.dimension;
+        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
     };
+    component.prototype.setup = function (settings) {
+        this.color = settings.color;
+    };
+    return component;
 });
 /**
  * Component that sets the opacity
@@ -5719,35 +5716,29 @@ bento.define('bento/components/opacity', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    return function (entity) {
-        var opacity = 1,
-            set = false,
-            oldOpacity = 1,
-            mixin = {},
-            component = {
-                name: 'opacity',
-                draw: function (data) {
-                    if (set) {
-                        oldOpacity = data.renderer.getOpacity();
-                        data.renderer.setOpacity(opacity);
-                    }
-                },
-                postDraw: function (data) {
-                    data.renderer.setOpacity(oldOpacity);
-                },
-                setOpacity: function (value) {
-                    set = true;
-                    opacity = value;
-                },
-                getOpacity: function () {
-                    return opacity;
-                }
-            };
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
+    var oldOpacity = 1,
+        component = function (settings) {
+            settings = settings || {};
+            this.name = 'opacity';
+            this.set = false;
+            this.opacity = settings.opacity || 1;
+        };
+    component.prototype.draw = function (data) {
+        if (this.set) {
+            oldOpacity = data.renderer.getOpacity();
+            data.renderer.setOpacity(this.opacity);
+        }
     };
+    component.prototype.postDraw = function (data) {
+        data.renderer.setOpacity(oldOpacity);
+    };
+    component.prototype.setOpacity = function (value) {
+        this.opacity = value;
+    };
+    component.prototype.getOpacity = function () {
+        return this.opacity;
+    };
+    return component;
 });
 /**
  * Sprite component that uses pixi (alternative version of animation component).
@@ -6069,8 +6060,8 @@ bento.define('bento/components/rotation', [
     'bento/utils',
 ], function (Utils) {
     'use strict';
-    var angle,
-        component = function (settings) {
+    var component = function (settings) {
+            settings = settings || {};
             this.name = 'rotation';
             this.entity = null;
         };
@@ -6085,42 +6076,29 @@ bento.define('bento/components/rotation', [
     component.prototype.attached = function (data) {
         this.entity = data.entity;
     };
+    
+    // old angle functions
+    component.prototype.addAngleDegree = function (value) {
+        this.entity.rotation += value * Math.PI / 180;
+    },
+    component.prototype.addAngleRadian = function (value) {
+        this.entity.rotation += value;
+    },
+    component.prototype.setAngleDegree = function (value) {
+        this.entity.rotation = value * Math.PI / 180;
+    },
+    component.prototype.setAngleRadian = function (value) {
+        this.entity.rotation = value;
+    },
+    component.prototype.getAngleDegree = function () {
+        return this.entity.rotation * 180 / Math.PI;
+    },
+    component.prototype.getAngleRadian = function () {
+        return this.entity.rotation;
+    }
+
     return component;
 });
-
-// old angle functions
-/*{
-    addAngleDegree: function (value) {
-        if (!angle) {
-            angle = 0;
-        }
-        angle += value * Math.PI / 180;
-    },
-    addAngleRadian: function (value) {
-        if (!angle) {
-            angle = 0;
-        }
-        angle += value;
-    },
-    setAngleDegree: function (value) {
-        angle = value * Math.PI / 180;
-    },
-    setAngleRadian: function (value) {
-        angle = value;
-    },
-    getAngleDegree: function () {
-        if (!angle) {
-            return 0;
-        }
-        return angle * 180 / Math.PI;
-    },
-    getAngleRadian: function () {
-        if (!angle) {
-            return 0;
-        }
-        return angle;
-    }
-}*/
 /**
  * Component that scales the entity
  * <br>Exports: Function
@@ -6134,15 +6112,15 @@ bento.define('bento/components/scale', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var entity,
-        component = function (settings) {
-            this.name = 'scale';
-        };
+    var component = function (settings) {
+        this.entity = null;
+        this.name = 'scale';
+    };
     component.prototype.draw = function (data) {
         data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
     };
     component.prototype.attached = function (data) {
-        entity = data.entity;
+        this.entity = data.entity;
     };
 
     return component;
@@ -6197,6 +6175,7 @@ bento.define('bento/components/sprite', [
         this.entity.attach(this.animation);
         
         // remove self?
+        // this.entity.remove(this);
     };
     return component;
 });
@@ -6214,28 +6193,35 @@ bento.define('bento/components/translation', [
 ], function (Utils, Vector2) {
     'use strict';
     var component = function (settings) {
-        this.name = 'translation',
-        this.subPixel = settings.subPixel || false,
+        settings = settings || {};
+        this.name = 'translation';
+        this.subPixel = settings.subPixel || false;
+        this.entity = null;
     };
-        draw: function (data) {
-            var parent = entity.parent,
-                position = entity.position,
-                origin = entity.origin,
-                scroll = data.viewport;
-            data.renderer.save();
-            if (subPixel) {
-                data.renderer.translate(position.x, position.y);
-            } else {
-                data.renderer.translate(Math.round(position.x), Math.round(position.y));
-            }
-            // scroll (only applies to parent objects)
-            if (!parent && !entity.float) {
-                data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
-            }
-        },
-        postDraw: function (data) {
-            data.renderer.restore();
+    component.prototype.draw = function (data) {
+        var entity = data.entity,
+            parent = entity.parent,
+            position = entity.position,
+            origin = entity.origin,
+            scroll = data.viewport;
+
+        data.renderer.save();
+        if (this.subPixel) {
+            data.renderer.translate(entity.position.x, entity.position.y);
+        } else {
+            data.renderer.translate(Math.round(entity.position.x), Math.round(entity.position.y));
         }
+        // scroll (only applies to parent objects)
+        if (!parent && !entity.float) {
+            data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
+        }
+    };
+    component.prototype.postDraw = function (data) {
+        data.renderer.restore();
+    };
+    component.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
     return component;
 });
 /**

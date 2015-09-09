@@ -8,37 +8,49 @@ bento.define('bento/eventsystem', [
 ], function (Utils) {
     var events = {},
         /*events = {
-            [String eventName]: [Array listeners]
+            [String eventName]: [Array listeners = {callback: Function, context: this}]
         }*/
         removedEvents = [],
         cleanEventListeners = function () {
-            var i, j, l, listeners, eventName, callback;
+            var i, j, l, listeners, eventName, callback, context;
             for (j = 0; j < removedEvents.length; j += 1) {
                 eventName = removedEvents[j].eventName;
                 callback = removedEvents[j].callback;
+                context = removedEvents[j].context;
                 if (Utils.isUndefined(events[eventName])) {
                     continue;
                 }
                 listeners = events[eventName];
                 for (i = listeners.length - 1; i >= 0; i -= 1) {
-                    if (listeners[i] === callback) {
-                        listeners.splice(i, 1);
+                    if (listeners[i].callback === callback) {
+                        if (listeners[i].context) {
+                            if (listeners[i].context === context) {
+                                listeners.splice(i, 1);
+                            }
+                        } else {
+                            listeners.splice(i, 1);
+                        }
                         break;
                     }
                 }
             }
             removedEvents = [];
         },
-        addEventListener = function (eventName, callback) {
+        addEventListener = function (eventName, callback, context) {
             if (Utils.isUndefined(events[eventName])) {
                 events[eventName] = [];
             }
-            events[eventName].push(callback);
+            events[eventName].push({
+                callback: callback,
+                context: context
+            });
         },
-        removeEventListener = function (eventName, callback) {
+        removeEventListener = function (eventName, callback, context) {
+            // TODO: check if event listeners are really removed
             removedEvents.push({
                 eventName: eventName,
-                callback: callback
+                callback: callback,
+                context: context
             });
         };
 
@@ -64,7 +76,11 @@ bento.define('bento/eventsystem', [
             for (i = 0, l = listeners.length; i < l; ++i) {
                 listener = listeners[i];
                 if (listener) {
-                    listener(eventData);
+                    if (listener.context) {
+                        listener.callback.apply(listener.context, [eventData]);
+                    } else {
+                        listener.callback(eventData);
+                    }
                 } else {
                     // TODO: fix this
                     console.log('Warning: listener is not a function:', listener, i);
@@ -77,7 +93,7 @@ bento.define('bento/eventsystem', [
          * Callback function
          *
          * @callback Callback
-         * @param {Object} eventData - Any data that is passed 
+         * @param {Object} eventData - Any data that is passed
          */
         /**
          * Listen to event

@@ -22,22 +22,22 @@ bento.define('bento/components/clickable', [
          * @default 'clickable'
          * @name name
          */
-        this.name: 'clickable';
+        this.name = 'clickable';
         /**
          * Whether the pointer is over the entity
          * @instance
          * @default false
          * @name isHovering
          */
-        this.isHovering: false;
-        this.hasTouched: false;
+        this.isHovering = false;
+        this.hasTouched = false;
         /**
          * Id number of the pointer holding entity
          * @instance
          * @default null
          * @name holdId
          */
-        this.holdId: null;
+        this.holdId = null;
         this.isPointerDown = false;
         this.initialized = false;
 
@@ -57,7 +57,7 @@ bento.define('bento/components/clickable', [
             onHoverEnter: settings.onHoverEnter || function () {}
         };
 
-    }
+    };
 
     /**
      * Destructs the component. Called by the entity holding the component.
@@ -83,9 +83,9 @@ bento.define('bento/components/clickable', [
             // console.log('warning: trying to init twice')
             return;
         }
-        EventSystem.addEventListener('pointerDown', this.pointerDown);
-        EventSystem.addEventListener('pointerUp', this.pointerUp);
-        EventSystem.addEventListener('pointerMove', this.pointerMove);
+        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
         this.initialized = true;
     };
     /**
@@ -96,8 +96,8 @@ bento.define('bento/components/clickable', [
      * @name update
      */
     component.prototype.update = function () {
-        if (this.isHovering && this.isPointerDown && this.onHold) {
-            this.onHold();
+        if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
+            this.callbacks.onHold();
         }
     };
     component.prototype.cloneEvent = function (evt) {
@@ -110,45 +110,45 @@ bento.define('bento/components/clickable', [
         };
     };
     component.prototype.pointerDown = function (evt) {
-        var e = transformEvent(evt);
+        var e = this.transformEvent(evt);
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
             return;
         }
         this.isPointerDown = true;
-        if (this.pointerDown) {
-            this.pointerDown(e);
+        if (this.callbacks.pointerDown) {
+            this.callbacks.pointerDown(e);
         }
         if (this.entity.getBoundingBox) {
             this.checkHovering(e, true);
         }
     };
     component.prototype.pointerUp = function (evt) {
-        var e = transformEvent(evt),
+        var e = this.transformEvent(evt),
             mousePosition;
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
             return;
         }
         mousePosition = e.localPosition;
         this.isPointerDown = false;
-        if (this.pointerUp) {
-            this.pointerUp(e);
+        if (this.callbacks.pointerUp) {
+            this.callbacks.pointerUp(e);
         }
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            this.onClickUp(e);
+            this.callbacks.onClickUp(e);
             if (this.hasTouched && this.holdId === e.id) {
                 this.holdId = null;
-                this.onHoldEnd(e);
+                this.callbacks.onHoldEnd(e);
             }
         }
         this.hasTouched = false;
     };
     component.prototype.pointerMove = function (evt) {
-        var e = transformEvent(evt);
+        var e = this.transformEvent(evt);
         if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
             return;
         }
-        if (this.pointerMove) {
-            this.pointerMove(e);
+        if (this.callbacks.pointerMove) {
+            this.callbacks.pointerMove(e);
         }
         // hovering?
         if (this.entity.getBoundingBox) {
@@ -159,27 +159,27 @@ bento.define('bento/components/clickable', [
         var mousePosition = evt.localPosition;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.onHoldEnter(evt);
+                this.ocallbacks.nHoldEnter(evt);
             }
             if (!this.isHovering) {
-                this.onHoverEnter(evt);
+                this.callbacks.onHoverEnter(evt);
             }
             this.isHovering = true;
             if (clicked) {
                 this.hasTouched = true;
                 this.holdId = evt.id;
-                this.onClick(evt);
+                this.callbacks.onClick(evt);
             }
         } else {
             if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.onHoldLeave(evt);
+                this.callbacks.onHoldLeave(evt);
             }
             if (this.isHovering) {
-                this.onHoverLeave(evt);
+                this.callbacks.onHoverLeave(evt);
             }
             this.isHovering = false;
             if (clicked) {
-                this.onClickMiss(evt);
+                this.callbacks.onClickMiss(evt);
             }
         }
     };
@@ -256,6 +256,8 @@ bento.define('bento/components/clickable', [
 
         return evt;
     };
-
+    component.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
     return component;
 });

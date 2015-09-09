@@ -36,6 +36,7 @@ bento.define('bento/entity', [
     };
 
     var entity = function (settings) {
+        var i;
         /**
          * z-index of an object
          * @instance
@@ -103,8 +104,8 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
                 }
-                for (var i = 0; i < settings.components.length; ++i) {
-                    settings.components[i](this, settings);
+                for (i = 0; i < settings.components.length; ++i) {
+                    this.attach(settings.components[i]);
                 }
             }
             if (settings.position) {
@@ -123,7 +124,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.family)) {
                     settings.family = [settings.family];
                 }
-                for (var i = 0; i < settings.family.length; ++i) {
+                for (i = 0; i < settings.family.length; ++i) {
                     this.family.push(settings.family[i]);
                 }
             }
@@ -410,9 +411,9 @@ bento.define('bento/entity', [
      * @function
      * @instance
      * @param {String} name - name of the component
-     * @name getComponentByName
+     * @name getComponent
      */
-    entity.prototype.getComponentByName = function (name) {
+    entity.prototype.getComponent = function (name) {
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];

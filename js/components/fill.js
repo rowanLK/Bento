@@ -20,7 +20,7 @@ bento.define('bento/components/fill', [
         };
     component.prototype.draw = function (data) {
         var dimension = this.dimension;
-        data.renderer.fillRect(color, dimension.x, dimension.y, dimension.width, dimension.height);
+        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
     };
     component.prototype.setup = function (settings) {
         this.color = settings.color;

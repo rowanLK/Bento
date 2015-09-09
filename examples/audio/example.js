@@ -39,7 +39,7 @@ bento.require([
                         this.speed += 0.2;
                         if (position.y >= 120) {
                             position.y = 120;
-                            bunny.animation.setAnimation('idle');
+                            bunny.getComponent('animation').setAnimation('idle');
                         }
                     }
                 },

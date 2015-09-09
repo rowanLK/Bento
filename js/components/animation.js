@@ -29,8 +29,8 @@ bento.define('bento/components/animation', [
 
 
             // set to default
-            this.animations = animationSettings.animations;
-            this.currentAnimation = animations['default'];
+            this.animations = this.animationSettings.animations;
+            this.currentAnimation = this.animations['default'];
 
             this.onCompleteCallback = function () {};
             this.setup(settings);
@@ -67,32 +67,32 @@ bento.define('bento/components/animation', [
                 return;
             }
             // use frameWidth if specified (overrides frameCountX and frameCountY)
-            if (animationSettings.frameWidth) {
-                this.frameWidth = animationSettings.frameWidth;
+            if (this.animationSettings.frameWidth) {
+                this.frameWidth = this.animationSettings.frameWidth;
                 this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
             } else {
-                this.frameCountX = animationSettings.frameCountX || 1;
+                this.frameCountX = this.animationSettings.frameCountX || 1;
                 this.frameWidth = this.spriteImage.width / this.frameCountX;
             }
-            if (animationSettings.frameHeight) {
-                this.frameHeight = animationSettings.frameHeight;
-                this.frameCountY = Math.floor(spriteImage.height / this.frameHeight);
+            if (this.animationSettings.frameHeight) {
+                this.frameHeight = this.animationSettings.frameHeight;
+                this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
             } else {
-                this.frameCountY = animationSettings.frameCountY || 1;
-                this.frameHeight = spriteImage.height / this.frameCountY;
+                this.frameCountY = this.animationSettings.frameCountY || 1;
+                this.frameHeight = this.spriteImage.height / this.frameCountY;
             }
             if (this.entity) {
                 // set dimension of entity object
-                this.entity.dimension.width = frameWidth;
-                this.entity.dimension.height = frameHeight;
+                this.entity.dimension.width = this.frameWidth;
+                this.entity.dimension.height = this.frameHeight;
             }
         };
 
         component.prototype.attached = function (data) {
             this.entity = data.entity;
             // set dimension of entity object
-            this.entity.dimension.width = frameWidth;
-            this.entity.dimension.height = frameHeight;
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
         };
         /**
          * Set component to a different animation
@@ -104,7 +104,7 @@ bento.define('bento/components/animation', [
          * @name setAnimation
          */
         component.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-            var anim = animations[name];
+            var anim = this.animations[name];
             if (!anim) {
                 console.log('Warning: animation ' + name + ' does not exist.');
                 return;
@@ -117,7 +117,7 @@ bento.define('bento/components/animation', [
                     anim.backTo = 0;
                 }
                 // set even if there is no callback
-                onCompleteCallback = callback;
+                this.onCompleteCallback = callback;
                 this.currentAnimation = anim;
                 this.currentAnimation.name = name;
                 if (!keepCurrentFrame) {
@@ -212,7 +212,8 @@ bento.define('bento/components/animation', [
          */
         component.prototype.draw = function (data) {
             var cf, sx, sy,
-                origin = this.entity.origin;
+                entity = data.entity,
+                origin = entity.origin;
 
             if (!this.currentAnimation) {
                 return;
@@ -221,7 +222,7 @@ bento.define('bento/components/animation', [
             sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
             sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
 
-            data.renderer.translate(Math.round(-this.origin.x), Math.round(-this.origin.y));
+            data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
             data.renderer.drawImage(
                 this.spriteImage,
                 sx,
@@ -233,7 +234,7 @@ bento.define('bento/components/animation', [
                 this.frameWidth,
                 this.frameHeight
             );
-            data.renderer.translate(Math.round(this.origin.x), Math.round(this.origin.y));
+            data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
         };
     return component;
 });

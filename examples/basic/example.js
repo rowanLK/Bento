@@ -9,7 +9,8 @@ bento.require([
     'bento/components/scale',
     'bento/components/fill',
     'bento/components/clickable',
-    'bento/tween'
+    'bento/tween',
+    'bento/utils'
 ], function (
     Bento,
     Vector2,
@@ -21,7 +22,8 @@ bento.require([
     Scale,
     Fill,
     Clickable,
-    Tween
+    Tween,
+    Utils
 ) {
     Bento.setup({
         canvasId: 'canvas',
@@ -47,7 +49,7 @@ bento.require([
                         new Clickable({
                             pointerDown: function (evt) {
                                 console.log(evt);
-                                Tween({
+                                new Tween({
                                     from: 16,
                                     to: 160,
                                     'in': 60,
