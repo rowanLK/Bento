@@ -309,7 +309,7 @@ bento.define('bento/entity', [
         this.origin.y = value.y * this.dimension.height;
     };
     /**
-     * Entity was attached ()
+     * Entity was attached, calls onParentAttach to all children
      * @param {Object} data - gameData
      * @instance
      * @name attached
@@ -321,21 +321,19 @@ bento.define('bento/entity', [
 
         if (data) {
             data.entity = this;
+            data.parent = this.parent;
         } else {
             data = {
-                entity: this
+                entity: this,
+                parent: this.parent
             };
         }
         // update components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
             if (component) {
-                // shouldnt propagate
-                if (component.parent) {
-                    continue;
-                }
-                if (component.attached) {
-                    component.attached(data);
+                if (component.onParentAttached) {
+                    component.onParentAttached(data);
                 }
             }
         }
@@ -350,25 +348,25 @@ bento.define('bento/entity', [
      * @instance
      * @name attach
      */
-    entity.prototype.attach = function (component, name) {
+    entity.prototype.attach = function (child, name) {
         var mixin = {},
             parent = this;
 
-        this.components.push(component);
+        this.components.push(child);
 
-        component.parent = this;
+        child.parent = this;
 
-        if (component.init) {
-            component.init();
+        if (child.init) {
+            child.init();
         }
-        if (component.attached) {
-            component.attached({
+        if (child.attached) {
+            child.attached({
                 entity: this
             });
         }
         if (this.isAdded) {
-            if (component.start) {
-                component.start();
+            if (child.start) {
+                child.start();
             }
         } else {
             if (parent.parent) {
@@ -376,8 +374,8 @@ bento.define('bento/entity', [
             }
             while (parent) {
                 if (parent.isAdded) {
-                    if (component.start) {
-                        component.start();
+                    if (child.start) {
+                        child.start();
                     }
                 }
                 parent = parent.parent;
@@ -392,17 +390,17 @@ bento.define('bento/entity', [
      * @instance
      * @name remove
      */
-    entity.prototype.remove = function (component) {
+    entity.prototype.remove = function (child) {
         var i, type, index;
-        if (!component) {
+        if (!child) {
             return;
         }
-        index = this.components.indexOf(component);
+        index = this.components.indexOf(child);
         if (index >= 0) {
-            if (component.destroy) {
-                component.destroy();
+            if (child.destroy) {
+                child.destroy();
             }
-            // TODO: clean component
+            // TODO: clean child
             this.components[index] = null;
         }
         return this;

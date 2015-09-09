@@ -190,10 +190,8 @@
                         return;
                     }
                 },
-                attached: function (data) {
-                    // TODO problem with attaching a child: if a bento entity parent has no sprite component,
-                    // the pixiSprite has no parent to attach to
-
+                onParentAttached: function (data) {
+                    // Attach
                     var parent, component;
                     if (data.renderer) {
                         // attach to root
