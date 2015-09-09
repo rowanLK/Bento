@@ -6131,13 +6131,15 @@ bento.define('bento/components/scale', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var component = function (entity) {
-        this.name = 'scale';
-    };
+    var entity,
+        component = function (settings) {
+            this.name = 'scale';
+        };
     component.prototype.draw = function (data) {
-        if (set) {
-            data.renderer.scale(enbtity.scale.x, entity.scale.y);
-        }
+        data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
+    };
+    component.prototype.attached = function (data) {
+        entity = data.entity;
     };
 
     return component;
