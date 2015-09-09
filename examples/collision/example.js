@@ -37,10 +37,9 @@ bento.require([
             var viewport = Bento.getViewport(),
                 background = new Entity({
                     addNow: true,
-                    components: [Fill],
-                    fill: {
+                    components: [new Fill({
                         color: [1, 1, 1, 1]
-                    }
+                    })]
                 }),
                 polygon,
                 polygonOther,
@@ -70,9 +69,7 @@ bento.require([
                     useHshg: false,
                     position: new Vector2(0, 0),
                     originRelative: new Vector2(0, 0),
-                    components: [Clickable],
-                    family: [''],
-                    clickable: {
+                    components: [new Clickable({
                         pointerUp: function (e) {
                             if (object.hold) {
                                 object.hold = false;
@@ -94,7 +91,8 @@ bento.require([
                                 set();
                             }
                         }
-                    },
+                    })],
+                    family: [''],
                     init: function () {}
                 });
             console.log(object)
