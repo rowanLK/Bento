@@ -5659,8 +5659,8 @@ bento.define('bento/components/clickable', [
             // only scale/rotatable if there is a component
             if (parent.rotation) {
                 // construct a rotation matrix and apply to position vector
-                sin = Math.sin(-parent.rotation);
-                cos = Math.cos(-parent.rotation);
+                sin = Math.sin(-parent.rotation.getAngleRadian());
+                cos = Math.cos(-parent.rotation.getAngleRadian());
                 rotateMatrix.set(0, 0, cos);
                 rotateMatrix.set(1, 0, -sin);
                 rotateMatrix.set(0, 1, sin);
