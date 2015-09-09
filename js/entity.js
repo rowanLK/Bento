@@ -38,7 +38,7 @@ bento.define('bento/entity', [
 
     var entity = function (settings) {
         var i;
-        id += 1;
+        this.id = id++;
         /**
          * z-index of an object
          * @instance
@@ -518,9 +518,6 @@ bento.define('bento/entity', [
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]
         };
-    };
-    entity.prototype.getId = function () {
-        return id;
     };
     return entity;
 });
