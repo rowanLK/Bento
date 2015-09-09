@@ -36,105 +36,117 @@ bento.require([
             var viewport = Bento.getViewport(),
                 background = new Entity({
                     addNow: true,
-                    components: [Fill],
-                    fill: {
+                    components: [new Fill({
                         color: [1, 1, 1, 1]
-                    }
+                    })]
                 }),
                 bunny1 = new Entity({
-                    components: [Translation, Animation, Clickable],
+                    components: [
+                        new Translation(),
+                        new Animation(Bento.assets.getJson('bunny')),
+                        new Clickable({
+                            pointerDown: function (evt) {
+                                console.log(evt);
+                                Tween({
+                                    from: 16,
+                                    to: 160,
+                                    'in': 60,
+                                    ease: 'easeOutBounce',
+                                    do :
+                                    function (v, t) {
+                                        bunny1.position.y = v;
+                                    },
+                                    onComplete: function () {
+
+                                    }
+                                });
+                            }
+                        })
+                    ],
                     position: new Vector2(16, 16),
                     originRelative: new Vector2(0.5, 0.5),
-                    animation: Bento.assets.getJson('bunny'),
-                    clickable: {
-                        pointerDown: function (evt) {
-                            console.log(evt);
-                            Tween({
-                                from: 16,
-                                to: 160,
-                                'in': 60,
-                                ease: 'easeOutBounce',
-                                do: function (v, t) {
-                                    bunny1.position.y = v;
-                                },
-                                onComplete: function () {
-
-                                }
-                            });
-                        }
-                    },
                     init: function () {
-                        this.animation.setAnimation('idle');
+                        this.getComponent('animation').setAnimation('idle');
                     }
                 }),
                 bunny2 = new Entity({
-                    components: [Translation, Scale, Animation],
+                    components: [
+                        new Translation(),
+                        new Scale(),
+                        new Animation({
+                            image: Bento.assets.getImage('bunnygirlsmall'),
+                            frameWidth: 32,
+                            frameHeight: 32,
+                            animations: {
+                                'idle': {
+                                    speed: 0.1,
+                                    frames: [0, 10, 11, 12]
+                                }
+                            },
+                        })
+                    ],
                     position: new Vector2(16 + 32, 16),
                     originRelative: new Vector2(0.5, 0.5),
-                    animation: {
-                        image: Bento.assets.getImage('bunnygirlsmall'),
-                        frameWidth: 32,
-                        frameHeight: 32,
-                        animations: {
-                            'idle': {
-                                speed: 0.1,
-                                frames: [0, 10, 11, 12]
-                            }
-                        },
-                    },
                     init: function () {
-                        this.animation.setAnimation('idle');
-                        this.scale.setScaleX(2);
+                        this.getComponent('animation').setAnimation('idle');
+                        this.scale.x = 2;
                     }
                 }),
                 bunny3 = new Entity({
-                    components: [Translation, Rotation, Animation],
+                    components: [
+                        new Translation(),
+                        new Rotation(),
+                        new Animation({
+                            image: Bento.assets.getImage('bunnygirlsmall'),
+                            frameWidth: 32,
+                            frameHeight: 32,
+                            animations: {
+                                'idle': {
+                                    speed: 0.1,
+                                    frames: [0, 10, 11, 12]
+                                }
+                            }
+                        })
+                    ],
                     position: new Vector2(16 + 64, 16),
                     originRelative: new Vector2(0.5, 0.5),
-                    animation: {
-                        image: Bento.assets.getImage('bunnygirlsmall'),
-                        frameWidth: 32,
-                        frameHeight: 32,
-                        animations: {
-                            'idle': {
-                                speed: 0.1,
-                                frames: [0, 10, 11, 12]
-                            }
-                        },
-                    },
                     init: function () {
-                        this.animation.setAnimation('idle');
+                        this.getComponent('animation').setAnimation('idle');
                     }
                 }).attach({
                     update: function () {
-                        bunny3.rotation.addAngleDegree(1);
+                        bunny3.rotation += Utils.toRadian(1);
                         if (Bento.input.isKeyDown('down')) {
-                            bunny3.position.y +=1;
+                            bunny3.position.y += 1;
                         }
                     }
                 }),
                 bunny4 = new Entity({
-                    components: [Translation, Rotation, Scale, Animation],
+                    components: [
+                        new Translation(),
+                        new Rotation(),
+                        new Scale(),
+                        new Animation({
+                            image: Bento.assets.getImage('bunnygirlsmall'),
+                            frameWidth: 32,
+                            frameHeight: 32,
+                            animations: {
+                                'idle': {
+                                    speed: 0.1,
+                                    frames: [0, 10, 11, 12]
+                                }
+                            }
+                        })
+                    ],
                     position: new Vector2(16 + 96, 16),
                     originRelative: new Vector2(0.5, 0.5),
-                    animation: {
-                        image: Bento.assets.getImage('bunnygirlsmall'),
-                        frameWidth: 32,
-                        frameHeight: 32,
-                        animations: {
-                            'idle': {
-                                speed: 0.1,
-                                frames: [0, 10, 11, 12]
-                            }
-                        },
-                    },
                     init: function () {
-                        this.animation.setAnimation('idle');
+                        this.getComponent('animation').setAnimation('idle');
                     }
                 }).attach({
                     update: function () {
-                        bunny4.rotation.addAngleDegree(1);
-                        bunny4.scale.setScaleX(Math.sin(bunny4.timer / 10));
+                        bunny4.rotation += Utils.toRadian(1);
+                        bunny4.scale.x = (Math.sin(bunny4.timer / 10));
                     }
                 });
             Bento.objects.add(bunny1);

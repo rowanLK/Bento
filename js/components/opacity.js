@@ -11,33 +11,27 @@ bento.define('bento/components/opacity', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    return function (entity) {
-        var opacity = 1,
-            set = false,
-            oldOpacity = 1,
-            mixin = {},
-            component = {
-                name: 'opacity',
-                draw: function (data) {
-                    if (set) {
-                        oldOpacity = data.renderer.getOpacity();
-                        data.renderer.setOpacity(opacity);
-                    }
-                },
-                postDraw: function (data) {
-                    data.renderer.setOpacity(oldOpacity);
-                },
-                setOpacity: function (value) {
-                    set = true;
-                    opacity = value;
-                },
-                getOpacity: function () {
-                    return opacity;
-                }
-            };
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
+    var oldOpacity = 1,
+        component = function (settings) {
+            settings = settings || {};
+            this.name = 'opacity';
+            this.set = false;
+            this.opacity = settings.opacity || 1;
+        };
+    component.prototype.draw = function (data) {
+        if (this.set) {
+            oldOpacity = data.renderer.getOpacity();
+            data.renderer.setOpacity(this.opacity);
+        }
     };
+    component.prototype.postDraw = function (data) {
+        data.renderer.setOpacity(oldOpacity);
+    };
+    component.prototype.setOpacity = function (value) {
+        this.opacity = value;
+    };
+    component.prototype.getOpacity = function () {
+        return this.opacity;
+    };
+    return component;
 });

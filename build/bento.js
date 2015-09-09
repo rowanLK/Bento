@@ -6069,55 +6069,58 @@ bento.define('bento/components/rotation', [
     'bento/utils',
 ], function (Utils) {
     'use strict';
-    return function (entity) {
-        var angle,
-            mixin = {},
-            component = {
-                name: 'rotation',
-                draw: function (data) {
-                    if (angle) {
-                        data.renderer.rotate(angle);
-                    }
-                },
-                postDraw: function (data) {
-                },
-                addAngleDegree: function (value) {
-                    if (!angle) {
-                        angle = 0;
-                    }
-                    angle += value * Math.PI / 180;
-                },
-                addAngleRadian: function (value) {
-                    if (!angle) {
-                        angle = 0;
-                    }
-                    angle += value;
-                },
-                setAngleDegree: function (value) {
-                    angle = value * Math.PI / 180;
-                },
-                setAngleRadian: function (value) {
-                    angle = value;
-                },
-                getAngleDegree: function () {
-                    if (!angle) {
-                        return 0;
-                    }
-                    return angle * 180 / Math.PI;
-                },
-                getAngleRadian: function () {
-                    if (!angle) {
-                        return 0;
-                    }
-                    return angle;
-                }
-            };
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
+    var angle,
+        component = function (settings) {
+            this.name = 'rotation';
+            this.entity = null;
+        };
+
+    component.prototype.draw = function (data) {
+        data.renderer.save();
+        data.renderer.rotate(data.entity.rotation);
     };
+    component.prototype.postDraw = function (data) {
+        data.renderer.restore();
+    };
+    component.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    return component;
 });
+
+// old angle functions
+/*{
+    addAngleDegree: function (value) {
+        if (!angle) {
+            angle = 0;
+        }
+        angle += value * Math.PI / 180;
+    },
+    addAngleRadian: function (value) {
+        if (!angle) {
+            angle = 0;
+        }
+        angle += value;
+    },
+    setAngleDegree: function (value) {
+        angle = value * Math.PI / 180;
+    },
+    setAngleRadian: function (value) {
+        angle = value;
+    },
+    getAngleDegree: function () {
+        if (!angle) {
+            return 0;
+        }
+        return angle * 180 / Math.PI;
+    },
+    getAngleRadian: function () {
+        if (!angle) {
+            return 0;
+        }
+        return angle;
+    }
+}*/
 /**
  * Component that scales the entity
  * <br>Exports: Function
@@ -6163,36 +6166,39 @@ bento.define('bento/components/sprite', [
     'bento/components/pixi'
 ], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation, Pixi) {
     'use strict';
-    var renderer;
-    return function (entity, settings) {
-        // detect renderer
-        if (!renderer) {
-            renderer = Bento.getRenderer();
-        }
-        Translation(entity, settings);
-        Scale(entity, settings);
-        Rotation(entity, settings);
-        Opacity(entity, settings);
-        // use pixi or default sprite renderer
-        if (renderer.name === 'pixi') {
-            if (settings.sprite) {
-                settings.pixi = settings.sprite;
+    var renderer,
+        component = function (settings) {
+            this.entity = null;
+            // detect renderer
+            if (!renderer) {
+                renderer = Bento.getRenderer();
             }
-            Pixi(entity, settings);
-            entity.sprite = entity.pixi;
-        } else {
-            if (settings.sprite) {
-                settings.animation = settings.sprite;
-            }
-            Animation(entity, settings);
-            entity.sprite = entity.animation;
-        }
-        Utils.extend(entity.sprite, entity.scale);
-        Utils.extend(entity.sprite, entity.rotation);
-        Utils.extend(entity.sprite, entity.opacity);
+            this.translation = new Translation(settings);
+            this.scale = new Scale(settings);
+            this.rotation = new Rotation(settings);
+            this.opacity = new Opacity(settings);
 
-        return entity;
+
+            // use pixi or default sprite renderer
+            if (renderer.name === 'pixi') {
+                this.animation = new Pixi(settings);
+            } else {
+                this.animation = new Animation(settings);
+            }
+        };
+
+    component.prototype.attached = function (data) {
+        this.entity = data.entity;
+        // attach all components!
+        this.entity.attach(this.translation);
+        this.entity.attach(this.scale);
+        this.entity.attach(this.rotation);
+        this.entity.attach(this.opacity);
+        this.entity.attach(this.animation);
+        
+        // remove self?
     };
+    return component;
 });
 /**
  * Component that translates the entity visually
@@ -6207,40 +6213,30 @@ bento.define('bento/components/translation', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    return function (entity) {
-        var set = false,
-            mixin = {},
-            subPixel = false,
-            component = {
-                name: 'translation',
-                setSubPixel: function (bool) {
-                    subPixel = bool;
-                },
-                draw: function (data) {
-                    var parent = entity.parent,
-                        position = entity.position,
-                        origin = entity.origin,
-                        scroll = data.viewport;
-                    data.renderer.save();
-                    if (subPixel) {
-                        data.renderer.translate(position.x, position.y);
-                    } else {
-                        data.renderer.translate(Math.round(position.x), Math.round(position.y));
-                    }
-                    // scroll (only applies to parent objects)
-                    if (!parent && !entity.float) {
-                        data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
-                    }
-                },
-                postDraw: function (data) {
-                    data.renderer.restore();
-                }
-            };
-        entity.attach(component);
-        mixin[component.name] = component;
-        Utils.extend(entity, mixin);
-        return entity;
+    var component = function (settings) {
+        this.name = 'translation',
+        this.subPixel = settings.subPixel || false,
     };
+        draw: function (data) {
+            var parent = entity.parent,
+                position = entity.position,
+                origin = entity.origin,
+                scroll = data.viewport;
+            data.renderer.save();
+            if (subPixel) {
+                data.renderer.translate(position.x, position.y);
+            } else {
+                data.renderer.translate(Math.round(position.x), Math.round(position.y));
+            }
+            // scroll (only applies to parent objects)
+            if (!parent && !entity.float) {
+                data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
+            }
+        },
+        postDraw: function (data) {
+            data.renderer.restore();
+        }
+    return component;
 });
 /**
  * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.

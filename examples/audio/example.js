@@ -27,10 +27,9 @@ bento.require([
             var viewport = Bento.getViewport(),
                 background = new Entity({
                     addNow: true,
-                    components: [Fill],
-                    fill: {
+                    components: [new Fill({
                         color: [0, 0, 0, 1]
-                    }
+                    })]
                 }),
                 gravityComponent = {
                     speed: 0,
@@ -45,11 +44,7 @@ bento.require([
                     }
                 },
                 bunny = new Entity({
-                    components: [Sprite, Clickable],
-                    position: new Vector2(80, 120),
-                    originRelative: new Vector2(0.5, 1),
-                    addNow: true,
-                    animation: {
+                    components: [new Sprite({
                         image: Bento.assets.getImage('bunnygirlsmall'),
                         frameWidth: 32,
                         frameHeight: 32,
@@ -63,20 +58,23 @@ bento.require([
                                 frames: [1]
                             }
                         },
-                    },
-                    clickable: {
+                    }), new Clickable({
                         pointerDown: function (evt) {
                             if (bunny.position.y >= 120) {
                                 Bento.audio.playSound('sfx_jump');
-                                bunny.animation.setAnimation('jump');
+                                bunny.getComponent('animation').setAnimation('jump');
                                 gravityComponent.speed = -5;
                             }
                         }
-                    },
+                    })],
+                    position: new Vector2(80, 120),
+                    originRelative: new Vector2(0.5, 1),
                     init: function () {
-                        this.animation.setAnimation('idle');
+                        this.getComponent('animation').setAnimation('idle');
                     }
-                }).attach(gravityComponent);
+                });
+            bunny.attach(gravityComponent);
+            Bento.objects.attach(bunny);
 
         }, function (current, total) {
             console.log(current + '/' + total);

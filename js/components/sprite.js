@@ -17,34 +17,38 @@ bento.define('bento/components/sprite', [
     'bento/components/pixi'
 ], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation, Pixi) {
     'use strict';
-    var renderer;
-    return function (entity, settings) {
-        // detect renderer
-        if (!renderer) {
-            renderer = Bento.getRenderer();
-        }
-        Translation(entity, settings);
-        Scale(entity, settings);
-        Rotation(entity, settings);
-        Opacity(entity, settings);
-        // use pixi or default sprite renderer
-        if (renderer.name === 'pixi') {
-            if (settings.sprite) {
-                settings.pixi = settings.sprite;
+    var renderer,
+        component = function (settings) {
+            this.entity = null;
+            // detect renderer
+            if (!renderer) {
+                renderer = Bento.getRenderer();
             }
-            Pixi(entity, settings);
-            entity.sprite = entity.pixi;
-        } else {
-            if (settings.sprite) {
-                settings.animation = settings.sprite;
-            }
-            Animation(entity, settings);
-            entity.sprite = entity.animation;
-        }
-        Utils.extend(entity.sprite, entity.scale);
-        Utils.extend(entity.sprite, entity.rotation);
-        Utils.extend(entity.sprite, entity.opacity);
+            this.translation = new Translation(settings);
+            this.scale = new Scale(settings);
+            this.rotation = new Rotation(settings);
+            this.opacity = new Opacity(settings);
 
-        return entity;
+
+            // use pixi or default sprite renderer
+            if (renderer.name === 'pixi') {
+                this.animation = new Pixi(settings);
+            } else {
+                this.animation = new Animation(settings);
+            }
+        };
+
+    component.prototype.attached = function (data) {
+        this.entity = data.entity;
+        // attach all components!
+        this.entity.attach(this.translation);
+        this.entity.attach(this.scale);
+        this.entity.attach(this.rotation);
+        this.entity.attach(this.opacity);
+        this.entity.attach(this.animation);
+        
+        // remove self?
+        // this.entity.remove(this);
     };
+    return component;
 });
