@@ -5220,7 +5220,7 @@ bento.define('bento/components/animation', [
         this.animationSettings = settings || this.animationSettings;
 
         // add default animation
-        if (this.animations['default']) {
+        if (!this.animations['default']) {
             if (!this.animationSettings.animations) {
                 this.animationSettings.animations = {};
             }
@@ -6086,7 +6086,7 @@ bento.define('bento/components/rotation', [
     component.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-
+    
     // old angle functions
     component.prototype.addAngleDegree = function (value) {
         this.entity.rotation += value * Math.PI / 180;
@@ -6183,7 +6183,7 @@ bento.define('bento/components/sprite', [
         this.entity.attach(this.rotation);
         this.entity.attach(this.opacity);
         this.entity.attach(this.animation);
-
+        
         // remove self?
         // this.entity.remove(this);
     };
@@ -6733,7 +6733,7 @@ bento.define('hshg', [], function () {
                 topOffset = isOnTopEdge === true ? -gridLength + wh : wh;
                 bottomOffset = isOnBottomEdge === true ? gridLength - wh : -wh;
 
-                // diagonals are composites of the cardinals
+                // diagonals are composites of the cardinals            
                 uniqueOffsets = [
                     // y+ down offset
                     //leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset,
@@ -9417,7 +9417,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
                 // real screenheight is not reported correctly
                 screenHeight *= window.devicePixelRatio || 1;
                 console.log(screenHeight);
-
+                
                 // dynamic height
                 while (height > maxSize) {
                     height = Math.floor(screenHeight / i);
@@ -10382,7 +10382,7 @@ bento.define('bento/renderers/webgl', [
                 },
                 fillRect: function (color, x, y, w, h) {
                     var oldColor = glRenderer.color;
-                    //
+                    // 
                     renderer.setColor(color);
                     glRenderer.fillRect(x, y, w, h);
                     glRenderer.color = oldColor;
@@ -10390,7 +10390,7 @@ bento.define('bento/renderers/webgl', [
                 fillCircle: function (color, x, y, radius) {},
                 strokeRect: function (color, x, y, w, h) {
                     var oldColor = glRenderer.color;
-                    //
+                    // 
                     renderer.setColor(color);
                     glRenderer.strokeRect(x, y, w, h);
                     glRenderer.color = oldColor;

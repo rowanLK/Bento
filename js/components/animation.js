@@ -45,7 +45,7 @@ bento.define('bento/components/animation', [
         this.animationSettings = settings || this.animationSettings;
 
         // add default animation
-        if (this.animations['default']) {
+        if (!this.animations['default']) {
             if (!this.animationSettings.animations) {
                 this.animationSettings.animations = {};
             }
