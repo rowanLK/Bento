@@ -5539,7 +5539,7 @@ bento.define('bento/components/clickable', [
         }
         this.isPointerDown = true;
         if (this.callbacks.pointerDown) {
-            this.callbacks.pointerDown.call(this, [e]);
+            this.callbacks.pointerDown.call(this, e);
         }
         if (this.entity.getBoundingBox) {
             this.checkHovering(e, true);
@@ -5554,13 +5554,13 @@ bento.define('bento/components/clickable', [
         mousePosition = e.localPosition;
         this.isPointerDown = false;
         if (this.callbacks.pointerUp) {
-            this.callbacks.pointerUp.call(this, [e]);
+            this.callbacks.pointerUp.call(this, e);
         }
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             this.callbacks.onClickUp.call(this, [e]);
             if (this.hasTouched && this.holdId === e.id) {
                 this.holdId = null;
-                this.callbacks.onHoldEnd.call(this, [e]);
+                this.callbacks.onHoldEnd.call(this, e);
             }
         }
         this.hasTouched = false;
@@ -5571,7 +5571,7 @@ bento.define('bento/components/clickable', [
             return;
         }
         if (this.callbacks.pointerMove) {
-            this.callbacks.pointerMove.call(this, [e]);
+            this.callbacks.pointerMove.call(this, e);
         }
         // hovering?
         if (this.entity.getBoundingBox) {
@@ -5582,27 +5582,27 @@ bento.define('bento/components/clickable', [
         var mousePosition = evt.localPosition;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.ocallbacks.onHoldEnter.call(this, [evt]);
+                this.ocallbacks.onHoldEnter.call(this, evt);
             }
             if (!this.isHovering) {
-                this.callbacks.onHoverEnter.call(this, [evt]);
+                this.callbacks.onHoverEnter.call(this, evt);
             }
             this.isHovering = true;
             if (clicked) {
                 this.hasTouched = true;
                 this.holdId = evt.id;
-                this.callbacks.onClick.call(this, [evt]);
+                this.callbacks.onClick.call(this, evt);
             }
         } else {
             if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldLeave.call(this, [evt]);
+                this.callbacks.onHoldLeave.call(this, evt);
             }
             if (this.isHovering) {
-                this.callbacks.onHoverLeave.call(this, [evt]);
+                this.callbacks.onHoverLeave.call(this, evt);
             }
             this.isHovering = false;
             if (clicked) {
-                this.callbacks.onClickMiss.call(this, [evt]);
+                this.callbacks.onClickMiss.call(this, evt);
             }
         }
     };
@@ -8981,7 +8981,7 @@ bento.define('bento/math/polygon', [
                 i = 0,
                 j = points.length - 1,
                 bounds = this.getBoundingBox();
-
+                
             if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
                 return false;
             }
