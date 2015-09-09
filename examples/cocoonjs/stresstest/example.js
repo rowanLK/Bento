@@ -31,41 +31,44 @@ bento.require([
                 renderer = Bento.getRenderer().name,
                 bgcolor = renderer === 'webgl' ? [0, 0, 0, 1] : [1, 1, 1, 1],
                 background = new Entity({
-                    components: [Fill, Clickable],
-                    clickable: {
-                        pointerDown: function (evt) {
-                            var i;
-                            for (i = 0; i < 100; ++i) {
-                                addBunny();
+                    components: [
+                        new Fill({
+                            color: bgcolor
+                        }),
+                        new Clickable({
+                            pointerDown: function (evt) {
+                                var i;
+                                for (i = 0; i < 100; ++i) {
+                                    addBunny();
+                                }
+                                console.log('Current bunnies:', bunnies);
                             }
-                            console.log('Current bunnies:', bunnies);
-                        }
-                    },
-                    fill: {
-                        color: bgcolor
-                    }
+                        })
+                    ]
                 }),
                 getRandom = function (val) {
                     return Math.floor(Math.random() * val);
                 },
                 addBunny = function () {
                     var entity = new Entity({
-                        components: [Translation, Animation],
+                        components: [
+                            new Translation(),
+                            new Animation({
+                                image: Bento.assets.getImage('bunnygirlsmall'),
+                                frameWidth: 32,
+                                frameHeight: 32,
+                                animations: {
+                                    'idle': {
+                                        speed: 0.1,
+                                        frames: [0, 10, 11, 12]
+                                    }
+                                }
+                            })
+                        ],
                         position: new Vector2(getRandom(viewport.width), getRandom(viewport.height)),
                         originRelative: new Vector2(0.5, 0.5),
-                        animation: {
-                            image: Bento.assets.getImage('bunnygirlsmall'),
-                            frameWidth: 32,
-                            frameHeight: 32,
-                            animations: {
-                                'idle': {
-                                    speed: 0.1,
-                                    frames: [0, 10, 11, 12]
-                                }
-                            },
-                        },
                         init: function () {
-                            this.animation.setAnimation('idle');
+                            this.getComponent('animation').setAnimation('idle');
                         }
                     }).attach({
                         speed: new Vector2(getRandom(30) / 10 - getRandom(30) / 10, getRandom(30) / 10 - getRandom(30) / 10),
