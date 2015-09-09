@@ -78,6 +78,7 @@ bento.require([
                         },
                         pointerDown: function (e) {
                             var position = object.position;
+                            console.log(e)
                             if (polygon.hasPosition(e.worldPosition)) {
                                 object.offset = new Vector2(position.x - e.worldPosition.x, position.y - e.worldPosition.y);
                                 object.position = new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y);

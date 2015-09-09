@@ -11,8 +11,8 @@ bento.define('bento/components/fill', [
     'bento'
 ], function (Utils, Bento) {
     'use strict';
-    var viewport = Bento.getViewport(),
-        component = function (settings) {
+    var component = function (settings) {
+            var viewport = Bento.getViewport();
             settings = settings || {};
             this.name = 'fill';
             this.color = settings.color || [0, 0, 0, 1];

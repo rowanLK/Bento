@@ -46,7 +46,7 @@
 
 	window.GlSprites = {};
 	GlSprites.SpriteRenderer = __webpack_require__(1);
-	GlSprites.createTexture2D = __webpack_require__(16);
+	GlSprites.createTexture2D = __webpack_require__(13);
 
 /***/ },
 /* 1 */
@@ -1054,10 +1054,10 @@
 /* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var colorToFloat = __webpack_require__(12)
+	var colorToFloat = __webpack_require__(32)
 	var mixes = __webpack_require__(2)
-	var premult = __webpack_require__(14)
-	var WhiteTex = __webpack_require__(15)
+	var premult = __webpack_require__(34)
+	var WhiteTex = __webpack_require__(12)
 
 	var vertNumFloats = __webpack_require__(35).floatsPerVertex
 
@@ -1292,140 +1292,8 @@
 /* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var packColor = __webpack_require__(13).colorToFloat
-
-	module.exports = function colorToFloat(rgba) {
-	    return packColor(
-	        ~~(rgba[0] * 255),
-	        ~~(rgba[1] * 255),
-	        ~~(rgba[2] * 255),
-	        ~~(rgba[3] * 255)
-	    )
-	}
-
-/***/ },
-/* 13 */
-/***/ function(module, exports) {
-
-	var int8 = new Int8Array(4);
-	var int32 = new Int32Array(int8.buffer, 0, 1);
-	var float32 = new Float32Array(int8.buffer, 0, 1);
-
-	/**
-	 * A singleton for number utilities. 
-	 * @class NumberUtil
-	 */
-	var NumberUtil = function() {
-
-	};
-
-
-	/**
-	 * Returns a float representation of the given int bits. ArrayBuffer
-	 * is used for the conversion.
-	 *
-	 * @method  intBitsToFloat
-	 * @static
-	 * @param  {Number} i the int to cast
-	 * @return {Number}   the float
-	 */
-	NumberUtil.intBitsToFloat = function(i) {
-		int32[0] = i;
-		return float32[0];
-	};
-
-	/**
-	 * Returns the int bits from the given float. ArrayBuffer is used
-	 * for the conversion.
-	 *
-	 * @method  floatToIntBits
-	 * @static
-	 * @param  {Number} f the float to cast
-	 * @return {Number}   the int bits
-	 */
-	NumberUtil.floatToIntBits = function(f) {
-		float32[0] = f;
-		return int32[0];
-	};
-
-	/**
-	 * Encodes ABGR int as a float, with slight precision loss.
-	 *
-	 * @method  intToFloatColor
-	 * @static
-	 * @param {Number} value an ABGR packed integer
-	 */
-	NumberUtil.intToFloatColor = function(value) {
-		return NumberUtil.intBitsToFloat( value & 0xfeffffff );
-	};
-
-	/**
-	 * Returns a float encoded ABGR value from the given RGBA
-	 * bytes (0 - 255). Useful for saving bandwidth in vertex data.
-	 *
-	 * @method  colorToFloat
-	 * @static
-	 * @param {Number} r the Red byte (0 - 255)
-	 * @param {Number} g the Green byte (0 - 255)
-	 * @param {Number} b the Blue byte (0 - 255)
-	 * @param {Number} a the Alpha byte (0 - 255)
-	 * @return {Float32}  a Float32 of the RGBA color
-	 */
-	NumberUtil.colorToFloat = function(r, g, b, a) {
-		var bits = (a << 24 | b << 16 | g << 8 | r);
-		return NumberUtil.intToFloatColor(bits);
-	};
-
-	/**
-	 * Returns true if the number is a power-of-two.
-	 *
-	 * @method  isPowerOfTwo
-	 * @param  {Number}  n the number to test
-	 * @return {Boolean}   true if power-of-two
-	 */
-	NumberUtil.isPowerOfTwo = function(n) {
-		return (n & (n - 1)) === 0;
-	};
-
-	/**
-	 * Returns the next highest power-of-two from the specified number. 
-	 * 
-	 * @param  {Number} n the number to test
-	 * @return {Number}   the next highest power of two
-	 */
-	NumberUtil.nextPowerOfTwo = function(n) {
-		n--;
-		n |= n >> 1;
-		n |= n >> 2;
-		n |= n >> 4;
-		n |= n >> 8;
-		n |= n >> 16;
-		return n+1;
-	};
-
-	module.exports = NumberUtil;
-
-/***/ },
-/* 14 */
-/***/ function(module, exports) {
-
-	function premultiply(rgba, out) {
-		if (!out || typeof out === 'number')
-			out = [0,0,0,0]
-		out[0] = rgba[0] * rgba[3]
-		out[1] = rgba[1] * rgba[3]
-		out[2] = rgba[2] * rgba[3]
-		out[3] = rgba[3]
-		return out
-	}
-	module.exports = premultiply
-
-/***/ },
-/* 15 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var create = __webpack_require__(16)
-	var ndarray = __webpack_require__(32)
+	var create = __webpack_require__(13)
+	var ndarray = __webpack_require__(29)
 
 	module.exports = function(gl) {
 	    //fill an array with 0xff
@@ -1437,14 +1305,14 @@
 	}
 
 /***/ },
-/* 16 */
+/* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var ndarray = __webpack_require__(17)
-	var ops     = __webpack_require__(20)
-	var pool    = __webpack_require__(25)
+	var ndarray = __webpack_require__(14)
+	var ops     = __webpack_require__(17)
+	var pool    = __webpack_require__(22)
 
 	module.exports = createTexture2D
 
@@ -2000,11 +1868,11 @@
 
 
 /***/ },
-/* 17 */
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var iota = __webpack_require__(18)
-	var isBuffer = __webpack_require__(19)
+	var iota = __webpack_require__(15)
+	var isBuffer = __webpack_require__(16)
 
 	var hasTypedArrays  = ((typeof Float64Array) !== "undefined")
 
@@ -2349,7 +2217,7 @@
 
 
 /***/ },
-/* 18 */
+/* 15 */
 /***/ function(module, exports) {
 
 	"use strict"
@@ -2365,7 +2233,7 @@
 	module.exports = iota
 
 /***/ },
-/* 19 */
+/* 16 */
 /***/ function(module, exports) {
 
 	/**
@@ -2388,12 +2256,12 @@
 
 
 /***/ },
-/* 20 */
+/* 17 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict"
 
-	var compile = __webpack_require__(21)
+	var compile = __webpack_require__(18)
 
 	var EmptyProc = {
 	  body: "",
@@ -2855,12 +2723,12 @@
 
 
 /***/ },
-/* 21 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict"
 
-	var createThunk = __webpack_require__(22)
+	var createThunk = __webpack_require__(19)
 
 	function Procedure() {
 	  this.argTypes = []
@@ -2970,7 +2838,7 @@
 
 
 /***/ },
-/* 22 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict"
@@ -2998,7 +2866,7 @@
 	//   return thunk(compile.bind1(proc))
 	// }
 
-	var compile = __webpack_require__(23)
+	var compile = __webpack_require__(20)
 
 	function createThunk(proc) {
 	  var code = ["'use strict'", "var CACHED={}"]
@@ -3062,12 +2930,12 @@
 
 
 /***/ },
-/* 23 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict"
 
-	var uniq = __webpack_require__(24)
+	var uniq = __webpack_require__(21)
 
 	// This function generates very simple loops analogous to how you typically traverse arrays (the outermost loop corresponds to the slowest changing index, the innermost loop to the fastest changing index)
 	// TODO: If two arrays have the same strides (and offsets) there is potential for decreasing the number of "pointers" and related variables. The drawback is that the type signature would become more specific and that there would thus be less potential for caching, but it might still be worth it, especially when dealing with large numbers of arguments.
@@ -3422,7 +3290,7 @@
 
 
 /***/ },
-/* 24 */
+/* 21 */
 /***/ function(module, exports) {
 
 	"use strict"
@@ -3485,13 +3353,13 @@
 
 
 /***/ },
-/* 25 */
+/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, Buffer) {'use strict'
 
-	var bits = __webpack_require__(30)
-	var dup = __webpack_require__(31)
+	var bits = __webpack_require__(27)
+	var dup = __webpack_require__(28)
 
 	//Legacy pool support
 	if(!global.__TYPEDARRAY_POOL) {
@@ -3702,10 +3570,10 @@
 	    BUFFER[i].length = 0
 	  }
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(26).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(23).Buffer))
 
 /***/ },
-/* 26 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/*!
@@ -3715,9 +3583,9 @@
 	 * @license  MIT
 	 */
 
-	var base64 = __webpack_require__(27)
-	var ieee754 = __webpack_require__(28)
-	var isArray = __webpack_require__(29)
+	var base64 = __webpack_require__(24)
+	var ieee754 = __webpack_require__(25)
+	var isArray = __webpack_require__(26)
 
 	exports.Buffer = Buffer
 	exports.SlowBuffer = SlowBuffer
@@ -3734,35 +3602,31 @@
 	 * Browsers that support typed arrays are IE 10+, Firefox 4+, Chrome 7+, Safari 5.1+,
 	 * Opera 11.6+, iOS 4.2+.
 	 *
-	 * Due to various browser bugs, sometimes the Object implementation will be used even
-	 * when the browser supports typed arrays.
-	 *
 	 * Note:
 	 *
-	 *   - Firefox 4-29 lacks support for adding new properties to `Uint8Array` instances,
-	 *     See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
+	 * - Implementation must support adding new properties to `Uint8Array` instances.
+	 *   Firefox 4-29 lacked support, fixed in Firefox 30+.
+	 *   See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
 	 *
-	 *   - Safari 5-7 lacks support for changing the `Object.prototype.constructor` property
-	 *     on objects.
+	 *  - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
 	 *
-	 *   - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
+	 *  - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
+	 *    incorrect length in some situations.
 	 *
-	 *   - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
-	 *     incorrect length in some situations.
-
-	 * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
-	 * get the Object implementation, which is slower but behaves correctly.
+	 * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they will
+	 * get the Object implementation, which is slower but will work correctly.
 	 */
 	Buffer.TYPED_ARRAY_SUPPORT = (function () {
-	  function Bar () {}
+	  function Foo () {}
 	  try {
-	    var arr = new Uint8Array(1)
+	    var buf = new ArrayBuffer(0)
+	    var arr = new Uint8Array(buf)
 	    arr.foo = function () { return 42 }
-	    arr.constructor = Bar
+	    arr.constructor = Foo
 	    return arr.foo() === 42 && // typed array instances can be augmented
-	        arr.constructor === Bar && // constructor can be set
+	        arr.constructor === Foo && // constructor can be set
 	        typeof arr.subarray === 'function' && // chrome 9-10 lack `subarray`
-	        arr.subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
+	        new Uint8Array(1).subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
 	  } catch (e) {
 	    return false
 	  }
@@ -3840,13 +3704,8 @@
 	    throw new TypeError('must start with number, buffer, array or string')
 	  }
 
-	  if (typeof ArrayBuffer !== 'undefined') {
-	    if (object.buffer instanceof ArrayBuffer) {
-	      return fromTypedArray(that, object)
-	    }
-	    if (object instanceof ArrayBuffer) {
-	      return fromArrayBuffer(that, object)
-	    }
+	  if (typeof ArrayBuffer !== 'undefined' && object.buffer instanceof ArrayBuffer) {
+	    return fromTypedArray(that, object)
 	  }
 
 	  if (object.length) return fromArrayLike(that, object)
@@ -3879,18 +3738,6 @@
 	  // of the old Buffer constructor.
 	  for (var i = 0; i < length; i += 1) {
 	    that[i] = array[i] & 255
-	  }
-	  return that
-	}
-
-	function fromArrayBuffer (that, array) {
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    // Return an augmented `Uint8Array` instance, for best performance
-	    array.byteLength
-	    that = Buffer._augment(new Uint8Array(array))
-	  } else {
-	    // Fallback: Return an object instance of the Buffer class
-	    that = fromTypedArray(that, new Uint8Array(array))
 	  }
 	  return that
 	}
@@ -4012,6 +3859,8 @@
 
 	  if (list.length === 0) {
 	    return new Buffer(0)
+	  } else if (list.length === 1) {
+	    return list[0]
 	  }
 
 	  var i
@@ -4186,13 +4035,13 @@
 	  throw new TypeError('val must be string, number or Buffer')
 	}
 
-	// `get` is deprecated
+	// `get` will be removed in Node 0.13+
 	Buffer.prototype.get = function get (offset) {
 	  console.log('.get() is deprecated. Access using array indexes instead.')
 	  return this.readUInt8(offset)
 	}
 
-	// `set` is deprecated
+	// `set` will be removed in Node 0.13+
 	Buffer.prototype.set = function set (v, offset) {
 	  console.log('.set() is deprecated. Access using array indexes instead.')
 	  return this.writeUInt8(v, offset)
@@ -4333,99 +4182,20 @@
 	}
 
 	function utf8Slice (buf, start, end) {
-	  end = Math.min(buf.length, end)
-	  var res = []
-
-	  var i = start
-	  while (i < end) {
-	    var firstByte = buf[i]
-	    var codePoint = null
-	    var bytesPerSequence = (firstByte > 0xEF) ? 4
-	      : (firstByte > 0xDF) ? 3
-	      : (firstByte > 0xBF) ? 2
-	      : 1
-
-	    if (i + bytesPerSequence <= end) {
-	      var secondByte, thirdByte, fourthByte, tempCodePoint
-
-	      switch (bytesPerSequence) {
-	        case 1:
-	          if (firstByte < 0x80) {
-	            codePoint = firstByte
-	          }
-	          break
-	        case 2:
-	          secondByte = buf[i + 1]
-	          if ((secondByte & 0xC0) === 0x80) {
-	            tempCodePoint = (firstByte & 0x1F) << 0x6 | (secondByte & 0x3F)
-	            if (tempCodePoint > 0x7F) {
-	              codePoint = tempCodePoint
-	            }
-	          }
-	          break
-	        case 3:
-	          secondByte = buf[i + 1]
-	          thirdByte = buf[i + 2]
-	          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80) {
-	            tempCodePoint = (firstByte & 0xF) << 0xC | (secondByte & 0x3F) << 0x6 | (thirdByte & 0x3F)
-	            if (tempCodePoint > 0x7FF && (tempCodePoint < 0xD800 || tempCodePoint > 0xDFFF)) {
-	              codePoint = tempCodePoint
-	            }
-	          }
-	          break
-	        case 4:
-	          secondByte = buf[i + 1]
-	          thirdByte = buf[i + 2]
-	          fourthByte = buf[i + 3]
-	          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80 && (fourthByte & 0xC0) === 0x80) {
-	            tempCodePoint = (firstByte & 0xF) << 0x12 | (secondByte & 0x3F) << 0xC | (thirdByte & 0x3F) << 0x6 | (fourthByte & 0x3F)
-	            if (tempCodePoint > 0xFFFF && tempCodePoint < 0x110000) {
-	              codePoint = tempCodePoint
-	            }
-	          }
-	      }
-	    }
-
-	    if (codePoint === null) {
-	      // we did not generate a valid codePoint so insert a
-	      // replacement char (U+FFFD) and advance only 1 byte
-	      codePoint = 0xFFFD
-	      bytesPerSequence = 1
-	    } else if (codePoint > 0xFFFF) {
-	      // encode to utf16 (surrogate pair dance)
-	      codePoint -= 0x10000
-	      res.push(codePoint >>> 10 & 0x3FF | 0xD800)
-	      codePoint = 0xDC00 | codePoint & 0x3FF
-	    }
-
-	    res.push(codePoint)
-	    i += bytesPerSequence
-	  }
-
-	  return decodeCodePointsArray(res)
-	}
-
-	// Based on http://stackoverflow.com/a/22747272/680742, the browser with
-	// the lowest limit is Chrome, with 0x10000 args.
-	// We go 1 magnitude less, for safety
-	var MAX_ARGUMENTS_LENGTH = 0x1000
-
-	function decodeCodePointsArray (codePoints) {
-	  var len = codePoints.length
-	  if (len <= MAX_ARGUMENTS_LENGTH) {
-	    return String.fromCharCode.apply(String, codePoints) // avoid extra slice()
-	  }
-
-	  // Decode in chunks to avoid "call stack size exceeded".
 	  var res = ''
-	  var i = 0
-	  while (i < len) {
-	    res += String.fromCharCode.apply(
-	      String,
-	      codePoints.slice(i, i += MAX_ARGUMENTS_LENGTH)
-	    )
+	  var tmp = ''
+	  end = Math.min(buf.length, end)
+
+	  for (var i = start; i < end; i++) {
+	    if (buf[i] <= 0x7F) {
+	      res += decodeUtf8Char(tmp) + String.fromCharCode(buf[i])
+	      tmp = ''
+	    } else {
+	      tmp += '%' + buf[i].toString(16)
+	    }
 	  }
-	  return res
+
+	  return res + decodeUtf8Char(tmp)
 	}
 
 	function asciiSlice (buf, start, end) {
@@ -4960,16 +4730,9 @@
 	  }
 
 	  var len = end - start
-	  var i
 
-	  if (this === target && start < targetStart && targetStart < end) {
-	    // descending copy from end
-	    for (i = len - 1; i >= 0; i--) {
-	      target[i + targetStart] = this[i + start]
-	    }
-	  } else if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) {
-	    // ascending copy from start
-	    for (i = 0; i < len; i++) {
+	  if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) {
+	    for (var i = 0; i < len; i++) {
 	      target[i + targetStart] = this[i + start]
 	    }
 	  } else {
@@ -5045,7 +4808,7 @@
 	  // save reference to original Uint8Array set method before overwriting
 	  arr._set = arr.set
 
-	  // deprecated
+	  // deprecated, will be removed in node 0.13+
 	  arr.get = BP.get
 	  arr.set = BP.set
 
@@ -5101,7 +4864,7 @@
 	  return arr
 	}
 
-	var INVALID_BASE64_RE = /[^+\/0-9A-Za-z-_]/g
+	var INVALID_BASE64_RE = /[^+\/0-9A-z\-]/g
 
 	function base64clean (str) {
 	  // Node strips out invalid characters like \n and \t from the string, base64-js does not
@@ -5131,15 +4894,28 @@
 	  var length = string.length
 	  var leadSurrogate = null
 	  var bytes = []
+	  var i = 0
 
-	  for (var i = 0; i < length; i++) {
+	  for (; i < length; i++) {
 	    codePoint = string.charCodeAt(i)
 
 	    // is surrogate component
 	    if (codePoint > 0xD7FF && codePoint < 0xE000) {
 	      // last char was a lead
-	      if (!leadSurrogate) {
+	      if (leadSurrogate) {
+	        // 2 leads in a row
+	        if (codePoint < 0xDC00) {
+	          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
+	          leadSurrogate = codePoint
+	          continue
+	        } else {
+	          // valid surrogate pair
+	          codePoint = leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00 | 0x10000
+	          leadSurrogate = null
+	        }
+	      } else {
 	        // no lead yet
+
 	        if (codePoint > 0xDBFF) {
 	          // unexpected trail
 	          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
@@ -5148,29 +4924,17 @@
 	          // unpaired lead
 	          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
 	          continue
+	        } else {
+	          // valid lead
+	          leadSurrogate = codePoint
+	          continue
 	        }
-
-	        // valid lead
-	        leadSurrogate = codePoint
-
-	        continue
 	      }
-
-	      // 2 leads in a row
-	      if (codePoint < 0xDC00) {
-	        if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-	        leadSurrogate = codePoint
-	        continue
-	      }
-
-	      // valid surrogate pair
-	      codePoint = leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00 | 0x10000
 	    } else if (leadSurrogate) {
 	      // valid bmp char, but last char was a lead
 	      if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
+	      leadSurrogate = null
 	    }
-
-	    leadSurrogate = null
 
 	    // encode utf8
 	    if (codePoint < 0x80) {
@@ -5189,7 +4953,7 @@
 	        codePoint >> 0x6 & 0x3F | 0x80,
 	        codePoint & 0x3F | 0x80
 	      )
-	    } else if (codePoint < 0x110000) {
+	    } else if (codePoint < 0x200000) {
 	      if ((units -= 4) < 0) break
 	      bytes.push(
 	        codePoint >> 0x12 | 0xF0,
@@ -5242,10 +5006,18 @@
 	  return i
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(26).Buffer))
+	function decodeUtf8Char (str) {
+	  try {
+	    return decodeURIComponent(str)
+	  } catch (err) {
+	    return String.fromCharCode(0xFFFD) // UTF 8 invalid char
+	  }
+	}
+
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(23).Buffer))
 
 /***/ },
-/* 27 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -5371,11 +5143,11 @@
 
 		exports.toByteArray = b64ToByteArray
 		exports.fromByteArray = uint8ToBase64
-	}( false ? (this.base64js = {}) : exports))
+	}(false ? (this.base64js = {}) : exports))
 
 
 /***/ },
-/* 28 */
+/* 25 */
 /***/ function(module, exports) {
 
 	exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -5465,7 +5237,7 @@
 
 
 /***/ },
-/* 29 */
+/* 26 */
 /***/ function(module, exports) {
 
 	
@@ -5504,7 +5276,7 @@
 
 
 /***/ },
-/* 30 */
+/* 27 */
 /***/ function(module, exports) {
 
 	/**
@@ -5714,7 +5486,7 @@
 
 
 /***/ },
-/* 31 */
+/* 28 */
 /***/ function(module, exports) {
 
 	"use strict"
@@ -5768,11 +5540,11 @@
 	module.exports = dupe
 
 /***/ },
-/* 32 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var iota = __webpack_require__(33)
-	var isBuffer = __webpack_require__(34)
+	var iota = __webpack_require__(30)
+	var isBuffer = __webpack_require__(31)
 
 	var hasTypedArrays  = ((typeof Float64Array) !== "undefined")
 
@@ -6117,7 +5889,7 @@
 
 
 /***/ },
-/* 33 */
+/* 30 */
 /***/ function(module, exports) {
 
 	"use strict"
@@ -6133,7 +5905,7 @@
 	module.exports = iota
 
 /***/ },
-/* 34 */
+/* 31 */
 /***/ function(module, exports) {
 
 	/**
@@ -6154,6 +5926,138 @@
 	  )
 	}
 
+
+/***/ },
+/* 32 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var packColor = __webpack_require__(33).colorToFloat
+
+	module.exports = function colorToFloat(rgba) {
+	    return packColor(
+	        ~~(rgba[0] * 255),
+	        ~~(rgba[1] * 255),
+	        ~~(rgba[2] * 255),
+	        ~~(rgba[3] * 255)
+	    )
+	}
+
+/***/ },
+/* 33 */
+/***/ function(module, exports) {
+
+	var int8 = new Int8Array(4);
+	var int32 = new Int32Array(int8.buffer, 0, 1);
+	var float32 = new Float32Array(int8.buffer, 0, 1);
+
+	/**
+	 * A singleton for number utilities. 
+	 * @class NumberUtil
+	 */
+	var NumberUtil = function() {
+
+	};
+
+
+	/**
+	 * Returns a float representation of the given int bits. ArrayBuffer
+	 * is used for the conversion.
+	 *
+	 * @method  intBitsToFloat
+	 * @static
+	 * @param  {Number} i the int to cast
+	 * @return {Number}   the float
+	 */
+	NumberUtil.intBitsToFloat = function(i) {
+		int32[0] = i;
+		return float32[0];
+	};
+
+	/**
+	 * Returns the int bits from the given float. ArrayBuffer is used
+	 * for the conversion.
+	 *
+	 * @method  floatToIntBits
+	 * @static
+	 * @param  {Number} f the float to cast
+	 * @return {Number}   the int bits
+	 */
+	NumberUtil.floatToIntBits = function(f) {
+		float32[0] = f;
+		return int32[0];
+	};
+
+	/**
+	 * Encodes ABGR int as a float, with slight precision loss.
+	 *
+	 * @method  intToFloatColor
+	 * @static
+	 * @param {Number} value an ABGR packed integer
+	 */
+	NumberUtil.intToFloatColor = function(value) {
+		return NumberUtil.intBitsToFloat( value & 0xfeffffff );
+	};
+
+	/**
+	 * Returns a float encoded ABGR value from the given RGBA
+	 * bytes (0 - 255). Useful for saving bandwidth in vertex data.
+	 *
+	 * @method  colorToFloat
+	 * @static
+	 * @param {Number} r the Red byte (0 - 255)
+	 * @param {Number} g the Green byte (0 - 255)
+	 * @param {Number} b the Blue byte (0 - 255)
+	 * @param {Number} a the Alpha byte (0 - 255)
+	 * @return {Float32}  a Float32 of the RGBA color
+	 */
+	NumberUtil.colorToFloat = function(r, g, b, a) {
+		var bits = (a << 24 | b << 16 | g << 8 | r);
+		return NumberUtil.intToFloatColor(bits);
+	};
+
+	/**
+	 * Returns true if the number is a power-of-two.
+	 *
+	 * @method  isPowerOfTwo
+	 * @param  {Number}  n the number to test
+	 * @return {Boolean}   true if power-of-two
+	 */
+	NumberUtil.isPowerOfTwo = function(n) {
+		return (n & (n - 1)) === 0;
+	};
+
+	/**
+	 * Returns the next highest power-of-two from the specified number. 
+	 * 
+	 * @param  {Number} n the number to test
+	 * @return {Number}   the next highest power of two
+	 */
+	NumberUtil.nextPowerOfTwo = function(n) {
+		n--;
+		n |= n >> 1;
+		n |= n >> 2;
+		n |= n >> 4;
+		n |= n >> 8;
+		n |= n >> 16;
+		return n+1;
+	};
+
+	module.exports = NumberUtil;
+
+/***/ },
+/* 34 */
+/***/ function(module, exports) {
+
+	function premultiply(rgba, out) {
+		if (!out || typeof out === 'number')
+			out = [0,0,0,0]
+		out[0] = rgba[0] * rgba[3]
+		out[1] = rgba[1] * rgba[3]
+		out[2] = rgba[2] * rgba[3]
+		out[3] = rgba[3]
+		return out
+	}
+	module.exports = premultiply
 
 /***/ },
 /* 35 */
@@ -6767,7 +6671,7 @@
 	    BUFFER[i].length = 0
 	  }
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(26).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(23).Buffer))
 
 /***/ },
 /* 41 */
@@ -8579,12 +8483,12 @@
 
 	//to reduce bundle size, we'll only grab what we need
 	module.exports = {
-	    ortho: __webpack_require__(55),
+	    ortho: __webpack_require__(56),
 	    identity: __webpack_require__(5),
-	    create: __webpack_require__(56),
-	    scale: __webpack_require__(57),
-	    rotateZ: __webpack_require__(58),
-	    rotateY: __webpack_require__(59),
+	    create: __webpack_require__(57),
+	    scale: __webpack_require__(58),
+	    rotateZ: __webpack_require__(59),
+	    rotateY: __webpack_require__(55),
 	    rotateX: __webpack_require__(60),
 	    translate: __webpack_require__(61),
 	    clone: __webpack_require__(62),
@@ -8594,164 +8498,6 @@
 
 /***/ },
 /* 55 */
-/***/ function(module, exports) {
-
-	module.exports = ortho;
-
-	/**
-	 * Generates a orthogonal projection matrix with the given bounds
-	 *
-	 * @param {mat4} out mat4 frustum matrix will be written into
-	 * @param {number} left Left bound of the frustum
-	 * @param {number} right Right bound of the frustum
-	 * @param {number} bottom Bottom bound of the frustum
-	 * @param {number} top Top bound of the frustum
-	 * @param {number} near Near bound of the frustum
-	 * @param {number} far Far bound of the frustum
-	 * @returns {mat4} out
-	 */
-	function ortho(out, left, right, bottom, top, near, far) {
-	    var lr = 1 / (left - right),
-	        bt = 1 / (bottom - top),
-	        nf = 1 / (near - far);
-	    out[0] = -2 * lr;
-	    out[1] = 0;
-	    out[2] = 0;
-	    out[3] = 0;
-	    out[4] = 0;
-	    out[5] = -2 * bt;
-	    out[6] = 0;
-	    out[7] = 0;
-	    out[8] = 0;
-	    out[9] = 0;
-	    out[10] = 2 * nf;
-	    out[11] = 0;
-	    out[12] = (left + right) * lr;
-	    out[13] = (top + bottom) * bt;
-	    out[14] = (far + near) * nf;
-	    out[15] = 1;
-	    return out;
-	};
-
-/***/ },
-/* 56 */
-/***/ function(module, exports) {
-
-	module.exports = create;
-
-	/**
-	 * Creates a new identity mat4
-	 *
-	 * @returns {mat4} a new 4x4 matrix
-	 */
-	function create() {
-	    var out = new Float32Array(16);
-	    out[0] = 1;
-	    out[1] = 0;
-	    out[2] = 0;
-	    out[3] = 0;
-	    out[4] = 0;
-	    out[5] = 1;
-	    out[6] = 0;
-	    out[7] = 0;
-	    out[8] = 0;
-	    out[9] = 0;
-	    out[10] = 1;
-	    out[11] = 0;
-	    out[12] = 0;
-	    out[13] = 0;
-	    out[14] = 0;
-	    out[15] = 1;
-	    return out;
-	};
-
-/***/ },
-/* 57 */
-/***/ function(module, exports) {
-
-	module.exports = scale;
-
-	/**
-	 * Scales the mat4 by the dimensions in the given vec3
-	 *
-	 * @param {mat4} out the receiving matrix
-	 * @param {mat4} a the matrix to scale
-	 * @param {vec3} v the vec3 to scale the matrix by
-	 * @returns {mat4} out
-	 **/
-	function scale(out, a, v) {
-	    var x = v[0], y = v[1], z = v[2];
-
-	    out[0] = a[0] * x;
-	    out[1] = a[1] * x;
-	    out[2] = a[2] * x;
-	    out[3] = a[3] * x;
-	    out[4] = a[4] * y;
-	    out[5] = a[5] * y;
-	    out[6] = a[6] * y;
-	    out[7] = a[7] * y;
-	    out[8] = a[8] * z;
-	    out[9] = a[9] * z;
-	    out[10] = a[10] * z;
-	    out[11] = a[11] * z;
-	    out[12] = a[12];
-	    out[13] = a[13];
-	    out[14] = a[14];
-	    out[15] = a[15];
-	    return out;
-	};
-
-/***/ },
-/* 58 */
-/***/ function(module, exports) {
-
-	module.exports = rotateZ;
-
-	/**
-	 * Rotates a matrix by the given angle around the Z axis
-	 *
-	 * @param {mat4} out the receiving matrix
-	 * @param {mat4} a the matrix to rotate
-	 * @param {Number} rad the angle to rotate the matrix by
-	 * @returns {mat4} out
-	 */
-	function rotateZ(out, a, rad) {
-	    var s = Math.sin(rad),
-	        c = Math.cos(rad),
-	        a00 = a[0],
-	        a01 = a[1],
-	        a02 = a[2],
-	        a03 = a[3],
-	        a10 = a[4],
-	        a11 = a[5],
-	        a12 = a[6],
-	        a13 = a[7];
-
-	    if (a !== out) { // If the source and destination differ, copy the unchanged last row
-	        out[8]  = a[8];
-	        out[9]  = a[9];
-	        out[10] = a[10];
-	        out[11] = a[11];
-	        out[12] = a[12];
-	        out[13] = a[13];
-	        out[14] = a[14];
-	        out[15] = a[15];
-	    }
-
-	    // Perform axis-specific matrix multiplication
-	    out[0] = a00 * c + a10 * s;
-	    out[1] = a01 * c + a11 * s;
-	    out[2] = a02 * c + a12 * s;
-	    out[3] = a03 * c + a13 * s;
-	    out[4] = a10 * c - a00 * s;
-	    out[5] = a11 * c - a01 * s;
-	    out[6] = a12 * c - a02 * s;
-	    out[7] = a13 * c - a03 * s;
-	    return out;
-	};
-
-/***/ },
-/* 59 */
 /***/ function(module, exports) {
 
 	module.exports = rotateY;
@@ -8796,6 +8542,164 @@
 	    out[9] = a01 * s + a21 * c;
 	    out[10] = a02 * s + a22 * c;
 	    out[11] = a03 * s + a23 * c;
+	    return out;
+	};
+
+/***/ },
+/* 56 */
+/***/ function(module, exports) {
+
+	module.exports = ortho;
+
+	/**
+	 * Generates a orthogonal projection matrix with the given bounds
+	 *
+	 * @param {mat4} out mat4 frustum matrix will be written into
+	 * @param {number} left Left bound of the frustum
+	 * @param {number} right Right bound of the frustum
+	 * @param {number} bottom Bottom bound of the frustum
+	 * @param {number} top Top bound of the frustum
+	 * @param {number} near Near bound of the frustum
+	 * @param {number} far Far bound of the frustum
+	 * @returns {mat4} out
+	 */
+	function ortho(out, left, right, bottom, top, near, far) {
+	    var lr = 1 / (left - right),
+	        bt = 1 / (bottom - top),
+	        nf = 1 / (near - far);
+	    out[0] = -2 * lr;
+	    out[1] = 0;
+	    out[2] = 0;
+	    out[3] = 0;
+	    out[4] = 0;
+	    out[5] = -2 * bt;
+	    out[6] = 0;
+	    out[7] = 0;
+	    out[8] = 0;
+	    out[9] = 0;
+	    out[10] = 2 * nf;
+	    out[11] = 0;
+	    out[12] = (left + right) * lr;
+	    out[13] = (top + bottom) * bt;
+	    out[14] = (far + near) * nf;
+	    out[15] = 1;
+	    return out;
+	};
+
+/***/ },
+/* 57 */
+/***/ function(module, exports) {
+
+	module.exports = create;
+
+	/**
+	 * Creates a new identity mat4
+	 *
+	 * @returns {mat4} a new 4x4 matrix
+	 */
+	function create() {
+	    var out = new Float32Array(16);
+	    out[0] = 1;
+	    out[1] = 0;
+	    out[2] = 0;
+	    out[3] = 0;
+	    out[4] = 0;
+	    out[5] = 1;
+	    out[6] = 0;
+	    out[7] = 0;
+	    out[8] = 0;
+	    out[9] = 0;
+	    out[10] = 1;
+	    out[11] = 0;
+	    out[12] = 0;
+	    out[13] = 0;
+	    out[14] = 0;
+	    out[15] = 1;
+	    return out;
+	};
+
+/***/ },
+/* 58 */
+/***/ function(module, exports) {
+
+	module.exports = scale;
+
+	/**
+	 * Scales the mat4 by the dimensions in the given vec3
+	 *
+	 * @param {mat4} out the receiving matrix
+	 * @param {mat4} a the matrix to scale
+	 * @param {vec3} v the vec3 to scale the matrix by
+	 * @returns {mat4} out
+	 **/
+	function scale(out, a, v) {
+	    var x = v[0], y = v[1], z = v[2];
+
+	    out[0] = a[0] * x;
+	    out[1] = a[1] * x;
+	    out[2] = a[2] * x;
+	    out[3] = a[3] * x;
+	    out[4] = a[4] * y;
+	    out[5] = a[5] * y;
+	    out[6] = a[6] * y;
+	    out[7] = a[7] * y;
+	    out[8] = a[8] * z;
+	    out[9] = a[9] * z;
+	    out[10] = a[10] * z;
+	    out[11] = a[11] * z;
+	    out[12] = a[12];
+	    out[13] = a[13];
+	    out[14] = a[14];
+	    out[15] = a[15];
+	    return out;
+	};
+
+/***/ },
+/* 59 */
+/***/ function(module, exports) {
+
+	module.exports = rotateZ;
+
+	/**
+	 * Rotates a matrix by the given angle around the Z axis
+	 *
+	 * @param {mat4} out the receiving matrix
+	 * @param {mat4} a the matrix to rotate
+	 * @param {Number} rad the angle to rotate the matrix by
+	 * @returns {mat4} out
+	 */
+	function rotateZ(out, a, rad) {
+	    var s = Math.sin(rad),
+	        c = Math.cos(rad),
+	        a00 = a[0],
+	        a01 = a[1],
+	        a02 = a[2],
+	        a03 = a[3],
+	        a10 = a[4],
+	        a11 = a[5],
+	        a12 = a[6],
+	        a13 = a[7];
+
+	    if (a !== out) { // If the source and destination differ, copy the unchanged last row
+	        out[8]  = a[8];
+	        out[9]  = a[9];
+	        out[10] = a[10];
+	        out[11] = a[11];
+	        out[12] = a[12];
+	        out[13] = a[13];
+	        out[14] = a[14];
+	        out[15] = a[15];
+	    }
+
+	    // Perform axis-specific matrix multiplication
+	    out[0] = a00 * c + a10 * s;
+	    out[1] = a01 * c + a11 * s;
+	    out[2] = a02 * c + a12 * s;
+	    out[3] = a03 * c + a13 * s;
+	    out[4] = a10 * c - a00 * s;
+	    out[5] = a11 * c - a01 * s;
+	    out[6] = a12 * c - a02 * s;
+	    out[7] = a13 * c - a03 * s;
 	    return out;
 	};
 

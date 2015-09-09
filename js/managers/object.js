@@ -145,8 +145,8 @@ bento.define('bento/managers/object', [
                     hshg.addObject(object);
                 }
                 // add object to access pools
-                if (object.getFamily) {
-                    family = object.getFamily();
+                if (object.family) {
+                    family = object.family;
                     for (i = 0; i < family.length; ++i) {
                         type = family[i];
                         if (!quickAccess[type]) {
@@ -191,8 +191,8 @@ bento.define('bento/managers/object', [
                         hshg.removeObject(object);
                     }
                     // remove from access pools
-                    if (object.getFamily) {
-                        family = object.getFamily();
+                    if (object.family) {
+                        family = object.family;
                         for (i = 0; i < family.length; ++i) {
                             type = family[i];
                             Utils.removeObject(quickAccess[type], object);

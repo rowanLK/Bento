@@ -4485,7 +4485,7 @@ bento.define('bento/entity', [
         if (!Utils.isDefined(offset)) {
             offset = new Vector2(0, 0);
         }
-        intersect = this.boundingBox.offset(offset).intersect(other.boundingBox);
+        intersect = this.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
         if (intersect && callback) {
             callback(other);
         }
@@ -4516,13 +4516,13 @@ bento.define('bento/entity', [
         if (!array.length) {
             return null;
         }
-        box = this.boundingBox.offset(offset);
+        box = this.getBoundingBox().offset(offset);
         for (i = 0; i < array.length; ++i) {
             obj = array[i];
-            if (obj === this) {
+            if (obj.id && obj.id === this.id) {
                 continue;
             }
-            if (obj.boundingBox && box.intersect(obj.boundingBox)) {
+            if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
                 if (callback) {
                     callback(obj);
                 }
@@ -4532,7 +4532,7 @@ bento.define('bento/entity', [
         return null;
     };
     entity.prototype.getAABB = function () {
-        var box = this.boundingBox;
+        var box = this.getBoundingBox();
         return {
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]
@@ -5539,7 +5539,7 @@ bento.define('bento/components/clickable', [
         }
         this.isPointerDown = true;
         if (this.callbacks.pointerDown) {
-            this.callbacks.pointerDown.call(this, [e]);
+            this.callbacks.pointerDown.call(this, e);
         }
         if (this.entity.getBoundingBox) {
             this.checkHovering(e, true);
@@ -5554,13 +5554,13 @@ bento.define('bento/components/clickable', [
         mousePosition = e.localPosition;
         this.isPointerDown = false;
         if (this.callbacks.pointerUp) {
-            this.callbacks.pointerUp.call(this, [e]);
+            this.callbacks.pointerUp.call(this, e);
         }
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             this.callbacks.onClickUp.call(this, [e]);
             if (this.hasTouched && this.holdId === e.id) {
                 this.holdId = null;
-                this.callbacks.onHoldEnd.call(this, [e]);
+                this.callbacks.onHoldEnd.call(this, e);
             }
         }
         this.hasTouched = false;
@@ -5571,7 +5571,7 @@ bento.define('bento/components/clickable', [
             return;
         }
         if (this.callbacks.pointerMove) {
-            this.callbacks.pointerMove.call(this, [e]);
+            this.callbacks.pointerMove.call(this, e);
         }
         // hovering?
         if (this.entity.getBoundingBox) {
@@ -5582,27 +5582,27 @@ bento.define('bento/components/clickable', [
         var mousePosition = evt.localPosition;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.ocallbacks.onHoldEnter.call(this, [evt]);
+                this.ocallbacks.onHoldEnter.call(this, evt);
             }
             if (!this.isHovering) {
-                this.callbacks.onHoverEnter.call(this, [evt]);
+                this.callbacks.onHoverEnter.call(this, evt);
             }
             this.isHovering = true;
             if (clicked) {
                 this.hasTouched = true;
                 this.holdId = evt.id;
-                this.callbacks.onClick.call(this, [evt]);
+                this.callbacks.onClick.call(this, evt);
             }
         } else {
             if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldLeave.call(this, [evt]);
+                this.callbacks.onHoldLeave.call(this, evt);
             }
             if (this.isHovering) {
-                this.callbacks.onHoverLeave.call(this, [evt]);
+                this.callbacks.onHoverLeave.call(this, evt);
             }
             this.isHovering = false;
             if (clicked) {
-                this.callbacks.onClickMiss.call(this, [evt]);
+                this.callbacks.onClickMiss.call(this, evt);
             }
         }
     };
@@ -5697,8 +5697,8 @@ bento.define('bento/components/fill', [
     'bento'
 ], function (Utils, Bento) {
     'use strict';
-    var viewport = Bento.getViewport(),
-        component = function (settings) {
+    var component = function (settings) {
+            var viewport = Bento.getViewport();
             settings = settings || {};
             this.name = 'fill';
             this.color = settings.color || [0, 0, 0, 1];
@@ -8012,8 +8012,8 @@ bento.define('bento/managers/object', [
                     hshg.addObject(object);
                 }
                 // add object to access pools
-                if (object.getFamily) {
-                    family = object.getFamily();
+                if (object.family) {
+                    family = object.family;
                     for (i = 0; i < family.length; ++i) {
                         type = family[i];
                         if (!quickAccess[type]) {
@@ -8058,8 +8058,8 @@ bento.define('bento/managers/object', [
                         hshg.removeObject(object);
                     }
                     // remove from access pools
-                    if (object.getFamily) {
-                        family = object.getFamily();
+                    if (object.family) {
+                        family = object.family;
                         for (i = 0; i < family.length; ++i) {
                             type = family[i];
                             Utils.removeObject(quickAccess[type], object);
@@ -8981,7 +8981,7 @@ bento.define('bento/math/polygon', [
                 i = 0,
                 j = points.length - 1,
                 bounds = this.getBoundingBox();
-
+                
             if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
                 return false;
             }
