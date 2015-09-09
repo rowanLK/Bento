@@ -62,7 +62,8 @@ bento.define('clickbutton', [
                     })
                 ],
                 family: ['buttons'],
-                init: function () {}
+                init: function () {
+                }
             });
         return entity;
     };

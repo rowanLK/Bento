@@ -26,17 +26,19 @@ bento.define('bento/entity', [
 ], function (Bento, Utils, Vector2, Rectangle) {
     'use strict';
     var cleanComponents = function (entity) {
-        // remove null components
-        var i;
-        for (i = entity.components.length - 1; i >= 0; --i) {
-            if (!entity.components[i]) {
-                entity.components.splice(i, 1);
+            // remove null components
+            var i;
+            for (i = entity.components.length - 1; i >= 0; --i) {
+                if (!entity.components[i]) {
+                    entity.components.splice(i, 1);
+                }
             }
-        }
-    };
+        },
+        id = 0;
 
     var entity = function (settings) {
         var i;
+        id += 1;
         /**
          * z-index of an object
          * @instance
@@ -517,6 +519,8 @@ bento.define('bento/entity', [
             max: [box.x + box.width, box.y + box.height]
         };
     };
-
+    entity.prototype.getId = function () {
+        return id;
+    };
     return entity;
 });

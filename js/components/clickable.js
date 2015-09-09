@@ -66,9 +66,9 @@ bento.define('bento/components/clickable', [
      * @name destroy
      */
     component.prototype.destroy = function () {
-        EventSystem.removeEventListener('pointerDown', this.pointerDown);
-        EventSystem.removeEventListener('pointerUp', this.pointerUp);
-        EventSystem.removeEventListener('pointerMove', this.pointerMove);
+        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
         this.initialized = false;
     };
     /**
