@@ -23,22 +23,23 @@ bento.define('bento/managers/object', [
             gameData,
             quickAccess = {},
             isRunning = false,
-            useSort = true,
+            sortMode = settings.sortMode || 0,
             isPaused = false,
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
+            sortDefault = function () {
+                // default array sorting method (unstable)
+                objects.sort(function (a, b) {
+                    return a.z - b.z;
+                });
+
+            },
             sort = function () {
-                if (!settings.defaultSort) {
-                    Utils.stableSort.inplace(objects, function (a, b) {
-                        return a.z - b.z;
-                    });
-                } else {
-                    // default behavior
-                    objects.sort(function (a, b) {
-                        return a.z - b.z;
-                    });
-                }
+                // default method for sorting: stable sort
+                Utils.stableSort.inplace(objects, function (a, b) {
+                    return a.z - b.z;
+                });
             },
             cleanObjects = function () {
                 var i;
@@ -83,7 +84,7 @@ bento.define('bento/managers/object', [
                     update();
                 }
                 cleanObjects();
-                if (useSort) {
+                if (sortMode === Utils.SortMode.ALWAYS) {
                     sort();
                 }
                 draw();
@@ -154,6 +155,9 @@ bento.define('bento/managers/object', [
                         }
                         quickAccess[type].push(object);
                     }
+                }
+                if (sortMode === Utils.SortMode.SORT_ON_ADD) {
+                    sort();
                 }
             },
             module = {
@@ -383,6 +387,11 @@ bento.define('bento/managers/object', [
         if (settings.debug && Utils.isDefined(window.FPSMeter)) {
             FPSMeter.defaults.graph = 1;
             fpsMeter = new FPSMeter();
+        }
+        
+        // swap sort method with default sorting method
+        if (settings.defaultSort) {
+            sort = defaultSort;
         }
 
         return module;

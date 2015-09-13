@@ -167,6 +167,7 @@ bento.define('bento', [
                             throw 'settings.canvasDimension must be a rectangle';
                         }
                     }
+                    settings.sortMode = settings.sortMode || 0;
                     setupCanvas(settings, function () {
                         // window resize listeners
                         manualResize = settings.manualResize;

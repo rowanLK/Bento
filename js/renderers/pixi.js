@@ -8,6 +8,7 @@ bento.define('bento/renderers/pixi', [
             pixiRenderer,
             pixiBatch,
             currentObject,
+            sortMode = settings.sortMode || 0,
             renderer = {
                 name: 'pixi',
                 init: function () {
@@ -22,6 +23,11 @@ bento.define('bento/renderers/pixi', [
                 fillRect: function (color, x, y, w, h) {},
                 fillCircle: function (color, x, y, radius) {},
                 drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {},
+                begin: function () {
+                    if (sortMode === Utils.SortMode.ALWAYS) {
+                        sort();
+                    }
+                },
                 flush: function () {
                     var viewport = Bento.getViewport();
                     pixiStage.x = viewport.x;
@@ -30,10 +36,17 @@ bento.define('bento/renderers/pixi', [
                 },
                 addChild: function (child) {
                     pixiStage.addChild(child);
-                },
+                    if (sortMode === Utils.SortMode.SORT_ON_ADD) {
+                        sort();
+                    }                },
                 removeChild: function (child) {
                     pixiStage.removeChild(child);
                 }
+            },
+            sort = function () {
+                Utils.stableSort.inplace(pixiStage.children, function (a, b) {
+                    return a.z - b.z;
+                });
             };
         if (!window.PIXI) {
             throw 'Pixi library missing';

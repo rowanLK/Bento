@@ -15,6 +15,7 @@ bento.define('bento/components/pixi', [
     Utils
 ) {
     'use strict';
+    var baseTextures = {};
     if (!window.PIXI) {
         console.log('Warning: PIXI is not available');
         return function () {};
@@ -36,10 +37,10 @@ bento.define('bento/components/pixi', [
 
         this.spriteImage;
 
-        this.frameCountX = 1,
-        this.frameCountY = 1,
-        this.frameWidth = 0,
-        this.frameHeight = 0,
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
 
         // set to default
         this.animations = {};
@@ -114,7 +115,12 @@ bento.define('bento/components/pixi', [
         // PIXI
         // initialize pixi
         if (this.spriteImage) {
-            this.pixiBaseTexture = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
+            this.pixiBaseTexture = baseTextures[this.spriteImage.image.src];
+            if (!this.pixiBaseTexture) {
+                baseTextures[this.spriteImage.image.src] = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
+                this.pixiBaseTexture = baseTextures[this.spriteImage.image.src];
+            }
+            // this.pixiBaseTexture =  new PIXI.Texture.fromImage("assets/images/bunnygirlsmall.png")
             rectangle = new PIXI.Rectangle(this.spriteImage.x, this.spriteImage.y, this.frameWidth, this.frameHeight);
             this.pixiTexture = new PIXI.Texture(this.pixiBaseTexture, rectangle);
             this.pixiSprite = new PIXI.Sprite(this.pixiTexture);
@@ -236,9 +242,6 @@ bento.define('bento/components/pixi', [
         if (reachedEnd && this.onCompleteCallback) {
             this.onCompleteCallback();
         }
-        if (this.pixiSprite) {
-            this.pixiSprite.visible = data.entity.visible;
-        }
     };
     /**
      * Draws the component. Called by the entity holding the component every tick.
@@ -283,6 +286,8 @@ bento.define('bento/components/pixi', [
         if (this.opacityComponent) {
             this.pixiSprite.alpha = this.opacityComponent.getOpacity();
         }
+        this.pixiSprite.visible = data.entity.visible;
+        this.pixiSprite.z = data.entity.z;
     };
 
     Pixi.prototype.destroy = function (data) {
@@ -302,7 +307,7 @@ bento.define('bento/components/pixi', [
 
         if (!this.pixiSprite) {
             console.log('Warning: pixi sprite does not exist, creating pixi container');
-            this.pixiSprite = new PIXI.Container();   
+            this.pixiSprite = new PIXI.Container();
         }
 
         if (data.renderer) {

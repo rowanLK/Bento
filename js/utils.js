@@ -454,6 +454,16 @@ bento.define('bento/utils', [], function () {
          */
         isCocoonJS: function () {
             return navigator.isCocoonJS;
+        },
+        /**
+         * Enum for sort mode, pass this to Bento.setup
+         * @readonly
+         * @enum {Number}
+         */
+        SortMode: {
+            ALWAYS: 0,
+            NEVER: 1,
+            SORT_ON_ADD: 2
         }
     };
     return utils;
