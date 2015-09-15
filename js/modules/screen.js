@@ -22,7 +22,6 @@ bento.define('bento/screen', [
             tiled: String
         }*/
         var viewport = Bento.getViewport(),
-            dimension = (settings && settings.dimension) ? settings.dimension : viewport.clone(),
             tiled,
             module = {
                 /**
@@ -32,26 +31,11 @@ bento.define('bento/screen', [
                  */
                 name: null,
                 /**
-                 * Sets dimension of the screen
-                 * @function
+                 * Dimension of the screen
                  * @instance
-                 * @param {Rectangle} rectangle - Dimension
-                 * @name setDimension
+                 * @name dimension
                  */
-                setDimension: function (rectangle) {
-                    dimension.width = rectangle.width;
-                    dimension.height = rectangle.height;
-                },
-                /**
-                 * Gets dimension of the screen
-                 * @function
-                 * @instance
-                 * @returns {Rectangle} rectangle - Dimension
-                 * @name getDimension
-                 */
-                getDimension: function () {
-                    return dimension;
-                },
+                dimension: (settings && settings.dimension) ? settings.dimension : viewport.clone(),
                 extend: function (object) {
                     return Utils.extend(this, object);
                 },
@@ -67,7 +51,7 @@ bento.define('bento/screen', [
                         name: name,
                         spawn: true // TEMP
                     });
-                    this.setDimension(tiled.dimension);
+                    this.dimension = tiled.dimension;
                 },
                 /**
                  * Callback when the screen is shown (called by screen manager)

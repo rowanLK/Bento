@@ -10,7 +10,7 @@
  */
 bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
     'use strict';
-    var rectangle = function (x, y, width, height) {
+    var Rectangle = function (x, y, width, height) {
         /**
          * X position
          * @instance
@@ -43,7 +43,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name isRectangle
      */
-    rectangle.prototype.isRectangle = function () {
+    Rectangle.prototype.isRectangle = function () {
         return true;
     };
     /**
@@ -53,7 +53,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name getX2
      */
-    rectangle.prototype.getX2 = function () {
+    Rectangle.prototype.getX2 = function () {
         return this.x + this.width;
     };
     /**
@@ -63,7 +63,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name getY2
      */
-    rectangle.prototype.getY2 = function () {
+    Rectangle.prototype.getY2 = function () {
         return this.y + this.height;
     };
     /**
@@ -74,12 +74,12 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name union
      */
-    rectangle.prototype.union = function (rectangle) {
+    Rectangle.prototype.union = function (rectangle) {
         var x1 = Math.min(this.x, rectangle.x),
             y1 = Math.min(this.y, rectangle.y),
             x2 = Math.max(this.getX2(), rectangle.getX2()),
             y2 = Math.max(this.getY2(), rectangle.getY2());
-        return new rectangle(x1, y1, x2 - x1, y2 - y1);
+        return new Rectangle(x1, y1, x2 - x1, y2 - y1);
     };
     /**
      * Returns true if 2 rectangles intersect
@@ -89,7 +89,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name intersect
      */
-    rectangle.prototype.intersect = function (other) {
+    Rectangle.prototype.intersect = function (other) {
         if (other.isPolygon) {
             return other.intersect(this);
         } else {
@@ -107,7 +107,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name intersection
      */
-    rectangle.prototype.intersection = function (rectangle) {
+    Rectangle.prototype.intersection = function (rectangle) {
         var inter = rectangle(0, 0, 0, 0);
         if (this.intersect(rectangle)) {
             inter.x = Math.max(this.x, rectangle.x);
@@ -125,7 +125,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name offset
      */
-    rectangle.prototype.offset = function (pos) {
+    Rectangle.prototype.offset = function (pos) {
         return new rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
     };
     /**
@@ -135,8 +135,8 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name clone
      */
-    rectangle.prototype.clone = function () {
-        return new rectangle(this.x, this.y, this.width, this.height);
+    Rectangle.prototype.clone = function () {
+        return new Rectangle(this.x, this.y, this.width, this.height);
     };
     /**
      * Checks if Vector2 lies within the rectangle
@@ -145,7 +145,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name hasPosition
      */
-    rectangle.prototype.hasPosition = function (vector) {
+    Rectangle.prototype.hasPosition = function (vector) {
         return !(
             vector.x < this.x ||
             vector.y < this.y ||
@@ -160,7 +160,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @instance
      * @name grow
      */
-    rectangle.prototype.grow = function (size) {
+    Rectangle.prototype.grow = function (size) {
         this.x -= size / 2;
         this.y -= size / 2;
         this.width += size;
@@ -168,5 +168,5 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
         return this;
     };
 
-    return rectangle;
+    return Rectangle;
 });

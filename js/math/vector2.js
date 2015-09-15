@@ -9,112 +9,112 @@
  */
 bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     'use strict';
-    var vector2 = function (x, y) {
+    var Vector2 = function (x, y) {
         this.x = x || 0;
         this.y = y || 0;
     }
 
-    vector2.prototype.isVector2 = function () {
+    Vector2.prototype.isVector2 = function () {
         return true;
     };
-    vector2.prototype.add = function (vector) {
+    Vector2.prototype.add = function (vector) {
         var v = this.clone();
         v.addTo(vector);
         return v;
     };
-    vector2.prototype.addTo = function (vector) {
+    Vector2.prototype.addTo = function (vector) {
         this.x += vector.x;
         this.y += vector.y;
         return this;
     };
-    vector2.prototype.substract = function (vector) {
+    Vector2.prototype.substract = function (vector) {
         var v = this.clone();
         v.substractFrom(vector);
         return v;
     };
-    vector2.prototype.substractFrom = function (vector) {
+    Vector2.prototype.substractFrom = function (vector) {
         this.x -= vector.x;
         this.y -= vector.y;
         return this;
     };
-    vector2.prototype.angle = function () {
+    Vector2.prototype.angle = function () {
         return Math.atan2(this.y, this.x);
     };
-    vector2.prototype.angleBetween = function (vector) {
+    Vector2.prototype.angleBetween = function (vector) {
         return Math.atan2(
             vector.y - this.y,
             vector.x - this.x
         );
     };
-    vector2.prototype.dotProduct = function (vector) {
+    Vector2.prototype.dotProduct = function (vector) {
         return this.x * vector.x + this.y * vector.y;
     };
-    vector2.prototype.multiply = function (vector) {
+    Vector2.prototype.multiply = function (vector) {
         var v = this.clone();
         v.multiplyWith(vector);
         return v;
     };
-    vector2.prototype.multiplyWith = function (vector) {
+    Vector2.prototype.multiplyWith = function (vector) {
         this.x *= vector.x;
         this.y *= vector.y;
         return this;
     };
-    vector2.prototype.divide = function (vector) {
+    Vector2.prototype.divide = function (vector) {
         var v = this.clone();
         v.divideBy(vector);
         return v;
     };
-    vector2.prototype.divideBy = function (vector) {
+    Vector2.prototype.divideBy = function (vector) {
         this.x /= vector.x;
         this.y /= vector.y;
         return this;
     };
-    vector2.prototype.scalarMultiply = function (value) {
+    Vector2.prototype.scalarMultiply = function (value) {
         var v = this.clone();
         v.scalarMultiplyWith(value);
         return v;
     };
-    vector2.prototype.scalarMultiplyWith = function (value) {
+    Vector2.prototype.scalarMultiplyWith = function (value) {
         this.x *= value;
         this.y *= value;
         return this;
     };
-    vector2.prototype.scale = function (value) {
+    Vector2.prototype.scale = function (value) {
         this.x *= value;
         this.y *= value;
         return this;
     };
-    vector2.prototype.length = function () {
+    Vector2.prototype.length = function () {
         return Math.sqrt(this.dotProduct(this));
     };
-    vector2.prototype.normalize = function () {
+    Vector2.prototype.normalize = function () {
         var length = this.length();
         this.x /= length;
         this.y /= length;
         return this;
     };
-    vector2.prototype.distance = function (vector) {
+    Vector2.prototype.distance = function (vector) {
         return vector.substract(this).length();
     };
-    vector2.prototype.rotateRadian = function (angle) {
+    Vector2.prototype.rotateRadian = function (angle) {
         var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
             y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
         this.x = x;
         this.y = y;
         return this;
     };
-    vector2.prototype.rotateDegree = function (angle) {
+    Vector2.prototype.rotateDegree = function (angle) {
         return this.rotateRadian(angle * Math.PI / 180);
     };
-    vector2.prototype.clone = function () {
-        return new vector2 (this.x, this.y);
+    Vector2.prototype.clone = function () {
+        return new Vector2 (this.x, this.y);
     };
-    vector2.prototype.toMatrix = function () {
+    Vector2.prototype.toMatrix = function () {
         var matrix = Matrix(1, 3);
         matrix.set(0, 0, this.x);
         matrix.set(0, 1, this.y);
         matrix.set(0, 2, 1);
         return matrix;
     };
-    return vector2;
+    return Vector2;
 });

@@ -396,6 +396,17 @@ bento.define('bento/utils', [], function () {
             return degree * Math.PI / 180;
         },
         /**
+         * Turns radians into degrees
+         * @function
+         * @instance
+         * @name toRadian
+         * @param {Number} radians - value in radians
+         * @return {Number} degree
+         */
+        toDegree: function (radian) {
+            return radian / Math.PI * 180;
+        },
+        /**
          * Sign of  anumber
          * @function
          * @instance

@@ -187,11 +187,11 @@ bento.define('bento/tiled', [
                         family: [type],
                         useHshg: true,
                         staticHshg: true
-                    }).extend({
-                        update: function () {},
-                        draw: function () {}
                     });
-                    obj.setBoundingBox(shape);
+                    // remove update and draw functions to save processing power
+                    obj.update = null;
+                    obj.draw = null
+                    obj.boundingBox = shape;
                     Bento.objects.add(obj);
                 }
                 shape.type = type;

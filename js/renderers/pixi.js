@@ -30,8 +30,8 @@ bento.define('bento/renderers/pixi', [
                 },
                 flush: function () {
                     var viewport = Bento.getViewport();
-                    pixiStage.x = viewport.x;
-                    pixiStage.y = viewport.y;
+                    pixiStage.x = -viewport.x;
+                    pixiStage.y = -viewport.y;
                     pixiRenderer.render(pixiStage);
                 },
                 addChild: function (child) {

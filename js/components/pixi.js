@@ -15,7 +15,6 @@ bento.define('bento/components/pixi', [
     Utils
 ) {
     'use strict';
-    var baseTextures = {};
     if (!window.PIXI) {
         console.log('Warning: PIXI is not available');
         return function () {};
@@ -115,12 +114,12 @@ bento.define('bento/components/pixi', [
         // PIXI
         // initialize pixi
         if (this.spriteImage) {
-            this.pixiBaseTexture = baseTextures[this.spriteImage.image.src];
-            if (!this.pixiBaseTexture) {
-                baseTextures[this.spriteImage.image.src] = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
-                this.pixiBaseTexture = baseTextures[this.spriteImage.image.src];
+            // search texture
+            if (!this.spriteImage.image.texture) {
+                this.spriteImage.image.texture = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
             }
-            // this.pixiBaseTexture =  new PIXI.Texture.fromImage("assets/images/bunnygirlsmall.png")
+
+            this.pixiBaseTexture = this.spriteImage.image.texture
             rectangle = new PIXI.Rectangle(this.spriteImage.x, this.spriteImage.y, this.frameWidth, this.frameHeight);
             this.pixiTexture = new PIXI.Texture(this.pixiBaseTexture, rectangle);
             this.pixiSprite = new PIXI.Sprite(this.pixiTexture);
