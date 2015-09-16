@@ -32,7 +32,7 @@ bento.define('bento/components/translation', [
         }
         // scroll (only applies to parent objects)
         if (!parent && !entity.float) {
-            data.renderer.translate(Math.round(-scroll.x), Math.round(-scroll.y));
+            data.renderer.translate(-scroll.x, -scroll.y);
         }
     };
     Translation.prototype.postDraw = function (data) {
