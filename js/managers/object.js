@@ -99,10 +99,6 @@ bento.define('bento/managers/object', [
             update = function () {
                 var object,
                     i;
-                if (!isPaused) {
-                    hshg.update();
-                    hshg.queryForCollisionPairs();
-                }
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
                     if (!object) {
@@ -111,6 +107,10 @@ bento.define('bento/managers/object', [
                     if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
                         object.update(gameData);
                     }
+                }
+                if (!isPaused) {
+                    hshg.update();
+                    hshg.queryForCollisionPairs();
                 }
             },
             draw = function () {

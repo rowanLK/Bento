@@ -99,6 +99,7 @@ bento.define('bento/entity', [
         this.rotation = 0;
         this.visible = true;
         this.parent = null;
+        this.settings = settings;
 
         // read settings
         if (settings) {
@@ -159,13 +160,12 @@ bento.define('bento/entity', [
         var i,
             l,
             component;
-        if (data) {
-            data.entity = this;
-        }
+        data = data || {};
         // update components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
             if (component && component.start) {
+                data.entity = this;
                 component.start(data);
             }
         }
@@ -181,13 +181,12 @@ bento.define('bento/entity', [
         var i,
             l,
             component;
-        if (data) {
-            data.entity = this;
-        }
+        data = data || {};
         // update components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
             if (component && component.destroy) {
+                data.entity = this;
                 component.destroy(data);
             }
         }
@@ -204,13 +203,12 @@ bento.define('bento/entity', [
             l,
             component;
 
-        if (data) {
-            data.entity = this;
-        }
+        data = data || {};
         // update components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
             if (component && component.update) {
+                data.entity = this;
                 component.update(data);
             }
         }
@@ -233,13 +231,12 @@ bento.define('bento/entity', [
         if (!this.visible) {
             return;
         }
-        if (data) {
-            data.entity = this;
-        }
+        data = data || {};
         // call components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
             if (component && component.draw) {
+                data.entity = this;
                 component.draw(data);
             }
         }
@@ -247,6 +244,7 @@ bento.define('bento/entity', [
         for (i = this.components.length - 1; i >= 0; i--) {
             component = this.components[i];
             if (component && component.postDraw) {
+                data.entity = this;
                 component.postDraw(data);
             }
         }
@@ -336,9 +334,42 @@ bento.define('bento/entity', [
             component = this.components[i];
             if (component) {
                 if (component.onParentAttached) {
+                    data.entity = this;
                     component.onParentAttached(data);
                 }
             }
+        }
+    };
+    /**
+     * Calls onParentCollided on every child, additionally calls onCollide on self afterwards
+     * @function
+     * @param {Object} other - The other object/entity that collided
+     * @instance
+     * @name start
+     */
+    entity.prototype.collided = function (data) {
+        var i,
+            l,
+            component;
+
+        if (data) {
+            data.entity = this;
+            data.parent = this.parent;
+        } else {
+            throw "Must pass a data object";
+        }
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component) {
+                if (component.onParentCollided) {
+                    data.entity = this;
+                    component.onParentCollided(data);
+                }
+            }
+        }
+        if (this.onCollide) {
+            this.onCollide(data.other);
         }
     };
     /**
@@ -409,17 +440,28 @@ bento.define('bento/entity', [
         return this;
     };
     /**
+     * Callback when component is found
+     * this: refers to the component
+     *
+     * @callback FoundCallback
+     * @param {Component} component - The component
+     */
+     /**
      * Returns the first child found with a certain name
      * @function
      * @instance
      * @param {String} name - name of the component
+     * @param {FoundCallback} callback - called when component is found
      * @name getComponent
      */
-    entity.prototype.getComponent = function (name) {
+    entity.prototype.getComponent = function (name, callback) {
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
             if (component && component.name === name) {
+                if (callback) {
+                    callback.apply(component, [component]);
+                }
                 return component;
             }
         }

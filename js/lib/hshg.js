@@ -236,9 +236,6 @@ bento.define('hshg', [], function () {
             // forall objects that are stored in this grid
             for (j = 0; j < grid.allObjects.length; j++) {
                 objA = grid.allObjects[j];
-                if (objA.staticHshg) {
-                    continue;
-                }
                 objAAABB = objA.getAABB();
 
                 // for all grids with cellsize larger than grid
@@ -271,11 +268,15 @@ bento.define('hshg', [], function () {
 
         //
         for (i = 0; i < possibleCollisions.length; ++i) {
-            if (possibleCollisions[i][0].onCollide) {
-                possibleCollisions[i][0].onCollide(possibleCollisions[i][1]);
+            if (possibleCollisions[i][0].collided) {
+                possibleCollisions[i][0].collided({
+                    other: possibleCollisions[i][1]
+                });
             }
-            if (possibleCollisions[i][1].onCollide) {
-                possibleCollisions[i][1].onCollide(possibleCollisions[i][0]);
+            if (possibleCollisions[i][1].collided) {
+                possibleCollisions[i][1].collided({
+                    other: possibleCollisions[i][0]
+                });
             }
         }
 

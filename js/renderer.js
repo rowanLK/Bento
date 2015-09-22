@@ -26,8 +26,8 @@ bento.define('bento/renderer', [
             setContext: function () {},
             restoreContext: function () {}
         };
-        require(['bento/renderers/' + type], function (renderer) {
-            Utils.extend(module, renderer(canvas, settings));
+        bento.require(['bento/renderers/' + type], function (renderer) {
+            Utils.extend(module, renderer(canvas, settings), true);
             callback(module);
         });
     };

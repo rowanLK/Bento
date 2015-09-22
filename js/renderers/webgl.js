@@ -86,10 +86,13 @@ bento.define('bento/renderers/webgl', [
                     newCanvas.height = height;
 
                     newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    newGlRenderer = window.GlSprites.SpriteRenderer(newContext);
+                    newGlRenderer = new window.GlSprites.SpriteRenderer(newContext);
                     newGlRenderer.ortho(canvas.width, canvas.height);
 
-                    return newGlRenderer;
+                    return {
+                        canvas: newCanvas,
+                        context: newGlRenderer
+                    };
                 },
                 setContext: function (ctx) {
                     glRenderer = ctx;
@@ -115,7 +118,7 @@ bento.define('bento/renderers/webgl', [
             canvas.height *= pixelSize;
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
-            glRenderer = window.GlSprites.SpriteRenderer(context);
+            glRenderer = new window.GlSprites.SpriteRenderer(context);
             glRenderer.ortho(canvas.width / pixelSize, canvas.height / pixelSize);
             original = glRenderer;
             return renderer;

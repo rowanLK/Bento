@@ -125,7 +125,7 @@ bento.define('bento/tiled', [
                 Utils.extend(params, tilesetProperties);
                 Utils.extend(params, obj.properties);
 
-                require([name], function (Instance) {
+                bento.require([name], function (Instance) {
                     var instance = Instance.apply(this, [params]),
                         origin = instance.origin,
                         dimension = instance.dimension,
@@ -195,7 +195,7 @@ bento.define('bento/tiled', [
                     Bento.objects.add(obj);
                 }
                 shape.type = type;
-                shapes.push(shape);
+                shapes.push(obj);
             };
 
         // setup canvas

@@ -28,6 +28,7 @@ bento.define('bento/components/opacity', [
         data.renderer.setOpacity(oldOpacity);
     };
     Opacity.prototype.setOpacity = function (value) {
+        this.set = true;
         this.opacity = value;
     };
     Opacity.prototype.getOpacity = function () {

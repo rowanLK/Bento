@@ -439,6 +439,20 @@ bento.define('bento/utils', [], function () {
             }
         },
         /**
+         * Repeats a function for a number of times
+         * @function
+         * @instance
+         * @param {Number} number - Number of times to repeat
+         * @param {Function} fn - function to perform
+         * @name approach
+         */
+        repeat: function (number, fn) {
+            var i;
+            for (i = 0; i < number; ++i) {
+                fn();
+            }
+        },
+        /**
          * Checks useragent if device is an apple device
          * @function
          * @instance

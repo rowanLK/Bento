@@ -80,7 +80,10 @@ bento.define('bento/renderers/canvas2d', [
 
                     newContext = canvas.getContext('2d');
 
-                    return newContext;
+                    return {
+                        canvas: newCanvas,
+                        context: newContext
+                    };
                 },
                 setContext: function (ctx) {
                     context = ctx;

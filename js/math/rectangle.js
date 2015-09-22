@@ -108,7 +108,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @name intersection
      */
     Rectangle.prototype.intersection = function (rectangle) {
-        var inter = rectangle(0, 0, 0, 0);
+        var inter = new Rectangle(0, 0, 0, 0);
         if (this.intersect(rectangle)) {
             inter.x = Math.max(this.x, rectangle.x);
             inter.y = Math.max(this.y, rectangle.y);
@@ -126,7 +126,7 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
      * @name offset
      */
     Rectangle.prototype.offset = function (pos) {
-        return new rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
+        return new Rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
     };
     /**
      * Clones rectangle
