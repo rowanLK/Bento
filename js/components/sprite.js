@@ -31,8 +31,8 @@ bento.define('bento/components/sprite', [
                 this.animation = new Pixi(settings);
             } else {
                 this.translation = new Translation(settings);
-                this.scale = new Scale(settings);
                 this.rotation = new Rotation(settings);
+                this.scale = new Scale(settings);
                 this.opacity = new Opacity(settings);
                 this.animation = new Animation(settings);
             }
@@ -44,11 +44,11 @@ bento.define('bento/components/sprite', [
         if (this.translation) {
             this.entity.attach(this.translation);
         }
-        if (this.scale) {
-            this.entity.attach(this.scale);
-        }
         if (this.rotation) {
             this.entity.attach(this.rotation);
+        }
+        if (this.scale) {
+            this.entity.attach(this.scale);
         }
         this.entity.attach(this.opacity);
         this.entity.attach(this.animation);
