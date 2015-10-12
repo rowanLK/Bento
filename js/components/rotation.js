@@ -26,26 +26,26 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-    
+
     // old angle functions
     Rotation.prototype.addAngleDegree = function (value) {
         this.entity.rotation += value * Math.PI / 180;
-    },
+    };
     Rotation.prototype.addAngleRadian = function (value) {
         this.entity.rotation += value;
-    },
+    };
     Rotation.prototype.setAngleDegree = function (value) {
         this.entity.rotation = value * Math.PI / 180;
-    },
+    };
     Rotation.prototype.setAngleRadian = function (value) {
         this.entity.rotation = value;
-    },
+    };
     Rotation.prototype.getAngleDegree = function () {
         return this.entity.rotation * 180 / Math.PI;
-    },
+    };
     Rotation.prototype.getAngleRadian = function () {
         return this.entity.rotation;
-    }
+    };
 
     return Rotation;
 });

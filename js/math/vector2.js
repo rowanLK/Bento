@@ -2,7 +2,7 @@
  * 2 dimensional vector
  * (Note: to perform matrix multiplications, one must use toMatrix)
  * <br>Exports: Function
- * @vector2 bento/math/vector2
+ * @module bento/math/vector2
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
@@ -12,7 +12,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     var Vector2 = function (x, y) {
         this.x = x || 0;
         this.y = y || 0;
-    }
+    };
 
     Vector2.prototype.isVector2 = function () {
         return true;

@@ -35,7 +35,7 @@ bento.define('bento/components/pixi', [
             frameCountY: 1
         };
 
-        this.spriteImage;
+        this.spriteImage = null;
 
         this.frameCountX = 1;
         this.frameCountY = 1;
@@ -104,7 +104,7 @@ bento.define('bento/components/pixi', [
         }
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default')
+        this.setAnimation('default');
 
         if (this.entity) {
             // set dimension of entity object
@@ -120,7 +120,7 @@ bento.define('bento/components/pixi', [
                 this.spriteImage.image.texture = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
             }
 
-            this.pixiBaseTexture = this.spriteImage.image.texture
+            this.pixiBaseTexture = this.spriteImage.image.texture;
             rectangle = new PIXI.Rectangle(this.spriteImage.x, this.spriteImage.y, this.frameWidth, this.frameHeight);
             this.pixiTexture = new PIXI.Texture(this.pixiBaseTexture, rectangle);
             this.pixiSprite = new PIXI.Sprite(this.pixiTexture);

@@ -1,7 +1,7 @@
 /**
  * Rectangle
  * <br>Exports: Function
- * @rectangle bento/math/rectangle
+ * @module bento/math/rectangle
  * @param {Number} x - Top left x position
  * @param {Number} y - Top left y position
  * @param {Number} width - Width of the rectangle
@@ -185,7 +185,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
         } else if (corner === 3) {
             return new Vector2(this.x + this.width, this.y + this.height);
         }
-        // 
+        //
         return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
     };
 

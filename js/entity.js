@@ -1,7 +1,7 @@
 /**
  * A base object to hold components
  * <br>Exports: Function
- * @entity {Entity} bento/entity
+ * @module {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Function} settings.onCollide - Called when object collides in HSHG
@@ -629,7 +629,7 @@ bento.define('bento/entity', [
                 translateMatrix.set(2, 1, position.y);
                 positionVector.multiplyWith(translateMatrix);
             }
-            
+
         }
 
         return new Vector2(

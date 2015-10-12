@@ -190,7 +190,7 @@ bento.define('bento/tiled', [
                     });
                     // remove update and draw functions to save processing power
                     obj.update = null;
-                    obj.draw = null
+                    obj.draw = null;
                     obj.boundingBox = shape;
                     Bento.objects.add(obj);
                 }

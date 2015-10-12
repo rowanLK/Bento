@@ -21,7 +21,7 @@ bento.define('bento/components/animation', [
             frameCountY: 1
         };
 
-        this.spriteImage;
+        this.spriteImage = null;
 
         this.frameCountX = 1,
         this.frameCountY = 1,
@@ -88,7 +88,7 @@ bento.define('bento/components/animation', [
         }
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default')
+        this.setAnimation('default');
 
         if (this.entity) {
             // set dimension of entity object

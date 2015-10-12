@@ -144,7 +144,7 @@ bento.define('bento/managers/savestate', [
          * @instance
          * @name getStorage
         */
-        getStorage: function () {} {
+        getStorage: function () {
             return storage;
         }
     };
