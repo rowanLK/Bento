@@ -4021,7 +4021,7 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
 /**
  * A base object to hold components
  * <br>Exports: Function
- * @entity {Entity} bento/entity
+ * @module {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Function} settings.onCollide - Called when object collides in HSHG
@@ -4649,7 +4649,7 @@ bento.define('bento/entity', [
                 translateMatrix.set(2, 1, position.y);
                 positionVector.multiplyWith(translateMatrix);
             }
-            
+
         }
 
         return new Vector2(
@@ -5350,7 +5350,7 @@ bento.define('bento/components/animation', [
             frameCountY: 1
         };
 
-        this.spriteImage;
+        this.spriteImage = null;
 
         this.frameCountX = 1,
         this.frameCountY = 1,
@@ -5417,7 +5417,7 @@ bento.define('bento/components/animation', [
         }
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default')
+        this.setAnimation('default');
 
         if (this.entity) {
             // set dimension of entity object
@@ -5943,7 +5943,7 @@ bento.define('bento/components/pixi', [
             frameCountY: 1
         };
 
-        this.spriteImage;
+        this.spriteImage = null;
 
         this.frameCountX = 1;
         this.frameCountY = 1;
@@ -6012,7 +6012,7 @@ bento.define('bento/components/pixi', [
         }
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default')
+        this.setAnimation('default');
 
         if (this.entity) {
             // set dimension of entity object
@@ -6028,7 +6028,7 @@ bento.define('bento/components/pixi', [
                 this.spriteImage.image.texture = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
             }
 
-            this.pixiBaseTexture = this.spriteImage.image.texture
+            this.pixiBaseTexture = this.spriteImage.image.texture;
             rectangle = new PIXI.Rectangle(this.spriteImage.x, this.spriteImage.y, this.frameWidth, this.frameHeight);
             this.pixiTexture = new PIXI.Texture(this.pixiBaseTexture, rectangle);
             this.pixiSprite = new PIXI.Sprite(this.pixiTexture);
@@ -6267,26 +6267,26 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-    
+
     // old angle functions
     Rotation.prototype.addAngleDegree = function (value) {
         this.entity.rotation += value * Math.PI / 180;
-    },
+    };
     Rotation.prototype.addAngleRadian = function (value) {
         this.entity.rotation += value;
-    },
+    };
     Rotation.prototype.setAngleDegree = function (value) {
         this.entity.rotation = value * Math.PI / 180;
-    },
+    };
     Rotation.prototype.setAngleRadian = function (value) {
         this.entity.rotation = value;
-    },
+    };
     Rotation.prototype.getAngleDegree = function () {
         return this.entity.rotation * 180 / Math.PI;
-    },
+    };
     Rotation.prototype.getAngleRadian = function () {
         return this.entity.rotation;
-    }
+    };
 
     return Rotation;
 });
@@ -8611,7 +8611,7 @@ bento.define('bento/managers/savestate', [
          * @instance
          * @name getStorage
         */
-        getStorage: function () {} {
+        getStorage: function () {
             return storage;
         }
     };
@@ -9315,7 +9315,7 @@ bento.define('bento/math/polygon', [
 /**
  * Rectangle
  * <br>Exports: Function
- * @rectangle bento/math/rectangle
+ * @module bento/math/rectangle
  * @param {Number} x - Top left x position
  * @param {Number} y - Top left y position
  * @param {Number} width - Width of the rectangle
@@ -9499,7 +9499,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
         } else if (corner === 3) {
             return new Vector2(this.x + this.width, this.y + this.height);
         }
-        // 
+        //
         return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
     };
 
@@ -9509,7 +9509,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
  * 2 dimensional vector
  * (Note: to perform matrix multiplications, one must use toMatrix)
  * <br>Exports: Function
- * @vector2 bento/math/vector2
+ * @module bento/math/vector2
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
@@ -9519,7 +9519,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     var Vector2 = function (x, y) {
         this.x = x || 0;
         this.y = y || 0;
-    }
+    };
 
     Vector2.prototype.isVector2 = function () {
         return true;
@@ -9989,7 +9989,7 @@ bento.define('bento/tiled', [
                     });
                     // remove update and draw functions to save processing power
                     obj.update = null;
-                    obj.draw = null
+                    obj.draw = null;
                     obj.boundingBox = shape;
                     Bento.objects.add(obj);
                 }
