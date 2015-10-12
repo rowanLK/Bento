@@ -205,9 +205,9 @@ bento.define('bento/managers/asset', [
                     onLoadAudio = function (err, name, audio) {
                         if (err) {
                             console.log(err);
-                            return;
+                        } else {
+                            assets.audio[name] = audio;
                         }
-                        assets.audio[name] = audio;
                         assetsLoaded += 1;
                         if (Utils.isDefined(onLoaded)) {
                             onLoaded(assetsLoaded, assetCount);

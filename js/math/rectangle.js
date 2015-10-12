@@ -8,7 +8,7 @@
  * @param {Number} height - Height of the rectangle
  * @returns {Rectangle} Returns a rectangle.
  */
-bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
+bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], function (Utils, Vector2) {
     'use strict';
     var Rectangle = function (x, y, width, height) {
         /**
@@ -166,6 +166,27 @@ bento.define('bento/math/rectangle', ['bento/utils'], function (Utils) {
         this.width += size;
         this.height += size;
         return this;
+    };
+    /**
+     * Returns one of the corners are vector position
+     * @function
+     * param {Number} corner - 0: topleft, 1: topright, 2: bottomleft, 3: bottomright, 4: center
+     * @returns {Vector2} Vector position
+     * @instance
+     * @name getCorner
+     */
+    Rectangle.prototype.getCorner = function (corner) {
+        if (!corner) {
+            return new Vector2(this.x, this.y);
+        } else if (corner === 1) {
+            return new Vector2(this.x + this.width, this.y);
+        } else if (corner === 2) {
+            return new Vector2(this.x, this.y + this.height);
+        } else if (corner === 3) {
+            return new Vector2(this.x + this.width, this.y + this.height);
+        }
+        // 
+        return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
     };
 
     return Rectangle;

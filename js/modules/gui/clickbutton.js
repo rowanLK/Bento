@@ -23,54 +23,57 @@ bento.define('bento/gui/clickbutton', [
     return function (settings) {
         var viewport = Bento.getViewport(),
             active = true,
+            sprite = new Sprite({
+                image: settings.image,
+                frameWidth: settings.frameWidth || 32,
+                frameHeight: settings.frameHeight || 32,
+                animations: settings.animations || {
+                    'up': {
+                        speed: 0,
+                        frames: [0]
+                    },
+                    'down': {
+                        speed: 0,
+                        frames: [1]
+                    }
+                }
+            }),
+            clickable = new Clickable({
+                onClick: function () {
+                    sprite.animation.setAnimation('down');
+                },
+                onHoldEnter: function () {
+                    sprite.animation.setAnimation('down');
+                },
+                onHoldLeave: function () {
+                    sprite.animation.setAnimation('up');
+                },
+                pointerUp: function () {
+                    sprite.animation.setAnimation('up');
+                },
+                onHoldEnd: function () {
+                    if (active && settings.onClick) {
+                        settings.onClick.apply(entity);
+                        if (settings.sfx) {
+                            Bento.audio.stopSound(settings.sfx);
+                            Bento.audio.playSound(settings.sfx);
+                        }
+                        EventSystem.fire('clickButton', entity);
+                    }
+                }
+            }),
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
-                components: [Sprite, Clickable],
+                components: [
+                    sprite,
+                    clickable
+                ],
                 family: ['buttons'],
-                sprite: {
-                    image: settings.image,
-                    frameWidth: settings.frameWidth || 32,
-                    frameHeight: settings.frameHeight || 32,
-                    animations: settings.animations || {
-                        'up': {
-                            speed: 0,
-                            frames: [0]
-                        },
-                        'down': {
-                            speed: 0,
-                            frames: [1]
-                        }
-                    }
-                },
-                clickable: {
-                    onClick: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldEnter: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldLeave: function () {
-                        entity.sprite.setAnimation('up');
-                    },
-                    pointerUp: function () {
-                        entity.sprite.setAnimation('up');
-                    },
-                    onHoldEnd: function () {
-                        if (active && settings.onClick) {
-                            settings.onClick.apply(entity);
-                            if (settings.sfx) {
-                                Bento.audio.stopSound(settings.sfx);
-                                Bento.audio.playSound(settings.sfx);
-                            }
-                            EventSystem.fire('clickButton', entity);
-                        }
-                    }
-                },
                 init: function () {
-                    this.sprite.setAnimation('up');
+                    sprite.animation.setAnimation('up');
                 }
             }, settings),
             entity = new Entity(entitySettings).extend({

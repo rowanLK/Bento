@@ -22,8 +22,9 @@ bento.define('bento/entity', [
     'bento',
     'bento/utils',
     'bento/math/vector2',
-    'bento/math/rectangle'
-], function (Bento, Utils, Vector2, Rectangle) {
+    'bento/math/rectangle',
+    'bento/math/matrix'
+], function (Bento, Utils, Vector2, Rectangle, Matrix) {
     'use strict';
     var cleanComponents = function (entity) {
             // remove null components
@@ -36,7 +37,7 @@ bento.define('bento/entity', [
         },
         id = 0;
 
-    var entity = function (settings) {
+    var Entity = function (settings) {
         var i;
         this.id = id++;
         /**
@@ -156,7 +157,7 @@ bento.define('bento/entity', [
      * @instance
      * @name start
      */
-    entity.prototype.start = function (data) {
+    Entity.prototype.start = function (data) {
         var i,
             l,
             component;
@@ -177,7 +178,7 @@ bento.define('bento/entity', [
      * @instance
      * @name destroy
      */
-    entity.prototype.destroy = function (data) {
+    Entity.prototype.destroy = function (data) {
         var i,
             l,
             component;
@@ -198,7 +199,7 @@ bento.define('bento/entity', [
      * @instance
      * @name update
      */
-    entity.prototype.update = function (data) {
+    Entity.prototype.update = function (data) {
         var i,
             l,
             component;
@@ -224,7 +225,7 @@ bento.define('bento/entity', [
      * @instance
      * @name draw
      */
-    entity.prototype.draw = function (data) {
+    Entity.prototype.draw = function (data) {
         var i,
             l,
             component;
@@ -257,7 +258,7 @@ bento.define('bento/entity', [
      * @see module:bento/utils#extend
      * @name extend
      */
-    entity.prototype.extend = function (object) {
+    Entity.prototype.extend = function (object) {
         return Utils.extend(this, object);
     };
     /**
@@ -268,7 +269,7 @@ bento.define('bento/entity', [
      * @instance
      * @name getBoundingBox
      */
-    entity.prototype.getBoundingBox = function () {
+    Entity.prototype.getBoundingBox = function () {
         var scale, x1, x2, y1, y2, box;
         if (!this.boundingBox) {
             // TODO get rid of scale component dependency
@@ -305,7 +306,7 @@ bento.define('bento/entity', [
      * @instance
      * @name setOriginRelative
      */
-    entity.prototype.setOriginRelative = function (value) {
+    Entity.prototype.setOriginRelative = function (value) {
         this.origin.x = value.x * this.dimension.width;
         this.origin.y = value.y * this.dimension.height;
     };
@@ -315,7 +316,7 @@ bento.define('bento/entity', [
      * @instance
      * @name attached
      */
-    entity.prototype.attached = function (data) {
+    Entity.prototype.attached = function (data) {
         var i,
             l,
             component;
@@ -347,7 +348,7 @@ bento.define('bento/entity', [
      * @instance
      * @name start
      */
-    entity.prototype.collided = function (data) {
+    Entity.prototype.collided = function (data) {
         var i,
             l,
             component;
@@ -382,7 +383,7 @@ bento.define('bento/entity', [
      * @instance
      * @name attach
      */
-    entity.prototype.attach = function (child, name) {
+    Entity.prototype.attach = function (child, name) {
         var mixin = {},
             parent = this;
 
@@ -424,7 +425,7 @@ bento.define('bento/entity', [
      * @instance
      * @name remove
      */
-    entity.prototype.remove = function (child) {
+    Entity.prototype.remove = function (child) {
         var i, type, index;
         if (!child) {
             return;
@@ -446,7 +447,7 @@ bento.define('bento/entity', [
      * @callback FoundCallback
      * @param {Component} component - The component
      */
-     /**
+    /**
      * Returns the first child found with a certain name
      * @function
      * @instance
@@ -454,7 +455,7 @@ bento.define('bento/entity', [
      * @param {FoundCallback} callback - called when component is found
      * @name getComponent
      */
-    entity.prototype.getComponent = function (name, callback) {
+    Entity.prototype.getComponent = function (name, callback) {
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
@@ -474,7 +475,7 @@ bento.define('bento/entity', [
      * @param {Number} index - new index
      * @name moveComponentTo
      */
-    entity.prototype.moveComponentTo = function (component, newIndex) {
+    Entity.prototype.moveComponentTo = function (component, newIndex) {
         // note: currently dangerous to do during an update loop
         var i, type, index;
         if (!component) {
@@ -503,7 +504,7 @@ bento.define('bento/entity', [
      * @param {CollisionCallback} [callback] - Called when entities are colliding
      * @name collidesWith
      */
-    entity.prototype.collidesWith = function (other, offset, callback) {
+    Entity.prototype.collidesWith = function (other, offset, callback) {
         var intersect;
         if (!Utils.isDefined(offset)) {
             offset = new Vector2(0, 0);
@@ -524,7 +525,7 @@ bento.define('bento/entity', [
      * @param {CollisionCallback} [callback] - Called when entities are colliding
      * @name collidesWithGroup
      */
-    entity.prototype.collidesWithGroup = function (array, offset, callback) {
+    Entity.prototype.collidesWithGroup = function (array, offset, callback) {
         var i,
             obj,
             box;
@@ -554,12 +555,87 @@ bento.define('bento/entity', [
         }
         return null;
     };
-    entity.prototype.getAABB = function () {
+    Entity.prototype.getAABB = function () {
         var box = this.getBoundingBox();
         return {
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]
         };
     };
-    return entity;
+    // todo: test this properly
+    Entity.prototype.getWorldPosition = function () {
+        var positionVector,
+            translateMatrix = Matrix(3, 3),
+            scaleMatrix = Matrix(3, 3),
+            rotateMatrix = Matrix(3, 3),
+            sin,
+            cos,
+            type,
+            position,
+            parent,
+            parents = [],
+            i;
+
+        // no parents
+        if (!this.parent) {
+            if (!this.float) {
+                return this.position.add(Bento.getViewport().getCorner());
+            } else {
+                return this.position;
+            }
+        }
+        // make a copy
+        if (this.float) {
+            positionVector = this.position.add(Bento.getViewport().getCorner()).toMatrix();
+        } else {
+            positionVector = this.position.toMatrix();
+        }
+
+        // get all parents
+        parent = this;
+        while (parent.parent) {
+            parent = parent.parent;
+            parents.unshift(parent);
+        }
+
+        /**
+         * transform the position vector with each component
+         */
+        for (i = 0; i < parents.length; ++i) {
+            parent = parents[i];
+
+            // todo: order of components
+            if (parent.scale) {
+                // construct a scaling matrix and apply to position vector
+                scaleMatrix.set(0, 0, parent.scale.x);
+                scaleMatrix.set(1, 1, parent.scale.y);
+                positionVector.multiplyWith(scaleMatrix);
+            }
+            // only scale/rotatable if there is a component
+            if (parent.rotation) {
+                // construct a rotation matrix and apply to position vector
+                sin = Math.sin(parent.rotation);
+                cos = Math.cos(parent.rotation);
+                rotateMatrix.set(0, 0, cos);
+                rotateMatrix.set(1, 0, -sin);
+                rotateMatrix.set(0, 1, sin);
+                rotateMatrix.set(1, 1, cos);
+                positionVector.multiplyWith(rotateMatrix);
+            }
+            if (parent.position) {
+                // construct a translation matrix and apply to position vector
+                position = parent.position;
+                translateMatrix.set(2, 0, position.x);
+                translateMatrix.set(2, 1, position.y);
+                positionVector.multiplyWith(translateMatrix);
+            }
+            
+        }
+
+        return new Vector2(
+            positionVector.get(0, 0),
+            positionVector.get(0, 1)
+        );
+    };
+    return Entity;
 });

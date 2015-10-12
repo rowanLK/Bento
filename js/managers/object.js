@@ -222,6 +222,16 @@ bento.define('bento/managers/object', [
                             module.remove(object);
                         }
                     }
+                    // bug in hshg: objects don't get removed here, so we respawn hshg
+                    hshg = new Hshg();
+                    // re-add all global objects
+                    cleanObjects();
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (object.useHshg && object.getAABB) {
+                            hshg.addObject(object);
+                        }
+                    }
                 },
                 /**
                  * Returns the first object it can find with this name
@@ -388,7 +398,7 @@ bento.define('bento/managers/object', [
             FPSMeter.defaults.graph = 1;
             fpsMeter = new FPSMeter();
         }
-        
+
         // swap sort method with default sorting method
         if (settings.defaultSort) {
             sort = defaultSort;

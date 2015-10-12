@@ -30,6 +30,10 @@ bento.define('hshg', [], function () {
             meta = obj.HSHG;
             grid = meta.grid;
 
+            if (obj.staticHshg) {
+                continue;
+            }
+
             // recompute hash
             objAABB = obj.getAABB();
             newObjHash = grid.toHash(objAABB.min[0], objAABB.min[1]);
@@ -48,8 +52,13 @@ bento.define('hshg', [], function () {
     }
 
     function testAABBOverlap(objA, objB) {
-        var a = objA.getAABB(),
-            b = objB.getAABB();
+        var a, b;
+        if (objA.staticHshg && objB.staticHshg) {
+            return false;
+        }
+
+        a = objA.getAABB();
+        b = objB.getAABB();
 
         //if(a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.min[2] > b.max[2]
         //|| a.max[0] < b.min[0] || a.max[1] < b.min[1] || a.max[2] < b.min[2]){
@@ -198,9 +207,6 @@ bento.define('hshg', [], function () {
                 // collide all objects within the occupied cell
                 for (k = 0; k < cell.objectContainer.length; k++) {
                     objA = cell.objectContainer[k];
-                    if (objA.staticHshg) {
-                        continue;
-                    }
                     for (l = k + 1; l < cell.objectContainer.length; l++) {
                         objB = cell.objectContainer[l];
                         if (broadOverlapTest(objA, objB) === true) {
@@ -220,9 +226,6 @@ bento.define('hshg', [], function () {
                     // collide all objects in cell with adjacent cell
                     for (k = 0; k < cell.objectContainer.length; k++) {
                         objA = cell.objectContainer[k];
-                        if (objA.staticHshg) {
-                            continue;
-                        }
                         for (l = 0; l < adjacentCell.objectContainer.length; l++) {
                             objB = adjacentCell.objectContainer[l];
                             if (broadOverlapTest(objA, objB) === true) {

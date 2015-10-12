@@ -14,6 +14,7 @@ bento.define('bento/components/animation', [
     var Animation = function (settings) {
         this.entity = null;
         this.name = 'animation';
+        this.visible = true;
 
         this.animationSettings = settings || {
             frameCountX: 1,
@@ -117,7 +118,7 @@ bento.define('bento/components/animation', [
             console.log('Warning: animation ' + name + ' does not exist.');
             return;
         }
-        if (anim && this.currentAnimation !== anim) {
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
             if (!Utils.isDefined(anim.loop)) {
                 anim.loop = true;
             }
@@ -223,7 +224,7 @@ bento.define('bento/components/animation', [
             entity = data.entity,
             origin = entity.origin;
 
-        if (!this.currentAnimation) {
+        if (!this.currentAnimation || !this.visible) {
             return;
         }
         cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);

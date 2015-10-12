@@ -28,6 +28,7 @@ bento.define('bento/components/pixi', [
 
         this.entity = null;
         this.name = 'animation';
+        this.visible = true;
 
         this.animationSettings = settings || {
             frameCountX: 1,
@@ -148,7 +149,7 @@ bento.define('bento/components/pixi', [
             console.log('Warning: animation ' + name + ' does not exist.');
             return;
         }
-        if (anim && this.currentAnimation !== anim) {
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
             if (!Utils.isDefined(anim.loop)) {
                 anim.loop = true;
             }
@@ -259,7 +260,7 @@ bento.define('bento/components/pixi', [
             sx,
             sy;
 
-        if (!this.currentAnimation || !this.pixiSprite) {
+        if (!this.currentAnimation || !this.pixiSprite || !this.visible) {
             return;
         }
         cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
@@ -302,7 +303,7 @@ bento.define('bento/components/pixi', [
         }
     };
     Pixi.prototype.onParentAttached = function (data) {
-        var parent, component;
+        var parent;
 
         if (!this.pixiSprite) {
             console.log('Warning: pixi sprite does not exist, creating pixi container');
@@ -317,11 +318,13 @@ bento.define('bento/components/pixi', [
             parent = data.entity.parent;
             // get pixi component
             if (parent) {
-                component = parent.getComponent('animation');
-                if (component) {
-                    // get parents pixisprite and attach
+                parent.getComponent('animation', function (component) {
+                    if (!component.pixiSprite) {
+                        console.log('Warning: pixi sprite does not exist, creating pixi container');
+                        component.pixiSprite = new PIXI.Container();
+                    }
                     component.pixiSprite.addChild(this.pixiSprite);
-                }
+                });
             }
         }
     };
