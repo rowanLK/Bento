@@ -10,27 +10,31 @@ bento.define('bento/managers/savestate', [
     'use strict';
     var uniqueID = document.URL,
         storage,
+        // an object that acts like a localStorageObject
         storageFallBack = {
+            data: {},
             setItem: function (key, value) {
                 var k,
-                    count = 0;
-                storageFallBack[key] = value;
+                    count = 0,
+                    data = this.data;
+                data[key] = value;
                 // update length
-                for (k in storageFallBack) {
-                    if (storageFallBack.hasOwnProperty(k)) {
+                for (k in data) {
+                    if (data.hasOwnProperty(k)) {
                         ++count;
                     }
                 }
                 this.length = count;
             },
             getItem: function (key) {
-                var item = storageFallBack[key];
+                var item = storageFallBack.data[key];
                 return Utils.isDefined(item) ? item : null;
             },
             removeItem: function (key) {
-                delete storageFallBack[key];
+                delete storageFallBack.data[key];
             },
             clear: function () {
+                this.data = {};
                 this.length = 0;
             },
             length: 0
@@ -123,6 +127,25 @@ bento.define('bento/managers/savestate', [
          */
         setId: function (str) {
             uniqueID = str;
+        },
+        /**
+         * Swaps the storage object
+         * @function
+         * @instance
+         * @param {Object} storageObject - an object that resembels localStorage
+         * @name setStorage
+        */
+        setStorage: function (storageObj) {
+            storage = storageObj;
+        },
+        /**
+         * Returns the current storage object
+         * @function
+         * @instance
+         * @name getStorage
+        */
+        getStorage: function () {} {
+            return storage;
         }
     };
 });
