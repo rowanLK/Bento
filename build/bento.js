@@ -9632,17 +9632,17 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
         this.y *= value;
         return this;
     };
-    Vector2.prototype.length = function () {
+    Vector2.prototype.magnitude = function () {
         return Math.sqrt(this.dotProduct(this));
     };
     Vector2.prototype.normalize = function () {
-        var length = this.length();
-        this.x /= length;
-        this.y /= length;
+        var magnitude = this.magnitude();
+        this.x /= magnitude;
+        this.y /= magnitude;
         return this;
     };
     Vector2.prototype.distance = function (vector) {
-        return vector.substract(this).length();
+        return vector.substract(this).magnitude();
     };
     Vector2.prototype.rotateRadian = function (angle) {
         var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
