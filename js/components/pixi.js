@@ -329,5 +329,8 @@ bento.define('bento/components/pixi', [
         }
     };
 
+    Pixi.prototype.toString = function () {
+        return '[object Pixi]';
+    };
     return Pixi;
 });

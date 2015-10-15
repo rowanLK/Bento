@@ -41,5 +41,9 @@ bento.define('bento/components/translation', [
     Translation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
+    Translation.prototype.toString = function () {
+        return '[object Translation]';
+    };
+
     return Translation;
 });

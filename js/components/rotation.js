@@ -11,10 +11,10 @@ bento.define('bento/components/rotation', [
 ], function (Utils) {
     'use strict';
     var Rotation = function (settings) {
-            settings = settings || {};
-            this.name = 'rotation';
-            this.entity = null;
-        };
+        settings = settings || {};
+        this.name = 'rotation';
+        this.entity = null;
+    };
 
     Rotation.prototype.draw = function (data) {
         data.renderer.save();
@@ -45,6 +45,9 @@ bento.define('bento/components/rotation', [
     };
     Rotation.prototype.getAngleRadian = function () {
         return this.entity.rotation;
+    };
+    Rotation.prototype.toString = function () {
+        return '[object Rotation]';
     };
 
     return Rotation;

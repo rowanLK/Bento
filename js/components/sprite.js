@@ -56,5 +56,9 @@ bento.define('bento/components/sprite', [
         // remove self?
         this.entity.remove(this);
     };
+    component.prototype.toString = function () {
+        return '[object Sprite]';
+    };
+
     return component;
 });

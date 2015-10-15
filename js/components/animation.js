@@ -245,5 +245,9 @@ bento.define('bento/components/animation', [
         );
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
+    Animation.prototype.toString = function () {
+        return '[object Animation]';
+    };
+
     return Animation;
 });

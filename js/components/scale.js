@@ -21,6 +21,9 @@ bento.define('bento/components/scale', [
     Scale.prototype.attached = function (data) {
         this.entity = data.entity;
     };
+    Scale.prototype.toString = function () {
+        return '[object Scale]';
+    };
 
     return Scale;
 });

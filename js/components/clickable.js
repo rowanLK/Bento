@@ -159,7 +159,7 @@ bento.define('bento/components/clickable', [
         var mousePosition = evt.localPosition;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.ocallbacks.onHoldEnter.call(this, evt);
+                this.callbacks.onHoldEnter.call(this, evt);
             }
             if (!this.isHovering) {
                 this.callbacks.onHoverEnter.call(this, evt);
@@ -185,9 +185,9 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.transformEvent = function (evt) {
         var positionVector,
-            translateMatrix = Matrix(3, 3),
-            scaleMatrix = Matrix(3, 3),
-            rotateMatrix = Matrix(3, 3),
+            translateMatrix = new Matrix(3, 3),
+            scaleMatrix = new Matrix(3, 3),
+            rotateMatrix = new Matrix(3, 3),
             sin,
             cos,
             type,
@@ -259,5 +259,9 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.attached = function (data) {
         this.entity = data.entity;
     };
+    Clickable.prototype.toString = function () {
+        return '[object Clickable]';
+    };
+
     return Clickable;
 });

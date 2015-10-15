@@ -565,9 +565,9 @@ bento.define('bento/entity', [
     // todo: test this properly
     Entity.prototype.getWorldPosition = function () {
         var positionVector,
-            translateMatrix = Matrix(3, 3),
-            scaleMatrix = Matrix(3, 3),
-            rotateMatrix = Matrix(3, 3),
+            translateMatrix = new Matrix(3, 3),
+            scaleMatrix = new Matrix(3, 3),
+            rotateMatrix = new Matrix(3, 3),
             sin,
             cos,
             type,
@@ -637,5 +637,9 @@ bento.define('bento/entity', [
             positionVector.get(0, 1)
         );
     };
+    Entity.prototype.toString = function () {
+        return '[object Entity]';
+    };
+
     return Entity;
 });

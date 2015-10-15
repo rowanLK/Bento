@@ -4585,9 +4585,9 @@ bento.define('bento/entity', [
     // todo: test this properly
     Entity.prototype.getWorldPosition = function () {
         var positionVector,
-            translateMatrix = Matrix(3, 3),
-            scaleMatrix = Matrix(3, 3),
-            rotateMatrix = Matrix(3, 3),
+            translateMatrix = new Matrix(3, 3),
+            scaleMatrix = new Matrix(3, 3),
+            rotateMatrix = new Matrix(3, 3),
             sin,
             cos,
             type,
@@ -4657,6 +4657,10 @@ bento.define('bento/entity', [
             positionVector.get(0, 1)
         );
     };
+    Entity.prototype.toString = function () {
+        return '[object Entity]';
+    };
+
     return Entity;
 });
 /**
@@ -5574,6 +5578,10 @@ bento.define('bento/components/animation', [
         );
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
+    Animation.prototype.toString = function () {
+        return '[object Animation]';
+    };
+
     return Animation;
 });
 /**
@@ -5737,7 +5745,7 @@ bento.define('bento/components/clickable', [
         var mousePosition = evt.localPosition;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
             if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.ocallbacks.onHoldEnter.call(this, evt);
+                this.callbacks.onHoldEnter.call(this, evt);
             }
             if (!this.isHovering) {
                 this.callbacks.onHoverEnter.call(this, evt);
@@ -5763,9 +5771,9 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.transformEvent = function (evt) {
         var positionVector,
-            translateMatrix = Matrix(3, 3),
-            scaleMatrix = Matrix(3, 3),
-            rotateMatrix = Matrix(3, 3),
+            translateMatrix = new Matrix(3, 3),
+            scaleMatrix = new Matrix(3, 3),
+            rotateMatrix = new Matrix(3, 3),
             sin,
             cos,
             type,
@@ -5837,6 +5845,10 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.attached = function (data) {
         this.entity = data.entity;
     };
+    Clickable.prototype.toString = function () {
+        return '[object Clickable]';
+    };
+
     return Clickable;
 });
 /**
@@ -5853,12 +5865,12 @@ bento.define('bento/components/fill', [
 ], function (Utils, Bento) {
     'use strict';
     var Fill = function (settings) {
-            var viewport = Bento.getViewport();
-            settings = settings || {};
-            this.name = 'fill';
-            this.color = settings.color || [0, 0, 0, 1];
-            this.dimension = settings.dimension || viewport;
-        };
+        var viewport = Bento.getViewport();
+        settings = settings || {};
+        this.name = 'fill';
+        this.color = settings.color || [0, 0, 0, 1];
+        this.dimension = settings.dimension || viewport;
+    };
     Fill.prototype.draw = function (data) {
         var dimension = this.dimension;
         data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
@@ -5866,6 +5878,10 @@ bento.define('bento/components/fill', [
     Fill.prototype.setup = function (settings) {
         this.color = settings.color;
     };
+    Fill.prototype.toString = function () {
+        return '[object Fill]';
+    };
+
     return Fill;
 });
 /**
@@ -5904,6 +5920,10 @@ bento.define('bento/components/opacity', [
     Opacity.prototype.getOpacity = function () {
         return this.opacity;
     };
+    Opacity.prototype.toString = function () {
+        return '[object Opacity]';
+    };
+
     return Opacity;
 });
 /**
@@ -6237,6 +6257,9 @@ bento.define('bento/components/pixi', [
         }
     };
 
+    Pixi.prototype.toString = function () {
+        return '[object Pixi]';
+    };
     return Pixi;
 });
 /**
@@ -6252,10 +6275,10 @@ bento.define('bento/components/rotation', [
 ], function (Utils) {
     'use strict';
     var Rotation = function (settings) {
-            settings = settings || {};
-            this.name = 'rotation';
-            this.entity = null;
-        };
+        settings = settings || {};
+        this.name = 'rotation';
+        this.entity = null;
+    };
 
     Rotation.prototype.draw = function (data) {
         data.renderer.save();
@@ -6287,6 +6310,9 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.getAngleRadian = function () {
         return this.entity.rotation;
     };
+    Rotation.prototype.toString = function () {
+        return '[object Rotation]';
+    };
 
     return Rotation;
 });
@@ -6312,6 +6338,9 @@ bento.define('bento/components/scale', [
     };
     Scale.prototype.attached = function (data) {
         this.entity = data.entity;
+    };
+    Scale.prototype.toString = function () {
+        return '[object Scale]';
     };
 
     return Scale;
@@ -6374,6 +6403,10 @@ bento.define('bento/components/sprite', [
         // remove self?
         this.entity.remove(this);
     };
+    component.prototype.toString = function () {
+        return '[object Sprite]';
+    };
+
     return component;
 });
 /**
@@ -6419,6 +6452,10 @@ bento.define('bento/components/translation', [
     Translation.prototype.attached = function (data) {
         this.entity = data.entity;
     };
+    Translation.prototype.toString = function () {
+        return '[object Translation]';
+    };
+
     return Translation;
 });
 /**
@@ -9502,6 +9539,9 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
         //
         return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
     };
+    Rectangle.prototype.toString = function () {
+        return '[object Rectangle]';
+    };
 
     return Rectangle;
 });
@@ -9614,15 +9654,19 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
         return this.rotateRadian(angle * Math.PI / 180);
     };
     Vector2.prototype.clone = function () {
-        return new Vector2 (this.x, this.y);
+        return new Vector2(this.x, this.y);
     };
     Vector2.prototype.toMatrix = function () {
-        var matrix = Matrix(1, 3);
+        var matrix = new Matrix(1, 3);
         matrix.set(0, 0, this.x);
         matrix.set(0, 1, this.y);
         matrix.set(0, 2, 1);
         return matrix;
     };
+    Vector2.prototype.toString = function () {
+        return '[object Vector2]';
+    };
+
     return Vector2;
 });
 /**

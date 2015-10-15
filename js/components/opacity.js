@@ -34,5 +34,9 @@ bento.define('bento/components/opacity', [
     Opacity.prototype.getOpacity = function () {
         return this.opacity;
     };
+    Opacity.prototype.toString = function () {
+        return '[object Opacity]';
+    };
+
     return Opacity;
 });

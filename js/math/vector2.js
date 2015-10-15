@@ -107,14 +107,18 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
         return this.rotateRadian(angle * Math.PI / 180);
     };
     Vector2.prototype.clone = function () {
-        return new Vector2 (this.x, this.y);
+        return new Vector2(this.x, this.y);
     };
     Vector2.prototype.toMatrix = function () {
-        var matrix = Matrix(1, 3);
+        var matrix = new Matrix(1, 3);
         matrix.set(0, 0, this.x);
         matrix.set(0, 1, this.y);
         matrix.set(0, 2, 1);
         return matrix;
     };
+    Vector2.prototype.toString = function () {
+        return '[object Vector2]';
+    };
+
     return Vector2;
 });
