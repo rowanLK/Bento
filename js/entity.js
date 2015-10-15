@@ -435,6 +435,7 @@ bento.define('bento/entity', [
             if (child.destroy) {
                 child.destroy();
             }
+            child.parent = null;
             // TODO: clean child
             this.components[index] = null;
         }

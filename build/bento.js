@@ -4455,6 +4455,7 @@ bento.define('bento/entity', [
             if (child.destroy) {
                 child.destroy();
             }
+            child.parent = null;
             // TODO: clean child
             this.components[index] = null;
         }
@@ -10995,9 +10996,8 @@ bento.define('bento/gui/counter', [
                     // move all the children
                     for (i = 0; i < children.length; ++i) {
                         digit = children[i];
-                        pos = digit.position.clone();
-                        pos.substract(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
-                        digit.position = pos;
+                        pos = digit.position;
+                        pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
                     }
                 } else if (alignment === 'center') {
                     for (i = 0; i < children.length; ++i) {
