@@ -385,6 +385,15 @@ bento.define('bento/managers/object', [
                  */
                 draw: function () {
                     draw();
+                },
+                /**
+                 * Gets the current HSHG grid instance
+                 * @function
+                 * @instance
+                 * @name getHshg
+                 */
+                getHshg: function () {
+                    return hshg;
                 }
             };
 

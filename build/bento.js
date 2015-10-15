@@ -4577,7 +4577,16 @@ bento.define('bento/entity', [
         return null;
     };
     Entity.prototype.getAABB = function () {
-        var box = this.getBoundingBox();
+        var box;
+        if (this.staticHshg) {
+            // cache boundingbox
+            if (!this.box) {
+                this.box = this.getBoundingBox();
+            }
+            box = this.box;
+        } else {
+            box = this.getBoundingBox();
+        }
         return {
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]
@@ -8481,6 +8490,15 @@ bento.define('bento/managers/object', [
                  */
                 draw: function () {
                     draw();
+                },
+                /**
+                 * Gets the current HSHG grid instance
+                 * @function
+                 * @instance
+                 * @name getHshg
+                 */
+                getHshg: function () {
+                    return hshg;
                 }
             };
 
