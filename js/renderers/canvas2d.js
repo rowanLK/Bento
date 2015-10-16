@@ -8,6 +8,7 @@ bento.define('bento/renderers/canvas2d', [
     return function (canvas, settings) {
         var context = canvas.getContext('2d'),
             original = context,
+            pixelSize = settings.pixelSize || 1,
             renderer = {
                 name: 'canvas2d',
                 save: function () {
@@ -90,6 +91,17 @@ bento.define('bento/renderers/canvas2d', [
                 },
                 restoreContext: function () {
                     context = original;
+                },
+                begin: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.save();
+                        context.scale(pixelSize, pixelSize);
+                    }
+                },
+                flush: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.restore();
+                    }
                 }
             },
             getColor = function (colorArray) {
@@ -100,6 +112,10 @@ bento.define('bento/renderers/canvas2d', [
                 return colorStr;
             };
         console.log('Init canvas2d as renderer');
+
+        // resize canvas according to pixelSize
+        canvas.width *= pixelSize;
+        canvas.height *= pixelSize;
 
         if (!settings.smoothing) {
             if (context.imageSmoothingEnabled) {
