@@ -444,7 +444,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Number} number - Number of times to repeat
          * @param {Function} fn - function to perform
-         * @name approach
+         * @name repeat
          */
         repeat: function (number, fn) {
             var i;
