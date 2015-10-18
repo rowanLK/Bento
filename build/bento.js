@@ -3806,11 +3806,7 @@ bento.define('bento', [
             document.body.appendChild(debug.debugBar);
         },
         setupCanvas = function (settings, callback) {
-            var parent,
-                pixelRatio = window.devicePixelRatio || 1,
-                windowWidth = window.innerWidth * pixelRatio,
-                windowHeight = window.innerHeight * pixelRatio;
-
+            var parent;
             canvas = document.getElementById(settings.canvasId);
 
             if (!canvas) {
@@ -3831,19 +3827,10 @@ bento.define('bento', [
             settings.renderer = settings.renderer || 'auto';
 
             if (settings.renderer === 'auto') {
-                // automatically set/overwrite pixelSize
-                if (windowWidth > windowHeight) {
-                    settings.pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
-                } else {
-                    settings.pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
-                }
-                // max pixelSize 3 (?)
-                settings.pixelSize = Math.min(settings.pixelSize, 3);
-
                 settings.renderer = 'webgl';
                 // canvas is accelerated in cocoonJS
-                // should also use canvas for android?
-                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/) {
+                // should also use canvas for android
+                if (Utils.isCocoonJS() || Utils.isAndroid()) {
                     settings.renderer = 'canvas2d';
                 }
             }
@@ -4590,16 +4577,7 @@ bento.define('bento/entity', [
         return null;
     };
     Entity.prototype.getAABB = function () {
-        var box;
-        if (this.staticHshg) {
-            // cache boundingbox
-            if (!this.box) {
-                this.box = this.getBoundingBox();
-            }
-            box = this.box;
-        } else {
-            box = this.getBoundingBox();
-        }
+        var box = this.getBoundingBox();
         return {
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]
@@ -8503,15 +8481,6 @@ bento.define('bento/managers/object', [
                  */
                 draw: function () {
                     draw();
-                },
-                /**
-                 * Gets the current HSHG grid instance
-                 * @function
-                 * @instance
-                 * @name getHshg
-                 */
-                getHshg: function () {
-                    return hshg;
                 }
             };
 
@@ -10495,7 +10464,6 @@ bento.define('bento/renderers/canvas2d', [
     return function (canvas, settings) {
         var context = canvas.getContext('2d'),
             original = context,
-            pixelSize = settings.pixelSize || 1,
             renderer = {
                 name: 'canvas2d',
                 save: function () {
@@ -10578,17 +10546,6 @@ bento.define('bento/renderers/canvas2d', [
                 },
                 restoreContext: function () {
                     context = original;
-                },
-                begin: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.save();
-                        context.scale(pixelSize, pixelSize);
-                    }
-                },
-                flush: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.restore();
-                    }
                 }
             },
             getColor = function (colorArray) {
@@ -10599,10 +10556,6 @@ bento.define('bento/renderers/canvas2d', [
                 return colorStr;
             };
         console.log('Init canvas2d as renderer');
-
-        // resize canvas according to pixelSize
-        canvas.width *= pixelSize;
-        canvas.height *= pixelSize;
 
         if (!settings.smoothing) {
             if (context.imageSmoothingEnabled) {
@@ -10705,7 +10658,10 @@ bento.define('bento/renderers/webgl', [
             context,
             glRenderer,
             original,
-            pixelSize = settings.pixelSize || 1,
+            pixelSize = 1,
+            pixelRatio = window.devicePixelRatio,
+            windowWidth = window.innerWidth * window.devicePixelRatio,
+            windowHeight = window.innerHeight * window.devicePixelRatio,
             renderer = {
                 name: 'webgl',
                 save: function () {
@@ -10785,10 +10741,18 @@ bento.define('bento/renderers/webgl', [
                 }
             };
         console.log('Init webgl as renderer');
+        // smoothing
+        if (!settings.smoothing) {
+            if (windowWidth > windowHeight) {
+                pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
+            } else {
+                pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
+
+            }
+        }
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {
-            // resize canvas according to pixelSize
             canvas.width *= pixelSize;
             canvas.height *= pixelSize;
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');

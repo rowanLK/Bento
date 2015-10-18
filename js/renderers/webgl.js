@@ -19,7 +19,10 @@ bento.define('bento/renderers/webgl', [
             context,
             glRenderer,
             original,
-            pixelSize = settings.pixelSize || 1,
+            pixelSize = 1,
+            pixelRatio = window.devicePixelRatio,
+            windowWidth = window.innerWidth * window.devicePixelRatio,
+            windowHeight = window.innerHeight * window.devicePixelRatio,
             renderer = {
                 name: 'webgl',
                 save: function () {
@@ -99,10 +102,18 @@ bento.define('bento/renderers/webgl', [
                 }
             };
         console.log('Init webgl as renderer');
+        // smoothing
+        if (!settings.smoothing) {
+            if (windowWidth > windowHeight) {
+                pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
+            } else {
+                pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
+
+            }
+        }
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {
-            // resize canvas according to pixelSize
             canvas.width *= pixelSize;
             canvas.height *= pixelSize;
             context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');

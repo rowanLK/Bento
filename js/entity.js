@@ -557,16 +557,7 @@ bento.define('bento/entity', [
         return null;
     };
     Entity.prototype.getAABB = function () {
-        var box;
-        if (this.staticHshg) {
-            // cache boundingbox
-            if (!this.box) {
-                this.box = this.getBoundingBox();
-            }
-            box = this.box;
-        } else {
-            box = this.getBoundingBox();
-        }
+        var box = this.getBoundingBox();
         return {
             min: [box.x, box.y],
             max: [box.x + box.width, box.y + box.height]

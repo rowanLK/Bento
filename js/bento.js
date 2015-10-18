@@ -68,11 +68,7 @@ bento.define('bento', [
             document.body.appendChild(debug.debugBar);
         },
         setupCanvas = function (settings, callback) {
-            var parent,
-                pixelRatio = window.devicePixelRatio || 1,
-                windowWidth = window.innerWidth * pixelRatio,
-                windowHeight = window.innerHeight * pixelRatio;
-
+            var parent;
             canvas = document.getElementById(settings.canvasId);
 
             if (!canvas) {
@@ -93,19 +89,10 @@ bento.define('bento', [
             settings.renderer = settings.renderer || 'auto';
 
             if (settings.renderer === 'auto') {
-                // automatically set/overwrite pixelSize
-                if (windowWidth > windowHeight) {
-                    settings.pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
-                } else {
-                    settings.pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
-                }
-                // max pixelSize 3 (?)
-                settings.pixelSize = Math.min(settings.pixelSize, 3);
-
                 settings.renderer = 'webgl';
                 // canvas is accelerated in cocoonJS
-                // should also use canvas for android?
-                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/) {
+                // should also use canvas for android
+                if (Utils.isCocoonJS() || Utils.isAndroid()) {
                     settings.renderer = 'canvas2d';
                 }
             }
