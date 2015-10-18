@@ -9664,6 +9664,18 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
         matrix.set(0, 2, 1);
         return matrix;
     };
+    /**
+     * Reflects the vector using the parameter as the 'mirror'
+     * @function
+     * @param {Vector2} mirror - Vector2 through which the current vector is reflected.
+     * @instance
+     * @name reflect
+     */
+    Vector2.prototype.reflect = function (mirror) {
+        var normal = mirror.normalize(); // reflect through this normal
+        var dot = this.dotProduct(normal);
+        return this.substractFrom(normal.scalarMultiplyWith(dot + dot));
+    };
     Vector2.prototype.toString = function () {
         return '[object Vector2]';
     };
