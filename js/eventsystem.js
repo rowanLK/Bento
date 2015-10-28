@@ -84,7 +84,7 @@ bento.define('bento/eventsystem', [
                     }
                 } else {
                     // TODO: fix this
-                    console.log('Warning: listener is not a function:', listener, i);
+                    console.log('Warning: listener is not a function');
                 }
             }
         },
