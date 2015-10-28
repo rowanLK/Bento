@@ -4873,6 +4873,22 @@ bento.define('bento/utils', [], function () {
         isDefined = function (obj) {
             return obj !== void(0);
         },
+        isObjLiteral = function (_obj) {
+            var _test = _obj;
+            return (typeof _obj !== 'object' || _obj === null ?
+                false :
+                (
+                    (function () {
+                        while (!false) {
+                            if (Object.getPrototypeOf(_test = Object.getPrototypeOf(_test)) === null) {
+                                break;
+                            }
+                        }
+                        return Object.getPrototypeOf(_obj) === _test;
+                    })()
+                )
+            );
+        },
         removeObject = function (array, obj) {
             var i,
                 l;
@@ -4894,7 +4910,7 @@ bento.define('bento/utils', [], function () {
                         temp[prop] = obj1[prop];
                         extend(obj1.base, temp);
                     }
-                    if (isObject(obj2[prop])) {
+                    if (isObjLiteral(obj2[prop])) {
                         obj1[prop] = extend({}, obj2[prop]);
                     } else {
                         obj1[prop] = obj2[prop];
