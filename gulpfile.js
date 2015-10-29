@@ -38,6 +38,7 @@ gulp.task('default', ['webgl'], function () {
     return gulp.src([
             'js/lib/fpsmeter.js',
             'js/**/main.js',
+            'js/lib/lzstring.js',
             'js/lib/audia.js',
             'js/**/*.js'
         ])
