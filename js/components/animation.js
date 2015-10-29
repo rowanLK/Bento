@@ -139,10 +139,10 @@ bento.define('bento/components/animation', [
      * @function
      * @instance
      * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimation
+     * @name getAnimationName
      */
-    Animation.prototype.getAnimation = function () {
-        return this.currentAnimation;
+    Animation.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
     };
     /**
      * Set current animation to a certain frame

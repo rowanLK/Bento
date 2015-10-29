@@ -170,10 +170,10 @@ bento.define('bento/components/pixi', [
      * @function
      * @instance
      * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimation
+     * @name getAnimationName
      */
-    Pixi.prototype.getAnimation = function () {
-        return this.currentAnimation;
+    Pixi.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
     };
     /**
      * Set current animation to a certain frame
