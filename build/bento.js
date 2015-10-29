@@ -7707,6 +7707,12 @@ define('bento/managers/audio', [
                  */
                 playMusic: function (name, loop, onEnd, time) {
                     var audio;
+                    
+                    // trying to play the same music
+                    if (lastMusicPlayed === name) {
+                        return;
+                    }
+
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
                         musicLoop = loop;
