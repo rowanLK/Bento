@@ -10081,17 +10081,24 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
         );
     };
     /**
-     * Increases rectangle size from the center
+     * Increases rectangle size from the center.
      * @function
-     * @returns {Number} value to grow the rectangle
+     * param {Number} size - by how much to scale the rectangle
+     * param {Boolean} skipWidth - optional. If true, the width won't be scaled
+     * param {Boolean} skipHeight - optional. If true, the height won't be scaled
+     * @returns {Rectangle} the resized rectangle
      * @instance
      * @name grow
      */
-    Rectangle.prototype.grow = function (size) {
-        this.x -= size / 2;
-        this.y -= size / 2;
-        this.width += size;
-        this.height += size;
+    Rectangle.prototype.grow = function (size, skipWidth, skipHeight) {
+        if (!skipWidth) {
+            this.x -= size / 2;
+            this.width += size;
+        }
+        if (!skipHeight) {
+            this.y -= size / 2;
+            this.height += size;
+        }
         return this;
     };
     /**
