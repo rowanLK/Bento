@@ -13,6 +13,7 @@ define('bento/managers/audio', [
             mutedSound = false,
             mutedMusic = false,
             preventSounds = false,
+            isPlayingMusic = false,
             howler,
             musicLoop = false,
             lastMusicPlayed = '',
@@ -73,11 +74,6 @@ define('bento/managers/audio', [
                  */
                 playMusic: function (name, loop, onEnd, time) {
                     var audio;
-                    
-                    // trying to play the same music
-                    if (lastMusicPlayed === name) {
-                        return;
-                    }
 
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
@@ -93,11 +89,13 @@ define('bento/managers/audio', [
                         }
                         audio.loop = musicLoop;
                         audio.play(time || 0);
+                        isPlayingMusic = true;
                     }
                 },
                 stopMusic: function (name) {
                     var i, l, node;
                     assetManager.getAudio(name).stop();
+                    isPlayingMusic = false;
                 },
                 /* Mute or unmute all sound
                  * @name muteSound
@@ -156,6 +154,7 @@ define('bento/managers/audio', [
                         }
                     }
                     lastMusicPlayed = '';
+                    isPlayingMusic = false;
                 },
                 /* Prevents any sound from playing without interrupting current sounds
                  * @name preventSounds
@@ -163,6 +162,13 @@ define('bento/managers/audio', [
                  */
                 preventSounds: function (bool) {
                     preventSounds = bool;
+                },
+                /* Returns true if music is playing
+                 * @name isPlayingMusic
+                 * @function
+                 */
+                isPlayingMusic: function () {
+                    return isPlayingMusic;
                 }
             };
         // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API

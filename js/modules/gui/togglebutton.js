@@ -22,60 +22,62 @@ bento.define('bento/gui/togglebutton', [
         var viewport = Bento.getViewport(),
             active = true,
             toggled = false,
+            sprite = new Sprite({
+                image: settings.image,
+                frameWidth: settings.frameWidth || 32,
+                frameHeight: settings.frameHeight || 32,
+                animations: settings.animations || {
+                    'up': {
+                        speed: 0,
+                        frames: [0]
+                    },
+                    'down': {
+                        speed: 0,
+                        frames: [1]
+                    }
+                }
+            }),
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
-                components: [Sprite, Clickable],
-                family: ['buttons'],
-                sprite: {
-                    image: settings.image,
-                    frameWidth: settings.frameWidth || 32,
-                    frameHeight: settings.frameHeight || 32,
-                    animations: settings.animations || {
-                        'up': {
-                            speed: 0,
-                            frames: [0]
+                components: [
+                    sprite,
+                    new Clickable({
+                        onClick: function () {
+                            sprite.animation.setAnimation('down');
                         },
-                        'down': {
-                            speed: 0,
-                            frames: [1]
-                        }
-                    }
-                },
-                clickable: {
-                    onClick: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldEnter: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldLeave: function () {
-                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
-                    },
-                    pointerUp: function () {
-                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
-                    },
-                    onHoldEnd: function () {
-                        if (!active) {
-                            return;
-                        }
-                        if (toggled) {
-                            toggled = false;
-                        } else {
-                            toggled = true;
-                        }
-                        if (settings.onToggle) {
-                            settings.onToggle.apply(entity);
-                            if (settings.sfx) {
-                                Bento.audio.stopSound(settings.sfx);
-                                Bento.audio.playSound(settings.sfx);
+                        onHoldEnter: function () {
+                            sprite.animation.setAnimation('down');
+                        },
+                        onHoldLeave: function () {
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                        },
+                        pointerUp: function () {
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                        },
+                        onHoldEnd: function () {
+                            if (!active) {
+                                return;
                             }
+                            if (toggled) {
+                                toggled = false;
+                            } else {
+                                toggled = true;
+                            }
+                            if (settings.onToggle) {
+                                settings.onToggle.apply(entity);
+                                if (settings.sfx) {
+                                    Bento.audio.stopSound(settings.sfx);
+                                    Bento.audio.playSound(settings.sfx);
+                                }
+                            }
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
                         }
-                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
-                    }
-                },
+                    })
+                ],
+                family: ['buttons'],
                 init: function () {}
             }, settings),
             entity = new Entity(entitySettings).extend({
@@ -97,7 +99,7 @@ bento.define('bento/gui/togglebutton', [
                             }
                         }
                     }
-                    entity.sprite.setAnimation(toggled ? 'down' : 'up');
+                    sprite.animation.setAnimation(toggled ? 'down' : 'up');
                 }
             });
 
@@ -108,7 +110,7 @@ bento.define('bento/gui/togglebutton', [
         if (settings.toggled) {
             toggled = true;
         }
-        entity.sprite.setAnimation(toggled ? 'down' : 'up');
+        sprite.animation.setAnimation(toggled ? 'down' : 'up');
         return entity;
     };
 });

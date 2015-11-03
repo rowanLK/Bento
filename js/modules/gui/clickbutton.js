@@ -35,20 +35,36 @@ bento.define('bento/gui/clickbutton', [
                     'down': {
                         speed: 0,
                         frames: [1]
+                    },
+                    'inactive': {
+                        speed: 0,
+                        frames: [2]
                     }
                 }
             }),
             clickable = new Clickable({
                 onClick: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('down');
                 },
                 onHoldEnter: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('down');
                 },
                 onHoldLeave: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('up');
                 },
                 pointerUp: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('up');
                 },
                 onHoldEnd: function () {
@@ -73,12 +89,21 @@ bento.define('bento/gui/clickbutton', [
                 ],
                 family: ['buttons'],
                 init: function () {
-                    sprite.animation.setAnimation('up');
+                    if (!active) {
+                        sprite.animation.setAnimation('inactive');
+                    } else {
+                        sprite.animation.setAnimation('up');
+                    }
                 }
             }, settings),
             entity = new Entity(entitySettings).extend({
                 setActive: function (bool) {
                     active = bool;
+                    if (!active) {
+                        sprite.animation.setAnimation('inactive');
+                    } else {
+                        sprite.animation.setAnimation('up');
+                    }
                 },
                 doCallback: function () {
                     settings.onClick.apply(entity);
