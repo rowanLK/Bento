@@ -8169,6 +8169,7 @@ define('bento/managers/audio', [
             mutedSound = false,
             mutedMusic = false,
             preventSounds = false,
+            isPlayingMusic = false,
             howler,
             musicLoop = false,
             lastMusicPlayed = '',
@@ -8229,11 +8230,6 @@ define('bento/managers/audio', [
                  */
                 playMusic: function (name, loop, onEnd, time) {
                     var audio;
-                    
-                    // trying to play the same music
-                    if (lastMusicPlayed === name) {
-                        return;
-                    }
 
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
@@ -8249,11 +8245,13 @@ define('bento/managers/audio', [
                         }
                         audio.loop = musicLoop;
                         audio.play(time || 0);
+                        isPlayingMusic = true;
                     }
                 },
                 stopMusic: function (name) {
                     var i, l, node;
                     assetManager.getAudio(name).stop();
+                    isPlayingMusic = false;
                 },
                 /* Mute or unmute all sound
                  * @name muteSound
@@ -8312,6 +8310,7 @@ define('bento/managers/audio', [
                         }
                     }
                     lastMusicPlayed = '';
+                    isPlayingMusic = false;
                 },
                 /* Prevents any sound from playing without interrupting current sounds
                  * @name preventSounds
@@ -8319,6 +8318,13 @@ define('bento/managers/audio', [
                  */
                 preventSounds: function (bool) {
                     preventSounds = bool;
+                },
+                /* Returns true if music is playing
+                 * @name isPlayingMusic
+                 * @function
+                 */
+                isPlayingMusic: function () {
+                    return isPlayingMusic;
                 }
             };
         // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
@@ -10081,17 +10087,24 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
         );
     };
     /**
-     * Increases rectangle size from the center
+     * Increases rectangle size from the center.
      * @function
-     * @returns {Number} value to grow the rectangle
+     * param {Number} size - by how much to scale the rectangle
+     * param {Boolean} skipWidth - optional. If true, the width won't be scaled
+     * param {Boolean} skipHeight - optional. If true, the height won't be scaled
+     * @returns {Rectangle} the resized rectangle
      * @instance
      * @name grow
      */
-    Rectangle.prototype.grow = function (size) {
-        this.x -= size / 2;
-        this.y -= size / 2;
-        this.width += size;
-        this.height += size;
+    Rectangle.prototype.grow = function (size, skipWidth, skipHeight) {
+        if (!skipWidth) {
+            this.x -= size / 2;
+            this.width += size;
+        }
+        if (!skipHeight) {
+            this.y -= size / 2;
+            this.height += size;
+        }
         return this;
     };
     /**
@@ -11396,20 +11409,36 @@ bento.define('bento/gui/clickbutton', [
                     'down': {
                         speed: 0,
                         frames: [1]
+                    },
+                    'inactive': {
+                        speed: 0,
+                        frames: [2]
                     }
                 }
             }),
             clickable = new Clickable({
                 onClick: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('down');
                 },
                 onHoldEnter: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('down');
                 },
                 onHoldLeave: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('up');
                 },
                 pointerUp: function () {
+                    if (!active) {
+                        return;
+                    }
                     sprite.animation.setAnimation('up');
                 },
                 onHoldEnd: function () {
@@ -11434,12 +11463,21 @@ bento.define('bento/gui/clickbutton', [
                 ],
                 family: ['buttons'],
                 init: function () {
-                    sprite.animation.setAnimation('up');
+                    if (!active) {
+                        sprite.animation.setAnimation('inactive');
+                    } else {
+                        sprite.animation.setAnimation('up');
+                    }
                 }
             }, settings),
             entity = new Entity(entitySettings).extend({
                 setActive: function (bool) {
                     active = bool;
+                    if (!active) {
+                        sprite.animation.setAnimation('inactive');
+                    } else {
+                        sprite.animation.setAnimation('up');
+                    }
                 },
                 doCallback: function () {
                     settings.onClick.apply(entity);
@@ -11664,60 +11702,62 @@ bento.define('bento/gui/togglebutton', [
         var viewport = Bento.getViewport(),
             active = true,
             toggled = false,
+            sprite = new Sprite({
+                image: settings.image,
+                frameWidth: settings.frameWidth || 32,
+                frameHeight: settings.frameHeight || 32,
+                animations: settings.animations || {
+                    'up': {
+                        speed: 0,
+                        frames: [0]
+                    },
+                    'down': {
+                        speed: 0,
+                        frames: [1]
+                    }
+                }
+            }),
             entitySettings = Utils.extend({
                 z: 0,
                 name: '',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
-                components: [Sprite, Clickable],
-                family: ['buttons'],
-                sprite: {
-                    image: settings.image,
-                    frameWidth: settings.frameWidth || 32,
-                    frameHeight: settings.frameHeight || 32,
-                    animations: settings.animations || {
-                        'up': {
-                            speed: 0,
-                            frames: [0]
+                components: [
+                    sprite,
+                    new Clickable({
+                        onClick: function () {
+                            sprite.animation.setAnimation('down');
                         },
-                        'down': {
-                            speed: 0,
-                            frames: [1]
-                        }
-                    }
-                },
-                clickable: {
-                    onClick: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldEnter: function () {
-                        entity.sprite.setAnimation('down');
-                    },
-                    onHoldLeave: function () {
-                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
-                    },
-                    pointerUp: function () {
-                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
-                    },
-                    onHoldEnd: function () {
-                        if (!active) {
-                            return;
-                        }
-                        if (toggled) {
-                            toggled = false;
-                        } else {
-                            toggled = true;
-                        }
-                        if (settings.onToggle) {
-                            settings.onToggle.apply(entity);
-                            if (settings.sfx) {
-                                Bento.audio.stopSound(settings.sfx);
-                                Bento.audio.playSound(settings.sfx);
+                        onHoldEnter: function () {
+                            sprite.animation.setAnimation('down');
+                        },
+                        onHoldLeave: function () {
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                        },
+                        pointerUp: function () {
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                        },
+                        onHoldEnd: function () {
+                            if (!active) {
+                                return;
                             }
+                            if (toggled) {
+                                toggled = false;
+                            } else {
+                                toggled = true;
+                            }
+                            if (settings.onToggle) {
+                                settings.onToggle.apply(entity);
+                                if (settings.sfx) {
+                                    Bento.audio.stopSound(settings.sfx);
+                                    Bento.audio.playSound(settings.sfx);
+                                }
+                            }
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
                         }
-                        entity.sprite.setAnimation(toggled ? 'down' : 'up');
-                    }
-                },
+                    })
+                ],
+                family: ['buttons'],
                 init: function () {}
             }, settings),
             entity = new Entity(entitySettings).extend({
@@ -11739,7 +11779,7 @@ bento.define('bento/gui/togglebutton', [
                             }
                         }
                     }
-                    entity.sprite.setAnimation(toggled ? 'down' : 'up');
+                    sprite.animation.setAnimation(toggled ? 'down' : 'up');
                 }
             });
 
@@ -11750,7 +11790,7 @@ bento.define('bento/gui/togglebutton', [
         if (settings.toggled) {
             toggled = true;
         }
-        entity.sprite.setAnimation(toggled ? 'down' : 'up');
+        sprite.animation.setAnimation(toggled ? 'down' : 'up');
         return entity;
     };
 });
