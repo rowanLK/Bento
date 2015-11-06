@@ -8575,7 +8575,20 @@ bento.define('bento/managers/input', [
             },
             destroy = function () {
                 // remove all event listeners
+            },
+            /**
+             * Changes the offsets after resizing or screen re-orientation.
+             * @function
+             * @instance
+             * @name onResize
+             */
+            onResize = function () {
+                offsetLeft = canvas.offsetLeft;
+                offsetTop = canvas.offsetTop;
             };
+
+        window.addEventListener('resize', onResize, false);
+        window.addEventListener('orientationchange', onResize, false);
 
         if (!settings) {
             throw 'Supply a settings object';
