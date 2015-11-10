@@ -96,6 +96,10 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     Vector2.prototype.distance = function (vector) {
         return vector.substract(this).magnitude();
     };
+    Vector2.prototype.fartherThan = function (vector, distance) {
+        var diff = vector.substract(this);
+        return diff.x * diff.x + diff.y * diff.y > distance * distance;
+    };
     Vector2.prototype.rotateRadian = function (angle) {
         var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
             y = this.x * Math.sin(angle) + this.y * Math.cos(angle);

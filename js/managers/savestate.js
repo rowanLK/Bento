@@ -80,7 +80,7 @@ bento.define('bento/managers/savestate', [
         load: function (elementKey, defaultValue) {
             var element;
             element = storage.getItem(uniqueID + elementKey);
-            if (element === null) {
+            if (element === null || element === undefined) {
                 return defaultValue;
             }
             return JSON.parse(element);
