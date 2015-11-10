@@ -8860,7 +8860,7 @@ bento.define('bento/managers/object', [
                  * @name remove
                  */
                 remove: function (object) {
-                    var i, type, index, family;
+                    var i, type, index, family, pool;
                     if (!object) {
                         return;
                     }
@@ -8880,7 +8880,10 @@ bento.define('bento/managers/object', [
                         family = object.family;
                         for (i = 0; i < family.length; ++i) {
                             type = family[i];
-                            Utils.removeObject(quickAccess[type], object);
+                            pool = quickAccess[type];
+                            if (pool) {
+                                Utils.removeObject(quickAccess[type], object);
+                            }
                         }
                     }
                 },
@@ -9179,7 +9182,7 @@ bento.define('bento/managers/savestate', [
         load: function (elementKey, defaultValue) {
             var element;
             element = storage.getItem(uniqueID + elementKey);
-            if (element === null) {
+            if (element === null || element === undefined) {
                 return defaultValue;
             }
             return JSON.parse(element);
@@ -10244,6 +10247,10 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     };
     Vector2.prototype.distance = function (vector) {
         return vector.substract(this).magnitude();
+    };
+    Vector2.prototype.fartherThan = function (vector, distance) {
+        var diff = vector.substract(this);
+        return diff.x * diff.x + diff.y * diff.y > distance * distance;
     };
     Vector2.prototype.rotateRadian = function (angle) {
         var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),

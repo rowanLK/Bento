@@ -179,7 +179,7 @@ bento.define('bento/managers/object', [
                  * @name remove
                  */
                 remove: function (object) {
-                    var i, type, index, family;
+                    var i, type, index, family, pool;
                     if (!object) {
                         return;
                     }
@@ -199,7 +199,10 @@ bento.define('bento/managers/object', [
                         family = object.family;
                         for (i = 0; i < family.length; ++i) {
                             type = family[i];
-                            Utils.removeObject(quickAccess[type], object);
+                            pool = quickAccess[type];
+                            if (pool) {
+                                Utils.removeObject(quickAccess[type], object);
+                            }
                         }
                     }
                 },
