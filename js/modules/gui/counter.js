@@ -77,6 +77,9 @@ bento.define('bento/gui/counter', [
                             },
                             '9': {
                                 frames: [9]
+                            },
+                            '-': {
+                                frames: [10]
                             }
                         }
                     }),

@@ -14,6 +14,7 @@ bento.define('bento/managers/input', [
     'bento/eventsystem'
 ], function (Utils, Vector2, EventSystem) {
     'use strict';
+    var startPositions = {};
     return function (settings) {
         var isPaused = false,
             isListening = false,
@@ -68,41 +69,68 @@ bento.define('bento/managers/input', [
             },
             mouseDown = function (evt) {
                 evt.preventDefault();
-                addMousePosition(evt);
+                addMousePosition(evt, 'start');
                 pointerDown(evt);
             },
             mouseMove = function (evt) {
                 evt.preventDefault();
-                addMousePosition(evt);
+                addMousePosition(evt, 'move');
                 pointerMove(evt);
             },
             mouseUp = function (evt) {
                 evt.preventDefault();
-                addMousePosition(evt);
+                addMousePosition(evt, 'end');
                 pointerUp(evt);
             },
             addTouchPosition = function (evt, n, type) {
                 var touch = evt.changedTouches[n],
                     x = (touch.pageX - offsetLeft) / canvasScale.x,
-                    y = (touch.pageY - offsetTop) / canvasScale.y;
+                    y = (touch.pageY - offsetTop) / canvasScale.y,
+                    startPos = {};
+
                 evt.preventDefault();
                 evt.id = 0;
                 evt.eventType = 'touch';
-                evt.changedTouches[n].position = new Vector2(x, y);
-                evt.changedTouches[n].worldPosition = evt.changedTouches[n].position.clone();
-                evt.changedTouches[n].worldPosition.x += viewport.x;
-                evt.changedTouches[n].worldPosition.y += viewport.y;
-                evt.changedTouches[n].localPosition = evt.changedTouches[n].position.clone();
+                touch.position = new Vector2(x, y);
+                touch.worldPosition = touch.position.clone();
+                touch.worldPosition.x += viewport.x;
+                touch.worldPosition.y += viewport.y;
+                touch.localPosition = touch.position.clone();
                 // add 'normal' position
-                evt.position = evt.changedTouches[n].position.clone();
-                evt.worldPosition = evt.changedTouches[n].worldPosition.clone();
-                evt.localPosition = evt.changedTouches[n].position.clone();
+                evt.position = touch.position.clone();
+                evt.worldPosition = touch.worldPosition.clone();
+                evt.localPosition = touch.localPosition.clone();
                 // id
-                evt.id = evt.changedTouches[n].identifier + 1;
+                evt.id = touch.identifier + 1;
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = touch.position.clone();
+                    startPos.startWorldPosition = touch.worldPosition.clone();
+                    startPos.startLocalPosition = touch.localPosition.clone();
+                    // save startPos
+                    startPositions[evt.id] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[evt.id];
+                    if (startPos && startPos.startPosition) {
+                        touch.diffPosition = touch.position.substract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        evt.diffPosition = touch.diffPosition.clone();
+                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
+                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
+                        delete startPositions[evt.id];
+                    } else {
+                        console.log('WARNING: touch startPosition was not defined');
+                    }
+                }
+                
             },
-            addMousePosition = function (evt) {
+            addMousePosition = function (evt, type) {
                 var x = (evt.pageX - offsetLeft) / canvasScale.x,
-                    y = (evt.pageY - offsetTop) / canvasScale.y;
+                    y = (evt.pageY - offsetTop) / canvasScale.y,
+                    startPos = {};
                 evt.id = 0;
                 evt.eventType = 'mouse';
                 evt.position = new Vector2(x, y);
@@ -110,6 +138,21 @@ bento.define('bento/managers/input', [
                 evt.worldPosition.x += viewport.x;
                 evt.worldPosition.y += viewport.y;
                 evt.localPosition = evt.position.clone();
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = evt.position.clone();
+                    startPos.startWorldPosition = evt.worldPosition.clone();
+                    startPos.startLocalPosition = evt.localPosition.clone();
+                    // save startPos
+                    startPositions[n] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[n];
+                    evt.diffPosition = evt.position.substract(startPos.startPosition);
+                    evt.diffWorldPosition = evt.worldPosition.substract(startPos.startWorldPosition);
+                    evt.diffLocalPosition = evt.localPosition.substract(startPos.startLocalPosition);
+                }
                 // give it an id that doesn't clash with touch id
                 evt.id = -1;
             },

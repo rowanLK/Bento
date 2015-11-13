@@ -48,24 +48,36 @@ bento.define('bento/gui/clickbutton', [
                         return;
                     }
                     sprite.animation.setAnimation('down');
+                    if (settings.onButtonDown) {
+                        settings.onButtonDown.apply(entity);
+                    }
                 },
                 onHoldEnter: function () {
                     if (!active) {
                         return;
                     }
                     sprite.animation.setAnimation('down');
+                    if (settings.onButtonDown) {
+                        settings.onButtonDown.apply(entity);
+                    }
                 },
                 onHoldLeave: function () {
                     if (!active) {
                         return;
                     }
                     sprite.animation.setAnimation('up');
+                    if (settings.onButtonUp) {
+                        settings.onButtonUp.apply(entity);
+                    }
                 },
                 pointerUp: function () {
                     if (!active) {
                         return;
                     }
                     sprite.animation.setAnimation('up');
+                    if (settings.onButtonUp) {
+                        settings.onButtonUp.apply(entity);
+                    }
                 },
                 onHoldEnd: function () {
                     if (active && settings.onClick) {
