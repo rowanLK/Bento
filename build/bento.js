@@ -8502,7 +8502,8 @@ bento.define('bento/managers/input', [
             addMousePosition = function (evt, type) {
                 var x = (evt.pageX - offsetLeft) / canvasScale.x,
                     y = (evt.pageY - offsetTop) / canvasScale.y,
-                    startPos = {};
+                    startPos = {},
+                    n = -1;
                 evt.id = 0;
                 evt.eventType = 'mouse';
                 evt.position = new Vector2(x, y);
