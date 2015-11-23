@@ -5527,6 +5527,16 @@ bento.define('bento/components/animation', [
         this.currentFrame = frameNumber;
     };
     /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
      * Set speed of the current animation.
      * @function
      * @instance
@@ -11127,6 +11137,324 @@ bento.define('bento/tween', [
         return tween;
     };
 });
+/**
+ * Canvas 2d renderer
+ * @copyright (C) 2015 LuckyKat
+ */
+bento.define('bento/renderers/canvas2d', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvas, settings) {
+        var context = canvas.getContext('2d'),
+            original = context,
+            pixelSize = settings.pixelSize || 1,
+            renderer = {
+                name: 'canvas2d',
+                save: function () {
+                    context.save();
+                },
+                restore: function () {
+                    context.restore();
+                },
+                translate: function (x, y) {
+                    context.translate(x, y);
+                },
+                scale: function (x, y) {
+                    context.scale(x, y);
+                },
+                rotate: function (angle) {
+                    context.rotate(angle);
+                },
+                fillRect: function (colorArray, x, y, w, h) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
+                    context.fillStyle = colorStr;
+                    context.fillRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                fillCircle: function (colorArray, x, y, radius) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
+                    context.fillStyle = colorStr;
+                    context.beginPath();
+                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.fill();
+                    context.closePath();
+
+                },
+                strokeRect: function (colorArray, x, y, w, h) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
+                    context.strokeStyle = colorStr;
+                    context.strokeRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+                },
+                getOpacity: function () {
+                    return context.globalAlpha;
+                },
+                setOpacity: function (value) {
+                    context.globalAlpha = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('2d');
+
+                    return {
+                        canvas: newCanvas,
+                        context: newContext
+                    };
+                },
+                setContext: function (ctx) {
+                    context = ctx;
+                },
+                restoreContext: function () {
+                    context = original;
+                },
+                begin: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.save();
+                        context.scale(pixelSize, pixelSize);
+                    }
+                },
+                flush: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.restore();
+                    }
+                }
+            },
+            getColor = function (colorArray) {
+                var colorStr = '#';
+                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                return colorStr;
+            };
+        console.log('Init canvas2d as renderer');
+
+        // resize canvas according to pixelSize
+        canvas.width *= pixelSize;
+        canvas.height *= pixelSize;
+
+        if (!settings.smoothing) {
+            if (context.imageSmoothingEnabled) {
+                context.imageSmoothingEnabled = false;
+            }
+            if (context.webkitImageSmoothingEnabled) {
+                context.webkitImageSmoothingEnabled = false;
+            }
+            if (context.mozImageSmoothingEnabled) {
+                context.mozImageSmoothingEnabled = false;
+            }
+        }
+        return renderer;
+    };
+});
+bento.define('bento/renderers/pixi', [
+    'bento',
+    'bento/utils'
+], function (Bento, Utils) {
+    return function (canvas, settings) {
+        var context,
+            pixiStage,
+            pixiRenderer,
+            pixiBatch,
+            currentObject,
+            sortMode = settings.sortMode || 0,
+            renderer = {
+                name: 'pixi',
+                init: function () {
+
+                },
+                destroy: function () {},
+                save: function () {},
+                restore: function () {},
+                translate: function (x, y) {},
+                scale: function (x, y) {},
+                rotate: function (angle) {},
+                fillRect: function (color, x, y, w, h) {},
+                fillCircle: function (color, x, y, radius) {},
+                drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {},
+                begin: function () {
+                    if (sortMode === Utils.SortMode.ALWAYS) {
+                        sort();
+                    }
+                },
+                flush: function () {
+                    var viewport = Bento.getViewport();
+                    pixiStage.x = -viewport.x;
+                    pixiStage.y = -viewport.y;
+                    pixiRenderer.render(pixiStage);
+                },
+                addChild: function (child) {
+                    pixiStage.addChild(child);
+                    if (sortMode === Utils.SortMode.SORT_ON_ADD) {
+                        sort();
+                    }                },
+                removeChild: function (child) {
+                    pixiStage.removeChild(child);
+                }
+            },
+            sort = function () {
+                Utils.stableSort.inplace(pixiStage.children, function (a, b) {
+                    return a.z - b.z;
+                });
+            };
+        if (!window.PIXI) {
+            throw 'Pixi library missing';
+        }
+
+        // init pixi
+        pixiStage = new PIXI.Container();
+        pixiRenderer = PIXI.autoDetectRenderer(canvas.width, canvas.height, {
+            view: canvas,
+            backgroundColor: 0x000000
+        });
+        console.log('Init pixi as renderer');
+        console.log(pixiRenderer.view === canvas);
+
+        return renderer;
+    };
+});
+/**
+ * WebGL renderer using gl-sprites by Matt DesLauriers
+ * @copyright (C) 2015 LuckyKat
+ */
+bento.define('bento/renderers/webgl', [
+    'bento/utils',
+    'bento/renderers/canvas2d'
+], function (Utils, Canvas2d) {
+    return function (canvas, settings) {
+        var canWebGl = (function () {
+                // try making a canvas
+                try {
+                    var canvas = document.createElement('canvas');
+                    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                } catch (e) {
+                    return false;
+                }
+            })(),
+            context,
+            glRenderer,
+            original,
+            pixelSize = settings.pixelSize || 1,
+            renderer = {
+                name: 'webgl',
+                save: function () {
+                    glRenderer.save();
+                },
+                restore: function () {
+                    glRenderer.restore();
+                },
+                translate: function (x, y) {
+                    glRenderer.translate(x, y);
+                },
+                scale: function (x, y) {
+                    glRenderer.scale(x, y);
+                },
+                rotate: function (angle) {
+                    glRenderer.rotate(angle);
+                },
+                fillRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    // 
+                    renderer.setColor(color);
+                    glRenderer.fillRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                fillCircle: function (color, x, y, radius) {},
+                strokeRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    // 
+                    renderer.setColor(color);
+                    glRenderer.strokeRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    var image = packedImage.image;
+                    if (!image.texture) {
+                        image.texture = window.GlSprites.createTexture2D(context, image);
+                    }
+                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
+                },
+                begin: function () {
+                    glRenderer.begin();
+                },
+                flush: function () {
+                    glRenderer.end();
+                },
+                setColor: function (color) {
+                    glRenderer.color = color;
+                },
+                getOpacity: function () {
+                    return glRenderer.color[3];
+                },
+                setOpacity: function (value) {
+                    glRenderer.color[3] = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext,
+                        newGlRenderer;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    newGlRenderer = new window.GlSprites.SpriteRenderer(newContext);
+                    newGlRenderer.ortho(canvas.width, canvas.height);
+
+                    return {
+                        canvas: newCanvas,
+                        context: newGlRenderer
+                    };
+                },
+                setContext: function (ctx) {
+                    glRenderer = ctx;
+                },
+                restoreContext: function () {
+                    glRenderer = original;
+                }
+            };
+        console.log('Init webgl as renderer');
+
+        // fallback
+        if (canWebGl && Utils.isDefined(window.GlSprites)) {
+            // resize canvas according to pixelSize
+            canvas.width *= pixelSize;
+            canvas.height *= pixelSize;
+            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+            glRenderer = new window.GlSprites.SpriteRenderer(context);
+            glRenderer.ortho(canvas.width / pixelSize, canvas.height / pixelSize);
+            original = glRenderer;
+            return renderer;
+        } else {
+            console.log('webgl failed, revert to canvas');
+            return Canvas2d(canvas, settings);
+        }
+    };
+});
 bento.define('bento/gui/clickbutton', [
     'bento',
     'bento/math/vector2',
@@ -11562,323 +11890,5 @@ bento.define('bento/gui/togglebutton', [
         }
         sprite.animation.setAnimation(toggled ? 'down' : 'up');
         return entity;
-    };
-});
-/**
- * Canvas 2d renderer
- * @copyright (C) 2015 LuckyKat
- */
-bento.define('bento/renderers/canvas2d', [
-    'bento/utils'
-], function (Utils) {
-    return function (canvas, settings) {
-        var context = canvas.getContext('2d'),
-            original = context,
-            pixelSize = settings.pixelSize || 1,
-            renderer = {
-                name: 'canvas2d',
-                save: function () {
-                    context.save();
-                },
-                restore: function () {
-                    context.restore();
-                },
-                translate: function (x, y) {
-                    context.translate(x, y);
-                },
-                scale: function (x, y) {
-                    context.scale(x, y);
-                },
-                rotate: function (angle) {
-                    context.rotate(angle);
-                },
-                fillRect: function (colorArray, x, y, w, h) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.fillRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                fillCircle: function (colorArray, x, y, radius) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.beginPath();
-                    context.arc(x, y, radius, 0, Math.PI * 2);
-                    context.fill();
-                    context.closePath();
-
-                },
-                strokeRect: function (colorArray, x, y, w, h) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
-                    }
-                    context.strokeStyle = colorStr;
-                    context.strokeRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
-                },
-                getOpacity: function () {
-                    return context.globalAlpha;
-                },
-                setOpacity: function (value) {
-                    context.globalAlpha = value;
-                },
-                createSurface: function (width, height) {
-                    var newCanvas = document.createElement('canvas'),
-                        newContext;
-
-                    newCanvas.width = width;
-                    newCanvas.height = height;
-
-                    newContext = canvas.getContext('2d');
-
-                    return {
-                        canvas: newCanvas,
-                        context: newContext
-                    };
-                },
-                setContext: function (ctx) {
-                    context = ctx;
-                },
-                restoreContext: function () {
-                    context = original;
-                },
-                begin: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.save();
-                        context.scale(pixelSize, pixelSize);
-                    }
-                },
-                flush: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.restore();
-                    }
-                }
-            },
-            getColor = function (colorArray) {
-                var colorStr = '#';
-                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
-                return colorStr;
-            };
-        console.log('Init canvas2d as renderer');
-
-        // resize canvas according to pixelSize
-        canvas.width *= pixelSize;
-        canvas.height *= pixelSize;
-
-        if (!settings.smoothing) {
-            if (context.imageSmoothingEnabled) {
-                context.imageSmoothingEnabled = false;
-            }
-            if (context.webkitImageSmoothingEnabled) {
-                context.webkitImageSmoothingEnabled = false;
-            }
-            if (context.mozImageSmoothingEnabled) {
-                context.mozImageSmoothingEnabled = false;
-            }
-        }
-        return renderer;
-    };
-});
-bento.define('bento/renderers/pixi', [
-    'bento',
-    'bento/utils'
-], function (Bento, Utils) {
-    return function (canvas, settings) {
-        var context,
-            pixiStage,
-            pixiRenderer,
-            pixiBatch,
-            currentObject,
-            sortMode = settings.sortMode || 0,
-            renderer = {
-                name: 'pixi',
-                init: function () {
-
-                },
-                destroy: function () {},
-                save: function () {},
-                restore: function () {},
-                translate: function (x, y) {},
-                scale: function (x, y) {},
-                rotate: function (angle) {},
-                fillRect: function (color, x, y, w, h) {},
-                fillCircle: function (color, x, y, radius) {},
-                drawImage: function (image, sx, sy, sw, sh, x, y, w, h) {},
-                begin: function () {
-                    if (sortMode === Utils.SortMode.ALWAYS) {
-                        sort();
-                    }
-                },
-                flush: function () {
-                    var viewport = Bento.getViewport();
-                    pixiStage.x = -viewport.x;
-                    pixiStage.y = -viewport.y;
-                    pixiRenderer.render(pixiStage);
-                },
-                addChild: function (child) {
-                    pixiStage.addChild(child);
-                    if (sortMode === Utils.SortMode.SORT_ON_ADD) {
-                        sort();
-                    }                },
-                removeChild: function (child) {
-                    pixiStage.removeChild(child);
-                }
-            },
-            sort = function () {
-                Utils.stableSort.inplace(pixiStage.children, function (a, b) {
-                    return a.z - b.z;
-                });
-            };
-        if (!window.PIXI) {
-            throw 'Pixi library missing';
-        }
-
-        // init pixi
-        pixiStage = new PIXI.Container();
-        pixiRenderer = PIXI.autoDetectRenderer(canvas.width, canvas.height, {
-            view: canvas,
-            backgroundColor: 0x000000
-        });
-        console.log('Init pixi as renderer');
-        console.log(pixiRenderer.view === canvas);
-
-        return renderer;
-    };
-});
-/**
- * WebGL renderer using gl-sprites by Matt DesLauriers
- * @copyright (C) 2015 LuckyKat
- */
-bento.define('bento/renderers/webgl', [
-    'bento/utils',
-    'bento/renderers/canvas2d'
-], function (Utils, Canvas2d) {
-    return function (canvas, settings) {
-        var canWebGl = (function () {
-                // try making a canvas
-                try {
-                    var canvas = document.createElement('canvas');
-                    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-                } catch (e) {
-                    return false;
-                }
-            })(),
-            context,
-            glRenderer,
-            original,
-            pixelSize = settings.pixelSize || 1,
-            renderer = {
-                name: 'webgl',
-                save: function () {
-                    glRenderer.save();
-                },
-                restore: function () {
-                    glRenderer.restore();
-                },
-                translate: function (x, y) {
-                    glRenderer.translate(x, y);
-                },
-                scale: function (x, y) {
-                    glRenderer.scale(x, y);
-                },
-                rotate: function (angle) {
-                    glRenderer.rotate(angle);
-                },
-                fillRect: function (color, x, y, w, h) {
-                    var oldColor = glRenderer.color;
-                    // 
-                    renderer.setColor(color);
-                    glRenderer.fillRect(x, y, w, h);
-                    glRenderer.color = oldColor;
-                },
-                fillCircle: function (color, x, y, radius) {},
-                strokeRect: function (color, x, y, w, h) {
-                    var oldColor = glRenderer.color;
-                    // 
-                    renderer.setColor(color);
-                    glRenderer.strokeRect(x, y, w, h);
-                    glRenderer.color = oldColor;
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    var image = packedImage.image;
-                    if (!image.texture) {
-                        image.texture = window.GlSprites.createTexture2D(context, image);
-                    }
-                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
-                },
-                begin: function () {
-                    glRenderer.begin();
-                },
-                flush: function () {
-                    glRenderer.end();
-                },
-                setColor: function (color) {
-                    glRenderer.color = color;
-                },
-                getOpacity: function () {
-                    return glRenderer.color[3];
-                },
-                setOpacity: function (value) {
-                    glRenderer.color[3] = value;
-                },
-                createSurface: function (width, height) {
-                    var newCanvas = document.createElement('canvas'),
-                        newContext,
-                        newGlRenderer;
-
-                    newCanvas.width = width;
-                    newCanvas.height = height;
-
-                    newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    newGlRenderer = new window.GlSprites.SpriteRenderer(newContext);
-                    newGlRenderer.ortho(canvas.width, canvas.height);
-
-                    return {
-                        canvas: newCanvas,
-                        context: newGlRenderer
-                    };
-                },
-                setContext: function (ctx) {
-                    glRenderer = ctx;
-                },
-                restoreContext: function () {
-                    glRenderer = original;
-                }
-            };
-        console.log('Init webgl as renderer');
-
-        // fallback
-        if (canWebGl && Utils.isDefined(window.GlSprites)) {
-            // resize canvas according to pixelSize
-            canvas.width *= pixelSize;
-            canvas.height *= pixelSize;
-            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-
-            glRenderer = new window.GlSprites.SpriteRenderer(context);
-            glRenderer.ortho(canvas.width / pixelSize, canvas.height / pixelSize);
-            original = glRenderer;
-            return renderer;
-        } else {
-            console.log('webgl failed, revert to canvas');
-            return Canvas2d(canvas, settings);
-        }
     };
 });

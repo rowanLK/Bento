@@ -155,6 +155,16 @@ bento.define('bento/components/animation', [
         this.currentFrame = frameNumber;
     };
     /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
      * Set speed of the current animation.
      * @function
      * @instance
