@@ -83,13 +83,14 @@ bento.define('bento/gui/counter', [
                             }
                         }
                     }),
-                    entity = new Entity({
-                    components: [sprite],
-                    init: function () {
-                        // setup all digits
-                        digitWidth = settings.frameWidth;
-                    }
-                });
+                    digitSettings = Utils.extend({
+                        components: [sprite],
+                        init: function () {
+                            // setup all digits
+                            digitWidth = settings.frameWidth;
+                        }
+                    }, settings.digit || {}),
+                    entity = new Entity(digitSettings);
 
                 entity.sprite = sprite.animation;
                 return entity;
