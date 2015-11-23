@@ -46,6 +46,15 @@ define('bento/managers/audio', [
                 setVolume: function (value, name) {
                     assetManager.getAudio(name).volume = value;
                 },
+                /* Gets the volume (0 = minimum, 1 = maximum)
+                 * @name getVolume
+                 * @function
+                 * @param {Number} value: the volume
+                 * @param {String} name: name of the sound currently playing
+                 */
+                getVolume: function (name) {
+                    return assetManager.getAudio(name).volume;
+                },
                 /* Plays a sound
                  * @name playSound
                  * @function
