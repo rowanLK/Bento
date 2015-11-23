@@ -5527,6 +5527,16 @@ bento.define('bento/components/animation', [
         this.currentFrame = frameNumber;
     };
     /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
      * Set speed of the current animation.
      * @function
      * @instance
@@ -11127,443 +11137,6 @@ bento.define('bento/tween', [
         return tween;
     };
 });
-bento.define('bento/gui/clickbutton', [
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/components/sprite',
-    'bento/components/clickable',
-    'bento/entity',
-    'bento/utils',
-    'bento/tween',
-    'bento/eventsystem'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Sprite,
-    Clickable,
-    Entity,
-    Utils,
-    Tween,
-    EventSystem
-) {
-    'use strict';
-    return function (settings) {
-        var viewport = Bento.getViewport(),
-            active = true,
-            sprite = new Sprite({
-                image: settings.image,
-                frameWidth: settings.frameWidth || 32,
-                frameHeight: settings.frameHeight || 32,
-                animations: settings.animations || {
-                    'up': {
-                        speed: 0,
-                        frames: [0]
-                    },
-                    'down': {
-                        speed: 0,
-                        frames: [1]
-                    },
-                    'inactive': {
-                        speed: 0,
-                        frames: [2]
-                    }
-                }
-            }),
-            clickable = new Clickable({
-                onClick: function () {
-                    if (!active) {
-                        return;
-                    }
-                    sprite.animation.setAnimation('down');
-                    if (settings.onButtonDown) {
-                        settings.onButtonDown.apply(entity);
-                    }
-                },
-                onHoldEnter: function () {
-                    if (!active) {
-                        return;
-                    }
-                    sprite.animation.setAnimation('down');
-                    if (settings.onButtonDown) {
-                        settings.onButtonDown.apply(entity);
-                    }
-                },
-                onHoldLeave: function () {
-                    if (!active) {
-                        return;
-                    }
-                    sprite.animation.setAnimation('up');
-                    if (settings.onButtonUp) {
-                        settings.onButtonUp.apply(entity);
-                    }
-                },
-                pointerUp: function () {
-                    if (!active) {
-                        return;
-                    }
-                    sprite.animation.setAnimation('up');
-                    if (settings.onButtonUp) {
-                        settings.onButtonUp.apply(entity);
-                    }
-                },
-                onHoldEnd: function () {
-                    if (active && settings.onClick) {
-                        settings.onClick.apply(entity);
-                        if (settings.sfx) {
-                            Bento.audio.stopSound(settings.sfx);
-                            Bento.audio.playSound(settings.sfx);
-                        }
-                        EventSystem.fire('clickButton', entity);
-                    }
-                }
-            }),
-            entitySettings = Utils.extend({
-                z: 0,
-                name: '',
-                originRelative: new Vector2(0.5, 0.5),
-                position: new Vector2(0, 0),
-                components: [
-                    sprite,
-                    clickable
-                ],
-                family: ['buttons'],
-                init: function () {
-                    if (!active) {
-                        sprite.animation.setAnimation('inactive');
-                    } else {
-                        sprite.animation.setAnimation('up');
-                    }
-                }
-            }, settings),
-            entity = new Entity(entitySettings).extend({
-                setActive: function (bool) {
-                    active = bool;
-                    if (!active) {
-                        sprite.animation.setAnimation('inactive');
-                    } else {
-                        sprite.animation.setAnimation('up');
-                    }
-                },
-                doCallback: function () {
-                    settings.onClick.apply(entity);
-                }
-            });
-
-        if (Utils.isDefined(settings.active)) {
-            active = settings.active;
-        }
-
-        return entity;
-    };
-});
-bento.define('bento/gui/counter', [
-    'bento',
-    'bento/entity',
-    'bento/math/vector2',
-    'bento/components/sprite',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/utils'
-], function (
-    Bento,
-    Entity,
-    Vector2,
-    Sprite,
-    Translation,
-    Rotation,
-    Scale,
-    Utils
-) {
-    'use strict';
-    return function (settings) {
-        /*{
-            value: Number,
-            spacing: Vector,
-            align: String,
-            frameWidth: Number,
-            frameHeight: Number,
-            image: Image,
-            position: Vector
-        }*/
-        var value = settings.value || 0,
-            spacing = settings.spacing || new Vector2(0, 0),
-            alignment = settings.align || settings.alignment || 'right',
-            digitWidth = 0,
-            children = [],
-            /*
-             * Counts the number of digits in the value
-             */
-            getDigits = function () {
-                return Math.floor(value).toString().length;
-            },
-            /*
-             * Returns an entity with all digits as animation
-             */
-            createDigit = function () {
-                var sprite = new Sprite({
-                        image: settings.image,
-                        frameWidth: settings.frameWidth,
-                        frameHeight: settings.frameHeight,
-                        animations: {
-                            '0': {
-                                frames: [0]
-                            },
-                            '1': {
-                                frames: [1]
-                            },
-                            '2': {
-                                frames: [2]
-                            },
-                            '3': {
-                                frames: [3]
-                            },
-                            '4': {
-                                frames: [4]
-                            },
-                            '5': {
-                                frames: [5]
-                            },
-                            '6': {
-                                frames: [6]
-                            },
-                            '7': {
-                                frames: [7]
-                            },
-                            '8': {
-                                frames: [8]
-                            },
-                            '9': {
-                                frames: [9]
-                            },
-                            '-': {
-                                frames: [10]
-                            }
-                        }
-                    }),
-                    entity = new Entity({
-                    components: [sprite],
-                    init: function () {
-                        // setup all digits
-                        digitWidth = settings.frameWidth;
-                    }
-                });
-
-                entity.sprite = sprite.animation;
-                return entity;
-            },
-            /*
-             * Adds or removes children depending on the value
-             * and number of current digits and updates
-             * the visualuzation of the digits
-             */
-            updateDigits = function () {
-                // add or remove digits
-                var i,
-                    valueStr = value.toString(),
-                    pos,
-                    digit,
-                    digits = getDigits(),
-                    difference = children.length - digits;
-                /* update number of children to be
-                    the same as number of digits*/
-                if (difference < 0) {
-                    // create new
-                    for (i = 0; i < Math.abs(difference); ++i) {
-                        digit = createDigit();
-                        children.push(digit);
-                        base.attach(digit);
-
-                    }
-                } else if (difference > 0) {
-                    // remove
-                    for (i = 0; i < Math.abs(difference); ++i) {
-                        digit = children.pop();
-                        base.remove(digit);
-                    }
-                }
-                /* update animations */
-                for (i = 0; i < children.length; ++i) {
-                    digit = children[i];
-                    digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
-                    digit.sprite.setAnimation(valueStr.substr(i, 1));
-                }
-
-                /* alignment */
-                if (alignment === 'right') {
-                    // move all the children
-                    for (i = 0; i < children.length; ++i) {
-                        digit = children[i];
-                        pos = digit.position;
-                        pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
-                    }
-                } else if (alignment === 'center') {
-                    for (i = 0; i < children.length; ++i) {
-                        digit = children[i];
-                        pos = digit.position;
-                        pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
-                    }
-                }
-            },
-            entitySettings = {
-                z: settings.z,
-                name: settings.name,
-                position: settings.position,
-                components: [new Sprite({})]
-            },
-            base;
-
-        Utils.extend(entitySettings, settings);
-
-        /*
-         * Public interface
-         */
-        base = new Entity(entitySettings).extend({
-            init: function () {
-                updateDigits();
-            },
-            /*
-             * Sets current value
-             */
-            setValue: function (val) {
-                value = val;
-                updateDigits();
-            },
-            /*
-             * Retrieves current value
-             */
-            getValue: function () {
-                return value;
-            },
-            addValue: function (val) {
-                value += val;
-                updateDigits();
-            },
-            getDigits: function () {
-                return getDigits();
-            }
-        });
-        return base;
-    };
-});
-bento.define('bento/gui/togglebutton', [
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/components/sprite',
-    'bento/components/clickable',
-    'bento/entity',
-    'bento/utils',
-    'bento/tween'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Sprite,
-    Clickable,
-    Entity,
-    Utils,
-    Tween
-) {
-    'use strict';
-    return function (settings) {
-        var viewport = Bento.getViewport(),
-            active = true,
-            toggled = false,
-            sprite = new Sprite({
-                image: settings.image,
-                frameWidth: settings.frameWidth || 32,
-                frameHeight: settings.frameHeight || 32,
-                animations: settings.animations || {
-                    'up': {
-                        speed: 0,
-                        frames: [0]
-                    },
-                    'down': {
-                        speed: 0,
-                        frames: [1]
-                    }
-                }
-            }),
-            entitySettings = Utils.extend({
-                z: 0,
-                name: '',
-                originRelative: new Vector2(0.5, 0.5),
-                position: new Vector2(0, 0),
-                components: [
-                    sprite,
-                    new Clickable({
-                        onClick: function () {
-                            sprite.animation.setAnimation('down');
-                        },
-                        onHoldEnter: function () {
-                            sprite.animation.setAnimation('down');
-                        },
-                        onHoldLeave: function () {
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
-                        },
-                        pointerUp: function () {
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
-                        },
-                        onHoldEnd: function () {
-                            if (!active) {
-                                return;
-                            }
-                            if (toggled) {
-                                toggled = false;
-                            } else {
-                                toggled = true;
-                            }
-                            if (settings.onToggle) {
-                                settings.onToggle.apply(entity);
-                                if (settings.sfx) {
-                                    Bento.audio.stopSound(settings.sfx);
-                                    Bento.audio.playSound(settings.sfx);
-                                }
-                            }
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
-                        }
-                    })
-                ],
-                family: ['buttons'],
-                init: function () {}
-            }, settings),
-            entity = new Entity(entitySettings).extend({
-                isToggled: function () {
-                    return toggled;
-                },
-                toggle: function (state, doCallback) {
-                    if (Utils.isDefined(state)) {
-                        toggled = state;
-                    } else {
-                        toggled = !toggled;
-                    }
-                    if (doCallback) {
-                        if (settings.onToggle) {
-                            settings.onToggle.apply(entity);
-                            if (settings.sfx) {
-                                Bento.audio.stopSound(settings.sfx);
-                                Bento.audio.playSound(settings.sfx);
-                            }
-                        }
-                    }
-                    sprite.animation.setAnimation(toggled ? 'down' : 'up');
-                }
-            });
-
-        if (Utils.isDefined(settings.active)) {
-            active = settings.active;
-        }
-        // set intial state
-        if (settings.toggled) {
-            toggled = true;
-        }
-        sprite.animation.setAnimation(toggled ? 'down' : 'up');
-        return entity;
-    };
-});
 /**
  * Canvas 2d renderer
  * @copyright (C) 2015 LuckyKat
@@ -11880,5 +11453,443 @@ bento.define('bento/renderers/webgl', [
             console.log('webgl failed, revert to canvas');
             return Canvas2d(canvas, settings);
         }
+    };
+});
+bento.define('bento/gui/clickbutton', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/utils',
+    'bento/tween',
+    'bento/eventsystem'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    Utils,
+    Tween,
+    EventSystem
+) {
+    'use strict';
+    return function (settings) {
+        var viewport = Bento.getViewport(),
+            active = true,
+            sprite = new Sprite({
+                image: settings.image,
+                frameWidth: settings.frameWidth || 32,
+                frameHeight: settings.frameHeight || 32,
+                animations: settings.animations || {
+                    'up': {
+                        speed: 0,
+                        frames: [0]
+                    },
+                    'down': {
+                        speed: 0,
+                        frames: [1]
+                    },
+                    'inactive': {
+                        speed: 0,
+                        frames: [2]
+                    }
+                }
+            }),
+            clickable = new Clickable({
+                onClick: function () {
+                    if (!active) {
+                        return;
+                    }
+                    sprite.animation.setAnimation('down');
+                    if (settings.onButtonDown) {
+                        settings.onButtonDown.apply(entity);
+                    }
+                },
+                onHoldEnter: function () {
+                    if (!active) {
+                        return;
+                    }
+                    sprite.animation.setAnimation('down');
+                    if (settings.onButtonDown) {
+                        settings.onButtonDown.apply(entity);
+                    }
+                },
+                onHoldLeave: function () {
+                    if (!active) {
+                        return;
+                    }
+                    sprite.animation.setAnimation('up');
+                    if (settings.onButtonUp) {
+                        settings.onButtonUp.apply(entity);
+                    }
+                },
+                pointerUp: function () {
+                    if (!active) {
+                        return;
+                    }
+                    sprite.animation.setAnimation('up');
+                    if (settings.onButtonUp) {
+                        settings.onButtonUp.apply(entity);
+                    }
+                },
+                onHoldEnd: function () {
+                    if (active && settings.onClick) {
+                        settings.onClick.apply(entity);
+                        if (settings.sfx) {
+                            Bento.audio.stopSound(settings.sfx);
+                            Bento.audio.playSound(settings.sfx);
+                        }
+                        EventSystem.fire('clickButton', entity);
+                    }
+                }
+            }),
+            entitySettings = Utils.extend({
+                z: 0,
+                name: '',
+                originRelative: new Vector2(0.5, 0.5),
+                position: new Vector2(0, 0),
+                components: [
+                    sprite,
+                    clickable
+                ],
+                family: ['buttons'],
+                init: function () {
+                    if (!active) {
+                        sprite.animation.setAnimation('inactive');
+                    } else {
+                        sprite.animation.setAnimation('up');
+                    }
+                }
+            }, settings),
+            entity = new Entity(entitySettings).extend({
+                setActive: function (bool) {
+                    active = bool;
+                    if (!active) {
+                        sprite.animation.setAnimation('inactive');
+                    } else {
+                        sprite.animation.setAnimation('up');
+                    }
+                },
+                doCallback: function () {
+                    settings.onClick.apply(entity);
+                }
+            });
+
+        if (Utils.isDefined(settings.active)) {
+            active = settings.active;
+        }
+
+        return entity;
+    };
+});
+bento.define('bento/gui/counter', [
+    'bento',
+    'bento/entity',
+    'bento/math/vector2',
+    'bento/components/sprite',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/utils'
+], function (
+    Bento,
+    Entity,
+    Vector2,
+    Sprite,
+    Translation,
+    Rotation,
+    Scale,
+    Utils
+) {
+    'use strict';
+    return function (settings) {
+        /*{
+            value: Number,
+            spacing: Vector,
+            align: String,
+            frameWidth: Number,
+            frameHeight: Number,
+            image: Image,
+            position: Vector
+        }*/
+        var value = settings.value || 0,
+            spacing = settings.spacing || new Vector2(0, 0),
+            alignment = settings.align || settings.alignment || 'right',
+            digitWidth = 0,
+            children = [],
+            /*
+             * Counts the number of digits in the value
+             */
+            getDigits = function () {
+                return Math.floor(value).toString().length;
+            },
+            /*
+             * Returns an entity with all digits as animation
+             */
+            createDigit = function () {
+                var sprite = new Sprite({
+                        image: settings.image,
+                        frameWidth: settings.frameWidth,
+                        frameHeight: settings.frameHeight,
+                        animations: {
+                            '0': {
+                                frames: [0]
+                            },
+                            '1': {
+                                frames: [1]
+                            },
+                            '2': {
+                                frames: [2]
+                            },
+                            '3': {
+                                frames: [3]
+                            },
+                            '4': {
+                                frames: [4]
+                            },
+                            '5': {
+                                frames: [5]
+                            },
+                            '6': {
+                                frames: [6]
+                            },
+                            '7': {
+                                frames: [7]
+                            },
+                            '8': {
+                                frames: [8]
+                            },
+                            '9': {
+                                frames: [9]
+                            },
+                            '-': {
+                                frames: [10]
+                            }
+                        }
+                    }),
+                    digitSettings = Utils.extend({
+                        components: [sprite],
+                        init: function () {
+                            // setup all digits
+                            digitWidth = settings.frameWidth;
+                        }
+                    }, settings.digit || {}),
+                    entity = new Entity(digitSettings);
+
+                entity.sprite = sprite.animation;
+                return entity;
+            },
+            /*
+             * Adds or removes children depending on the value
+             * and number of current digits and updates
+             * the visualuzation of the digits
+             */
+            updateDigits = function () {
+                // add or remove digits
+                var i,
+                    valueStr = value.toString(),
+                    pos,
+                    digit,
+                    digits = getDigits(),
+                    difference = children.length - digits;
+                /* update number of children to be
+                    the same as number of digits*/
+                if (difference < 0) {
+                    // create new
+                    for (i = 0; i < Math.abs(difference); ++i) {
+                        digit = createDigit();
+                        children.push(digit);
+                        base.attach(digit);
+
+                    }
+                } else if (difference > 0) {
+                    // remove
+                    for (i = 0; i < Math.abs(difference); ++i) {
+                        digit = children.pop();
+                        base.remove(digit);
+                    }
+                }
+                /* update animations */
+                for (i = 0; i < children.length; ++i) {
+                    digit = children[i];
+                    digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
+                    digit.sprite.setAnimation(valueStr.substr(i, 1));
+                }
+
+                /* alignment */
+                if (alignment === 'right') {
+                    // move all the children
+                    for (i = 0; i < children.length; ++i) {
+                        digit = children[i];
+                        pos = digit.position;
+                        pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
+                    }
+                } else if (alignment === 'center') {
+                    for (i = 0; i < children.length; ++i) {
+                        digit = children[i];
+                        pos = digit.position;
+                        pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
+                    }
+                }
+            },
+            entitySettings = {
+                z: settings.z,
+                name: settings.name,
+                position: settings.position,
+                components: [new Sprite({})]
+            },
+            base;
+
+        Utils.extend(entitySettings, settings);
+
+        /*
+         * Public interface
+         */
+        base = new Entity(entitySettings).extend({
+            init: function () {
+                updateDigits();
+            },
+            /*
+             * Sets current value
+             */
+            setValue: function (val) {
+                value = val;
+                updateDigits();
+            },
+            /*
+             * Retrieves current value
+             */
+            getValue: function () {
+                return value;
+            },
+            addValue: function (val) {
+                value += val;
+                updateDigits();
+            },
+            getDigits: function () {
+                return getDigits();
+            }
+        });
+        return base;
+    };
+});
+bento.define('bento/gui/togglebutton', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    Utils,
+    Tween
+) {
+    'use strict';
+    return function (settings) {
+        var viewport = Bento.getViewport(),
+            active = true,
+            toggled = false,
+            sprite = new Sprite({
+                image: settings.image,
+                frameWidth: settings.frameWidth || 32,
+                frameHeight: settings.frameHeight || 32,
+                animations: settings.animations || {
+                    'up': {
+                        speed: 0,
+                        frames: [0]
+                    },
+                    'down': {
+                        speed: 0,
+                        frames: [1]
+                    }
+                }
+            }),
+            entitySettings = Utils.extend({
+                z: 0,
+                name: '',
+                originRelative: new Vector2(0.5, 0.5),
+                position: new Vector2(0, 0),
+                components: [
+                    sprite,
+                    new Clickable({
+                        onClick: function () {
+                            sprite.animation.setAnimation('down');
+                        },
+                        onHoldEnter: function () {
+                            sprite.animation.setAnimation('down');
+                        },
+                        onHoldLeave: function () {
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                        },
+                        pointerUp: function () {
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                        },
+                        onHoldEnd: function () {
+                            if (!active) {
+                                return;
+                            }
+                            if (toggled) {
+                                toggled = false;
+                            } else {
+                                toggled = true;
+                            }
+                            if (settings.onToggle) {
+                                settings.onToggle.apply(entity);
+                                if (settings.sfx) {
+                                    Bento.audio.stopSound(settings.sfx);
+                                    Bento.audio.playSound(settings.sfx);
+                                }
+                            }
+                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                        }
+                    })
+                ],
+                family: ['buttons'],
+                init: function () {}
+            }, settings),
+            entity = new Entity(entitySettings).extend({
+                isToggled: function () {
+                    return toggled;
+                },
+                toggle: function (state, doCallback) {
+                    if (Utils.isDefined(state)) {
+                        toggled = state;
+                    } else {
+                        toggled = !toggled;
+                    }
+                    if (doCallback) {
+                        if (settings.onToggle) {
+                            settings.onToggle.apply(entity);
+                            if (settings.sfx) {
+                                Bento.audio.stopSound(settings.sfx);
+                                Bento.audio.playSound(settings.sfx);
+                            }
+                        }
+                    }
+                    sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                }
+            });
+
+        if (Utils.isDefined(settings.active)) {
+            active = settings.active;
+        }
+        // set intial state
+        if (settings.toggled) {
+            toggled = true;
+        }
+        sprite.animation.setAnimation(toggled ? 'down' : 'up');
+        return entity;
     };
 });
