@@ -11772,6 +11772,12 @@ bento.define('bento/gui/counter', [
             },
             getDigits: function () {
                 return getDigits();
+            },
+            loopDigits: function (callback) {
+                var i = 0;
+                for (i = 0; i < children.length; ++i) {
+                    callback(children[i]);
+                }
             }
         });
         return base;
