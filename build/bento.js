@@ -8879,16 +8879,6 @@ bento.define('bento/managers/object', [
                 if (object.init) {
                     object.init();
                 }
-                if (object.start) {
-                    object.start(gameData);
-                }
-                if (object.attached) {
-                    object.attached(gameData);
-                }
-                object.isAdded = true;
-                if (object.useHshg && object.getAABB) {
-                    hshg.addObject(object);
-                }
                 // add object to access pools
                 if (object.family) {
                     family = object.family;
@@ -8900,6 +8890,17 @@ bento.define('bento/managers/object', [
                         quickAccess[type].push(object);
                     }
                 }
+                if (object.useHshg && object.getAABB) {
+                    hshg.addObject(object);
+                }
+                
+                if (object.start) {
+                    object.start(gameData);
+                }
+                if (object.attached) {
+                    object.attached(gameData);
+                }
+                object.isAdded = true;
                 if (sortMode === Utils.SortMode.SORT_ON_ADD) {
                     sort();
                 }
