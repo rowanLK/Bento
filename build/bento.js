@@ -6476,6 +6476,8 @@ bento.define('bento/components/translation', [
         this.name = 'translation';
         this.subPixel = settings.subPixel || false;
         this.entity = null;
+        this.x = 0;
+        this.y = 0;
     };
     Translation.prototype.draw = function (data) {
         var entity = data.entity,
@@ -6486,9 +6488,9 @@ bento.define('bento/components/translation', [
 
         data.renderer.save();
         if (this.subPixel) {
-            data.renderer.translate(entity.position.x, entity.position.y);
+            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
         } else {
-            data.renderer.translate(Math.round(entity.position.x), Math.round(entity.position.y));
+            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
         }
         // scroll (only applies to parent objects)
         if (!parent && !entity.float) {
