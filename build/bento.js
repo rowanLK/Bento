@@ -9418,7 +9418,7 @@ bento.define('bento/managers/screen', [
                     currentScreen = null;
                 },
                 /**
-                 * Retuyrn reference to the screen currently shown.
+                 * Return reference to the screen currently shown.
                  * @function
                  * @instance
                  * @returns {Screen} The current screen
@@ -9426,6 +9426,15 @@ bento.define('bento/managers/screen', [
                  */
                 getCurrentScreen: function () {
                     return currentScreen;
+                },
+                /**
+                 * Clears cache of screens
+                 * @function
+                 * @instance
+                 * @name reset
+                 */
+                reset: function () {
+                    screens = {};
                 }
             };
 
