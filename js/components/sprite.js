@@ -36,9 +36,12 @@ bento.define('bento/components/sprite', [
                 this.opacity = new Opacity(settings);
                 this.animation = new Animation(settings);
             }
+
+            this.components = settings.components || [];
         };
 
     component.prototype.attached = function (data) {
+        var i = 0;
         this.entity = data.entity;
         // attach all components!
         if (this.translation) {
@@ -51,11 +54,23 @@ bento.define('bento/components/sprite', [
             this.entity.attach(this.scale);
         }
         this.entity.attach(this.opacity);
+
+        // wedge in extra components in before the animation component
+        for (i = 0; i < this.components.length; ++i) {
+            this.entity.attach(this.components[i]);
+        }
         this.entity.attach(this.animation);
 
         // remove self?
         this.entity.remove(this);
     };
+    component.prototype.insertBefore = function (array) {
+        if (!Utils.isArray(array)) {
+            array = [array];
+        }
+        this.components = array;
+        return this;
+    },
     component.prototype.toString = function () {
         return '[object Sprite]';
     };
