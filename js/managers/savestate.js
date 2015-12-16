@@ -55,6 +55,12 @@ bento.define('bento/managers/savestate', [
     }
     return {
         /**
+         * Boolean that indicates if keys should be saved
+         * @instance
+         * @name saveKeys
+         */
+        saveKeys: false,
+        /**
          * Saves/serializes a variable
          * @function
          * @instance
@@ -63,10 +69,19 @@ bento.define('bento/managers/savestate', [
          * @name save
          */
         save: function (elementKey, element) {
+            var keys;
             if (typeof elementKey !== 'string') {
                 elementKey = JSON.stringify(elementKey);
             }
             storage.setItem(uniqueID + elementKey, JSON.stringify(element));
+
+            // also store the keys
+            if (this.saveKeys) {
+                keys = this.load('_keys', []);
+                keys.push(elementKey);
+                storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
+                console.log('save keys')
+            }
         },
         /**
          * Loads a variable
@@ -134,7 +149,7 @@ bento.define('bento/managers/savestate', [
          * @instance
          * @param {Object} storageObject - an object that resembels localStorage
          * @name setStorage
-        */
+         */
         setStorage: function (storageObj) {
             storage = storageObj;
         },
@@ -143,7 +158,7 @@ bento.define('bento/managers/savestate', [
          * @function
          * @instance
          * @name getStorage
-        */
+         */
         getStorage: function () {
             return storage;
         }
