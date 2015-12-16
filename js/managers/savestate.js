@@ -80,7 +80,6 @@ bento.define('bento/managers/savestate', [
                 keys = this.load('_keys', []);
                 keys.push(elementKey);
                 storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
-                console.log('save keys')
             }
         },
         /**
