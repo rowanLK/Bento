@@ -1,5 +1,6 @@
 /**
- * Manager that tracks mouse/touch and keyboard input
+ * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
+ * Can be accessed through Bento.input
  * <br>Exports: Function
  * @module bento/managers/input
  * @param {Object} settings - Settings
@@ -283,7 +284,7 @@ bento.define('bento/managers/input', [
 
         return {
             /**
-             * Returns current pointers down
+             * Returns all current pointers down
              * @function
              * @instance
              * @returns {Array} pointers - Array with pointer positions

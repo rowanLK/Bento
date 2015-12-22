@@ -1,10 +1,11 @@
 /**
- * Component that fills the screen
+ * Component that fills a square.
  * <br>Exports: Function
  * @module bento/components/fill
- * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 
+ * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size) 
+ * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/fill', [
     'bento/utils',

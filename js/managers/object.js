@@ -1,5 +1,6 @@
 /**
  * Manager that controls mainloop and all objects
+ * Can be accessed through Bento.objects
  * <br>Exports: Function
  * @module bento/managers/object
  * @param {Object} data - gameData object
@@ -163,11 +164,11 @@ bento.define('bento/managers/object', [
             },
             module = {
                 /**
-                 * Adds entity/object to the game. If the object has the
-                 * functions update and draw, they will be called in the loop.
+                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object 
+                 * has the functions update and draw, they will be called during the loop.
                  * @function
                  * @instance
-                 * @param {Object} object - You can add any object, preferably an Entity
+                 * @param {Object} object - Any object, preferably an Entity
                  * @name attach
                  */
                 attach: attach,
@@ -238,7 +239,8 @@ bento.define('bento/managers/object', [
                     }
                 },
                 /**
-                 * Returns the first object it can find with this name
+                 * Returns the first object it can find with this name. Safer to use with a callback.
+                 * The callback is called immediately if the object is found (it's not asynchronous).
                  * @function
                  * @instance
                  * @param {String} objectName - Name of the object
@@ -300,7 +302,8 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Returns an array of objects by family name
+                 * Returns an array of objects by family name. Families are cached so you
+                 * may get a reference to the array of objects even if it's not filled yet.
                  * @function
                  * @instance
                  * @param {String} familyName - Name of the family

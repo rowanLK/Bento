@@ -1,5 +1,5 @@
 /**
- * Bento module, main entry point to game modules and managers
+ * Bento module, main entry point to game modules and managers. Start by using Bento.setup
  * <br>Exports: Object
  * @module bento
  */
@@ -154,7 +154,7 @@ bento.define('bento', [
         },
         module = {
             /**
-             * Setup game. Initializes Bento managers.
+             * Setup game. Initializes all Bento managers.
              * @name setup
              * @function
              * @instance
@@ -262,11 +262,47 @@ bento.define('bento', [
                     entity: null
                 };
             },
+            /**
+             * Asset manager
+             * @see module:bento/managers/asset
+             * @instance
+             * @name assets
+             */
             assets: null,
+            /**
+             * Object manager
+             * @see module:bento/managers/object
+             * @instance
+             * @name objects
+             */
             objects: null,
+            /**
+             * Input manager
+             * @see module:bento/managers/input
+             * @instance
+             * @name objects
+             */
             input: null,
+            /**
+             * Audio manager
+             * @see module:bento/managers/audio
+             * @instance
+             * @name audio
+             */
             audio: null,
+            /**
+             * Screen manager
+             * @see module:bento/managers/screen
+             * @instance
+             * @name screen
+             */
             screens: null,
+            /**
+             * SaveState manager
+             * @see module:bento/managers/savestate
+             * @instance
+             * @name saveState
+             */
             saveState: SaveState,
             utils: Utils
         };

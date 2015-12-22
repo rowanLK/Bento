@@ -1,5 +1,6 @@
 /**
  * Manager that controls presistent variables. Wrapper for localStorage.
+ * Can be accessed through Bento.saveState
  * <br>Exports: Object
  * @module bento/managers/savestate
  * @returns SaveState
@@ -83,7 +84,20 @@ bento.define('bento/managers/savestate', [
             }
         },
         /**
-         * Loads a variable
+         * Adds to a saved variable/number
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number to be added, if the value does not exists, it defaults to 0
+         * @name add
+         */
+        add: function (elementKey, element) {
+            var value = this.load(elementKey, 0);
+            value += element;
+            this.save(elementKey, value);
+        },
+        /**
+         * Loads/deserializes a variable
          * @function
          * @instance
          * @param {String} key - Name of the variable

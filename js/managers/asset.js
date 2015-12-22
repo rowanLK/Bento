@@ -1,5 +1,6 @@
 /**
  * Manager that loads and controls assets
+ * Can be accessed through Bento.assets
  * <br>Exports: Function
  * @module bento/managers/asset
  * @returns AssetManager

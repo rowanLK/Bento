@@ -2936,9 +2936,10 @@ var requirejs, require, define;
     });
 }(window, FPSMeter));
 /**
- *  Main entry point for Bento engine
- *  Defines global bento namespace, use bento.require and define
- *  @name bento
+ * Main entry point for Bento engine
+ * Defines global bento namespace, use bento.require and define.
+ * Require/define uses RequireJS.
+ * @name bento
  */
 (function () {
     'use strict';
@@ -2948,7 +2949,26 @@ var requirejs, require, define;
         req = window.require, // cache requirejs
         def = window.define, // cache requirejs
         bento = {
+            /**
+             * Loads modules asynchronously
+             * @function
+             * @instance
+             * @param {Array} dependencyModuleNames - Array of module names
+             * @param {Function} callback - Called when dependencies are loaded.
+             * Function parameters is a list of corresponding module objects
+             * @name require
+             */
             require: req,
+            /**
+             * Defines a new module
+             * @function
+             * @instance
+             * @param {String} name - Name of the module
+             * @param {Array} dependencyModuleNames - Array of module names
+             * @param {Function} callback - Called when dependencies are loaded.
+             * Function parameters is a list of corresponding module objects
+             * @name define
+             */
             define: function () {
                 var name = arguments[0];
                 if (startWatching) {
@@ -2956,13 +2976,26 @@ var requirejs, require, define;
                 }
                 def.apply(this, arguments);
             },
+            /**
+             * Deletes all loaded modules. See {@link http://requirejs.org/docs/api.html#undef}
+             * Modules loaded after bento.watch started are affected
+             * @function
+             * @instance
+             * @name refresh
+             */
             refresh: function () {
-            	var i = 0;
+                var i = 0;
                 // undefines every module loaded since watch started 
                 for (i = 0; i < modules.length; ++i) {
-                	rjs.undef(modules[i]);
+                    rjs.undef(modules[i]);
                 }
             },
+            /**
+             * Start collecting modules for deletion
+             * @function
+             * @instance
+             * @name watch
+             */
             watch: function () {
                 startWatching = true;
             }
@@ -3758,7 +3791,7 @@ author(s) and should not be interpreted as representing official policies, eithe
 or implied, of the author(s).
 
 /**
- * Bento module, main entry point to game modules and managers
+ * Bento module, main entry point to game modules and managers. Start by using Bento.setup
  * <br>Exports: Object
  * @module bento
  */
@@ -3913,7 +3946,7 @@ bento.define('bento', [
         },
         module = {
             /**
-             * Setup game. Initializes Bento managers.
+             * Setup game. Initializes all Bento managers.
              * @name setup
              * @function
              * @instance
@@ -4021,11 +4054,47 @@ bento.define('bento', [
                     entity: null
                 };
             },
+            /**
+             * Asset manager
+             * @see module:bento/managers/asset
+             * @instance
+             * @name assets
+             */
             assets: null,
+            /**
+             * Object manager
+             * @see module:bento/managers/object
+             * @instance
+             * @name objects
+             */
             objects: null,
+            /**
+             * Input manager
+             * @see module:bento/managers/input
+             * @instance
+             * @name objects
+             */
             input: null,
+            /**
+             * Audio manager
+             * @see module:bento/managers/audio
+             * @instance
+             * @name audio
+             */
             audio: null,
+            /**
+             * Screen manager
+             * @see module:bento/managers/screen
+             * @instance
+             * @name screen
+             */
             screens: null,
+            /**
+             * SaveState manager
+             * @see module:bento/managers/savestate
+             * @instance
+             * @name saveState
+             */
             saveState: SaveState,
             utils: Utils
         };
@@ -4063,13 +4132,26 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
  * @param {Array} settings.family - Array of family names
  * @param {Vector2} settings.position - Vector2 of position to set
  * @param {Vector2} settings.origin - Vector2 of origin to set
- * @param {Vector2} settings.originRelative - Vector2 of relative origin to set
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
+ * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
  * @param {Boolean} settings.z - z-index to set
  * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused
  * @param {Boolean} settings.global - Should entity remain after hiding a screen
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - Should entity use HSHG for collisions
  * @param {Boolean} settings.staticHshg - Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
+ * @example 
+var entity = new Entity({
+    z: 0,
+    name: 'myEntity',
+    position: new Vector2(32, 32),
+    originRelative: new Vector2(0.5, 1),    // bottom center origin
+    components: [new Sprite({
+        imageName: 'myImage'
+    })] // see Sprite module
+ });
+ * // attach entity to Bento Objects
+ * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
  */
 bento.define('bento/entity', [
@@ -4130,7 +4212,7 @@ bento.define('bento/entity', [
          */
         this.updateWhenPaused = false;
         /**
-         * Name of an object
+         * Name of the entity
          * @instance
          * @default ''
          * @name name
@@ -4138,22 +4220,90 @@ bento.define('bento/entity', [
         this.name = '';
         this.isAdded = false;
         /**
-         * Name of an object
+         * Use Hierarchical Spatial Hash Grids
          * @instance
          * @default ''
          * @name useHshg
          */
         this.useHshg = false;
+        /**
+         * Position of the entity
+         * @instance
+         * @default Vector2(0, 0)
+         * @name position
+         */
         this.position = new Vector2(0, 0);
+        /**
+         * Origin of the entity (anchor point)
+         * @instance
+         * @default Vector2(0, 0)
+         * @name origin
+         */
         this.origin = new Vector2(0, 0);
+        /**
+         * Families of the entity
+         * @instance
+         * @default []
+         * @see module:bento/managers/object#getByFamily
+         * @name family
+         */
         this.family = [];
+        /**
+         * Components of the entity
+         * @instance
+         * @default []
+         * @name components
+         */
         this.components = [];
+        /**
+         * Dimension of the entity
+         * @instance
+         * @default Rectangle(0, 0, 0, 0)
+         * @name dimension
+         */
         this.dimension = new Rectangle(0, 0, 0, 0);
-        this.boundingBox = null;
+        /**
+         * Boundingbox of the entity
+         * @instance
+         * @default null
+         * @see module:bento/entity#getBoundingBox for usage
+         * @name boundingBox
+         */
+        this.boundingBox = settings.boundingBox || null;
+        /**
+         * Scale of the entity
+         * @instance
+         * @default Vector2(1, 1)
+         * @name scale
+         */
         this.scale = new Vector2(1, 1);
+        /**
+         * Rotation of the entity
+         * @instance
+         * @default 0
+         * @name scale
+         */
         this.rotation = 0;
+        /**
+         * Whether the entity calls the draw function
+         * @instance
+         * @default true
+         * @name visible
+         */
         this.visible = true;
+        /**
+         * Entity's parent object, is set by the attach function
+         * @instance
+         * @default null
+         * @see module:bento/entity#attach
+         * @name parent
+         */
         this.parent = null;
+        /**
+         * Reference to the settings parameter passed to the constructor
+         * @instance
+         * @name settings
+         */
         this.settings = settings;
 
         // read settings
@@ -4204,13 +4354,6 @@ bento.define('bento/entity', [
         }
     };
 
-    /**
-     * Calls start on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name start
-     */
     Entity.prototype.start = function (data) {
         var i,
             l,
@@ -4225,13 +4368,6 @@ bento.define('bento/entity', [
             }
         }
     };
-    /**
-     * Calls destroy on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name destroy
-     */
     Entity.prototype.destroy = function (data) {
         var i,
             l,
@@ -4246,13 +4382,6 @@ bento.define('bento/entity', [
             }
         }
     };
-    /**
-     * Calls update on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name update
-     */
     Entity.prototype.update = function (data) {
         var i,
             l,
@@ -4272,13 +4401,6 @@ bento.define('bento/entity', [
         // clean up
         cleanComponents(this);
     };
-    /**
-     * Calls draw on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name draw
-     */
     Entity.prototype.draw = function (data) {
         var i,
             l,
@@ -4310,16 +4432,29 @@ bento.define('bento/entity', [
      * @instance
      * @param {Object} object - other object
      * @see module:bento/utils#extend
+     * @example
+var entity = new Entity({});
+
+entity.extend({
+    addX: function (x) {
+        entity.position.x += x;
+        // alternatively, this.position.x would work too.
+    }
+});
+
+entity.addX(10);
      * @name extend
      */
     Entity.prototype.extend = function (object) {
         return Utils.extend(this, object);
     };
     /**
-     * Returns the bounding box of an entity. If no bounding box was set
-     * previously, the dimension is returned.
+     * Returns the bounding box of an entity that's ready to be compared for collisions.
+     * If no bounding box was set to entity.boundingBox, the dimension assumed as bounding box size.
+     * entity.boundingBox is a Rectangle set relatively the entity's origin, while getBoundingBox returns
+     * a rectangle that's positioned in the world and scaled appropiately (AABB only, does not take into account rotation)
      * @function
-     * @returns {Rectangle} boundingbox - Entity's boundingbox
+     * @returns {Rectangle} boundingbox - Entity's boundingbox with translation and scaling
      * @instance
      * @name getBoundingBox
      */
@@ -4354,7 +4489,7 @@ bento.define('bento/entity', [
         }
     };
     /**
-     * Sets the origin relatively (0...1)
+     * Sets the origin relatively (0...1), relative to the dimension of the entity.
      * @function
      * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
      * @instance
@@ -4364,11 +4499,8 @@ bento.define('bento/entity', [
         this.origin.x = value.x * this.dimension.width;
         this.origin.y = value.y * this.dimension.height;
     };
-    /**
+    /*
      * Entity was attached, calls onParentAttach to all children
-     * @param {Object} data - gameData
-     * @instance
-     * @name attached
      */
     Entity.prototype.attached = function (data) {
         var i,
@@ -4395,12 +4527,8 @@ bento.define('bento/entity', [
             }
         }
     };
-    /**
+    /*
      * Calls onParentCollided on every child, additionally calls onCollide on self afterwards
-     * @function
-     * @param {Object} other - The other object/entity that collided
-     * @instance
-     * @name start
      */
     Entity.prototype.collided = function (data) {
         var i,
@@ -4428,16 +4556,41 @@ bento.define('bento/entity', [
         }
     };
     /**
-     * Attaches a child object to the entity. Entities can form a scenegraph.
-     * Generally, entities act as nodes while components act like leaves.
-     * Note that start will be called in the child.
+     * Attaches a child object to the entity. Entities can form a scenegraph this way. 
+     * This is one of the most important functions in Bento. It allows you to attach new behaviors
+     * to the entity by attaching components or other Entities.
+     * The parent entity calls start(), destroy(), update() and draw() in the child.
+     * The child will have a 'parent' property, which references the parent entity.
      * @function
-     * @param {Object} node - The child object to attach
-     * @param {String} [name] - Name to expose in the entity. The child object can be reached by entity[name]
+     * @param {Object} child - The child object to attach (can be anything)
      * @instance
+     * @example 
+var entity = new Entity({}),
+    // we define a simple object literal that acts as a container for functions
+    child = {
+        name: 'childObject', // for retrieving the child later if needed
+        start: function (data) {
+            console.log('Logged when entity is attached (not when child is attached)');
+        },
+        destroy: function (data) {
+            console.log('Logged when child is removed or when entity is removed');
+        },
+        update: function (data) {
+            console.log('Logged every tick during the update loop');
+        },
+        draw: function (data) {
+            console.log('Logged every tick during the draw loop');
+        }
+    };
+
+// You can use object literals to attach or define new classes. The child could also be another Entity with a sprite!
+entity.attach(child);
+
+// attach the entity to the game
+Bento.objects.attach(entity);
      * @name attach
      */
-    Entity.prototype.attach = function (child, name) {
+    Entity.prototype.attach = function (child) {
         var mixin = {},
             parent = this;
 
@@ -4475,7 +4628,7 @@ bento.define('bento/entity', [
     /**
      * Removes a child object from the entity. Note that destroy will be called in the child.
      * @function
-     * @param {Object} node - The child object to remove
+     * @param {Object} child - The child object to remove
      * @instance
      * @name remove
      */
@@ -4610,6 +4763,8 @@ bento.define('bento/entity', [
         }
         return null;
     };
+
+    // for use with Hshg
     Entity.prototype.getAABB = function () {
         var box;
         if (this.staticHshg) {
@@ -4626,7 +4781,13 @@ bento.define('bento/entity', [
             max: [box.x + box.width, box.y + box.height]
         };
     };
-    // todo: test this properly
+    /**
+     * Transforms a child entity position to the world position
+     * @function
+     * @instance
+     * @name getWorldPosition
+     */
+    // TODO: test this properly
     Entity.prototype.getWorldPosition = function () {
         var positionVector,
             translateMatrix = new Matrix(3, 3),
@@ -4708,7 +4869,8 @@ bento.define('bento/entity', [
     return Entity;
 });
 /**
- * Sends custom events
+ * Sends custom events. Don't forget to turn off listeners or
+ * you will end up with memory leaks or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
  */
@@ -5390,6 +5552,1294 @@ bento.define('bento/utils', [], function () {
         }
     };
     return utils;
+});
+/**
+ * Animation component. Draws an animated sprite on screen at the entity position.
+ * <br>Exports: Function
+ * @module bento/components/animation
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally. 
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+ var sprite = new Sprite({ // note that you can use the Sprite component with the same settings object
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3, // a 3 x 3 spritesheet
+        animations: {
+            "idle": {
+                frames: [0] // first frame
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
+            } // etc.
+        }
+     }),
+     entity = new Entity({});
+
+entity.attach(sprite); // attach sprite to entity
+Bento.objects.attach(entity); // attach entity to game
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/animation', [
+    'bento',
+    'bento/utils',
+], function (Bento, Utils) {
+    'use strict';
+    var Animation = function (settings) {
+        this.entity = null;
+        this.name = 'animation';
+        this.visible = true;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        this.spriteImage = null;
+
+        this.frameCountX = 1,
+        this.frameCountY = 1,
+        this.frameWidth = 0,
+        this.frameHeight = 0,
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /**
+     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     */
+    Animation.prototype.setup = function (settings) {
+        this.animationSettings = settings || this.animationSettings;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = this.spriteImage.width / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = this.spriteImage.height / this.frameCountY;
+        }
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+    };
+
+    Animation.prototype.attached = function (data) {
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+    };
+    /**
+     * Set component to a different animation. The animation won't change if it's already playing.
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     */
+    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+        }
+    };
+    /**
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
+     */
+    Animation.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+    /**
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     */
+    Animation.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Animation.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Animation.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Animation.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    Animation.prototype.update = function () {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        reachedEnd = false;
+        this.currentFrame += this.currentAnimation.speed || 1;
+        if (this.currentAnimation.loop) {
+            // TODO: fix this while loop getting stuck
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+    Animation.prototype.draw = function (data) {
+        var cf, sx, sy,
+            entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+        cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
+        sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
+
+        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.drawImage(
+            this.spriteImage,
+            sx,
+            sy,
+            this.frameWidth,
+            this.frameHeight,
+            0,
+            0,
+            this.frameWidth,
+            this.frameHeight
+        );
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+    Animation.prototype.toString = function () {
+        return '[object Animation]';
+    };
+
+    return Animation;
+});
+/**
+ * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
+ * unless entity.updateWhenPaused is turned on.
+ * <br>Exports: Function
+ * @module bento/components/clickable
+ * @param {Object} settings - Settings
+ * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen 
+ * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen 
+ * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen 
+ * @param {Function} settings.onClick - Called when pointer taps on the parent entity 
+ * @param {Function} settings.onClickUp - The pointer was released above the parent entity 
+ * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity 
+ * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
+ * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
+ * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
+ * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
+ * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/clickable', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/math/matrix',
+    'bento/eventsystem'
+], function (Bento, Utils, Vector2, Matrix, EventSystem) {
+    'use strict';
+    var Clickable = function (settings) {
+        this.entity = null;
+        /**
+         * Name of the component
+         * @instance
+         * @default 'clickable'
+         * @name name
+         */
+        this.name = 'clickable';
+        /**
+         * Whether the pointer is over the entity
+         * @instance
+         * @default false
+         * @name isHovering
+         */
+        this.isHovering = false;
+        this.hasTouched = false;
+        /**
+         * Id number of the pointer holding entity
+         * @instance
+         * @default null
+         * @name holdId
+         */
+        this.holdId = null;
+        this.isPointerDown = false;
+        this.initialized = false;
+
+        this.callbacks = {
+            pointerDown: settings.pointerDown || function (evt) {},
+            pointerUp: settings.pointerUp || function (evt) {},
+            pointerMove: settings.pointerMove || function (evt) {},
+            // when clicking on the object
+            onClick: settings.onClick || function () {},
+            onClickUp: settings.onClickUp || function () {},
+            onClickMiss: settings.onClickMiss || function () {},
+            onHold: settings.onHold || function () {},
+            onHoldLeave: settings.onHoldLeave || function () {},
+            onHoldEnter: settings.onHoldEnter || function () {},
+            onHoldEnd: settings.onHoldEnd || function () {},
+            onHoverLeave: settings.onHoverLeave || function () {},
+            onHoverEnter: settings.onHoverEnter || function () {}
+        };
+
+    };
+
+    Clickable.prototype.destroy = function () {
+        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
+        this.initialized = false;
+    };
+    Clickable.prototype.start = function () {
+        if (this.initialized) {
+            // TODO: this is caused by calling start when objects are attached, fix this later!
+            // console.log('warning: trying to init twice')
+            return;
+        }
+        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
+        this.initialized = true;
+    }
+    Clickable.prototype.update = function () {
+        if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
+            this.callbacks.onHold();
+        }
+    };
+    Clickable.prototype.cloneEvent = function (evt) {
+        return {
+            id: evt.id,
+            position: evt.position.clone(),
+            eventType: evt.eventType,
+            localPosition: evt.localPosition.clone(),
+            worldPosition: evt.worldPosition.clone()
+        };
+    };
+    Clickable.prototype.pointerDown = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+            return;
+        }
+        this.isPointerDown = true;
+        if (this.callbacks.pointerDown) {
+            this.callbacks.pointerDown.call(this, e);
+        }
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e, true);
+        }
+    };
+    Clickable.prototype.pointerUp = function (evt) {
+        var e = this.transformEvent(evt),
+            mousePosition;
+        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+            return;
+        }
+        mousePosition = e.localPosition;
+        this.isPointerDown = false;
+        if (this.callbacks.pointerUp) {
+            this.callbacks.pointerUp.call(this, e);
+        }
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            this.callbacks.onClickUp.call(this, [e]);
+            if (this.hasTouched && this.holdId === e.id) {
+                this.holdId = null;
+                this.callbacks.onHoldEnd.call(this, e);
+            }
+        }
+        this.hasTouched = false;
+    };
+    Clickable.prototype.pointerMove = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+            return;
+        }
+        if (this.callbacks.pointerMove) {
+            this.callbacks.pointerMove.call(this, e);
+        }
+        // hovering?
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e);
+        }
+    };
+    Clickable.prototype.checkHovering = function (evt, clicked) {
+        var mousePosition = evt.localPosition;
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldEnter.call(this, evt);
+            }
+            if (!this.isHovering) {
+                this.callbacks.onHoverEnter.call(this, evt);
+            }
+            this.isHovering = true;
+            if (clicked) {
+                this.hasTouched = true;
+                this.holdId = evt.id;
+                this.callbacks.onClick.call(this, evt);
+            }
+        } else {
+            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldLeave.call(this, evt);
+            }
+            if (this.isHovering) {
+                this.callbacks.onHoverLeave.call(this, evt);
+            }
+            this.isHovering = false;
+            if (clicked) {
+                this.callbacks.onClickMiss.call(this, evt);
+            }
+        }
+    };
+    // TODO: does not work with floating entities
+    Clickable.prototype.transformEvent = function (evt) {
+        var positionVector,
+            translateMatrix = new Matrix(3, 3),
+            scaleMatrix = new Matrix(3, 3),
+            rotateMatrix = new Matrix(3, 3),
+            sin,
+            cos,
+            type,
+            position,
+            parent,
+            parents = [],
+            i;
+
+        // no parents
+        if (!this.entity.parent) {
+            if (!this.entity.float) {
+                evt.localPosition = evt.worldPosition.clone();
+            } else {
+                evt.localPosition = evt.position.clone();
+            }
+            return evt;
+        }
+        // make a copy
+        evt = this.cloneEvent(evt);
+        if (this.entity.float) {
+            positionVector = evt.localPosition.toMatrix();
+        } else {
+            positionVector = evt.worldPosition.toMatrix();
+        }
+
+        // get all parents
+        parent = this.entity;
+        while (parent.parent) {
+            parent = parent.parent;
+            parents.unshift(parent);
+        }
+
+        /**
+         * reverse transform the event position vector
+         */
+        for (i = 0; i < parents.length; ++i) {
+            parent = parents[i];
+
+            // construct a translation matrix and apply to position vector
+            if (parent.position) {
+                position = parent.position;
+                translateMatrix.set(2, 0, -position.x);
+                translateMatrix.set(2, 1, -position.y);
+                positionVector.multiplyWith(translateMatrix);
+            }
+            // only scale/rotatable if there is a component
+            if (parent.rotation) {
+                // construct a rotation matrix and apply to position vector
+                sin = Math.sin(-parent.rotation);
+                cos = Math.cos(-parent.rotation);
+                rotateMatrix.set(0, 0, cos);
+                rotateMatrix.set(1, 0, -sin);
+                rotateMatrix.set(0, 1, sin);
+                rotateMatrix.set(1, 1, cos);
+                positionVector.multiplyWith(rotateMatrix);
+            }
+            if (parent.scale) {
+                // construct a scaling matrix and apply to position vector
+                scaleMatrix.set(0, 0, 1 / parent.scale.x);
+                scaleMatrix.set(1, 1, 1 / parent.scale.y);
+                positionVector.multiplyWith(scaleMatrix);
+            }
+        }
+        evt.localPosition.x = positionVector.get(0, 0);
+        evt.localPosition.y = positionVector.get(0, 1);
+
+        return evt;
+    };
+    Clickable.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Clickable.prototype.toString = function () {
+        return '[object Clickable]';
+    };
+
+    return Clickable;
+});
+/**
+ * Component that fills a square.
+ * <br>Exports: Function
+ * @module bento/components/fill
+ * @param {Object} settings - Settings
+ * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 
+ * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size) 
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/fill', [
+    'bento/utils',
+    'bento'
+], function (Utils, Bento) {
+    'use strict';
+    var Fill = function (settings) {
+        var viewport = Bento.getViewport();
+        settings = settings || {};
+        this.name = 'fill';
+        this.color = settings.color || [0, 0, 0, 1];
+        this.dimension = settings.dimension || viewport;
+    };
+    Fill.prototype.draw = function (data) {
+        var dimension = this.dimension;
+        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
+    };
+    Fill.prototype.setup = function (settings) {
+        this.color = settings.color;
+    };
+    Fill.prototype.toString = function () {
+        return '[object Fill]';
+    };
+
+    return Fill;
+});
+/**
+ * Component that sets the opacity
+ * <br>Exports: Function
+ * @module bento/components/opacity
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @param {Number} settings.opacity - Opacity value (1 is opaque)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/opacity', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var oldOpacity = 1,
+        Opacity = function (settings) {
+            settings = settings || {};
+            this.name = 'opacity';
+            this.set = false;
+            this.opacity = settings.opacity || 1;
+        };
+    Opacity.prototype.draw = function (data) {
+        if (this.set) {
+            oldOpacity = data.renderer.getOpacity();
+            data.renderer.setOpacity(this.opacity);
+        }
+    };
+    Opacity.prototype.postDraw = function (data) {
+        data.renderer.setOpacity(oldOpacity);
+    };
+    /**
+     * Set entity opacity
+     * @function
+     * @instance
+     * @param {Number} opacity - Opacity value
+     * @name setOpacity
+     */
+    Opacity.prototype.setOpacity = function (value) {
+        this.set = true;
+        this.opacity = value;
+    };
+    /**
+     * Get entity opacity
+     * @function
+     * @instance
+     * @name getOpacity
+     */
+    Opacity.prototype.getOpacity = function () {
+        return this.opacity;
+    };
+    Opacity.prototype.toString = function () {
+        return '[object Opacity]';
+    };
+
+    return Opacity;
+});
+/**
+ * Sprite component that uses pixi (alternative version of animation component).
+ * TODO: merge with the Animation component. Lots of duplicate code here
+ * <br>Exports: Function
+ * @module bento/components/pixi
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @returns Returns the entity passed. The entity will have the component attached.
+ */
+bento.define('bento/components/pixi', [
+    'bento',
+    'bento/utils'
+], function (
+    Bento,
+    Utils
+) {
+    'use strict';
+    if (!window.PIXI) {
+        console.log('Warning: PIXI is not available');
+        return function () {};
+    }
+
+    var Pixi = function (settings) {
+        this.pixiBaseTexture = null;
+        this.pixiTexture = null;
+        this.pixiSprite = null;
+        this.opacityComponent = null;
+
+        this.entity = null;
+        this.name = 'animation';
+        this.visible = true;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        this.spriteImage = null;
+
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /**
+     * Sets up animation
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     */
+    Pixi.prototype.setup = function (settings) {
+        var rectangle,
+            crop;
+        this.animationSettings = settings || this.animationSettings;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = this.spriteImage.width / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = this.spriteImage.height / this.frameCountY;
+        }
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+
+        // PIXI
+        // initialize pixi
+        if (this.spriteImage) {
+            // search texture
+            if (!this.spriteImage.image.texture) {
+                this.spriteImage.image.texture = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
+            }
+
+            this.pixiBaseTexture = this.spriteImage.image.texture;
+            rectangle = new PIXI.Rectangle(this.spriteImage.x, this.spriteImage.y, this.frameWidth, this.frameHeight);
+            this.pixiTexture = new PIXI.Texture(this.pixiBaseTexture, rectangle);
+            this.pixiSprite = new PIXI.Sprite(this.pixiTexture);
+        }
+    };
+
+    Pixi.prototype.attached = function (data) {
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+        this.opacityComponent = data.entity.getComponent('opacity');
+    };
+    /**
+     * Set component to a different animation
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     */
+    Pixi.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+        }
+    };
+    /**
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
+     */
+    Pixi.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+    /**
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     */
+    Pixi.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Pixi.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Pixi.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Pixi.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    /**
+     * Updates the component. Called by the entity holding the component every tick.
+     * @function
+     * @instance
+     * @param {Object} data - Game data object
+     * @name update
+     */
+    Pixi.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        reachedEnd = false;
+        this.currentFrame += this.currentAnimation.speed || 1;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+    /**
+     * Draws the component. Called by the entity holding the component every tick.
+     * @function
+     * @instance
+     * @param {Object} data - Game data object
+     * @name draw
+     */
+    Pixi.prototype.draw = function (data) {
+        var origin = data.entity.origin,
+            position = data.entity.position,
+            rotation = data.entity.rotation,
+            scale = data.entity.scale,
+            rectangle,
+            cf,
+            sx,
+            sy;
+
+        if (!this.currentAnimation || !this.pixiSprite || !this.visible) {
+            return;
+        }
+        cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
+        sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
+
+        rectangle = new PIXI.Rectangle(this.spriteImage.x + sx, this.spriteImage.y + sy, this.frameWidth, this.frameHeight);
+        this.pixiTexture.frame = rectangle;
+        this.pixiSprite.x = position.x;
+        this.pixiSprite.y = position.y;
+        // pixiSprite.pivot.x = origin.x;
+        // pixiSprite.pivot.y = origin.y;
+        this.pixiSprite.anchor.x = origin.x / this.frameWidth;
+        this.pixiSprite.anchor.y = origin.y / this.frameHeight;
+
+        if (data.entity.float) {
+            this.pixiSprite.x -= viewport.x;
+            this.pixiSprite.y -= viewport.y;
+        }
+        this.pixiSprite.scale.x = scale.x;
+        this.pixiSprite.scale.y = scale.y;
+        this.pixiSprite.rotation = rotation;
+        if (this.opacityComponent) {
+            this.pixiSprite.alpha = this.opacityComponent.getOpacity();
+        }
+        this.pixiSprite.visible = data.entity.visible;
+        this.pixiSprite.z = data.entity.z;
+    };
+
+    Pixi.prototype.destroy = function (data) {
+        // remove from parent
+        if (this.pixiSprite && this.pixiSprite.parent) {
+            this.pixiSprite.parent.removeChild(this.pixiSprite);
+        }
+    };
+    Pixi.prototype.start = function (data) {
+        if (!this.pixiSprite) {
+            console.log('call setup first');
+            return;
+        }
+    };
+    Pixi.prototype.onParentAttached = function (data) {
+        var parent;
+
+        if (!this.pixiSprite) {
+            console.log('Warning: pixi sprite does not exist, creating pixi container');
+            this.pixiSprite = new PIXI.Container();
+        }
+
+        if (data.renderer) {
+            // attach to root
+            data.renderer.addChild(this.pixiSprite);
+        } else if (data.entity) {
+            // attach to parent
+            parent = data.entity.parent;
+            // get pixi component
+            if (parent) {
+                parent.getComponent('animation', function (component) {
+                    if (!component.pixiSprite) {
+                        console.log('Warning: pixi sprite does not exist, creating pixi container');
+                        component.pixiSprite = new PIXI.Container();
+                    }
+                    component.pixiSprite.addChild(this.pixiSprite);
+                });
+            }
+        }
+    };
+
+    Pixi.prototype.toString = function () {
+        return '[object Pixi]';
+    };
+    return Pixi;
+});
+/**
+ * Component that sets the context rotation for drawing.
+ * <br>Exports: Function
+ * @module bento/components/rotation
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/rotation', [
+    'bento/utils',
+], function (Utils) {
+    'use strict';
+    var Rotation = function (settings) {
+        settings = settings || {};
+        this.name = 'rotation';
+        this.entity = null;
+    };
+
+    Rotation.prototype.draw = function (data) {
+        data.renderer.save();
+        data.renderer.rotate(data.entity.rotation);
+    };
+    Rotation.prototype.postDraw = function (data) {
+        data.renderer.restore();
+    };
+    Rotation.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+
+    /**
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name addAngleDegree
+     */
+    Rotation.prototype.addAngleDegree = function (value) {
+        this.entity.rotation += value * Math.PI / 180;
+    };
+    /**
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name addAngleRadian
+     */
+    Rotation.prototype.addAngleRadian = function (value) {
+        this.entity.rotation += value;
+    };
+    /**
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name setAngleDegree
+     */
+    Rotation.prototype.setAngleDegree = function (value) {
+        this.entity.rotation = value * Math.PI / 180;
+    };
+    /**
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name setAngleRadian
+     */
+    Rotation.prototype.setAngleRadian = function (value) {
+        this.entity.rotation = value;
+    };
+    /**
+     * Returns the parent entity rotation in degrees
+     * @function
+     * @instance
+     * @name getAngleDegree
+     */
+    Rotation.prototype.getAngleDegree = function () {
+        return this.entity.rotation * 180 / Math.PI;
+    };
+    /**
+     * Returns the parent entity rotation in radians
+     * @function
+     * @instance
+     * @name getAngleRadian
+     */
+    Rotation.prototype.getAngleRadian = function () {
+        return this.entity.rotation;
+    };
+    Rotation.prototype.toString = function () {
+        return '[object Rotation]';
+    };
+
+    return Rotation;
+});
+/**
+ * Component that sets the context scale for drawing.
+ * <br>Exports: Function
+ * @module bento/components/scale
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/scale', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var Scale = function (settings) {
+        this.entity = null;
+        this.name = 'scale';
+    };
+    Scale.prototype.draw = function (data) {
+        data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
+    };
+    Scale.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    /**
+     * Scales the parent entity in x direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleX
+     */
+    Scale.prototype.setScaleX = function (value) {
+        this.entity.scale.x = value;
+    };
+    /**
+     * Scales the parent entity in y direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleY
+     */
+    Scale.prototype.setScaleY = function (value) {
+        this.entity.scale.y = value;
+    };
+    Scale.prototype.toString = function () {
+        return '[object Scale]';
+    };
+
+    return Scale;
+});
+/**
+ * Helper component that attaches the Translation, Scale, Rotation, Opacity
+ * and Animation (or Pixi) components. Automatically detects the renderer.
+ * <br>Exports: Function
+ * @module bento/components/sprite
+ * @param {Object} settings - Settings object, this object is passed to all other components
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
+ * the Animation component is attached. Same as Sprite.insertBefore.
+ * @param {} settings.... - See other components 
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/sprite', [
+    'bento',
+    'bento/utils',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/components/opacity',
+    'bento/components/animation',
+    'bento/components/pixi'
+], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation, Pixi) {
+    'use strict';
+    var renderer,
+        component = function (settings) {
+            this.entity = null;
+            // detect renderer
+            if (!renderer) {
+                renderer = Bento.getRenderer();
+            }
+
+            // use pixi or default sprite renderer
+            if (renderer.name === 'pixi') {
+                this.opacity = new Opacity(settings);
+                this.animation = new Pixi(settings);
+            } else {
+                /**
+                 * Reference to the Translation component
+                 * @instance
+                 * @name translation
+                 */
+                this.translation = new Translation(settings);
+                /**
+                 * Reference to the Rotation component
+                 * @instance
+                 * @name rotation
+                 */
+                this.rotation = new Rotation(settings);
+                /**
+                 * Reference to the Scale component
+                 * @instance
+                 * @name scale
+                 */
+                this.scale = new Scale(settings);
+                /**
+                 * Reference to the Opacity component
+                 * @instance
+                 * @name rotation
+                 */
+                this.opacity = new Opacity(settings);
+                /**
+                 * If renderer is set to pixi, this property is the Pixi component.
+                 * Otherwise it's the Animation component
+                 * @instance
+                 * @name animation
+                 */
+                this.animation = new Animation(settings);
+            }
+
+            this.components = settings.components || [];
+        };
+
+    component.prototype.attached = function (data) {
+        var i = 0;
+        this.entity = data.entity;
+        // attach all components!
+        if (this.translation) {
+            this.entity.attach(this.translation);
+        }
+        if (this.rotation) {
+            this.entity.attach(this.rotation);
+        }
+        if (this.scale) {
+            this.entity.attach(this.scale);
+        }
+        this.entity.attach(this.opacity);
+
+        // wedge in extra components in before the animation component
+        for (i = 0; i < this.components.length; ++i) {
+            this.entity.attach(this.components[i]);
+        }
+        this.entity.attach(this.animation);
+
+        // remove self?
+        this.entity.remove(this);
+    };
+    /**
+     * Allows you to insert components/children entities BEFORE the animation component.
+     * This way you can draw objects behind the sprite.
+     * This function should be called before you attach the Sprite to the Entity.
+     * @function
+     * @param {Array} array - Array of entities to attach
+     * @instance
+     * @name insertBefore
+     */
+    component.prototype.insertBefore = function (array) {
+        if (!Utils.isArray(array)) {
+            array = [array];
+        }
+        this.components = array;
+        return this;
+    },
+    component.prototype.toString = function () {
+        return '[object Sprite]';
+    };
+
+    return component;
+});
+/**
+ * Component that sets the context translation for drawing.
+ * <br>Exports: Function
+ * @module bento/components/translation
+ * @param {Object} settings - Settings
+ * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/translation', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var Translation = function (settings) {
+        settings = settings || {};
+        this.name = 'translation';
+        this.subPixel = settings.subPixel || false;
+        this.entity = null;
+        /**
+         * Additional x translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name x
+         */
+        this.x = 0;
+        /**
+         * Additional y translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name y
+         */
+        this.y = 0;
+    };
+    Translation.prototype.draw = function (data) {
+        var entity = data.entity,
+            parent = entity.parent,
+            position = entity.position,
+            origin = entity.origin,
+            scroll = data.viewport;
+
+        data.renderer.save();
+        if (this.subPixel) {
+            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
+        } else {
+            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
+        }
+        // scroll (only applies to parent objects)
+        if (!parent && !entity.float) {
+            data.renderer.translate(-scroll.x, -scroll.y);
+        }
+    };
+    Translation.prototype.postDraw = function (data) {
+        data.renderer.restore();
+    };
+    Translation.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Translation.prototype.toString = function () {
+        return '[object Translation]';
+    };
+
+    return Translation;
 });
 /**
  * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
@@ -6642,6 +8092,7 @@ bento.define('bento/lib/requestanimationframe', [], function () {
 });
 /**
  * Manager that loads and controls assets
+ * Can be accessed through Bento.assets
  * <br>Exports: Function
  * @module bento/managers/asset
  * @returns AssetManager
@@ -7050,12 +8501,12 @@ bento.define('bento/managers/asset', [
 });
 /**
  * Audio manager (To be rewritten)
+ * Can be accessed through Bento.audio
  * <br>Exports: Function
  * @module bento/managers/audio
  * @returns AssetManager
  */
-
-define('bento/managers/audio', [
+bento.define('bento/managers/audio', [
     'bento/utils'
 ], function (Utils) {
     return function (bento) {
@@ -7274,7 +8725,8 @@ define('bento/managers/audio', [
     };
 });
 /**
- * Manager that tracks mouse/touch and keyboard input
+ * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
+ * Can be accessed through Bento.input
  * <br>Exports: Function
  * @module bento/managers/input
  * @param {Object} settings - Settings
@@ -7558,7 +9010,7 @@ bento.define('bento/managers/input', [
 
         return {
             /**
-             * Returns current pointers down
+             * Returns all current pointers down
              * @function
              * @instance
              * @returns {Array} pointers - Array with pointer positions
@@ -7628,6 +9080,7 @@ bento.define('bento/managers/input', [
 });
 /**
  * Manager that controls mainloop and all objects
+ * Can be accessed through Bento.objects
  * <br>Exports: Function
  * @module bento/managers/object
  * @param {Object} data - gameData object
@@ -7791,11 +9244,11 @@ bento.define('bento/managers/object', [
             },
             module = {
                 /**
-                 * Adds entity/object to the game. If the object has the
-                 * functions update and draw, they will be called in the loop.
+                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object 
+                 * has the functions update and draw, they will be called during the loop.
                  * @function
                  * @instance
-                 * @param {Object} object - You can add any object, preferably an Entity
+                 * @param {Object} object - Any object, preferably an Entity
                  * @name attach
                  */
                 attach: attach,
@@ -7866,7 +9319,8 @@ bento.define('bento/managers/object', [
                     }
                 },
                 /**
-                 * Returns the first object it can find with this name
+                 * Returns the first object it can find with this name. Safer to use with a callback.
+                 * The callback is called immediately if the object is found (it's not asynchronous).
                  * @function
                  * @instance
                  * @param {String} objectName - Name of the object
@@ -7928,7 +9382,8 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Returns an array of objects by family name
+                 * Returns an array of objects by family name. Families are cached so you
+                 * may get a reference to the array of objects even if it's not filled yet.
                  * @function
                  * @instance
                  * @param {String} familyName - Name of the family
@@ -8050,6 +9505,7 @@ bento.define('bento/managers/object', [
 });
 /**
  * Manager that controls presistent variables. Wrapper for localStorage.
+ * Can be accessed through Bento.saveState
  * <br>Exports: Object
  * @module bento/managers/savestate
  * @returns SaveState
@@ -8133,7 +9589,20 @@ bento.define('bento/managers/savestate', [
             }
         },
         /**
-         * Loads a variable
+         * Adds to a saved variable/number
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number to be added, if the value does not exists, it defaults to 0
+         * @name add
+         */
+        add: function (elementKey, element) {
+            var value = this.load(elementKey, 0);
+            value += element;
+            this.save(elementKey, value);
+        },
+        /**
+         * Loads/deserializes a variable
          * @function
          * @instance
          * @param {String} key - Name of the variable
@@ -8215,6 +9684,7 @@ bento.define('bento/managers/savestate', [
 });
 /**
  * Manager that controls screens/rooms/levels.
+ * Can be accessed through Bento.screens
  * <br>Exports: Function
  * @module bento/managers/screen
  * @returns ScreenManager
@@ -8231,7 +9701,7 @@ bento.define('bento/managers/screen', [
             },
             screenManager = {
                 /**
-                 * Adds a new screen
+                 * Adds a new screen to the cache
                  * @function
                  * @instance
                  * @param {Screen} screen - Screen object
@@ -8278,8 +9748,10 @@ bento.define('bento/managers/screen', [
                     }
                 },
                 /**
-                 * Hides a screen. It's not needed to call this yourself.
-                 * Screens are hidden when a new one is shown.
+                 * Hides a screen. You may call this to remove all objects on screen, but
+                 * it's not needed to call this yourself if you want to show a new screen.
+                 * Screens.hide is internally called on the current screen when Screens.show
+                 * is called.
                  * @function
                  * @instance
                  * @param {Object} data - Extra data to pass on to the screen
@@ -9140,89 +10612,238 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     Vector2.prototype.isVector2 = function () {
         return true;
     };
+    /**
+     * Adds 2 vectors and returns the result
+     * @function
+     * @param {Vector2} vector - Vector to add
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name add
+     */
     Vector2.prototype.add = function (vector) {
         var v = this.clone();
         v.addTo(vector);
         return v;
     };
+    /**
+     * Adds vector to current vector
+     * @function
+     * @param {Vector2} vector - Vector to add
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name addTo
+     */
     Vector2.prototype.addTo = function (vector) {
         this.x += vector.x;
         this.y += vector.y;
         return this;
     };
-    Vector2.prototype.substract = function (vector) {
+    /**
+     * Subtracts a vector and returns the result
+     * @function
+     * @param {Vector2} vector - Vector to subtract
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name subtract
+     */
+    Vector2.prototype.subtract = function (vector) {
         var v = this.clone();
         v.substractFrom(vector);
         return v;
     };
-    Vector2.prototype.substractFrom = function (vector) {
+    /**
+     * Subtract from the current vector
+     * @function
+     * @param {Vector2} vector - Vector to subtract
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name subtractFrom
+     */
+    Vector2.prototype.subtractFrom = function (vector) {
         this.x -= vector.x;
         this.y -= vector.y;
         return this;
     };
+    Vector2.prototype.substract = Vector2.prototype.subtract;
+    Vector2.prototype.substractFrom = Vector2.prototype.subtractFrom;
+    /**
+     * Gets the angle of the vector
+     * @function
+     * @returns {Number} Angle in radians
+     * @instance
+     * @name angle
+     */
     Vector2.prototype.angle = function () {
         return Math.atan2(this.y, this.x);
     };
+    /**
+     * Gets the angle between 2 vectors
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Number} Angle in radians
+     * @instance
+     * @name angleBetween
+     */
     Vector2.prototype.angleBetween = function (vector) {
         return Math.atan2(
             vector.y - this.y,
             vector.x - this.x
         );
     };
+    /**
+     * Gets the inner product between 2 vectors
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Number} Dot product of 2 vectors
+     * @instance
+     * @name dotProduct
+     */
     Vector2.prototype.dotProduct = function (vector) {
         return this.x * vector.x + this.y * vector.y;
     };
+    /**
+     * Multiplies 2 vectors (not a matrix multiplication)
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name multiply
+     */
     Vector2.prototype.multiply = function (vector) {
         var v = this.clone();
         v.multiplyWith(vector);
         return v;
     };
+    /**
+     * Multiply with the current vector (not a matrix multiplication)
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name multiplyWith
+     */
     Vector2.prototype.multiplyWith = function (vector) {
         this.x *= vector.x;
         this.y *= vector.y;
         return this;
     };
+    /**
+     * Divides 2 vectors
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name divide
+     */
     Vector2.prototype.divide = function (vector) {
         var v = this.clone();
         v.divideBy(vector);
         return v;
     };
+    /**
+     * Divides current vector
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name divideBy
+     */
     Vector2.prototype.divideBy = function (vector) {
         this.x /= vector.x;
         this.y /= vector.y;
         return this;
     };
+    /**
+     * Multiplies vector with a scalar value
+     * @function
+     * @param {Number} value - scalar value
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name scalarMultiply
+     */
     Vector2.prototype.scalarMultiply = function (value) {
         var v = this.clone();
         v.scalarMultiplyWith(value);
         return v;
     };
+    /**
+     * Multiplies current vector with a scalar value
+     * @function
+     * @param {Number} value - scalar value
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name scalarMultiplyWith
+     */
     Vector2.prototype.scalarMultiplyWith = function (value) {
         this.x *= value;
         this.y *= value;
         return this;
     };
-    Vector2.prototype.scale = function (value) {
-        this.x *= value;
-        this.y *= value;
-        return this;
-    };
+    /**
+     * Same as scalarMultiplyWith
+     * @function
+     * @param {Number} value - scalar value
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name scale
+     */
+    Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith
+    /**
+     * Returns the magnitude of the vector
+     * @function
+     * @returns {Number} Modulus of the vector
+     * @instance
+     * @name magnitude
+     */
     Vector2.prototype.magnitude = function () {
         return Math.sqrt(this.dotProduct(this));
     };
+    /**
+     * Normalizes the vector by its magnitude
+     * @function
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name normalize
+     */
     Vector2.prototype.normalize = function () {
         var magnitude = this.magnitude();
         this.x /= magnitude;
         this.y /= magnitude;
         return this;
     };
+    /**
+     * Returns the distance from another vector
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns new Vector2 instance
+     * @instance
+     * @name distance
+     */
     Vector2.prototype.distance = function (vector) {
         return vector.substract(this).magnitude();
     };
+    /**
+     * Check if distance between 2 vector is farther than a certain value
+     * This function is more performant than using Vector2.distance()
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @param {Number} distance - Distance
+     * @returns {Boolean} Returns true if farther than distance
+     * @instance
+     * @name fartherThan
+     */
     Vector2.prototype.fartherThan = function (vector, distance) {
         var diff = vector.substract(this);
         return diff.x * diff.x + diff.y * diff.y > distance * distance;
     };
+    /**
+     * Rotates the vector by a certain amount of radians
+     * @function
+     * @param {Number} angle - Angle in radians
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name rotateRadian
+     */
     Vector2.prototype.rotateRadian = function (angle) {
         var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
             y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
@@ -9230,12 +10851,35 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
         this.y = y;
         return this;
     };
+    /**
+     * Rotates the vector by a certain amount of degrees
+     * @function
+     * @param {Number} angle - Angle in degrees
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name rotateDegree
+     */
     Vector2.prototype.rotateDegree = function (angle) {
         return this.rotateRadian(angle * Math.PI / 180);
     };
+    /**
+     * Clones the current vector
+     * @function
+     * @param {Number} angle - Angle in degrees
+     * @returns {Vector2} Returns new Vector2 instance
+     * @instance
+     * @name clone
+     */
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
     };
+    /**
+     * Represent the vector as a 1x3 matrix
+     * @function
+     * @returns {Matrix} Returns a 1x3 Matrix
+     * @instance
+     * @name toMatrix
+     */
     Vector2.prototype.toMatrix = function () {
         var matrix = new Matrix(1, 3);
         matrix.set(0, 0, this.x);
@@ -9766,6 +11410,7 @@ bento.define('bento/tiled', [
  * The Tween is an entity that performs an interpolation within a timeframe. The entity
  * removes itself after the tween ends.
  * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
+ * Also see: http://easings.net/
  * <br>Exports: Function
  * @module bento/tween
  * @param {Object} settings - Settings object
@@ -10044,1160 +11689,6 @@ bento.define('bento/tween', [
         tween.begin();
         return tween;
     };
-});
-/**
- * Animation component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Function
- * @module bento/components/animation
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/animation', [
-    'bento',
-    'bento/utils',
-], function (Bento, Utils) {
-    'use strict';
-    var Animation = function (settings) {
-        this.entity = null;
-        this.name = 'animation';
-        this.visible = true;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        this.spriteImage = null;
-
-        this.frameCountX = 1,
-        this.frameCountY = 1,
-        this.frameWidth = 0,
-        this.frameHeight = 0,
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
-    };
-    /**
-     * Sets up animation
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     */
-    Animation.prototype.setup = function (settings) {
-        this.animationSettings = settings || this.animationSettings;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = this.spriteImage.width / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = this.spriteImage.height / this.frameCountY;
-        }
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
-        }
-    };
-
-    Animation.prototype.attached = function (data) {
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-    };
-    /**
-     * Set component to a different animation
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     */
-    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-        }
-    };
-    /**
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     */
-    Animation.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /**
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     */
-    Animation.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /**
-     * Get speed of the current animation.
-     * @function
-     * @instance
-     * @returns {Number} Speed of the current animation
-     * @name getCurrentSpeed
-     */
-    Animation.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-    /**
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     */
-    Animation.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /**
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     */
-    Animation.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /**
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     */
-    Animation.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    /**
-     * Updates the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name update
-     */
-    Animation.prototype.update = function () {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-        reachedEnd = false;
-        this.currentFrame += this.currentAnimation.speed || 1;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-        }
-    };
-    /**
-     * Draws the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name draw
-     */
-    Animation.prototype.draw = function (data) {
-        var cf, sx, sy,
-            entity = data.entity,
-            origin = entity.origin;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-        cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
-        sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
-
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
-        data.renderer.drawImage(
-            this.spriteImage,
-            sx,
-            sy,
-            this.frameWidth,
-            this.frameHeight,
-            0,
-            0,
-            this.frameWidth,
-            this.frameHeight
-        );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-    Animation.prototype.toString = function () {
-        return '[object Animation]';
-    };
-
-    return Animation;
-});
-/**
- * Component that helps with detecting clicks on an entity
- * <br>Exports: Function
- * @module bento/components/clickable
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/clickable', [
-    'bento',
-    'bento/utils',
-    'bento/math/vector2',
-    'bento/math/matrix',
-    'bento/eventsystem'
-], function (Bento, Utils, Vector2, Matrix, EventSystem) {
-    'use strict';
-    var Clickable = function (settings) {
-        this.entity = null;
-        /**
-         * Name of the component
-         * @instance
-         * @default 'clickable'
-         * @name name
-         */
-        this.name = 'clickable';
-        /**
-         * Whether the pointer is over the entity
-         * @instance
-         * @default false
-         * @name isHovering
-         */
-        this.isHovering = false;
-        this.hasTouched = false;
-        /**
-         * Id number of the pointer holding entity
-         * @instance
-         * @default null
-         * @name holdId
-         */
-        this.holdId = null;
-        this.isPointerDown = false;
-        this.initialized = false;
-
-        this.callbacks = {
-            pointerDown: settings.pointerDown || function (evt) {},
-            pointerUp: settings.pointerUp || function (evt) {},
-            pointerMove: settings.pointerMove || function (evt) {},
-            // when clicking on the object
-            onClick: settings.onClick || function () {},
-            onClickUp: settings.onClickUp || function () {},
-            onClickMiss: settings.onClickMiss || function () {},
-            onHold: settings.onHold || function () {},
-            onHoldLeave: settings.onHoldLeave || function () {},
-            onHoldEnter: settings.onHoldEnter || function () {},
-            onHoldEnd: settings.onHoldEnd || function () {},
-            onHoverLeave: settings.onHoverLeave || function () {},
-            onHoverEnter: settings.onHoverEnter || function () {}
-        };
-
-    };
-
-    /**
-     * Destructs the component. Called by the entity holding the component.
-     * @function
-     * @instance
-     * @name destroy
-     */
-    Clickable.prototype.destroy = function () {
-        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
-        this.initialized = false;
-    };
-    /**
-     * Starts the component. Called by the entity holding the component.
-     * @function
-     * @instance
-     * @name start
-     */
-    Clickable.prototype.start = function () {
-        if (this.initialized) {
-            // TODO: this is caused by calling start when objects are attached, fix this later!
-            // console.log('warning: trying to init twice')
-            return;
-        }
-        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
-        this.initialized = true;
-    };
-    /**
-     * Updates the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name update
-     */
-    Clickable.prototype.update = function () {
-        if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
-            this.callbacks.onHold();
-        }
-    };
-    Clickable.prototype.cloneEvent = function (evt) {
-        return {
-            id: evt.id,
-            position: evt.position.clone(),
-            eventType: evt.eventType,
-            localPosition: evt.localPosition.clone(),
-            worldPosition: evt.worldPosition.clone()
-        };
-    };
-    Clickable.prototype.pointerDown = function (evt) {
-        var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
-            return;
-        }
-        this.isPointerDown = true;
-        if (this.callbacks.pointerDown) {
-            this.callbacks.pointerDown.call(this, e);
-        }
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e, true);
-        }
-    };
-    Clickable.prototype.pointerUp = function (evt) {
-        var e = this.transformEvent(evt),
-            mousePosition;
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
-            return;
-        }
-        mousePosition = e.localPosition;
-        this.isPointerDown = false;
-        if (this.callbacks.pointerUp) {
-            this.callbacks.pointerUp.call(this, e);
-        }
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            this.callbacks.onClickUp.call(this, [e]);
-            if (this.hasTouched && this.holdId === e.id) {
-                this.holdId = null;
-                this.callbacks.onHoldEnd.call(this, e);
-            }
-        }
-        this.hasTouched = false;
-    };
-    Clickable.prototype.pointerMove = function (evt) {
-        var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
-            return;
-        }
-        if (this.callbacks.pointerMove) {
-            this.callbacks.pointerMove.call(this, e);
-        }
-        // hovering?
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e);
-        }
-    };
-    Clickable.prototype.checkHovering = function (evt, clicked) {
-        var mousePosition = evt.localPosition;
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldEnter.call(this, evt);
-            }
-            if (!this.isHovering) {
-                this.callbacks.onHoverEnter.call(this, evt);
-            }
-            this.isHovering = true;
-            if (clicked) {
-                this.hasTouched = true;
-                this.holdId = evt.id;
-                this.callbacks.onClick.call(this, evt);
-            }
-        } else {
-            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldLeave.call(this, evt);
-            }
-            if (this.isHovering) {
-                this.callbacks.onHoverLeave.call(this, evt);
-            }
-            this.isHovering = false;
-            if (clicked) {
-                this.callbacks.onClickMiss.call(this, evt);
-            }
-        }
-    };
-    Clickable.prototype.transformEvent = function (evt) {
-        var positionVector,
-            translateMatrix = new Matrix(3, 3),
-            scaleMatrix = new Matrix(3, 3),
-            rotateMatrix = new Matrix(3, 3),
-            sin,
-            cos,
-            type,
-            position,
-            parent,
-            parents = [],
-            i;
-
-        // no parents
-        if (!this.entity.parent) {
-            if (!this.entity.float) {
-                evt.localPosition = evt.worldPosition.clone();
-            } else {
-                evt.localPosition = evt.position.clone();
-            }
-            return evt;
-        }
-        // make a copy
-        evt = this.cloneEvent(evt);
-        if (this.entity.float) {
-            positionVector = evt.localPosition.toMatrix();
-        } else {
-            positionVector = evt.worldPosition.toMatrix();
-        }
-
-        // get all parents
-        parent = this.entity;
-        while (parent.parent) {
-            parent = parent.parent;
-            parents.unshift(parent);
-        }
-
-        /**
-         * reverse transform the event position vector
-         */
-        for (i = 0; i < parents.length; ++i) {
-            parent = parents[i];
-
-            // construct a translation matrix and apply to position vector
-            if (parent.position) {
-                position = parent.position;
-                translateMatrix.set(2, 0, -position.x);
-                translateMatrix.set(2, 1, -position.y);
-                positionVector.multiplyWith(translateMatrix);
-            }
-            // only scale/rotatable if there is a component
-            if (parent.rotation) {
-                // construct a rotation matrix and apply to position vector
-                sin = Math.sin(-parent.rotation);
-                cos = Math.cos(-parent.rotation);
-                rotateMatrix.set(0, 0, cos);
-                rotateMatrix.set(1, 0, -sin);
-                rotateMatrix.set(0, 1, sin);
-                rotateMatrix.set(1, 1, cos);
-                positionVector.multiplyWith(rotateMatrix);
-            }
-            if (parent.scale) {
-                // construct a scaling matrix and apply to position vector
-                scaleMatrix.set(0, 0, 1 / parent.scale.x);
-                scaleMatrix.set(1, 1, 1 / parent.scale.y);
-                positionVector.multiplyWith(scaleMatrix);
-            }
-        }
-        evt.localPosition.x = positionVector.get(0, 0);
-        evt.localPosition.y = positionVector.get(0, 1);
-
-        return evt;
-    };
-    Clickable.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Clickable.prototype.toString = function () {
-        return '[object Clickable]';
-    };
-
-    return Clickable;
-});
-/**
- * Component that fills the screen
- * <br>Exports: Function
- * @module bento/components/fill
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/fill', [
-    'bento/utils',
-    'bento'
-], function (Utils, Bento) {
-    'use strict';
-    var Fill = function (settings) {
-        var viewport = Bento.getViewport();
-        settings = settings || {};
-        this.name = 'fill';
-        this.color = settings.color || [0, 0, 0, 1];
-        this.dimension = settings.dimension || viewport;
-    };
-    Fill.prototype.draw = function (data) {
-        var dimension = this.dimension;
-        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
-    };
-    Fill.prototype.setup = function (settings) {
-        this.color = settings.color;
-    };
-    Fill.prototype.toString = function () {
-        return '[object Fill]';
-    };
-
-    return Fill;
-});
-/**
- * Component that sets the opacity
- * <br>Exports: Function
- * @module bento/components/opacity
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/opacity', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var oldOpacity = 1,
-        Opacity = function (settings) {
-            settings = settings || {};
-            this.name = 'opacity';
-            this.set = false;
-            this.opacity = settings.opacity || 1;
-        };
-    Opacity.prototype.draw = function (data) {
-        if (this.set) {
-            oldOpacity = data.renderer.getOpacity();
-            data.renderer.setOpacity(this.opacity);
-        }
-    };
-    Opacity.prototype.postDraw = function (data) {
-        data.renderer.setOpacity(oldOpacity);
-    };
-    Opacity.prototype.setOpacity = function (value) {
-        this.set = true;
-        this.opacity = value;
-    };
-    Opacity.prototype.getOpacity = function () {
-        return this.opacity;
-    };
-    Opacity.prototype.toString = function () {
-        return '[object Opacity]';
-    };
-
-    return Opacity;
-});
-/**
- * Sprite component that uses pixi (alternative version of animation component).
- * Todo: somehow merge the 2 components? Lots of duplicate code here
- * <br>Exports: Function
- * @module bento/components/pixi
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/pixi', [
-    'bento',
-    'bento/utils'
-], function (
-    Bento,
-    Utils
-) {
-    'use strict';
-    if (!window.PIXI) {
-        console.log('Warning: PIXI is not available');
-        return function () {};
-    }
-
-    var Pixi = function (settings) {
-        this.pixiBaseTexture = null;
-        this.pixiTexture = null;
-        this.pixiSprite = null;
-        this.opacityComponent = null;
-
-        this.entity = null;
-        this.name = 'animation';
-        this.visible = true;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        this.spriteImage = null;
-
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
-    };
-    /**
-     * Sets up animation
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     */
-    Pixi.prototype.setup = function (settings) {
-        var rectangle,
-            crop;
-        this.animationSettings = settings || this.animationSettings;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = this.spriteImage.width / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = this.spriteImage.height / this.frameCountY;
-        }
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
-        }
-
-        // PIXI
-        // initialize pixi
-        if (this.spriteImage) {
-            // search texture
-            if (!this.spriteImage.image.texture) {
-                this.spriteImage.image.texture = new PIXI.BaseTexture(this.spriteImage.image, PIXI.SCALE_MODES.NEAREST);
-            }
-
-            this.pixiBaseTexture = this.spriteImage.image.texture;
-            rectangle = new PIXI.Rectangle(this.spriteImage.x, this.spriteImage.y, this.frameWidth, this.frameHeight);
-            this.pixiTexture = new PIXI.Texture(this.pixiBaseTexture, rectangle);
-            this.pixiSprite = new PIXI.Sprite(this.pixiTexture);
-        }
-    };
-
-    Pixi.prototype.attached = function (data) {
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-        this.opacityComponent = data.entity.getComponent('opacity');
-    };
-    /**
-     * Set component to a different animation
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     */
-    Pixi.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-        }
-    };
-    /**
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     */
-    Pixi.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /**
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     */
-    Pixi.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /**
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     */
-    Pixi.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /**
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     */
-    Pixi.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /**
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     */
-    Pixi.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    /**
-     * Updates the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name update
-     */
-    Pixi.prototype.update = function (data) {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-        reachedEnd = false;
-        this.currentFrame += this.currentAnimation.speed || 1;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-        }
-    };
-    /**
-     * Draws the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name draw
-     */
-    Pixi.prototype.draw = function (data) {
-        var origin = data.entity.origin,
-            position = data.entity.position,
-            rotation = data.entity.rotation,
-            scale = data.entity.scale,
-            rectangle,
-            cf,
-            sx,
-            sy;
-
-        if (!this.currentAnimation || !this.pixiSprite || !this.visible) {
-            return;
-        }
-        cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
-        sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
-
-        rectangle = new PIXI.Rectangle(this.spriteImage.x + sx, this.spriteImage.y + sy, this.frameWidth, this.frameHeight);
-        this.pixiTexture.frame = rectangle;
-        this.pixiSprite.x = position.x;
-        this.pixiSprite.y = position.y;
-        // pixiSprite.pivot.x = origin.x;
-        // pixiSprite.pivot.y = origin.y;
-        this.pixiSprite.anchor.x = origin.x / this.frameWidth;
-        this.pixiSprite.anchor.y = origin.y / this.frameHeight;
-
-        if (data.entity.float) {
-            this.pixiSprite.x -= viewport.x;
-            this.pixiSprite.y -= viewport.y;
-        }
-        this.pixiSprite.scale.x = scale.x;
-        this.pixiSprite.scale.y = scale.y;
-        this.pixiSprite.rotation = rotation;
-        if (this.opacityComponent) {
-            this.pixiSprite.alpha = this.opacityComponent.getOpacity();
-        }
-        this.pixiSprite.visible = data.entity.visible;
-        this.pixiSprite.z = data.entity.z;
-    };
-
-    Pixi.prototype.destroy = function (data) {
-        // remove from parent
-        if (this.pixiSprite && this.pixiSprite.parent) {
-            this.pixiSprite.parent.removeChild(this.pixiSprite);
-        }
-    };
-    Pixi.prototype.start = function (data) {
-        if (!this.pixiSprite) {
-            console.log('call setup first');
-            return;
-        }
-    };
-    Pixi.prototype.onParentAttached = function (data) {
-        var parent;
-
-        if (!this.pixiSprite) {
-            console.log('Warning: pixi sprite does not exist, creating pixi container');
-            this.pixiSprite = new PIXI.Container();
-        }
-
-        if (data.renderer) {
-            // attach to root
-            data.renderer.addChild(this.pixiSprite);
-        } else if (data.entity) {
-            // attach to parent
-            parent = data.entity.parent;
-            // get pixi component
-            if (parent) {
-                parent.getComponent('animation', function (component) {
-                    if (!component.pixiSprite) {
-                        console.log('Warning: pixi sprite does not exist, creating pixi container');
-                        component.pixiSprite = new PIXI.Container();
-                    }
-                    component.pixiSprite.addChild(this.pixiSprite);
-                });
-            }
-        }
-    };
-
-    Pixi.prototype.toString = function () {
-        return '[object Pixi]';
-    };
-    return Pixi;
-});
-/**
- * Component that sets the rotation
- * <br>Exports: Function
- * @module bento/components/rotation
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/rotation', [
-    'bento/utils',
-], function (Utils) {
-    'use strict';
-    var Rotation = function (settings) {
-        settings = settings || {};
-        this.name = 'rotation';
-        this.entity = null;
-    };
-
-    Rotation.prototype.draw = function (data) {
-        data.renderer.save();
-        data.renderer.rotate(data.entity.rotation);
-    };
-    Rotation.prototype.postDraw = function (data) {
-        data.renderer.restore();
-    };
-    Rotation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-
-    // old angle functions
-    Rotation.prototype.addAngleDegree = function (value) {
-        this.entity.rotation += value * Math.PI / 180;
-    };
-    Rotation.prototype.addAngleRadian = function (value) {
-        this.entity.rotation += value;
-    };
-    Rotation.prototype.setAngleDegree = function (value) {
-        this.entity.rotation = value * Math.PI / 180;
-    };
-    Rotation.prototype.setAngleRadian = function (value) {
-        this.entity.rotation = value;
-    };
-    Rotation.prototype.getAngleDegree = function () {
-        return this.entity.rotation * 180 / Math.PI;
-    };
-    Rotation.prototype.getAngleRadian = function () {
-        return this.entity.rotation;
-    };
-    Rotation.prototype.toString = function () {
-        return '[object Rotation]';
-    };
-
-    return Rotation;
-});
-/**
- * Component that scales the entity
- * <br>Exports: Function
- * @module bento/components/scale
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/scale', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Scale = function (settings) {
-        this.entity = null;
-        this.name = 'scale';
-    };
-    Scale.prototype.draw = function (data) {
-        data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
-    };
-    Scale.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Scale.prototype.toString = function () {
-        return '[object Scale]';
-    };
-
-    return Scale;
-});
-/**
- * Helper component that attaches the translate, scale, rotation, opacity and animation/pixi components. Automatically detects the renderer.
- * <br>Exports: Function
- * @module bento/components/sprite
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/sprite', [
-    'bento',
-    'bento/utils',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/components/opacity',
-    'bento/components/animation',
-    'bento/components/pixi'
-], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation, Pixi) {
-    'use strict';
-    var renderer,
-        component = function (settings) {
-            this.entity = null;
-            // detect renderer
-            if (!renderer) {
-                renderer = Bento.getRenderer();
-            }
-
-            // use pixi or default sprite renderer
-            if (renderer.name === 'pixi') {
-                this.opacity = new Opacity(settings);
-                this.animation = new Pixi(settings);
-            } else {
-                this.translation = new Translation(settings);
-                this.rotation = new Rotation(settings);
-                this.scale = new Scale(settings);
-                this.opacity = new Opacity(settings);
-                this.animation = new Animation(settings);
-            }
-
-            this.components = settings.components || [];
-        };
-
-    component.prototype.attached = function (data) {
-        var i = 0;
-        this.entity = data.entity;
-        // attach all components!
-        if (this.translation) {
-            this.entity.attach(this.translation);
-        }
-        if (this.rotation) {
-            this.entity.attach(this.rotation);
-        }
-        if (this.scale) {
-            this.entity.attach(this.scale);
-        }
-        this.entity.attach(this.opacity);
-
-        // wedge in extra components in before the animation component
-        for (i = 0; i < this.components.length; ++i) {
-            this.entity.attach(this.components[i]);
-        }
-        this.entity.attach(this.animation);
-
-        // remove self?
-        this.entity.remove(this);
-    };
-    component.prototype.insertBefore = function (array) {
-        if (!Utils.isArray(array)) {
-            array = [array];
-        }
-        this.components = array;
-        return this;
-    },
-    component.prototype.toString = function () {
-        return '[object Sprite]';
-    };
-
-    return component;
-});
-/**
- * Component that translates the entity visually
- * <br>Exports: Function
- * @module bento/components/translation
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
- */
-bento.define('bento/components/translation', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Translation = function (settings) {
-        settings = settings || {};
-        this.name = 'translation';
-        this.subPixel = settings.subPixel || false;
-        this.entity = null;
-        this.x = 0;
-        this.y = 0;
-    };
-    Translation.prototype.draw = function (data) {
-        var entity = data.entity,
-            parent = entity.parent,
-            position = entity.position,
-            origin = entity.origin,
-            scroll = data.viewport;
-
-        data.renderer.save();
-        if (this.subPixel) {
-            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
-        } else {
-            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
-        }
-        // scroll (only applies to parent objects)
-        if (!parent && !entity.float) {
-            data.renderer.translate(-scroll.x, -scroll.y);
-        }
-    };
-    Translation.prototype.postDraw = function (data) {
-        data.renderer.restore();
-    };
-    Translation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Translation.prototype.toString = function () {
-        return '[object Translation]';
-    };
-
-    return Translation;
 });
 /**
  * Canvas 2d renderer

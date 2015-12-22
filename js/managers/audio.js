@@ -1,11 +1,11 @@
 /**
  * Audio manager (To be rewritten)
+ * Can be accessed through Bento.audio
  * <br>Exports: Function
  * @module bento/managers/audio
  * @returns AssetManager
  */
-
-define('bento/managers/audio', [
+bento.define('bento/managers/audio', [
     'bento/utils'
 ], function (Utils) {
     return function (bento) {

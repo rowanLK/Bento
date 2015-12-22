@@ -9,13 +9,26 @@
  * @param {Array} settings.family - Array of family names
  * @param {Vector2} settings.position - Vector2 of position to set
  * @param {Vector2} settings.origin - Vector2 of origin to set
- * @param {Vector2} settings.originRelative - Vector2 of relative origin to set
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
+ * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
  * @param {Boolean} settings.z - z-index to set
  * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused
  * @param {Boolean} settings.global - Should entity remain after hiding a screen
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - Should entity use HSHG for collisions
  * @param {Boolean} settings.staticHshg - Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
+ * @example 
+var entity = new Entity({
+    z: 0,
+    name: 'myEntity',
+    position: new Vector2(32, 32),
+    originRelative: new Vector2(0.5, 1),    // bottom center origin
+    components: [new Sprite({
+        imageName: 'myImage'
+    })] // see Sprite module
+ });
+ * // attach entity to Bento Objects
+ * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
  */
 bento.define('bento/entity', [
@@ -76,7 +89,7 @@ bento.define('bento/entity', [
          */
         this.updateWhenPaused = false;
         /**
-         * Name of an object
+         * Name of the entity
          * @instance
          * @default ''
          * @name name
@@ -84,22 +97,90 @@ bento.define('bento/entity', [
         this.name = '';
         this.isAdded = false;
         /**
-         * Name of an object
+         * Use Hierarchical Spatial Hash Grids
          * @instance
          * @default ''
          * @name useHshg
          */
         this.useHshg = false;
+        /**
+         * Position of the entity
+         * @instance
+         * @default Vector2(0, 0)
+         * @name position
+         */
         this.position = new Vector2(0, 0);
+        /**
+         * Origin of the entity (anchor point)
+         * @instance
+         * @default Vector2(0, 0)
+         * @name origin
+         */
         this.origin = new Vector2(0, 0);
+        /**
+         * Families of the entity
+         * @instance
+         * @default []
+         * @see module:bento/managers/object#getByFamily
+         * @name family
+         */
         this.family = [];
+        /**
+         * Components of the entity
+         * @instance
+         * @default []
+         * @name components
+         */
         this.components = [];
+        /**
+         * Dimension of the entity
+         * @instance
+         * @default Rectangle(0, 0, 0, 0)
+         * @name dimension
+         */
         this.dimension = new Rectangle(0, 0, 0, 0);
-        this.boundingBox = null;
+        /**
+         * Boundingbox of the entity
+         * @instance
+         * @default null
+         * @see module:bento/entity#getBoundingBox for usage
+         * @name boundingBox
+         */
+        this.boundingBox = settings.boundingBox || null;
+        /**
+         * Scale of the entity
+         * @instance
+         * @default Vector2(1, 1)
+         * @name scale
+         */
         this.scale = new Vector2(1, 1);
+        /**
+         * Rotation of the entity
+         * @instance
+         * @default 0
+         * @name scale
+         */
         this.rotation = 0;
+        /**
+         * Whether the entity calls the draw function
+         * @instance
+         * @default true
+         * @name visible
+         */
         this.visible = true;
+        /**
+         * Entity's parent object, is set by the attach function
+         * @instance
+         * @default null
+         * @see module:bento/entity#attach
+         * @name parent
+         */
         this.parent = null;
+        /**
+         * Reference to the settings parameter passed to the constructor
+         * @instance
+         * @name settings
+         */
         this.settings = settings;
 
         // read settings
@@ -150,13 +231,6 @@ bento.define('bento/entity', [
         }
     };
 
-    /**
-     * Calls start on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name start
-     */
     Entity.prototype.start = function (data) {
         var i,
             l,
@@ -171,13 +245,6 @@ bento.define('bento/entity', [
             }
         }
     };
-    /**
-     * Calls destroy on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name destroy
-     */
     Entity.prototype.destroy = function (data) {
         var i,
             l,
@@ -192,13 +259,6 @@ bento.define('bento/entity', [
             }
         }
     };
-    /**
-     * Calls update on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name update
-     */
     Entity.prototype.update = function (data) {
         var i,
             l,
@@ -218,13 +278,6 @@ bento.define('bento/entity', [
         // clean up
         cleanComponents(this);
     };
-    /**
-     * Calls draw on every component
-     * @function
-     * @param {Object} data - gameData object
-     * @instance
-     * @name draw
-     */
     Entity.prototype.draw = function (data) {
         var i,
             l,
@@ -256,16 +309,29 @@ bento.define('bento/entity', [
      * @instance
      * @param {Object} object - other object
      * @see module:bento/utils#extend
+     * @example
+var entity = new Entity({});
+
+entity.extend({
+    addX: function (x) {
+        entity.position.x += x;
+        // alternatively, this.position.x would work too.
+    }
+});
+
+entity.addX(10);
      * @name extend
      */
     Entity.prototype.extend = function (object) {
         return Utils.extend(this, object);
     };
     /**
-     * Returns the bounding box of an entity. If no bounding box was set
-     * previously, the dimension is returned.
+     * Returns the bounding box of an entity that's ready to be compared for collisions.
+     * If no bounding box was set to entity.boundingBox, the dimension assumed as bounding box size.
+     * entity.boundingBox is a Rectangle set relatively the entity's origin, while getBoundingBox returns
+     * a rectangle that's positioned in the world and scaled appropiately (AABB only, does not take into account rotation)
      * @function
-     * @returns {Rectangle} boundingbox - Entity's boundingbox
+     * @returns {Rectangle} boundingbox - Entity's boundingbox with translation and scaling
      * @instance
      * @name getBoundingBox
      */
@@ -300,7 +366,7 @@ bento.define('bento/entity', [
         }
     };
     /**
-     * Sets the origin relatively (0...1)
+     * Sets the origin relatively (0...1), relative to the dimension of the entity.
      * @function
      * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
      * @instance
@@ -310,11 +376,8 @@ bento.define('bento/entity', [
         this.origin.x = value.x * this.dimension.width;
         this.origin.y = value.y * this.dimension.height;
     };
-    /**
+    /*
      * Entity was attached, calls onParentAttach to all children
-     * @param {Object} data - gameData
-     * @instance
-     * @name attached
      */
     Entity.prototype.attached = function (data) {
         var i,
@@ -341,12 +404,8 @@ bento.define('bento/entity', [
             }
         }
     };
-    /**
+    /*
      * Calls onParentCollided on every child, additionally calls onCollide on self afterwards
-     * @function
-     * @param {Object} other - The other object/entity that collided
-     * @instance
-     * @name start
      */
     Entity.prototype.collided = function (data) {
         var i,
@@ -374,16 +433,41 @@ bento.define('bento/entity', [
         }
     };
     /**
-     * Attaches a child object to the entity. Entities can form a scenegraph.
-     * Generally, entities act as nodes while components act like leaves.
-     * Note that start will be called in the child.
+     * Attaches a child object to the entity. Entities can form a scenegraph this way. 
+     * This is one of the most important functions in Bento. It allows you to attach new behaviors
+     * to the entity by attaching components or other Entities.
+     * The parent entity calls start(), destroy(), update() and draw() in the child.
+     * The child will have a 'parent' property, which references the parent entity.
      * @function
-     * @param {Object} node - The child object to attach
-     * @param {String} [name] - Name to expose in the entity. The child object can be reached by entity[name]
+     * @param {Object} child - The child object to attach (can be anything)
      * @instance
+     * @example 
+var entity = new Entity({}),
+    // we define a simple object literal that acts as a container for functions
+    child = {
+        name: 'childObject', // for retrieving the child later if needed
+        start: function (data) {
+            console.log('Logged when entity is attached (not when child is attached)');
+        },
+        destroy: function (data) {
+            console.log('Logged when child is removed or when entity is removed');
+        },
+        update: function (data) {
+            console.log('Logged every tick during the update loop');
+        },
+        draw: function (data) {
+            console.log('Logged every tick during the draw loop');
+        }
+    };
+
+// You can use object literals to attach or define new classes. The child could also be another Entity with a sprite!
+entity.attach(child);
+
+// attach the entity to the game
+Bento.objects.attach(entity);
      * @name attach
      */
-    Entity.prototype.attach = function (child, name) {
+    Entity.prototype.attach = function (child) {
         var mixin = {},
             parent = this;
 
@@ -421,7 +505,7 @@ bento.define('bento/entity', [
     /**
      * Removes a child object from the entity. Note that destroy will be called in the child.
      * @function
-     * @param {Object} node - The child object to remove
+     * @param {Object} child - The child object to remove
      * @instance
      * @name remove
      */
@@ -556,6 +640,8 @@ bento.define('bento/entity', [
         }
         return null;
     };
+
+    // for use with Hshg
     Entity.prototype.getAABB = function () {
         var box;
         if (this.staticHshg) {
@@ -572,7 +658,13 @@ bento.define('bento/entity', [
             max: [box.x + box.width, box.y + box.height]
         };
     };
-    // todo: test this properly
+    /**
+     * Transforms a child entity position to the world position
+     * @function
+     * @instance
+     * @name getWorldPosition
+     */
+    // TODO: test this properly
     Entity.prototype.getWorldPosition = function () {
         var positionVector,
             translateMatrix = new Matrix(3, 3),

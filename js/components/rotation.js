@@ -1,10 +1,9 @@
 /**
- * Component that sets the rotation
+ * Component that sets the context rotation for drawing.
  * <br>Exports: Function
  * @module bento/components/rotation
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object.
  */
 bento.define('bento/components/rotation', [
     'bento/utils',
@@ -27,22 +26,61 @@ bento.define('bento/components/rotation', [
         this.entity = data.entity;
     };
 
-    // old angle functions
+    /**
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name addAngleDegree
+     */
     Rotation.prototype.addAngleDegree = function (value) {
         this.entity.rotation += value * Math.PI / 180;
     };
+    /**
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name addAngleRadian
+     */
     Rotation.prototype.addAngleRadian = function (value) {
         this.entity.rotation += value;
     };
+    /**
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name setAngleDegree
+     */
     Rotation.prototype.setAngleDegree = function (value) {
         this.entity.rotation = value * Math.PI / 180;
     };
+    /**
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name setAngleRadian
+     */
     Rotation.prototype.setAngleRadian = function (value) {
         this.entity.rotation = value;
     };
+    /**
+     * Returns the parent entity rotation in degrees
+     * @function
+     * @instance
+     * @name getAngleDegree
+     */
     Rotation.prototype.getAngleDegree = function () {
         return this.entity.rotation * 180 / Math.PI;
     };
+    /**
+     * Returns the parent entity rotation in radians
+     * @function
+     * @instance
+     * @name getAngleRadian
+     */
     Rotation.prototype.getAngleRadian = function () {
         return this.entity.rotation;
     };

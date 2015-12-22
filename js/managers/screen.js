@@ -1,5 +1,6 @@
 /**
  * Manager that controls screens/rooms/levels.
+ * Can be accessed through Bento.screens
  * <br>Exports: Function
  * @module bento/managers/screen
  * @returns ScreenManager
@@ -16,7 +17,7 @@ bento.define('bento/managers/screen', [
             },
             screenManager = {
                 /**
-                 * Adds a new screen
+                 * Adds a new screen to the cache
                  * @function
                  * @instance
                  * @param {Screen} screen - Screen object
@@ -63,8 +64,10 @@ bento.define('bento/managers/screen', [
                     }
                 },
                 /**
-                 * Hides a screen. It's not needed to call this yourself.
-                 * Screens are hidden when a new one is shown.
+                 * Hides a screen. You may call this to remove all objects on screen, but
+                 * it's not needed to call this yourself if you want to show a new screen.
+                 * Screens.hide is internally called on the current screen when Screens.show
+                 * is called.
                  * @function
                  * @instance
                  * @param {Object} data - Extra data to pass on to the screen

@@ -2,6 +2,7 @@
  * The Tween is an entity that performs an interpolation within a timeframe. The entity
  * removes itself after the tween ends.
  * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
+ * Also see: http://easings.net/
  * <br>Exports: Function
  * @module bento/tween
  * @param {Object} settings - Settings object

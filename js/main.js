@@ -1,7 +1,8 @@
 /**
- *  Main entry point for Bento engine
- *  Defines global bento namespace, use bento.require and define
- *  @name bento
+ * Main entry point for Bento engine
+ * Defines global bento namespace, use bento.require and define.
+ * Require/define uses RequireJS.
+ * @name bento
  */
 (function () {
     'use strict';
@@ -11,7 +12,26 @@
         req = window.require, // cache requirejs
         def = window.define, // cache requirejs
         bento = {
+            /**
+             * Loads modules asynchronously
+             * @function
+             * @instance
+             * @param {Array} dependencyModuleNames - Array of module names
+             * @param {Function} callback - Called when dependencies are loaded.
+             * Function parameters is a list of corresponding module objects
+             * @name require
+             */
             require: req,
+            /**
+             * Defines a new module
+             * @function
+             * @instance
+             * @param {String} name - Name of the module
+             * @param {Array} dependencyModuleNames - Array of module names
+             * @param {Function} callback - Called when dependencies are loaded.
+             * Function parameters is a list of corresponding module objects
+             * @name define
+             */
             define: function () {
                 var name = arguments[0];
                 if (startWatching) {
@@ -19,13 +39,26 @@
                 }
                 def.apply(this, arguments);
             },
+            /**
+             * Deletes all loaded modules. See {@link http://requirejs.org/docs/api.html#undef}
+             * Modules loaded after bento.watch started are affected
+             * @function
+             * @instance
+             * @name refresh
+             */
             refresh: function () {
-            	var i = 0;
+                var i = 0;
                 // undefines every module loaded since watch started 
                 for (i = 0; i < modules.length; ++i) {
-                	rjs.undef(modules[i]);
+                    rjs.undef(modules[i]);
                 }
             },
+            /**
+             * Start collecting modules for deletion
+             * @function
+             * @instance
+             * @name watch
+             */
             watch: function () {
                 startWatching = true;
             }

@@ -2,9 +2,41 @@
  * Animation component. Draws an animated sprite on screen at the entity position.
  * <br>Exports: Function
  * @module bento/components/animation
- * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally. 
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+ var sprite = new Sprite({ // note that you can use the Sprite component with the same settings object
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3, // a 3 x 3 spritesheet
+        animations: {
+            "idle": {
+                frames: [0] // first frame
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
+            } // etc.
+        }
+     }),
+     entity = new Entity({});
+
+entity.attach(sprite); // attach sprite to entity
+Bento.objects.attach(entity); // attach entity to game
+ * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/animation', [
     'bento',
@@ -36,7 +68,7 @@ bento.define('bento/components/animation', [
         this.setup(settings);
     };
     /**
-     * Sets up animation
+     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
      * @function
      * @instance
      * @param {Object} settings - Settings object
@@ -104,7 +136,7 @@ bento.define('bento/components/animation', [
         this.entity.dimension.height = this.frameHeight;
     };
     /**
-     * Set component to a different animation
+     * Set component to a different animation. The animation won't change if it's already playing.
      * @function
      * @instance
      * @param {String} name - Name of the animation.
@@ -194,13 +226,6 @@ bento.define('bento/components/animation', [
     Animation.prototype.getFrameWidth = function () {
         return this.frameWidth;
     };
-    /**
-     * Updates the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name update
-     */
     Animation.prototype.update = function () {
         var reachedEnd;
         if (!this.currentAnimation) {
@@ -209,6 +234,7 @@ bento.define('bento/components/animation', [
         reachedEnd = false;
         this.currentFrame += this.currentAnimation.speed || 1;
         if (this.currentAnimation.loop) {
+            // TODO: fix this while loop getting stuck
             while (this.currentFrame >= this.currentAnimation.frames.length) {
                 this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
                 reachedEnd = true;
@@ -222,13 +248,6 @@ bento.define('bento/components/animation', [
             this.onCompleteCallback();
         }
     };
-    /**
-     * Draws the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name draw
-     */
     Animation.prototype.draw = function (data) {
         var cf, sx, sy,
             entity = data.entity,

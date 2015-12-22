@@ -1,5 +1,6 @@
 /**
- * Sends custom events
+ * Sends custom events. Don't forget to turn off listeners or
+ * you will end up with memory leaks or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
  */

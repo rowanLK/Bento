@@ -1,10 +1,13 @@
 /**
- * Helper component that attaches the translate, scale, rotation, opacity and animation/pixi components. Automatically detects the renderer.
+ * Helper component that attaches the Translation, Scale, Rotation, Opacity
+ * and Animation (or Pixi) components. Automatically detects the renderer.
  * <br>Exports: Function
  * @module bento/components/sprite
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {Object} settings - Settings object, this object is passed to all other components
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
+ * the Animation component is attached. Same as Sprite.insertBefore.
+ * @param {} settings.... - See other components 
+ * @returns Returns a component object.
  */
 bento.define('bento/components/sprite', [
     'bento',
@@ -30,10 +33,36 @@ bento.define('bento/components/sprite', [
                 this.opacity = new Opacity(settings);
                 this.animation = new Pixi(settings);
             } else {
+                /**
+                 * Reference to the Translation component
+                 * @instance
+                 * @name translation
+                 */
                 this.translation = new Translation(settings);
+                /**
+                 * Reference to the Rotation component
+                 * @instance
+                 * @name rotation
+                 */
                 this.rotation = new Rotation(settings);
+                /**
+                 * Reference to the Scale component
+                 * @instance
+                 * @name scale
+                 */
                 this.scale = new Scale(settings);
+                /**
+                 * Reference to the Opacity component
+                 * @instance
+                 * @name rotation
+                 */
                 this.opacity = new Opacity(settings);
+                /**
+                 * If renderer is set to pixi, this property is the Pixi component.
+                 * Otherwise it's the Animation component
+                 * @instance
+                 * @name animation
+                 */
                 this.animation = new Animation(settings);
             }
 
@@ -64,6 +93,15 @@ bento.define('bento/components/sprite', [
         // remove self?
         this.entity.remove(this);
     };
+    /**
+     * Allows you to insert components/children entities BEFORE the animation component.
+     * This way you can draw objects behind the sprite.
+     * This function should be called before you attach the Sprite to the Entity.
+     * @function
+     * @param {Array} array - Array of entities to attach
+     * @instance
+     * @name insertBefore
+     */
     component.prototype.insertBefore = function (array) {
         if (!Utils.isArray(array)) {
             array = [array];
