@@ -1,10 +1,21 @@
 /**
- * Component that helps with detecting clicks on an entity
- * <br>Exports: Function
+ * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
+ * unless entity.updateWhenPaused is turned on.
+ * <br>Exports: Constructor
  * @module bento/components/clickable
- * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen 
+ * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen 
+ * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen 
+ * @param {Function} settings.onClick - Called when pointer taps on the parent entity 
+ * @param {Function} settings.onClickUp - The pointer was released above the parent entity 
+ * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity 
+ * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
+ * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
+ * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
+ * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
+ * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/clickable', [
     'bento',
@@ -15,6 +26,7 @@ bento.define('bento/components/clickable', [
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
     var Clickable = function (settings) {
+        var nothing = function () {};
         this.entity = null;
         /**
          * Name of the component
@@ -42,45 +54,31 @@ bento.define('bento/components/clickable', [
         this.initialized = false;
 
         this.callbacks = {
-            pointerDown: settings.pointerDown || function (evt) {},
-            pointerUp: settings.pointerUp || function (evt) {},
-            pointerMove: settings.pointerMove || function (evt) {},
+            pointerDown: settings.pointerDown || nothing,
+            pointerUp: settings.pointerUp || nothing,
+            pointerMove: settings.pointerMove || nothing,
             // when clicking on the object
-            onClick: settings.onClick || function () {},
-            onClickUp: settings.onClickUp || function () {},
-            onClickMiss: settings.onClickMiss || function () {},
-            onHold: settings.onHold || function () {},
-            onHoldLeave: settings.onHoldLeave || function () {},
-            onHoldEnter: settings.onHoldEnter || function () {},
-            onHoldEnd: settings.onHoldEnd || function () {},
-            onHoverLeave: settings.onHoverLeave || function () {},
-            onHoverEnter: settings.onHoverEnter || function () {}
+            onClick: settings.onClick || nothing,
+            onClickUp: settings.onClickUp || nothing,
+            onClickMiss: settings.onClickMiss || nothing,
+            onHold: settings.onHold || nothing,
+            onHoldLeave: settings.onHoldLeave || nothing,
+            onHoldEnter: settings.onHoldEnter || nothing,
+            onHoldEnd: settings.onHoldEnd || nothing,
+            onHoverLeave: settings.onHoverLeave || nothing,
+            onHoverEnter: settings.onHoverEnter || nothing
         };
 
     };
 
-    /**
-     * Destructs the component. Called by the entity holding the component.
-     * @function
-     * @instance
-     * @name destroy
-     */
     Clickable.prototype.destroy = function () {
         EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
         EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
         EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
         this.initialized = false;
     };
-    /**
-     * Starts the component. Called by the entity holding the component.
-     * @function
-     * @instance
-     * @name start
-     */
     Clickable.prototype.start = function () {
         if (this.initialized) {
-            // TODO: this is caused by calling start when objects are attached, fix this later!
-            // console.log('warning: trying to init twice')
             return;
         }
         EventSystem.addEventListener('pointerDown', this.pointerDown, this);
@@ -88,15 +86,8 @@ bento.define('bento/components/clickable', [
         EventSystem.addEventListener('pointerMove', this.pointerMove, this);
         this.initialized = true;
     };
-    /**
-     * Updates the component. Called by the entity holding the component every tick.
-     * @function
-     * @instance
-     * @param {Object} data - Game data object
-     * @name update
-     */
     Clickable.prototype.update = function () {
-        if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
+        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
             this.callbacks.onHold();
         }
     };
@@ -183,6 +174,7 @@ bento.define('bento/components/clickable', [
             }
         }
     };
+    // TODO: does not work with floating entities
     Clickable.prototype.transformEvent = function (evt) {
         var positionVector,
             translateMatrix = new Matrix(3, 3),

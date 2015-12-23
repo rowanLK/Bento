@@ -1,10 +1,11 @@
 /**
  * Component that sets the opacity
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/opacity
  * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {Number} settings.opacity - Opacity value (1 is opaque)
+ * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/opacity', [
     'bento/utils',
@@ -27,10 +28,23 @@ bento.define('bento/components/opacity', [
     Opacity.prototype.postDraw = function (data) {
         data.renderer.setOpacity(oldOpacity);
     };
+    /**
+     * Set entity opacity
+     * @function
+     * @instance
+     * @param {Number} opacity - Opacity value
+     * @name setOpacity
+     */
     Opacity.prototype.setOpacity = function (value) {
         this.set = true;
         this.opacity = value;
     };
+    /**
+     * Get entity opacity
+     * @function
+     * @instance
+     * @name getOpacity
+     */
     Opacity.prototype.getOpacity = function () {
         return this.opacity;
     };

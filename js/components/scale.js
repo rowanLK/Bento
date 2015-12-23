@@ -1,10 +1,9 @@
 /**
- * Component that scales the entity
- * <br>Exports: Function
+ * Component that sets the context scale for drawing.
+ * <br>Exports: Constructor
  * @module bento/components/scale
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/scale', [
     'bento/utils',
@@ -20,6 +19,26 @@ bento.define('bento/components/scale', [
     };
     Scale.prototype.attached = function (data) {
         this.entity = data.entity;
+    };
+    /**
+     * Scales the parent entity in x direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleX
+     */
+    Scale.prototype.setScaleX = function (value) {
+        this.entity.scale.x = value;
+    };
+    /**
+     * Scales the parent entity in y direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleY
+     */
+    Scale.prototype.setScaleY = function (value) {
+        this.entity.scale.y = value;
     };
     Scale.prototype.toString = function () {
         return '[object Scale]';

@@ -1,6 +1,6 @@
-/**
+/*
  * Returns a color array, for use in renderer
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @param {Number} r - Red value [0...255]
  * @param {Number} g - Green value [0...255]
  * @param {Number} b - Blue value [0...255]

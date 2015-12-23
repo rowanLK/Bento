@@ -1,6 +1,6 @@
 /**
- * Manager that tracks mouse/touch and keyboard input
- * <br>Exports: Function
+ * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
+ * <br>Exports: Constructor, can be accessed through Bento.input namespace.
  * @module bento/managers/input
  * @param {Object} settings - Settings
  * @param {Vector2} settings.canvasScale - Reference to the current canvas scale.
@@ -283,7 +283,7 @@ bento.define('bento/managers/input', [
 
         return {
             /**
-             * Returns current pointers down
+             * Returns all current pointers down
              * @function
              * @instance
              * @returns {Array} pointers - Array with pointer positions

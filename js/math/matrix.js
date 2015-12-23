@@ -1,6 +1,6 @@
 /**
  * Matrix
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/matrix
  * @param {Number} width - horizontal size of matrix
  * @param {Number} height - vertical size of matrix

@@ -1,10 +1,10 @@
 /**
- * Component that translates the entity visually
- * <br>Exports: Function
+ * Component that sets the context translation for drawing.
+ * <br>Exports: Constructor
  * @module bento/components/translation
- * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings
- * @returns Returns the entity passed. The entity will have the component attached.
+ * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
+ * @returns Returns a component object.
  */
 bento.define('bento/components/translation', [
     'bento/utils',
@@ -16,7 +16,19 @@ bento.define('bento/components/translation', [
         this.name = 'translation';
         this.subPixel = settings.subPixel || false;
         this.entity = null;
+        /**
+         * Additional x translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name x
+         */
         this.x = 0;
+        /**
+         * Additional y translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name y
+         */
         this.y = 0;
     };
     Translation.prototype.draw = function (data) {

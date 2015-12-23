@@ -1,6 +1,6 @@
 /**
  * Rectangle
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/rectangle
  * @param {Number} x - Top left x position
  * @param {Number} y - Top left y position

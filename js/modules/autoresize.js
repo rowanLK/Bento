@@ -1,7 +1,7 @@
 /**
  * A helper module that returns a rectangle as the best fit of a multiplication of the screen size.
  * Assuming portrait mode, autoresize first tries to fit the width and then fills up the height
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/autoresize
  * @param {Rectangle} canvasDimension - Default size
  * @param {Number} minSize - Minimal width/height

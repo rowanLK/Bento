@@ -1,5 +1,12 @@
 /**
- * Bento module, main entry point to game modules and managers
+ * Bento module, main entry point to game modules and managers. Start the game by using Bento.setup().
+ * After this you have access to all Bento managers:<br>
+ * • Bento.assets<br>
+ * • Bento.audio<br>
+ * • Bento.input<br>
+ * • Bento.object<br>
+ * • Bento.savestate<br>
+ * • Bento.screen<br>
  * <br>Exports: Object
  * @module bento
  */
@@ -154,15 +161,15 @@ bento.define('bento', [
         },
         module = {
             /**
-             * Setup game. Initializes Bento managers.
+             * Setup game. Initializes all Bento managers.
              * @name setup
              * @function
              * @instance
              * @param {Object} settings - settings for the game
-             * @param {Object} settings.assetGroups - Asset groups to load. Key: group name, value: path to json file
-             * @see AssetGroup
+             * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
+             * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
@@ -262,11 +269,47 @@ bento.define('bento', [
                     entity: null
                 };
             },
+            /**
+             * Asset manager
+             * @see module:bento/managers/asset
+             * @instance
+             * @name assets
+             */
             assets: null,
+            /**
+             * Object manager
+             * @see module:bento/managers/object
+             * @instance
+             * @name objects
+             */
             objects: null,
+            /**
+             * Input manager
+             * @see module:bento/managers/input
+             * @instance
+             * @name objects
+             */
             input: null,
+            /**
+             * Audio manager
+             * @see module:bento/managers/audio
+             * @instance
+             * @name audio
+             */
             audio: null,
+            /**
+             * Screen manager
+             * @see module:bento/managers/screen
+             * @instance
+             * @name screen
+             */
             screens: null,
+            /**
+             * SaveState manager
+             * @see module:bento/managers/savestate
+             * @instance
+             * @name saveState
+             */
             saveState: SaveState,
             utils: Utils
         };

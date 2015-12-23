@@ -1,6 +1,7 @@
 /**
- * Manager that controls presistent variables. Wrapper for localStorage.
- * <br>Exports: Object
+ * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
+ * save values and Bento.saveState.load() to retrieve them.
+ * <br>Exports: Object, can be accessed through Bento.audio namespace. 
  * @module bento/managers/savestate
  * @returns SaveState
  */
@@ -83,7 +84,20 @@ bento.define('bento/managers/savestate', [
             }
         },
         /**
-         * Loads a variable
+         * Adds to a saved variable/number
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number to be added, if the value does not exists, it defaults to 0
+         * @name add
+         */
+        add: function (elementKey, element) {
+            var value = this.load(elementKey, 0);
+            value += element;
+            this.save(elementKey, value);
+        },
+        /**
+         * Loads/deserializes a variable
          * @function
          * @instance
          * @param {String} key - Name of the variable
@@ -132,8 +146,7 @@ bento.define('bento/managers/savestate', [
         },
         /**
          * Sets an identifier that's prepended on every key.
-         * By default this is the URL, to prevend savefile clashing.
-         * TODO: better if its the game name
+         * By default this is the game's URL, to prevend savefile clashing.
          * @function
          * @instance
          * @param {String} name - ID name
@@ -143,7 +156,8 @@ bento.define('bento/managers/savestate', [
             uniqueID = str;
         },
         /**
-         * Swaps the storage object
+         * Swaps the storage object. Allows you to use something else than localStorage. But the storage object
+         * must have similar methods as localStorage.
          * @function
          * @instance
          * @param {Object} storageObject - an object that resembels localStorage

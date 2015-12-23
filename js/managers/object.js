@@ -1,12 +1,14 @@
 /**
- * Manager that controls mainloop and all objects
- * <br>Exports: Function
+ * Manager that controls mainloop and all objects. Attach entities to the object manager 
+ * to add them to the game. The object manager loops through every object's update and 
+ * draw functions. The settings object passed here is passed through Bento.setup().
+ * <br>Exports: Constructor, can be accessed through Bento.objects namespace. 
  * @module bento/managers/object
  * @param {Object} data - gameData object
  * @param {Object} settings - Settings object
- * @param {Object} settings.defaultSort - Use javascript default sorting (not recommended)
+ * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
  * @param {Object} settings.debug - Show debug info
- * @param {Object} settings.useDeltaT - Use delta time (untested)
+ * @param {Object} settings.useDeltaT - Use delta time (note: untested)
  * @returns ObjectManager
  */
 bento.define('bento/managers/object', [
@@ -163,11 +165,11 @@ bento.define('bento/managers/object', [
             },
             module = {
                 /**
-                 * Adds entity/object to the game. If the object has the
-                 * functions update and draw, they will be called in the loop.
+                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object 
+                 * has the functions update and draw, they will be called during the loop.
                  * @function
                  * @instance
-                 * @param {Object} object - You can add any object, preferably an Entity
+                 * @param {Object} object - Any object, preferably an Entity
                  * @name attach
                  */
                 attach: attach,
@@ -238,7 +240,8 @@ bento.define('bento/managers/object', [
                     }
                 },
                 /**
-                 * Returns the first object it can find with this name
+                 * Returns the first object it can find with this name. Safer to use with a callback.
+                 * The callback is called immediately if the object is found (it's not asynchronous).
                  * @function
                  * @instance
                  * @param {String} objectName - Name of the object
@@ -300,7 +303,11 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Returns an array of objects by family name
+                 * Returns an array of objects by family name. Entities are added to pools
+                 * of each family you indicate in the Entity.family array the moment you call
+                 * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
+                 * This allows quick access of a group of similar entities. Families are cached so you
+                 * may get a reference to the array of objects even if it's not filled yet.
                  * @function
                  * @instance
                  * @param {String} familyName - Name of the family
@@ -322,7 +329,7 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Stops the mainloop
+                 * Stops the mainloop on the next tick
                  * @function
                  * @instance
                  * @name stop
@@ -398,6 +405,19 @@ bento.define('bento/managers/object', [
                  */
                 getHshg: function () {
                     return hshg;
+                },
+                /**
+                 * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
+                 * Utils.SortMode.ALWAYS - sort on every update tick<br>
+                 * Utils.SortMode.NEVER - don't sort at all<br>
+                 * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
+                 * @function
+                 * @instance
+                 * @param {Utils.SortMode} mode - Sorting mode
+                 * @name setSortMode
+                 */
+                setSortMode: function (mode) {
+                    sortMode = mode;
                 }
             };
 

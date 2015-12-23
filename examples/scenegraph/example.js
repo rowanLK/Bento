@@ -31,7 +31,7 @@ bento.require([
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: 'canvas2d'
+        renderer: 'auto'
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', function (err) {
@@ -64,8 +64,11 @@ bento.require([
                             onHoverLeave: function () {
                                 color = [1, 0, 0, 1];
                             },
-                            onHold: function (evt) {}
-                        });
+                            onHold: function (evt) {
+                                rotationComponent.addAngleDegree(1);
+                            }
+                        }),
+                        rotationComponent = button.getComponent('rotation');
                     button.attach({
                         draw: function (data) {
                             var box = button.getBoundingBox(),
@@ -81,19 +84,19 @@ bento.require([
             button1.position = new Vector2(80, 80);
             button1.attach({
                 update: function () {
-                    if (Bento.input.isKeyDown('left')) {
-                        button1.getComponent('rotation').addAngleDegree(1);
-                    }
-                    if (Bento.input.isKeyDown('right')) {
-                        button1.getComponent('rotation').addAngleDegree(-1);
-                    }
-                    if (Bento.input.isKeyDown('down')) {
-                        viewport.y += 1;
-                    }
+                    // if (Bento.input.isKeyDown('left')) {
+                    //     button1.getComponent('rotation').addAngleDegree(1);
+                    // }
+                    // if (Bento.input.isKeyDown('right')) {
+                    //     button1.getComponent('rotation').addAngleDegree(-1);
+                    // }
+                    // if (Bento.input.isKeyDown('down')) {
+                    //     viewport.y += 1;
+                    // }
 
-                    if (Bento.input.isKeyDown('up')) {
-                        viewport.y -= 1;
-                    }
+                    // if (Bento.input.isKeyDown('up')) {
+                    //     viewport.y -= 1;
+                    // }
                 }
             })
             button2 = makeButton();
@@ -118,7 +121,7 @@ bento.require([
             button4.float = true;
 
             Bento.objects.add(button1);
-            Bento.objects.add(button4);
+            // Bento.objects.add(button4);
 
         }, function (current, total) {
             console.log(current + '/' + total);

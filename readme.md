@@ -10,6 +10,8 @@ Install Node.js and use `npm install`. To build the engine, use the `gulp` comma
 
 Please refer to [this tutorial](http://www.lucky-kat.com/bento).
 
+Remembering parameters and module names is a drag. These Sublime Text snippets will make your life easier: [snippets](https://bitbucket.org/snippets/luckykat/xREop)
+
 ## API Reference
 
 Please refer to the documentation hosted on the Lucky Kat [bitbucket page](http://luckykat.bitbucket.org/).
@@ -38,7 +40,7 @@ bento.require([
         // points to a canvas element
         canvasId: 'canvas',
         // resizes the canvas
-        canvasDimension: Rectangle(0, 0, 640, 480),
+        canvasDimension: new Rectangle(0, 0, 640, 480),
         // specify your assets in a json file
         assetGroups: {
             'assets': 'assets/assets.json'

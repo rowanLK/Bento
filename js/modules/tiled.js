@@ -1,7 +1,7 @@
 /**
  * Reads Tiled JSON file and spawns entities accordingly.
  * Backgrounds are merged into a canvas image (TODO: split canvas, split layers?)
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/tiled
  * @param {Object} settings - Settings object
  * @param {String} settings.name - Asset name of the json file

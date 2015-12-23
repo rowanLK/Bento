@@ -1,6 +1,6 @@
 /**
  * Polygon
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/polygon
  * @param {Array} points - An array of Vector2 with positions of all points
  * @returns {Polygon} Returns a polygon.
