@@ -5618,6 +5618,8 @@ bento.define('bento/utils', [], function () {
  * @module bento/components/animation
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally. 
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName) 
+ * @param {Function} settings.onLoad - Called when image is loaded through URL 
  * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
  * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
  * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
@@ -5628,13 +5630,15 @@ bento.define('bento/utils', [], function () {
  * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
  * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  * @example
- var sprite = new Sprite({ // note that you can use the Sprite component with the same settings object
+// Defines a 3 x 3 spritesheet with several animations
+// Note: The default is automatically defined if no animations object is passed
+var sprite = new Sprite({
         imageName: "mySpriteSheet",
         frameCountX: 3,
-        frameCountY: 3, // a 3 x 3 spritesheet
+        frameCountY: 3,
         animations: {
-            "idle": {
-                frames: [0] // first frame
+            "default": { 
+                frames: [0]
             },
             "walk": {
                 speed: 0.2,
@@ -5643,13 +5647,16 @@ bento.define('bento/utils', [], function () {
             "jump": {
                 speed: 0.2,
                 frames: [7, 8]
-            } // etc.
+            }
         }
      }),
-     entity = new Entity({});
+    entity = new Entity({
+        components: [sprite] // attach sprite to entity
+                             // alternative to passing a components array is by calling entity.attach(sprite); 
+    });
 
-entity.attach(sprite); // attach sprite to entity
-Bento.objects.attach(entity); // attach entity to game
+// attach entity to game
+Bento.objects.attach(entity);
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/animation', [
@@ -5689,6 +5696,7 @@ bento.define('bento/components/animation', [
      * @name setup
      */
     Animation.prototype.setup = function (settings) {
+        var self = this;
         this.animationSettings = settings || this.animationSettings;
 
         // add default animation
@@ -5713,6 +5721,20 @@ bento.define('bento/components/animation', [
             } else {
                 throw 'Bento asset manager not loaded';
             }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+           }
         } else {
             // no image specified
             return;
