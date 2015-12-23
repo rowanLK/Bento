@@ -38,7 +38,7 @@ bento.require([
         // points to a canvas element
         canvasId: 'canvas',
         // resizes the canvas
-        canvasDimension: Rectangle(0, 0, 640, 480),
+        canvasDimension: new Rectangle(0, 0, 640, 480),
         // specify your assets in a json file
         assetGroups: {
             'assets': 'assets/assets.json'
