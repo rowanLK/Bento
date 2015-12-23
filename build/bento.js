@@ -3791,7 +3791,14 @@ author(s) and should not be interpreted as representing official policies, eithe
 or implied, of the author(s).
 
 /**
- * Bento module, main entry point to game modules and managers. Start by using Bento.setup
+ * Bento module, main entry point to game modules and managers. Start the game by using Bento.setup().
+ * After this you have access to all Bento managers:<br>
+ * • Bento.assets<br>
+ * • Bento.audio<br>
+ * • Bento.input<br>
+ * • Bento.object<br>
+ * • Bento.savestate<br>
+ * • Bento.screen<br>
  * <br>Exports: Object
  * @module bento
  */
@@ -3951,10 +3958,10 @@ bento.define('bento', [
              * @function
              * @instance
              * @param {Object} settings - settings for the game
-             * @param {Object} settings.assetGroups - Asset groups to load. Key: group name, value: path to json file
-             * @see AssetGroup
+             * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
+             * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
@@ -4100,9 +4107,9 @@ bento.define('bento', [
         };
     return module;
 });
-/**
+/*
  * Returns a color array, for use in renderer
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @param {Number} r - Red value [0...255]
  * @param {Number} g - Green value [0...255]
  * @param {Number} b - Blue value [0...255]
@@ -4122,14 +4129,16 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
     };
 });
 /**
- * A base object to hold components
- * <br>Exports: Function
+ * A base object to hold components. Has dimension, position, scale and rotation properties (though these don't have much
+ meaning until you attach a Sprite component). Entities can be added to the game by calling Bento.objects.attach().
+ Entities can be visualized by using the Sprite component, or you can attach your own component and add a draw function.
+ * <br>Exports: Constructor
  * @module {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Function} settings.onCollide - Called when object collides in HSHG
  * @param {Array} settings.components - Array of component module functions
- * @param {Array} settings.family - Array of family names
+ * @param {Array} settings.family - Array of family names. See {@link module:bento/managers/object#getByFamily}
  * @param {Vector2} settings.position - Vector2 of position to set
  * @param {Vector2} settings.origin - Vector2 of origin to set
  * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
@@ -4443,6 +4452,7 @@ entity.extend({
 });
 
 entity.addX(10);
+     * @returns {Entity} Returns itself
      * @name extend
      */
     Entity.prototype.extend = function (object) {
@@ -4457,6 +4467,7 @@ entity.addX(10);
      * @returns {Rectangle} boundingbox - Entity's boundingbox with translation and scaling
      * @instance
      * @name getBoundingBox
+     * @returns {Rectangle} A rectangle representing the boundingbox of the entity
      */
     Entity.prototype.getBoundingBox = function () {
         var scale, x1, x2, y1, y2, box;
@@ -4589,6 +4600,7 @@ entity.attach(child);
 // attach the entity to the game
 Bento.objects.attach(entity);
      * @name attach
+     * @returns {Entity} Returns itself (useful for chaining attach calls)
      */
     Entity.prototype.attach = function (child) {
         var mixin = {},
@@ -4631,6 +4643,7 @@ Bento.objects.attach(entity);
      * @param {Object} child - The child object to remove
      * @instance
      * @name remove
+     * @returns {Entity} Returns itself
      */
     Entity.prototype.remove = function (child) {
         var i, type, index;
@@ -4662,6 +4675,7 @@ Bento.objects.attach(entity);
      * @param {String} name - name of the component
      * @param {FoundCallback} callback - called when component is found
      * @name getComponent
+     * @returns {Entity} Returns the component, null if not found
      */
     Entity.prototype.getComponent = function (name, callback) {
         var i, l, component;
@@ -4674,6 +4688,7 @@ Bento.objects.attach(entity);
                 return component;
             }
         }
+        return null;
     };
     /**
      * Moves a child to a certain index in the array
@@ -4711,6 +4726,7 @@ Bento.objects.attach(entity);
      * @param {Vector2} [offset] - A position offset
      * @param {CollisionCallback} [callback] - Called when entities are colliding
      * @name collidesWith
+     * @returns {Boolean} True if entities collide
      */
     Entity.prototype.collidesWith = function (other, offset, callback) {
         var intersect;
@@ -4732,6 +4748,7 @@ Bento.objects.attach(entity);
      * @param {Vector2} [offset] - A position offset
      * @param {CollisionCallback} [callback] - Called when entities are colliding
      * @name collidesWithGroup
+     * @returns {Entity} Returns the entity it collides with, null if none found
      */
     Entity.prototype.collidesWithGroup = function (array, offset, callback) {
         var i,
@@ -4786,6 +4803,7 @@ Bento.objects.attach(entity);
      * @function
      * @instance
      * @name getWorldPosition
+     * @returns {Vector2} Returns a position
      */
     // TODO: test this properly
     Entity.prototype.getWorldPosition = function () {
@@ -4869,8 +4887,8 @@ Bento.objects.attach(entity);
     return Entity;
 });
 /**
- * Sends custom events. Don't forget to turn off listeners or
- * you will end up with memory leaks or unexpected behaviors.
+ * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn 
+ off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
  */
@@ -4990,8 +5008,8 @@ bento.define('bento/eventsystem', [
     };
 });
 /**
- * A wrapper for module images, holds data for image atlas
- * <br>Exports: Function
+ * A wrapper for HTML images, holds data for image atlas.
+ * <br>Exports: Constructor
  * @module bento/packedimage
  * @param {HTMLImageElement} image - HTML Image Element
  * @param {Rectangle} frame - Frame boundaries in the image
@@ -5008,9 +5026,9 @@ bento.define('bento/packedimage', [
         return rectangle;
     };
 });
-/**
+/*
  * Base functions for renderer. Has many equivalent functions to a canvas context.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/renderer
  */
 bento.define('bento/renderer', [
@@ -5434,15 +5452,52 @@ bento.define('bento/utils', [], function () {
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         /**
-         * Returns a random number [0...n)
+         * Returns a random integer [0...n)
          * @function
          * @instance
          * @name getRandom
          * @param {Number} n - limit of random number
-         * @return {Number} Randomized number
+         * @return {Number} Randomized integer
          */
         getRandom: function (n) {
             return Math.floor(Math.random() * n);
+        },
+        /**
+         * Returns a random integer between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRange
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized integer
+         */
+        getRandomRange: function (min, max) {
+            var diff = max - min;
+            return min + Math.floor(Math.random() * diff);
+        },
+        /**
+         * Returns a random float [0...n)
+         * @function
+         * @instance
+         * @name getRandomFloat
+         * @param {Number} n - limit of random number
+         * @return {Number} Randomized number
+         */
+        getRandomFloat: function (n) {
+            return Math.random() * n;
+        },
+        /**
+         * Returns a random float between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRangeFloat
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized number
+         */
+        getRandomRangeFloat: function (n) {
+            var diff = max - min;
+            return min + Math.random() * diff;
         },
         /**
          * Turns degrees into radians
@@ -5459,7 +5514,7 @@ bento.define('bento/utils', [], function () {
          * Turns radians into degrees
          * @function
          * @instance
-         * @name toRadian
+         * @name toDegree
          * @param {Number} radians - value in radians
          * @return {Number} degree
          */
@@ -5467,7 +5522,7 @@ bento.define('bento/utils', [], function () {
             return radian / Math.PI * 180;
         },
         /**
-         * Sign of  anumber
+         * Sign of a number. Returns 0 if value is 0.
          * @function
          * @instance
          * @param {Number} value - value to check
@@ -5488,10 +5543,11 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Number} start - current value
          * @param {Number} end - target value
-         * @param {Number} step - step to take
+         * @param {Number} step - step to take (should always be a positive value)
          * @name approach
          */
         approach: function (start, end, max) {
+            max = Math.abs(max);
             if (start < end) {
                 return Math.min(start + max, end);
             } else {
@@ -5513,7 +5569,7 @@ bento.define('bento/utils', [], function () {
             }
         },
         /**
-         * Checks useragent if device is an apple device
+         * Checks useragent if device is an apple device. Works on web only.
          * @function
          * @instance
          * @name isApple
@@ -5523,7 +5579,7 @@ bento.define('bento/utils', [], function () {
             return /iPhone/i.test(device) || /iPad/i.test(device) || /iPod/i.test(device);
         },
         /**
-         * Checks useragent if device is an android device
+         * Checks useragent if device is an android device. Works on web only.
          * @function
          * @instance
          * @name isAndroid
@@ -5535,9 +5591,12 @@ bento.define('bento/utils', [], function () {
          * Checks if environment is cocoon
          * @function
          * @instance
-         * @name isCocoonJS
+         * @name isCocoonJs
          */
         isCocoonJS: function () {
+            return navigator.isCocoonJS;
+        },
+        isCocoonJs: function () {
             return navigator.isCocoonJS;
         },
         /**
@@ -5555,7 +5614,7 @@ bento.define('bento/utils', [], function () {
 });
 /**
  * Animation component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/animation
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally. 
@@ -5610,10 +5669,10 @@ bento.define('bento/components/animation', [
 
         this.spriteImage = null;
 
-        this.frameCountX = 1,
-        this.frameCountY = 1,
-        this.frameWidth = 0,
-        this.frameHeight = 0,
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
 
         // set to default
         this.animations = {};
@@ -5838,7 +5897,7 @@ bento.define('bento/components/animation', [
 /**
  * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
  * unless entity.updateWhenPaused is turned on.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/clickable
  * @param {Object} settings - Settings
  * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen 
@@ -5863,6 +5922,7 @@ bento.define('bento/components/clickable', [
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
     var Clickable = function (settings) {
+        var nothing = function () {};
         this.entity = null;
         /**
          * Name of the component
@@ -5890,19 +5950,19 @@ bento.define('bento/components/clickable', [
         this.initialized = false;
 
         this.callbacks = {
-            pointerDown: settings.pointerDown || function (evt) {},
-            pointerUp: settings.pointerUp || function (evt) {},
-            pointerMove: settings.pointerMove || function (evt) {},
+            pointerDown: settings.pointerDown || nothing,
+            pointerUp: settings.pointerUp || nothing,
+            pointerMove: settings.pointerMove || nothing,
             // when clicking on the object
-            onClick: settings.onClick || function () {},
-            onClickUp: settings.onClickUp || function () {},
-            onClickMiss: settings.onClickMiss || function () {},
-            onHold: settings.onHold || function () {},
-            onHoldLeave: settings.onHoldLeave || function () {},
-            onHoldEnter: settings.onHoldEnter || function () {},
-            onHoldEnd: settings.onHoldEnd || function () {},
-            onHoverLeave: settings.onHoverLeave || function () {},
-            onHoverEnter: settings.onHoverEnter || function () {}
+            onClick: settings.onClick || nothing,
+            onClickUp: settings.onClickUp || nothing,
+            onClickMiss: settings.onClickMiss || nothing,
+            onHold: settings.onHold || nothing,
+            onHoldLeave: settings.onHoldLeave || nothing,
+            onHoldEnter: settings.onHoldEnter || nothing,
+            onHoldEnd: settings.onHoldEnd || nothing,
+            onHoverLeave: settings.onHoverLeave || nothing,
+            onHoverEnter: settings.onHoverEnter || nothing
         };
 
     };
@@ -5915,17 +5975,15 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.start = function () {
         if (this.initialized) {
-            // TODO: this is caused by calling start when objects are attached, fix this later!
-            // console.log('warning: trying to init twice')
             return;
         }
         EventSystem.addEventListener('pointerDown', this.pointerDown, this);
         EventSystem.addEventListener('pointerUp', this.pointerUp, this);
         EventSystem.addEventListener('pointerMove', this.pointerMove, this);
         this.initialized = true;
-    }
+    };
     Clickable.prototype.update = function () {
-        if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
+        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
             this.callbacks.onHold();
         }
     };
@@ -6097,7 +6155,7 @@ bento.define('bento/components/clickable', [
 });
 /**
  * Component that fills a square.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/fill
  * @param {Object} settings - Settings
  * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 
@@ -6131,7 +6189,7 @@ bento.define('bento/components/fill', [
 });
 /**
  * Component that sets the opacity
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/opacity
  * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings
@@ -6188,7 +6246,7 @@ bento.define('bento/components/opacity', [
 /**
  * Sprite component that uses pixi (alternative version of animation component).
  * TODO: merge with the Animation component. Lots of duplicate code here
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/pixi
  * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings
@@ -6523,7 +6581,7 @@ bento.define('bento/components/pixi', [
 });
 /**
  * Component that sets the context rotation for drawing.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/rotation
  * @param {Object} settings - Settings (unused)
  * @returns Returns a component object.
@@ -6615,7 +6673,7 @@ bento.define('bento/components/rotation', [
 });
 /**
  * Component that sets the context scale for drawing.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/scale
  * @param {Object} settings - Settings (unused)
  * @returns Returns a component object to be attached to an entity.
@@ -6664,7 +6722,7 @@ bento.define('bento/components/scale', [
 /**
  * Helper component that attaches the Translation, Scale, Rotation, Opacity
  * and Animation (or Pixi) components. Automatically detects the renderer.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/sprite
  * @param {Object} settings - Settings object, this object is passed to all other components
  * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
@@ -6771,7 +6829,7 @@ bento.define('bento/components/sprite', [
         }
         this.components = array;
         return this;
-    },
+    };
     component.prototype.toString = function () {
         return '[object Sprite]';
     };
@@ -6780,7 +6838,7 @@ bento.define('bento/components/sprite', [
 });
 /**
  * Component that sets the context translation for drawing.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/translation
  * @param {Object} settings - Settings
  * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
@@ -8091,9 +8149,10 @@ bento.define('bento/lib/requestanimationframe', [], function () {
     return window.requestAnimationFrame;
 });
 /**
- * Manager that loads and controls assets
- * Can be accessed through Bento.assets
- * <br>Exports: Function
+ * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
+ * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
+ * assets to load, and where to find them.
+ * <br>Exports: Constructor, can be accessed through Bento.asset namespace
  * @module bento/managers/asset
  * @returns AssetManager
  */
@@ -8115,10 +8174,22 @@ bento.define('bento/managers/asset', [
             texturePacker = {},
             packs = [],
             loadAudio = function (name, source, callback) {
-                var audio,
-                    i,
-                    canPlay,
-                    failed = true;
+                var i,
+                    failed = true,
+                    loadAudio = function (index) {
+                        var audio = new Audia(),
+                            canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
+                        if (!!canPlay) {
+                            // success!
+                            audio.onload = function () {
+                                callback(null, name, audio);
+                            };
+                            audio.src = source[index];
+                            failed = false;
+                            return true;
+                        }
+                        return false;
+                    };
                 if (!Utils.isArray(source)) {
                     source = [path + 'audio/' + source];
                 } else {
@@ -8129,15 +8200,7 @@ bento.define('bento/managers/asset', [
                 }
                 // try every type
                 for (i = 0; i < source.length; ++i) {
-                    audio = new Audia();
-                    canPlay = audio.canPlayType('audio/' + source[i].slice(-3));
-                    if (!!canPlay) {
-                        // success!
-                        audio.onload = function () {
-                            callback(null, name, audio);
-                        };
-                        audio.src = source[i];
-                        failed = false;
+                    if (loadAudio(i)) {
                         break;
                     }
                 }
@@ -8197,15 +8260,22 @@ bento.define('bento/managers/asset', [
                 xhr.send();
             },
             loadImage = function (name, source, callback) {
-                // TODO: Implement failure
                 var img = new Image();
                 img.src = source;
                 img.addEventListener('load', function () {
                     callback(null, name, img);
                 }, false);
+                img.addEventListener('error', function (evt) {
+                    // TODO: Implement failure: should it retry to load the image?
+                    console.log('ERROR: loading image failed');
+                }, false);
             },
             /**
-             * Loads json files containing asset paths to load
+             * Loads asset groups (json files containing names and asset paths to load)
+             * If the assetGroup parameter is passed to Bento.setup, this function will be
+             * called automatically by Bento.
+             * This will not load the assets (merely the assetgroups). To load the assets,
+             * you must call Bento.assets.load()
              * @function
              * @instance
              * @param {Object} jsonFiles - Name with json path
@@ -8238,7 +8308,7 @@ bento.define('bento/managers/asset', [
                 }
             },
             /**
-             * Loads assets from asset group
+             * Loads assets from asset group.
              * @function
              * @instance
              * @param {String} groupName - Name of asset group
@@ -8377,6 +8447,81 @@ bento.define('bento/managers/asset', [
                 loadAllAssets();
             },
             /**
+             * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadImageFromUrl
+             */
+            loadImageFromUrl = function (name, url, callback) {
+                var onLoadImage = function (err, name, image) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.images[name] = image;
+                    if (callback) {
+                        callback(null, image);
+                    }
+                };
+                loadImage(name, url, onLoadImage);
+            },
+            /**
+             * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadJsonFromUrl
+             */
+            loadJsonFromUrl = function (name, url, callback) {
+                var onLoadJson = function (err, name, json) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.json[name] = json;
+                    if (callback) {
+                        callback(null, json);
+                    }
+                };
+                loadJSON(name, url, onLoadJson);
+            },
+            /**
+             * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadAudioFromUrl
+             */
+            loadAudioFromUrl = function (name, url, callback) {
+                var onLoadAudio = function (err, name, audio) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.audio[name] = audio;
+                    if (callback) {
+                        callback(audio);
+                    }
+                };
+                loadAudio(name, url, onLoadAudio);
+            },
+            /**
              * Unloads assets (not implemented yet)
              * @function
              * @instance
@@ -8489,6 +8634,9 @@ bento.define('bento/managers/asset', [
         return {
             loadAssetGroups: loadAssetGroups,
             load: load,
+            loadImageFromUrl: loadImageFromUrl,
+            loadJsonFromUrl: loadJsonFromUrl,
+            loadAudioFromUrl: loadAudioFromUrl,
             unload: unload,
             getImage: getImage,
             getImageElement: getImageElement,
@@ -8500,11 +8648,12 @@ bento.define('bento/managers/asset', [
     };
 });
 /**
- * Audio manager (To be rewritten)
- * Can be accessed through Bento.audio
- * <br>Exports: Function
+ * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
+ * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
+ * asset names with sfx_ and bgm_ respectively.
+ * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
  * @module bento/managers/audio
- * @returns AssetManager
+ * @returns AudioManager
  */
 bento.define('bento/managers/audio', [
     'bento/utils'
@@ -8538,28 +8687,35 @@ bento.define('bento/managers/audio', [
                 }
             },
             obj = {
-                /* Sets the volume (0 = minimum, 1 = maximum)
+                /**
+                 * Sets the volume (0 = minimum, 1 = maximum)
                  * @name setVolume
+                 * @instance
                  * @function
-                 * @param {Number} value: the volume
-                 * @param {String} name: name of the sound currently playing
+                 * @param {Number} value - the volume
+                 * @param {String} name - name of the sound to change volume
                  */
                 setVolume: function (value, name) {
                     assetManager.getAudio(name).volume = value;
                 },
-                /* Gets the volume (0 = minimum, 1 = maximum)
+                /**
+                 * Gets the volume (0 = minimum, 1 = maximum)
                  * @name getVolume
+                 * @instance
                  * @function
-                 * @param {Number} value: the volume
-                 * @param {String} name: name of the sound currently playing
+                 * @param {String} name - name of the sound
                  */
                 getVolume: function (name) {
                     return assetManager.getAudio(name).volume;
                 },
-                /* Plays a sound
+                /**
+                 * Plays a sound effect
                  * @name playSound
+                 * @instance
                  * @function
-                 * @param {String} name: name of the soundfile
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to false)
+                 * @param {Function} [onEnd] - callback when the audio ends
                  */
                 playSound: function (name, loop, onEnd) {
                     var audio = assetManager.getAudio(name);
@@ -8573,16 +8729,26 @@ bento.define('bento/managers/audio', [
                         audio.play();
                     }
                 },
+                /**
+                 * Stops a specific sound effect
+                 * @name stopSound
+                 * @instance
+                 * @function
+                 */
                 stopSound: function (name) {
                     var i, l, node;
                     assetManager.getAudio(name).stop();
                 },
-                /* Plays a music
+                /**
+                 * Plays a music
                  * @name playMusic
+                 * @instance
                  * @function
-                 * @param {String} name: name of the soundfile
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to true)
+                 * @param {Function} [onEnd] - callback when the audio ends
                  */
-                playMusic: function (name, loop, onEnd, time) {
+                playMusic: function (name, loop, onEnd) {
                     var audio;
 
                     lastMusicPlayed = name;
@@ -8598,19 +8764,28 @@ bento.define('bento/managers/audio', [
                             audio.onended = onEnd;
                         }
                         audio.loop = musicLoop;
-                        audio.play(time || 0);
+                        audio.play();
                         isPlayingMusic = true;
                     }
                 },
+                /**
+                 * Stops a specific music
+                 * @name stopMusic
+                 * @param {String} name - name of the audio asset
+                 * @instance
+                 * @function
+                 */
                 stopMusic: function (name) {
                     var i, l, node;
                     assetManager.getAudio(name).stop();
                     isPlayingMusic = false;
                 },
-                /* Mute or unmute all sound
+                /**
+                 * Mute or unmute all sound
                  * @name muteSound
+                 * @instance
                  * @function
-                 * @param {Boolean} mute: whether to mute or not
+                 * @param {Boolean} mute - whether to mute or not
                  */
                 muteSound: function (mute) {
                     mutedSound = mute;
@@ -8619,10 +8794,13 @@ bento.define('bento/managers/audio', [
                         this.stopAllSound();
                     }
                 },
-                /* Mute or unmute all music
+                /**
+                 * Mute or unmute all music
+                 * @instance
                  * @name muteMusic
                  * @function
-                 * @param {Boolean} mute: whether to mute or not
+                 * @param {Boolean} mute - whether to mute or not
+                 * @param {Boolean} continueMusic - whether the music continues
                  */
                 muteMusic: function (mute, continueMusic) {
                     var last = lastMusicPlayed;
@@ -8638,7 +8816,9 @@ bento.define('bento/managers/audio', [
                         obj.playMusic(lastMusicPlayed, musicLoop);
                     }
                 },
-                /* Stop all sound currently playing
+                /**
+                 * Stop all sound effects currently playing
+                 * @instance
                  * @name stopAllSound
                  * @function
                  */
@@ -8651,8 +8831,10 @@ bento.define('bento/managers/audio', [
                         }
                     }
                 },
-                /* Stop all sound currently playing
-                 * @name stopAllSound
+                /**
+                 * Stop all music currently playing
+                 * @instance
+                 * @name stopAllMusic
                  * @function
                  */
                 stopAllMusic: function () {
@@ -8666,14 +8848,18 @@ bento.define('bento/managers/audio', [
                     lastMusicPlayed = '';
                     isPlayingMusic = false;
                 },
-                /* Prevents any sound from playing without interrupting current sounds
+                /**
+                 * Prevents any sound from playing without interrupting current sounds
+                 * @instance
                  * @name preventSounds
                  * @function
                  */
                 preventSounds: function (bool) {
                     preventSounds = bool;
                 },
-                /* Returns true if music is playing
+                /**
+                 * Returns true if any music is playing
+                 * @instance
                  * @name isPlayingMusic
                  * @function
                  */
@@ -8726,8 +8912,7 @@ bento.define('bento/managers/audio', [
 });
 /**
  * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
- * Can be accessed through Bento.input
- * <br>Exports: Function
+ * <br>Exports: Constructor, can be accessed through Bento.input namespace.
  * @module bento/managers/input
  * @param {Object} settings - Settings
  * @param {Vector2} settings.canvasScale - Reference to the current canvas scale.
@@ -9079,15 +9264,16 @@ bento.define('bento/managers/input', [
     };
 });
 /**
- * Manager that controls mainloop and all objects
- * Can be accessed through Bento.objects
- * <br>Exports: Function
+ * Manager that controls mainloop and all objects. Attach entities to the object manager 
+ * to add them to the game. The object manager loops through every object's update and 
+ * draw functions. The settings object passed here is passed through Bento.setup().
+ * <br>Exports: Constructor, can be accessed through Bento.objects namespace. 
  * @module bento/managers/object
  * @param {Object} data - gameData object
  * @param {Object} settings - Settings object
- * @param {Object} settings.defaultSort - Use javascript default sorting (not recommended)
+ * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
  * @param {Object} settings.debug - Show debug info
- * @param {Object} settings.useDeltaT - Use delta time (untested)
+ * @param {Object} settings.useDeltaT - Use delta time (note: untested)
  * @returns ObjectManager
  */
 bento.define('bento/managers/object', [
@@ -9382,7 +9568,10 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Returns an array of objects by family name. Families are cached so you
+                 * Returns an array of objects by family name. Entities are added to pools
+                 * of each family you indicate in the Entity.family array the moment you call
+                 * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
+                 * This allows quick access of a group of similar entities. Families are cached so you
                  * may get a reference to the array of objects even if it's not filled yet.
                  * @function
                  * @instance
@@ -9405,7 +9594,7 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Stops the mainloop
+                 * Stops the mainloop on the next tick
                  * @function
                  * @instance
                  * @name stop
@@ -9481,6 +9670,19 @@ bento.define('bento/managers/object', [
                  */
                 getHshg: function () {
                     return hshg;
+                },
+                /**
+                 * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
+                 * Utils.SortMode.ALWAYS - sort on every update tick<br>
+                 * Utils.SortMode.NEVER - don't sort at all<br>
+                 * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
+                 * @function
+                 * @instance
+                 * @param {Utils.SortMode} mode - Sorting mode
+                 * @name setSortMode
+                 */
+                setSortMode: function (mode) {
+                    sortMode = mode;
                 }
             };
 
@@ -9504,9 +9706,9 @@ bento.define('bento/managers/object', [
     };
 });
 /**
- * Manager that controls presistent variables. Wrapper for localStorage.
- * Can be accessed through Bento.saveState
- * <br>Exports: Object
+ * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
+ * save values and Bento.saveState.load() to retrieve them.
+ * <br>Exports: Object, can be accessed through Bento.audio namespace. 
  * @module bento/managers/savestate
  * @returns SaveState
  */
@@ -9651,8 +9853,7 @@ bento.define('bento/managers/savestate', [
         },
         /**
          * Sets an identifier that's prepended on every key.
-         * By default this is the URL, to prevend savefile clashing.
-         * TODO: better if its the game name
+         * By default this is the game's URL, to prevend savefile clashing.
          * @function
          * @instance
          * @param {String} name - ID name
@@ -9662,7 +9863,8 @@ bento.define('bento/managers/savestate', [
             uniqueID = str;
         },
         /**
-         * Swaps the storage object
+         * Swaps the storage object. Allows you to use something else than localStorage. But the storage object
+         * must have similar methods as localStorage.
          * @function
          * @instance
          * @param {Object} storageObject - an object that resembels localStorage
@@ -9683,9 +9885,9 @@ bento.define('bento/managers/savestate', [
     };
 });
 /**
- * Manager that controls screens/rooms/levels.
- * Can be accessed through Bento.screens
- * <br>Exports: Function
+ * Manager that controls screens. Screens are defined as separate modules. See {@link module:bento/screen}. To show
+ * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
+ * <br>Exports: Constructor, can be accessed through Bento.screens namespace. 
  * @module bento/managers/screen
  * @returns ScreenManager
  */
@@ -9791,7 +9993,7 @@ bento.define('bento/managers/screen', [
 });
 /**
  * A 2-dimensional array
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/array2d
  * @param {Number} width - horizontal size of array
  * @param {Number} height - vertical size of array
@@ -9875,7 +10077,7 @@ bento.define('bento/math/array2d', function () {
 });
 /**
  * Matrix
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/matrix
  * @param {Number} width - horizontal size of matrix
  * @param {Number} height - vertical size of matrix
@@ -10161,7 +10363,7 @@ bento.define('bento/math/matrix', [
 });
 /**
  * Polygon
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/polygon
  * @param {Array} points - An array of Vector2 with positions of all points
  * @returns {Polygon} Returns a polygon.
@@ -10392,7 +10594,7 @@ bento.define('bento/math/polygon', [
 });
 /**
  * Rectangle
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/rectangle
  * @param {Number} x - Top left x position
  * @param {Number} y - Top left y position
@@ -10596,7 +10798,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
 /**
  * 2 dimensional vector
  * (Note: to perform matrix multiplications, one must use toMatrix)
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/vector2
  * @param {Number} x - x position
  * @param {Number} y - y position
@@ -10787,7 +10989,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
      * @instance
      * @name scale
      */
-    Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith
+    Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith;
     /**
      * Returns the magnitude of the vector
      * @function
@@ -10908,7 +11110,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
 /**
  * A helper module that returns a rectangle as the best fit of a multiplication of the screen size.
  * Assuming portrait mode, autoresize first tries to fit the width and then fills up the height
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/autoresize
  * @param {Rectangle} canvasDimension - Default size
  * @param {Number} minSize - Minimal width/height
@@ -10982,12 +11184,14 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
 });
 /**
  * Screen object. Screens are convenience modules that are similar to levels/rooms/scenes in games.
- * Tiled Map Editor can be used to design the levels.
- * <br>Exports: Function
+ * Tiled Map Editor can be used to design the levels {@link http://www.mapeditor.org/}.
+ * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
+ * <br>Exports: Constructor
  * @module bento/screen
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Asset name of the json file
  * @param {String} settings.onShow - Callback when screen starts
+ * @param {String} settings.onHide - Callback when screen is removed
  * @param {Rectangle} [settings.dimension] - Set dimension of the screen (overwritten by tmx size)
  * @returns Screen
  */
@@ -11080,7 +11284,7 @@ bento.define('bento/screen', [
 /**
  * Reads Tiled JSON file and spawns entities accordingly.
  * Backgrounds are merged into a canvas image (TODO: split canvas, split layers?)
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/tiled
  * @param {Object} settings - Settings object
  * @param {String} settings.name - Asset name of the json file
@@ -11410,14 +11614,13 @@ bento.define('bento/tiled', [
  * The Tween is an entity that performs an interpolation within a timeframe. The entity
  * removes itself after the tween ends.
  * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
- * Also see: http://easings.net/
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/tween
  * @param {Object} settings - Settings object
  * @param {Number} settings.from - Starting value
  * @param {Number} settings.to - End value
  * @param {Number} settings.in - Time frame
- * @param {String} settings.ease - Choose between default tweens or see http://easings.net/
+ * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
  * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
  * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
  * @param {Boolean} [settings.stay] - Don't remove the entity automatically

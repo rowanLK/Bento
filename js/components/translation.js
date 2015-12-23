@@ -1,6 +1,6 @@
 /**
  * Component that sets the context translation for drawing.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/translation
  * @param {Object} settings - Settings
  * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down

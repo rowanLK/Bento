@@ -1,9 +1,10 @@
 /**
- * Audio manager (To be rewritten)
- * Can be accessed through Bento.audio
- * <br>Exports: Function
+ * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
+ * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
+ * asset names with sfx_ and bgm_ respectively.
+ * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
  * @module bento/managers/audio
- * @returns AssetManager
+ * @returns AudioManager
  */
 bento.define('bento/managers/audio', [
     'bento/utils'
@@ -37,28 +38,35 @@ bento.define('bento/managers/audio', [
                 }
             },
             obj = {
-                /* Sets the volume (0 = minimum, 1 = maximum)
+                /**
+                 * Sets the volume (0 = minimum, 1 = maximum)
                  * @name setVolume
+                 * @instance
                  * @function
-                 * @param {Number} value: the volume
-                 * @param {String} name: name of the sound currently playing
+                 * @param {Number} value - the volume
+                 * @param {String} name - name of the sound to change volume
                  */
                 setVolume: function (value, name) {
                     assetManager.getAudio(name).volume = value;
                 },
-                /* Gets the volume (0 = minimum, 1 = maximum)
+                /**
+                 * Gets the volume (0 = minimum, 1 = maximum)
                  * @name getVolume
+                 * @instance
                  * @function
-                 * @param {Number} value: the volume
-                 * @param {String} name: name of the sound currently playing
+                 * @param {String} name - name of the sound
                  */
                 getVolume: function (name) {
                     return assetManager.getAudio(name).volume;
                 },
-                /* Plays a sound
+                /**
+                 * Plays a sound effect
                  * @name playSound
+                 * @instance
                  * @function
-                 * @param {String} name: name of the soundfile
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to false)
+                 * @param {Function} [onEnd] - callback when the audio ends
                  */
                 playSound: function (name, loop, onEnd) {
                     var audio = assetManager.getAudio(name);
@@ -72,16 +80,26 @@ bento.define('bento/managers/audio', [
                         audio.play();
                     }
                 },
+                /**
+                 * Stops a specific sound effect
+                 * @name stopSound
+                 * @instance
+                 * @function
+                 */
                 stopSound: function (name) {
                     var i, l, node;
                     assetManager.getAudio(name).stop();
                 },
-                /* Plays a music
+                /**
+                 * Plays a music
                  * @name playMusic
+                 * @instance
                  * @function
-                 * @param {String} name: name of the soundfile
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to true)
+                 * @param {Function} [onEnd] - callback when the audio ends
                  */
-                playMusic: function (name, loop, onEnd, time) {
+                playMusic: function (name, loop, onEnd) {
                     var audio;
 
                     lastMusicPlayed = name;
@@ -97,19 +115,28 @@ bento.define('bento/managers/audio', [
                             audio.onended = onEnd;
                         }
                         audio.loop = musicLoop;
-                        audio.play(time || 0);
+                        audio.play();
                         isPlayingMusic = true;
                     }
                 },
+                /**
+                 * Stops a specific music
+                 * @name stopMusic
+                 * @param {String} name - name of the audio asset
+                 * @instance
+                 * @function
+                 */
                 stopMusic: function (name) {
                     var i, l, node;
                     assetManager.getAudio(name).stop();
                     isPlayingMusic = false;
                 },
-                /* Mute or unmute all sound
+                /**
+                 * Mute or unmute all sound
                  * @name muteSound
+                 * @instance
                  * @function
-                 * @param {Boolean} mute: whether to mute or not
+                 * @param {Boolean} mute - whether to mute or not
                  */
                 muteSound: function (mute) {
                     mutedSound = mute;
@@ -118,10 +145,13 @@ bento.define('bento/managers/audio', [
                         this.stopAllSound();
                     }
                 },
-                /* Mute or unmute all music
+                /**
+                 * Mute or unmute all music
+                 * @instance
                  * @name muteMusic
                  * @function
-                 * @param {Boolean} mute: whether to mute or not
+                 * @param {Boolean} mute - whether to mute or not
+                 * @param {Boolean} continueMusic - whether the music continues
                  */
                 muteMusic: function (mute, continueMusic) {
                     var last = lastMusicPlayed;
@@ -137,7 +167,9 @@ bento.define('bento/managers/audio', [
                         obj.playMusic(lastMusicPlayed, musicLoop);
                     }
                 },
-                /* Stop all sound currently playing
+                /**
+                 * Stop all sound effects currently playing
+                 * @instance
                  * @name stopAllSound
                  * @function
                  */
@@ -150,8 +182,10 @@ bento.define('bento/managers/audio', [
                         }
                     }
                 },
-                /* Stop all sound currently playing
-                 * @name stopAllSound
+                /**
+                 * Stop all music currently playing
+                 * @instance
+                 * @name stopAllMusic
                  * @function
                  */
                 stopAllMusic: function () {
@@ -165,14 +199,18 @@ bento.define('bento/managers/audio', [
                     lastMusicPlayed = '';
                     isPlayingMusic = false;
                 },
-                /* Prevents any sound from playing without interrupting current sounds
+                /**
+                 * Prevents any sound from playing without interrupting current sounds
+                 * @instance
                  * @name preventSounds
                  * @function
                  */
                 preventSounds: function (bool) {
                     preventSounds = bool;
                 },
-                /* Returns true if music is playing
+                /**
+                 * Returns true if any music is playing
+                 * @instance
                  * @name isPlayingMusic
                  * @function
                  */

@@ -1,6 +1,6 @@
 /**
  * Component that fills a square.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/fill
  * @param {Object} settings - Settings
  * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 

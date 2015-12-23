@@ -1,6 +1,6 @@
 /**
  * Component that sets the context rotation for drawing.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/rotation
  * @param {Object} settings - Settings (unused)
  * @returns Returns a component object.

@@ -1,6 +1,6 @@
 /**
  * Component that sets the context scale for drawing.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/scale
  * @param {Object} settings - Settings (unused)
  * @returns Returns a component object to be attached to an entity.

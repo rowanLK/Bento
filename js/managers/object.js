@@ -1,13 +1,14 @@
 /**
- * Manager that controls mainloop and all objects
- * Can be accessed through Bento.objects
- * <br>Exports: Function
+ * Manager that controls mainloop and all objects. Attach entities to the object manager 
+ * to add them to the game. The object manager loops through every object's update and 
+ * draw functions. The settings object passed here is passed through Bento.setup().
+ * <br>Exports: Constructor, can be accessed through Bento.objects namespace. 
  * @module bento/managers/object
  * @param {Object} data - gameData object
  * @param {Object} settings - Settings object
- * @param {Object} settings.defaultSort - Use javascript default sorting (not recommended)
+ * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
  * @param {Object} settings.debug - Show debug info
- * @param {Object} settings.useDeltaT - Use delta time (untested)
+ * @param {Object} settings.useDeltaT - Use delta time (note: untested)
  * @returns ObjectManager
  */
 bento.define('bento/managers/object', [
@@ -302,7 +303,10 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Returns an array of objects by family name. Families are cached so you
+                 * Returns an array of objects by family name. Entities are added to pools
+                 * of each family you indicate in the Entity.family array the moment you call
+                 * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
+                 * This allows quick access of a group of similar entities. Families are cached so you
                  * may get a reference to the array of objects even if it's not filled yet.
                  * @function
                  * @instance
@@ -325,7 +329,7 @@ bento.define('bento/managers/object', [
                     return array;
                 },
                 /**
-                 * Stops the mainloop
+                 * Stops the mainloop on the next tick
                  * @function
                  * @instance
                  * @name stop
@@ -401,6 +405,19 @@ bento.define('bento/managers/object', [
                  */
                 getHshg: function () {
                     return hshg;
+                },
+                /**
+                 * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
+                 * Utils.SortMode.ALWAYS - sort on every update tick<br>
+                 * Utils.SortMode.NEVER - don't sort at all<br>
+                 * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
+                 * @function
+                 * @instance
+                 * @param {Utils.SortMode} mode - Sorting mode
+                 * @name setSortMode
+                 */
+                setSortMode: function (mode) {
+                    sortMode = mode;
                 }
             };
 

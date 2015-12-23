@@ -1,7 +1,7 @@
 /**
  * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
  * unless entity.updateWhenPaused is turned on.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/clickable
  * @param {Object} settings - Settings
  * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen 
@@ -26,6 +26,7 @@ bento.define('bento/components/clickable', [
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
     var Clickable = function (settings) {
+        var nothing = function () {};
         this.entity = null;
         /**
          * Name of the component
@@ -53,19 +54,19 @@ bento.define('bento/components/clickable', [
         this.initialized = false;
 
         this.callbacks = {
-            pointerDown: settings.pointerDown || function (evt) {},
-            pointerUp: settings.pointerUp || function (evt) {},
-            pointerMove: settings.pointerMove || function (evt) {},
+            pointerDown: settings.pointerDown || nothing,
+            pointerUp: settings.pointerUp || nothing,
+            pointerMove: settings.pointerMove || nothing,
             // when clicking on the object
-            onClick: settings.onClick || function () {},
-            onClickUp: settings.onClickUp || function () {},
-            onClickMiss: settings.onClickMiss || function () {},
-            onHold: settings.onHold || function () {},
-            onHoldLeave: settings.onHoldLeave || function () {},
-            onHoldEnter: settings.onHoldEnter || function () {},
-            onHoldEnd: settings.onHoldEnd || function () {},
-            onHoverLeave: settings.onHoverLeave || function () {},
-            onHoverEnter: settings.onHoverEnter || function () {}
+            onClick: settings.onClick || nothing,
+            onClickUp: settings.onClickUp || nothing,
+            onClickMiss: settings.onClickMiss || nothing,
+            onHold: settings.onHold || nothing,
+            onHoldLeave: settings.onHoldLeave || nothing,
+            onHoldEnter: settings.onHoldEnter || nothing,
+            onHoldEnd: settings.onHoldEnd || nothing,
+            onHoverLeave: settings.onHoverLeave || nothing,
+            onHoverEnter: settings.onHoverEnter || nothing
         };
 
     };
@@ -78,17 +79,15 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.start = function () {
         if (this.initialized) {
-            // TODO: this is caused by calling start when objects are attached, fix this later!
-            // console.log('warning: trying to init twice')
             return;
         }
         EventSystem.addEventListener('pointerDown', this.pointerDown, this);
         EventSystem.addEventListener('pointerUp', this.pointerUp, this);
         EventSystem.addEventListener('pointerMove', this.pointerMove, this);
         this.initialized = true;
-    }
+    };
     Clickable.prototype.update = function () {
-        if (this.isHovering && this.callbacks.isPointerDown && this.callbacks.onHold) {
+        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
             this.callbacks.onHold();
         }
     };

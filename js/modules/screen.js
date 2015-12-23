@@ -1,11 +1,13 @@
 /**
  * Screen object. Screens are convenience modules that are similar to levels/rooms/scenes in games.
- * Tiled Map Editor can be used to design the levels.
- * <br>Exports: Function
+ * Tiled Map Editor can be used to design the levels {@link http://www.mapeditor.org/}.
+ * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
+ * <br>Exports: Constructor
  * @module bento/screen
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Asset name of the json file
  * @param {String} settings.onShow - Callback when screen starts
+ * @param {String} settings.onHide - Callback when screen is removed
  * @param {Rectangle} [settings.dimension] - Set dimension of the screen (overwritten by tmx size)
  * @returns Screen
  */

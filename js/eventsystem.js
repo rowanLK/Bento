@@ -1,6 +1,6 @@
 /**
- * Sends custom events. Don't forget to turn off listeners or
- * you will end up with memory leaks or unexpected behaviors.
+ * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn 
+ off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
  */

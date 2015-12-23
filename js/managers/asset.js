@@ -1,7 +1,8 @@
 /**
- * Manager that loads and controls assets
- * Can be accessed through Bento.assets
- * <br>Exports: Function
+ * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
+ * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
+ * assets to load, and where to find them.
+ * <br>Exports: Constructor, can be accessed through Bento.asset namespace
  * @module bento/managers/asset
  * @returns AssetManager
  */
@@ -23,10 +24,22 @@ bento.define('bento/managers/asset', [
             texturePacker = {},
             packs = [],
             loadAudio = function (name, source, callback) {
-                var audio,
-                    i,
-                    canPlay,
-                    failed = true;
+                var i,
+                    failed = true,
+                    loadAudio = function (index) {
+                        var audio = new Audia(),
+                            canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
+                        if (!!canPlay) {
+                            // success!
+                            audio.onload = function () {
+                                callback(null, name, audio);
+                            };
+                            audio.src = source[index];
+                            failed = false;
+                            return true;
+                        }
+                        return false;
+                    };
                 if (!Utils.isArray(source)) {
                     source = [path + 'audio/' + source];
                 } else {
@@ -37,15 +50,7 @@ bento.define('bento/managers/asset', [
                 }
                 // try every type
                 for (i = 0; i < source.length; ++i) {
-                    audio = new Audia();
-                    canPlay = audio.canPlayType('audio/' + source[i].slice(-3));
-                    if (!!canPlay) {
-                        // success!
-                        audio.onload = function () {
-                            callback(null, name, audio);
-                        };
-                        audio.src = source[i];
-                        failed = false;
+                    if (loadAudio(i)) {
                         break;
                     }
                 }
@@ -105,15 +110,22 @@ bento.define('bento/managers/asset', [
                 xhr.send();
             },
             loadImage = function (name, source, callback) {
-                // TODO: Implement failure
                 var img = new Image();
                 img.src = source;
                 img.addEventListener('load', function () {
                     callback(null, name, img);
                 }, false);
+                img.addEventListener('error', function (evt) {
+                    // TODO: Implement failure: should it retry to load the image?
+                    console.log('ERROR: loading image failed');
+                }, false);
             },
             /**
-             * Loads json files containing asset paths to load
+             * Loads asset groups (json files containing names and asset paths to load)
+             * If the assetGroup parameter is passed to Bento.setup, this function will be
+             * called automatically by Bento.
+             * This will not load the assets (merely the assetgroups). To load the assets,
+             * you must call Bento.assets.load()
              * @function
              * @instance
              * @param {Object} jsonFiles - Name with json path
@@ -146,7 +158,7 @@ bento.define('bento/managers/asset', [
                 }
             },
             /**
-             * Loads assets from asset group
+             * Loads assets from asset group.
              * @function
              * @instance
              * @param {String} groupName - Name of asset group
@@ -285,6 +297,81 @@ bento.define('bento/managers/asset', [
                 loadAllAssets();
             },
             /**
+             * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadImageFromUrl
+             */
+            loadImageFromUrl = function (name, url, callback) {
+                var onLoadImage = function (err, name, image) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.images[name] = image;
+                    if (callback) {
+                        callback(null, image);
+                    }
+                };
+                loadImage(name, url, onLoadImage);
+            },
+            /**
+             * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadJsonFromUrl
+             */
+            loadJsonFromUrl = function (name, url, callback) {
+                var onLoadJson = function (err, name, json) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.json[name] = json;
+                    if (callback) {
+                        callback(null, json);
+                    }
+                };
+                loadJSON(name, url, onLoadJson);
+            },
+            /**
+             * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadAudioFromUrl
+             */
+            loadAudioFromUrl = function (name, url, callback) {
+                var onLoadAudio = function (err, name, audio) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.audio[name] = audio;
+                    if (callback) {
+                        callback(audio);
+                    }
+                };
+                loadAudio(name, url, onLoadAudio);
+            },
+            /**
              * Unloads assets (not implemented yet)
              * @function
              * @instance
@@ -397,6 +484,9 @@ bento.define('bento/managers/asset', [
         return {
             loadAssetGroups: loadAssetGroups,
             load: load,
+            loadImageFromUrl: loadImageFromUrl,
+            loadJsonFromUrl: loadJsonFromUrl,
+            loadAudioFromUrl: loadAudioFromUrl,
             unload: unload,
             getImage: getImage,
             getImageElement: getImageElement,

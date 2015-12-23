@@ -1,7 +1,7 @@
 /**
  * Sprite component that uses pixi (alternative version of animation component).
  * TODO: merge with the Animation component. Lots of duplicate code here
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/pixi
  * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings

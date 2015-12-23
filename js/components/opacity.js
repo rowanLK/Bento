@@ -1,6 +1,6 @@
 /**
  * Component that sets the opacity
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/opacity
  * @param {Entity} entity - The entity to attach the component to
  * @param {Object} settings - Settings

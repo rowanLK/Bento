@@ -1,6 +1,6 @@
 /**
  * Animation component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/animation
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally. 
@@ -55,10 +55,10 @@ bento.define('bento/components/animation', [
 
         this.spriteImage = null;
 
-        this.frameCountX = 1,
-        this.frameCountY = 1,
-        this.frameWidth = 0,
-        this.frameHeight = 0,
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
 
         // set to default
         this.animations = {};

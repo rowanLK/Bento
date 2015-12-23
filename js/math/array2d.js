@@ -1,6 +1,6 @@
 /**
  * A 2-dimensional array
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/array2d
  * @param {Number} width - horizontal size of array
  * @param {Number} height - vertical size of array

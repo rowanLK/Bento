@@ -1,7 +1,7 @@
 /**
- * Manager that controls presistent variables. Wrapper for localStorage.
- * Can be accessed through Bento.saveState
- * <br>Exports: Object
+ * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
+ * save values and Bento.saveState.load() to retrieve them.
+ * <br>Exports: Object, can be accessed through Bento.audio namespace. 
  * @module bento/managers/savestate
  * @returns SaveState
  */
@@ -146,8 +146,7 @@ bento.define('bento/managers/savestate', [
         },
         /**
          * Sets an identifier that's prepended on every key.
-         * By default this is the URL, to prevend savefile clashing.
-         * TODO: better if its the game name
+         * By default this is the game's URL, to prevend savefile clashing.
          * @function
          * @instance
          * @param {String} name - ID name
@@ -157,7 +156,8 @@ bento.define('bento/managers/savestate', [
             uniqueID = str;
         },
         /**
-         * Swaps the storage object
+         * Swaps the storage object. Allows you to use something else than localStorage. But the storage object
+         * must have similar methods as localStorage.
          * @function
          * @instance
          * @param {Object} storageObject - an object that resembels localStorage

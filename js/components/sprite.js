@@ -1,7 +1,7 @@
 /**
  * Helper component that attaches the Translation, Scale, Rotation, Opacity
  * and Animation (or Pixi) components. Automatically detects the renderer.
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/components/sprite
  * @param {Object} settings - Settings object, this object is passed to all other components
  * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
@@ -108,7 +108,7 @@ bento.define('bento/components/sprite', [
         }
         this.components = array;
         return this;
-    },
+    };
     component.prototype.toString = function () {
         return '[object Sprite]';
     };

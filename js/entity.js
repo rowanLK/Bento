@@ -1,12 +1,14 @@
 /**
- * A base object to hold components
- * <br>Exports: Function
+ * A base object to hold components. Has dimension, position, scale and rotation properties (though these don't have much
+ meaning until you attach a Sprite component). Entities can be added to the game by calling Bento.objects.attach().
+ Entities can be visualized by using the Sprite component, or you can attach your own component and add a draw function.
+ * <br>Exports: Constructor
  * @module {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Function} settings.onCollide - Called when object collides in HSHG
  * @param {Array} settings.components - Array of component module functions
- * @param {Array} settings.family - Array of family names
+ * @param {Array} settings.family - Array of family names. See {@link module:bento/managers/object#getByFamily}
  * @param {Vector2} settings.position - Vector2 of position to set
  * @param {Vector2} settings.origin - Vector2 of origin to set
  * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
@@ -320,6 +322,7 @@ entity.extend({
 });
 
 entity.addX(10);
+     * @returns {Entity} Returns itself
      * @name extend
      */
     Entity.prototype.extend = function (object) {
@@ -334,6 +337,7 @@ entity.addX(10);
      * @returns {Rectangle} boundingbox - Entity's boundingbox with translation and scaling
      * @instance
      * @name getBoundingBox
+     * @returns {Rectangle} A rectangle representing the boundingbox of the entity
      */
     Entity.prototype.getBoundingBox = function () {
         var scale, x1, x2, y1, y2, box;
@@ -466,6 +470,7 @@ entity.attach(child);
 // attach the entity to the game
 Bento.objects.attach(entity);
      * @name attach
+     * @returns {Entity} Returns itself (useful for chaining attach calls)
      */
     Entity.prototype.attach = function (child) {
         var mixin = {},
@@ -508,6 +513,7 @@ Bento.objects.attach(entity);
      * @param {Object} child - The child object to remove
      * @instance
      * @name remove
+     * @returns {Entity} Returns itself
      */
     Entity.prototype.remove = function (child) {
         var i, type, index;
@@ -539,6 +545,7 @@ Bento.objects.attach(entity);
      * @param {String} name - name of the component
      * @param {FoundCallback} callback - called when component is found
      * @name getComponent
+     * @returns {Entity} Returns the component, null if not found
      */
     Entity.prototype.getComponent = function (name, callback) {
         var i, l, component;
@@ -551,6 +558,7 @@ Bento.objects.attach(entity);
                 return component;
             }
         }
+        return null;
     };
     /**
      * Moves a child to a certain index in the array
@@ -588,6 +596,7 @@ Bento.objects.attach(entity);
      * @param {Vector2} [offset] - A position offset
      * @param {CollisionCallback} [callback] - Called when entities are colliding
      * @name collidesWith
+     * @returns {Boolean} True if entities collide
      */
     Entity.prototype.collidesWith = function (other, offset, callback) {
         var intersect;
@@ -609,6 +618,7 @@ Bento.objects.attach(entity);
      * @param {Vector2} [offset] - A position offset
      * @param {CollisionCallback} [callback] - Called when entities are colliding
      * @name collidesWithGroup
+     * @returns {Entity} Returns the entity it collides with, null if none found
      */
     Entity.prototype.collidesWithGroup = function (array, offset, callback) {
         var i,
@@ -663,6 +673,7 @@ Bento.objects.attach(entity);
      * @function
      * @instance
      * @name getWorldPosition
+     * @returns {Vector2} Returns a position
      */
     // TODO: test this properly
     Entity.prototype.getWorldPosition = function () {

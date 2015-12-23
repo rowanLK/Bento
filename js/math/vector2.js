@@ -1,7 +1,7 @@
 /**
  * 2 dimensional vector
  * (Note: to perform matrix multiplications, one must use toMatrix)
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/math/vector2
  * @param {Number} x - x position
  * @param {Number} y - y position
@@ -192,7 +192,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
      * @instance
      * @name scale
      */
-    Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith
+    Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith;
     /**
      * Returns the magnitude of the vector
      * @function

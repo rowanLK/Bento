@@ -1,6 +1,6 @@
 /**
- * A wrapper for module images, holds data for image atlas
- * <br>Exports: Function
+ * A wrapper for HTML images, holds data for image atlas.
+ * <br>Exports: Constructor
  * @module bento/packedimage
  * @param {HTMLImageElement} image - HTML Image Element
  * @param {Rectangle} frame - Frame boundaries in the image

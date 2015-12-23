@@ -390,15 +390,52 @@ bento.define('bento/utils', [], function () {
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         /**
-         * Returns a random number [0...n)
+         * Returns a random integer [0...n)
          * @function
          * @instance
          * @name getRandom
          * @param {Number} n - limit of random number
-         * @return {Number} Randomized number
+         * @return {Number} Randomized integer
          */
         getRandom: function (n) {
             return Math.floor(Math.random() * n);
+        },
+        /**
+         * Returns a random integer between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRange
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized integer
+         */
+        getRandomRange: function (min, max) {
+            var diff = max - min;
+            return min + Math.floor(Math.random() * diff);
+        },
+        /**
+         * Returns a random float [0...n)
+         * @function
+         * @instance
+         * @name getRandomFloat
+         * @param {Number} n - limit of random number
+         * @return {Number} Randomized number
+         */
+        getRandomFloat: function (n) {
+            return Math.random() * n;
+        },
+        /**
+         * Returns a random float between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRangeFloat
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized number
+         */
+        getRandomRangeFloat: function (n) {
+            var diff = max - min;
+            return min + Math.random() * diff;
         },
         /**
          * Turns degrees into radians
@@ -415,7 +452,7 @@ bento.define('bento/utils', [], function () {
          * Turns radians into degrees
          * @function
          * @instance
-         * @name toRadian
+         * @name toDegree
          * @param {Number} radians - value in radians
          * @return {Number} degree
          */
@@ -423,7 +460,7 @@ bento.define('bento/utils', [], function () {
             return radian / Math.PI * 180;
         },
         /**
-         * Sign of  anumber
+         * Sign of a number. Returns 0 if value is 0.
          * @function
          * @instance
          * @param {Number} value - value to check
@@ -444,10 +481,11 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Number} start - current value
          * @param {Number} end - target value
-         * @param {Number} step - step to take
+         * @param {Number} step - step to take (should always be a positive value)
          * @name approach
          */
         approach: function (start, end, max) {
+            max = Math.abs(max);
             if (start < end) {
                 return Math.min(start + max, end);
             } else {
@@ -469,7 +507,7 @@ bento.define('bento/utils', [], function () {
             }
         },
         /**
-         * Checks useragent if device is an apple device
+         * Checks useragent if device is an apple device. Works on web only.
          * @function
          * @instance
          * @name isApple
@@ -479,7 +517,7 @@ bento.define('bento/utils', [], function () {
             return /iPhone/i.test(device) || /iPad/i.test(device) || /iPod/i.test(device);
         },
         /**
-         * Checks useragent if device is an android device
+         * Checks useragent if device is an android device. Works on web only.
          * @function
          * @instance
          * @name isAndroid
@@ -491,9 +529,12 @@ bento.define('bento/utils', [], function () {
          * Checks if environment is cocoon
          * @function
          * @instance
-         * @name isCocoonJS
+         * @name isCocoonJs
          */
         isCocoonJS: function () {
+            return navigator.isCocoonJS;
+        },
+        isCocoonJs: function () {
             return navigator.isCocoonJS;
         },
         /**

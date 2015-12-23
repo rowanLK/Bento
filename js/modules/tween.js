@@ -2,14 +2,13 @@
  * The Tween is an entity that performs an interpolation within a timeframe. The entity
  * removes itself after the tween ends.
  * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
- * Also see: http://easings.net/
- * <br>Exports: Function
+ * <br>Exports: Constructor
  * @module bento/tween
  * @param {Object} settings - Settings object
  * @param {Number} settings.from - Starting value
  * @param {Number} settings.to - End value
  * @param {Number} settings.in - Time frame
- * @param {String} settings.ease - Choose between default tweens or see http://easings.net/
+ * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
  * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
  * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
  * @param {Boolean} [settings.stay] - Don't remove the entity automatically

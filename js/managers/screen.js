@@ -1,7 +1,7 @@
 /**
- * Manager that controls screens/rooms/levels.
- * Can be accessed through Bento.screens
- * <br>Exports: Function
+ * Manager that controls screens. Screens are defined as separate modules. See {@link module:bento/screen}. To show
+ * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
+ * <br>Exports: Constructor, can be accessed through Bento.screens namespace. 
  * @module bento/managers/screen
  * @returns ScreenManager
  */
