@@ -23,9 +23,13 @@ bento.define('bento/gui/counter', [
             value: Number,
             spacing: Vector,
             align: String,
-            frameWidth: Number,
-            frameHeight: Number,
-            image: Image,
+            sprite: Sprite({
+                image: Image,
+                imageName: String,
+                frameWidth: Number,
+                frameHeight: Number,
+                animations: Animation
+            }),
             position: Vector
         }*/
         var value = settings.value || 0,
@@ -43,11 +47,13 @@ bento.define('bento/gui/counter', [
              * Returns an entity with all digits as animation
              */
             createDigit = function () {
-                var sprite = new Sprite({
-                        image: settings.image,
-                        frameWidth: settings.frameWidth,
-                        frameHeight: settings.frameHeight,
-                        animations: {
+                var spriteSettings = settings.sprite.getSettings(),
+                    sprite = new Sprite({
+                        image: spriteSettings.image,
+                        imageName: spriteSettings.imageName,
+                        frameWidth: spriteSettings.frameWidth,
+                        frameHeight: spriteSettings.frameHeight,
+                        animations: spriteSettings.animations || {
                             '0': {
                                 frames: [0]
                             },

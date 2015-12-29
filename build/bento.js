@@ -6747,9 +6747,9 @@ bento.define('bento/components/scale', [
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @param {Object} settings - Settings object, this object is passed to all other components
- * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
  * the Animation component is attached. Same as Sprite.insertBefore.
- * @param {} settings.... - See other components 
+ * @param {} settings.... - See other components
  * @returns Returns a component object.
  */
 bento.define('bento/components/sprite', [
@@ -6766,6 +6766,7 @@ bento.define('bento/components/sprite', [
     var renderer,
         component = function (settings) {
             this.entity = null;
+            this.settings = settings;
             // detect renderer
             if (!renderer) {
                 renderer = Bento.getRenderer();
@@ -6852,8 +6853,13 @@ bento.define('bento/components/sprite', [
         this.components = array;
         return this;
     };
+
     component.prototype.toString = function () {
         return '[object Sprite]';
+    };
+
+    component.prototype.getSettings = function () {
+        return this.settings;
     };
 
     return component;
@@ -12389,9 +12395,13 @@ bento.define('bento/gui/counter', [
             value: Number,
             spacing: Vector,
             align: String,
-            frameWidth: Number,
-            frameHeight: Number,
-            image: Image,
+            sprite: Sprite({
+                image: Image,
+                imageName: String,
+                frameWidth: Number,
+                frameHeight: Number,
+                animations: Animation
+            }),
             position: Vector
         }*/
         var value = settings.value || 0,
@@ -12409,11 +12419,13 @@ bento.define('bento/gui/counter', [
              * Returns an entity with all digits as animation
              */
             createDigit = function () {
-                var sprite = new Sprite({
-                        image: settings.image,
-                        frameWidth: settings.frameWidth,
-                        frameHeight: settings.frameHeight,
-                        animations: {
+                var spriteSettings = settings.sprite.getSettings(),
+                    sprite = new Sprite({
+                        image: spriteSettings.image,
+                        imageName: spriteSettings.imageName,
+                        frameWidth: spriteSettings.frameWidth,
+                        frameHeight: spriteSettings.frameHeight,
+                        animations: spriteSettings.animations || {
                             '0': {
                                 frames: [0]
                             },
