@@ -53,7 +53,7 @@ bento.define('bento/gui/counter', [
                         imageName: spriteSettings.imageName,
                         frameWidth: spriteSettings.frameWidth,
                         frameHeight: spriteSettings.frameHeight,
-                        animations: spriteSettings.animations || {
+                        animations: {
                             '0': {
                                 frames: [0]
                             },
@@ -93,7 +93,7 @@ bento.define('bento/gui/counter', [
                         components: [sprite],
                         init: function () {
                             // setup all digits
-                            digitWidth = settings.frameWidth;
+                            digitWidth = spriteSettings.frameWidth;
                         }
                     }, settings.digit || {}),
                     entity = new Entity(digitSettings);
