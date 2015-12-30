@@ -29,7 +29,7 @@ bento.define('bento/managers/asset', [
                     loadAudio = function (index) {
                         var audio = new Audia(),
                             canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
-                        if (!!canPlay) {
+                        if (!!canPlay || window.ejecta) {
                             // success!
                             audio.onload = function () {
                                 callback(null, name, audio);
@@ -456,7 +456,7 @@ bento.define('bento/managers/asset', [
                 return assets;
             },
             initPackedImages = function () {
-                var frame, pack, i, image, json;
+                var frame, pack, i, image, json, name;
                 while (packs.length) {
                     pack = packs.pop();
                     image = getImageElement(pack);

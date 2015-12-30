@@ -82,6 +82,7 @@ bento.define('bento/screen', [
                  * @name onHide
                  */
                 onHide: function (data) {
+                    var viewport = Bento.getViewport();
                     // remove all objects
                     Bento.removeAll();
                     // reset viewport scroll when hiding screen
