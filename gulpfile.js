@@ -58,6 +58,22 @@ gulp.task('default', ['webgl'], function () {
         .pipe(gulp.dest('build'));
 });
 
+gulp.task('amdless', [], function () {
+    // place code for your default task here
+    return gulp.src([
+            'js/lib/fpsmeter.js',
+            'js/**/main.js',
+            'js/lib/lzstring.js',
+            'js/lib/audia.js',
+            'js/**/*.js'
+        ])
+        // add require
+        .pipe(addsrc.prepend('js/lib/bento-require.js'))
+        // output bento.js
+        .pipe(concat('bento-amdless.js'))
+        .pipe(gulp.dest('build'));
+});
+
 gulp.task('check', function () {
     // place code for your default task here
     return gulp.src(['js/**/main.js', 'js/**/*.js', '!js/lib/*.js'])

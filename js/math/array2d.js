@@ -6,7 +6,7 @@
  * @param {Number} height - vertical size of array
  * @returns {Array} Returns 2d array.
  */
-bento.define('bento/math/array2d', function () {
+bento.define('bento/math/array2d', [], function () {
     'use strict';
     return function (width, height) {
         var array = [],
