@@ -6928,6 +6928,113 @@ bento.define('bento/components/translation', [
     return Translation;
 });
 /**
+ * A very simple require system
+ */
+(function () {
+    'use strict';
+    var modules = {},
+        waiting = {},
+        getModule = function (name, onSuccess) {
+            if (modules[name]) {
+                // module exists! return immediately
+                onSuccess(modules[name]);
+                return;
+            }
+
+            // does not exist yet, put on waiting list
+            waiting[name] = waiting[name] || [];
+            waiting[name].push(onSuccess);
+        },
+        defineAndFlush = function (name, module) {
+            var i,
+                callbacksWaiting = waiting[name],
+                onSuccess;
+            
+            // add to modules
+            modules[name] = module;
+
+            // flush waiting
+            if (!callbacksWaiting) {
+                return;
+            }
+            for (i = 0; i < callbacksWaiting.length; ++i) {
+                onSuccess = callbacksWaiting[i];
+                onSuccess(module);
+            }
+            callbacksWaiting = [];
+        },
+        require = function (dep, fn) {
+            var i,
+                loaded = 0,
+                ready,
+                end = function () {
+                    var params = [];
+
+                    // build param list and call function
+                    for (i = 0; i < dep.length; ++i) {
+                        getModule(dep[i], function (module) {
+                            params.push(module);
+                        });
+                    }
+                    fn.apply(window, params);
+                };
+            if (dep.length === 0) {
+                // load immediately
+                end();
+            }
+
+            // loop through dependencies and try to load it (the module may not be defined yet)
+            for (i = 0; i < dep.length; ++i) {
+                getModule(dep[i], function (module) {
+                    loaded += 1;
+                    if (loaded === dep.length) {
+                        // all modules are loaded
+                        end();
+                    }
+                });
+            }
+        },
+        define = function (name, dep, fn) {
+            var i,
+                params = [],
+                loaded = 0,
+                ready,
+                end = function () {
+                    var params = [],
+                        myModule;
+
+                    // build param list and call function
+                    for (i = 0; i < dep.length; ++i) {
+                        getModule(dep[i], function (module) {
+                            params.push(module);
+                        });
+                    }
+                    myModule = fn.apply(window, params);
+                    // add to modules list
+                    defineAndFlush(name, myModule);
+                };
+            if (dep.length === 0) {
+                // load immediately
+                end();
+            }
+
+            // loop through dependencies and try to load it (the module may not be defined yet)
+            for (i = 0; i < dep.length; ++i) {
+                getModule(dep[i], function (module) {
+                    loaded += 1;
+                    if (loaded === dep.length) {
+                        // all modules are loaded
+                        end();
+                    }
+                });
+            }
+        };
+
+    // export
+    window.require = require;
+    window.define = define;
+})();
+/**
  * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/requirejs/domReady for details
@@ -8207,7 +8314,7 @@ bento.define('bento/managers/asset', [
                     loadAudio = function (index) {
                         var audio = new Audia(),
                             canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
-                        if (!!canPlay) {
+                        if (!!canPlay || window.ejecta) {
                             // success!
                             audio.onload = function () {
                                 callback(null, name, audio);
@@ -8634,7 +8741,7 @@ bento.define('bento/managers/asset', [
                 return assets;
             },
             initPackedImages = function () {
-                var frame, pack, i, image, json;
+                var frame, pack, i, image, json, name;
                 while (packs.length) {
                     pack = packs.pop();
                     image = getImageElement(pack);
@@ -10027,7 +10134,7 @@ bento.define('bento/managers/screen', [
  * @param {Number} height - vertical size of array
  * @returns {Array} Returns 2d array.
  */
-bento.define('bento/math/array2d', function () {
+bento.define('bento/math/array2d', [], function () {
     'use strict';
     return function (width, height) {
         var array = [],
@@ -11294,6 +11401,7 @@ bento.define('bento/screen', [
                  * @name onHide
                  */
                 onHide: function (data) {
+                    var viewport = Bento.getViewport();
                     // remove all objects
                     Bento.removeAll();
                     // reset viewport scroll when hiding screen
