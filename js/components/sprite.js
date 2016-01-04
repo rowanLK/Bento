@@ -4,9 +4,9 @@
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @param {Object} settings - Settings object, this object is passed to all other components
- * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
  * the Animation component is attached. Same as Sprite.insertBefore.
- * @param {} settings.... - See other components 
+ * @param {} settings.... - See other components
  * @returns Returns a component object.
  */
 bento.define('bento/components/sprite', [
@@ -23,6 +23,7 @@ bento.define('bento/components/sprite', [
     var renderer,
         component = function (settings) {
             this.entity = null;
+            this.settings = settings;
             // detect renderer
             if (!renderer) {
                 renderer = Bento.getRenderer();
@@ -109,8 +110,13 @@ bento.define('bento/components/sprite', [
         this.components = array;
         return this;
     };
+
     component.prototype.toString = function () {
         return '[object Sprite]';
+    };
+
+    component.prototype.getSettings = function () {
+        return this.settings;
     };
 
     return component;

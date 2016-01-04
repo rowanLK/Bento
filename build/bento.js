@@ -6749,9 +6749,9 @@ bento.define('bento/components/scale', [
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @param {Object} settings - Settings object, this object is passed to all other components
- * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
  * the Animation component is attached. Same as Sprite.insertBefore.
- * @param {} settings.... - See other components 
+ * @param {} settings.... - See other components
  * @returns Returns a component object.
  */
 bento.define('bento/components/sprite', [
@@ -6768,6 +6768,7 @@ bento.define('bento/components/sprite', [
     var renderer,
         component = function (settings) {
             this.entity = null;
+            this.settings = settings;
             // detect renderer
             if (!renderer) {
                 renderer = Bento.getRenderer();
@@ -6854,8 +6855,13 @@ bento.define('bento/components/sprite', [
         this.components = array;
         return this;
     };
+
     component.prototype.toString = function () {
         return '[object Sprite]';
+    };
+
+    component.prototype.getSettings = function () {
+        return this.settings;
     };
 
     return component;
@@ -12508,9 +12514,17 @@ bento.define('bento/gui/counter', [
             value: Number,
             spacing: Vector,
             align: String,
-            frameWidth: Number,
-            frameHeight: Number,
-            image: Image,
+            image: Image, // lower priority
+            frameWidth: Number, // lower priority
+            frameHeight: Number, // lower priority
+            animations: Object, // only way to overwrite animations
+            sprite: Sprite({
+                image: Image,
+                imageName: String,
+                frameWidth: Number,
+                frameHeight: Number,
+                animations: Animation
+            }),
             position: Vector
         }*/
         var value = settings.value || 0,
@@ -12518,6 +12532,7 @@ bento.define('bento/gui/counter', [
             alignment = settings.align || settings.alignment || 'right',
             digitWidth = 0,
             children = [],
+            spriteSettings = {},
             /*
              * Counts the number of digits in the value
              */
@@ -12529,10 +12544,13 @@ bento.define('bento/gui/counter', [
              */
             createDigit = function () {
                 var sprite = new Sprite({
-                        image: settings.image,
-                        frameWidth: settings.frameWidth,
-                        frameHeight: settings.frameHeight,
-                        animations: {
+                        image: spriteSettings.image,
+                        imageName: spriteSettings.imageName,
+                        frameWidth: spriteSettings.frameWidth,
+                        frameHeight: spriteSettings.frameHeight,
+                        frameCountX: spriteSettings.frameCountX,
+                        frameCountY: spriteSettings.frameCountY,
+                        animations: settings.animations || {
                             '0': {
                                 frames: [0]
                             },
@@ -12572,7 +12590,7 @@ bento.define('bento/gui/counter', [
                         components: [sprite],
                         init: function () {
                             // setup all digits
-                            digitWidth = settings.frameWidth;
+                            digitWidth = spriteSettings.frameWidth;
                         }
                     }, settings.digit || {}),
                     entity = new Entity(digitSettings);
@@ -12640,6 +12658,24 @@ bento.define('bento/gui/counter', [
                 components: [new Sprite({})]
             },
             base;
+
+        // copy spritesettings
+        spriteSettings.image = settings.image;
+        spriteSettings.imageName = settings.imageName;
+        spriteSettings.frameWidth = settings.frameWidth;
+        spriteSettings.frameHeight = settings.frameHeight;
+        spriteSettings.frameCountX = settings.frameCountX;
+        spriteSettings.frameCountY = settings.frameCountY;
+        if (settings.sprite) {
+            // replace with settings
+            settings.sprite = settings.sprite.getSettings()
+            spriteSettings.image = settings.sprite.image;
+            spriteSettings.imageName = settings.sprite.imageName;
+            spriteSettings.frameWidth = settings.sprite.frameWidth;
+            spriteSettings.frameHeight = settings.sprite.frameHeight;
+            spriteSettings.frameCountX = settings.sprite.frameCountX;
+            spriteSettings.frameCountY = settings.sprite.frameCountY;
+        }
 
         Utils.extend(entitySettings, settings);
 
