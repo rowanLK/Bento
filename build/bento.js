@@ -6747,9 +6747,9 @@ bento.define('bento/components/scale', [
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @param {Object} settings - Settings object, this object is passed to all other components
- * @param {Array} settings.components - This array of objects is attached to the entity BEFORE 
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
  * the Animation component is attached. Same as Sprite.insertBefore.
- * @param {} settings.... - See other components 
+ * @param {} settings.... - See other components
  * @returns Returns a component object.
  */
 bento.define('bento/components/sprite', [
@@ -6766,6 +6766,7 @@ bento.define('bento/components/sprite', [
     var renderer,
         component = function (settings) {
             this.entity = null;
+            this.settings = settings;
             // detect renderer
             if (!renderer) {
                 renderer = Bento.getRenderer();
@@ -6852,8 +6853,13 @@ bento.define('bento/components/sprite', [
         this.components = array;
         return this;
     };
+
     component.prototype.toString = function () {
         return '[object Sprite]';
+    };
+
+    component.prototype.getSettings = function () {
+        return this.settings;
     };
 
     return component;
@@ -6921,6 +6927,113 @@ bento.define('bento/components/translation', [
 
     return Translation;
 });
+/**
+ * A very simple require system
+ */
+(function () {
+    'use strict';
+    var modules = {},
+        waiting = {},
+        getModule = function (name, onSuccess) {
+            if (modules[name]) {
+                // module exists! return immediately
+                onSuccess(modules[name]);
+                return;
+            }
+
+            // does not exist yet, put on waiting list
+            waiting[name] = waiting[name] || [];
+            waiting[name].push(onSuccess);
+        },
+        defineAndFlush = function (name, module) {
+            var i,
+                callbacksWaiting = waiting[name],
+                onSuccess;
+            
+            // add to modules
+            modules[name] = module;
+
+            // flush waiting
+            if (!callbacksWaiting) {
+                return;
+            }
+            for (i = 0; i < callbacksWaiting.length; ++i) {
+                onSuccess = callbacksWaiting[i];
+                onSuccess(module);
+            }
+            callbacksWaiting = [];
+        },
+        require = function (dep, fn) {
+            var i,
+                loaded = 0,
+                ready,
+                end = function () {
+                    var params = [];
+
+                    // build param list and call function
+                    for (i = 0; i < dep.length; ++i) {
+                        getModule(dep[i], function (module) {
+                            params.push(module);
+                        });
+                    }
+                    fn.apply(window, params);
+                };
+            if (dep.length === 0) {
+                // load immediately
+                end();
+            }
+
+            // loop through dependencies and try to load it (the module may not be defined yet)
+            for (i = 0; i < dep.length; ++i) {
+                getModule(dep[i], function (module) {
+                    loaded += 1;
+                    if (loaded === dep.length) {
+                        // all modules are loaded
+                        end();
+                    }
+                });
+            }
+        },
+        define = function (name, dep, fn) {
+            var i,
+                params = [],
+                loaded = 0,
+                ready,
+                end = function () {
+                    var params = [],
+                        myModule;
+
+                    // build param list and call function
+                    for (i = 0; i < dep.length; ++i) {
+                        getModule(dep[i], function (module) {
+                            params.push(module);
+                        });
+                    }
+                    myModule = fn.apply(window, params);
+                    // add to modules list
+                    defineAndFlush(name, myModule);
+                };
+            if (dep.length === 0) {
+                // load immediately
+                end();
+            }
+
+            // loop through dependencies and try to load it (the module may not be defined yet)
+            for (i = 0; i < dep.length; ++i) {
+                getModule(dep[i], function (module) {
+                    loaded += 1;
+                    if (loaded === dep.length) {
+                        // all modules are loaded
+                        end();
+                    }
+                });
+            }
+        };
+
+    // export
+    window.require = require;
+    window.define = define;
+})();
 /**
  * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -8201,7 +8314,7 @@ bento.define('bento/managers/asset', [
                     loadAudio = function (index) {
                         var audio = new Audia(),
                             canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
-                        if (!!canPlay) {
+                        if (!!canPlay || window.ejecta) {
                             // success!
                             audio.onload = function () {
                                 callback(null, name, audio);
@@ -8628,7 +8741,7 @@ bento.define('bento/managers/asset', [
                 return assets;
             },
             initPackedImages = function () {
-                var frame, pack, i, image, json;
+                var frame, pack, i, image, json, name;
                 while (packs.length) {
                     pack = packs.pop();
                     image = getImageElement(pack);
@@ -10021,7 +10134,7 @@ bento.define('bento/managers/screen', [
  * @param {Number} height - vertical size of array
  * @returns {Array} Returns 2d array.
  */
-bento.define('bento/math/array2d', function () {
+bento.define('bento/math/array2d', [], function () {
     'use strict';
     return function (width, height) {
         var array = [],
@@ -11288,6 +11401,7 @@ bento.define('bento/screen', [
                  * @name onHide
                  */
                 onHide: function (data) {
+                    var viewport = Bento.getViewport();
                     // remove all objects
                     Bento.removeAll();
                     // reset viewport scroll when hiding screen
@@ -12389,9 +12503,17 @@ bento.define('bento/gui/counter', [
             value: Number,
             spacing: Vector,
             align: String,
-            frameWidth: Number,
-            frameHeight: Number,
-            image: Image,
+            image: Image, // lower priority
+            frameWidth: Number, // lower priority
+            frameHeight: Number, // lower priority
+            animations: Object, // only way to overwrite animations
+            sprite: Sprite({
+                image: Image,
+                imageName: String,
+                frameWidth: Number,
+                frameHeight: Number,
+                animations: Animation
+            }),
             position: Vector
         }*/
         var value = settings.value || 0,
@@ -12399,6 +12521,7 @@ bento.define('bento/gui/counter', [
             alignment = settings.align || settings.alignment || 'right',
             digitWidth = 0,
             children = [],
+            spriteSettings = {},
             /*
              * Counts the number of digits in the value
              */
@@ -12410,10 +12533,13 @@ bento.define('bento/gui/counter', [
              */
             createDigit = function () {
                 var sprite = new Sprite({
-                        image: settings.image,
-                        frameWidth: settings.frameWidth,
-                        frameHeight: settings.frameHeight,
-                        animations: {
+                        image: spriteSettings.image,
+                        imageName: spriteSettings.imageName,
+                        frameWidth: spriteSettings.frameWidth,
+                        frameHeight: spriteSettings.frameHeight,
+                        frameCountX: spriteSettings.frameCountX,
+                        frameCountY: spriteSettings.frameCountY,
+                        animations: settings.animations || {
                             '0': {
                                 frames: [0]
                             },
@@ -12453,7 +12579,7 @@ bento.define('bento/gui/counter', [
                         components: [sprite],
                         init: function () {
                             // setup all digits
-                            digitWidth = settings.frameWidth;
+                            digitWidth = spriteSettings.frameWidth;
                         }
                     }, settings.digit || {}),
                     entity = new Entity(digitSettings);
@@ -12521,6 +12647,24 @@ bento.define('bento/gui/counter', [
                 components: [new Sprite({})]
             },
             base;
+
+        // copy spritesettings
+        spriteSettings.image = settings.image;
+        spriteSettings.imageName = settings.imageName;
+        spriteSettings.frameWidth = settings.frameWidth;
+        spriteSettings.frameHeight = settings.frameHeight;
+        spriteSettings.frameCountX = settings.frameCountX;
+        spriteSettings.frameCountY = settings.frameCountY;
+        if (settings.sprite) {
+            // replace with settings
+            settings.sprite = settings.sprite.getSettings()
+            spriteSettings.image = settings.sprite.image;
+            spriteSettings.imageName = settings.sprite.imageName;
+            spriteSettings.frameWidth = settings.sprite.frameWidth;
+            spriteSettings.frameHeight = settings.sprite.frameHeight;
+            spriteSettings.frameCountX = settings.sprite.frameCountX;
+            spriteSettings.frameCountY = settings.sprite.frameCountY;
+        }
 
         Utils.extend(entitySettings, settings);
 
