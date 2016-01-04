@@ -616,7 +616,7 @@ has the functions update and draw, they will be called during the loop.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line391">line 391</a>
+        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line400">line 400</a>
     </li></ul></dd>
     
 
@@ -1291,7 +1291,7 @@ may get a reference to the array of objects even if it's not filled yet.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line400">line 400</a>
+        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line409">line 409</a>
     </li></ul></dd>
     
 
@@ -1322,14 +1322,15 @@ may get a reference to the array of objects even if it's not filled yet.
 
     
 
-    <h4 class="name" id="isPaused"><span class="type-signature"></span>isPaused<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="isPaused"><span class="type-signature"></span>isPaused<span class="signature">(object<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Returns true if paused
+    Returns pause level. If an object is passed to the function
+it checks if that object should be paused or not
 </div>
 
 
@@ -1338,6 +1339,67 @@ may get a reference to the array of objects even if it's not filled yet.
 
 
 
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Object to check if it's paused</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -1373,7 +1435,7 @@ may get a reference to the array of objects even if it's not filled yet.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line382">line 382</a>
+        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line386">line 386</a>
     </li></ul></dd>
     
 
@@ -1404,7 +1466,7 @@ may get a reference to the array of objects even if it's not filled yet.
 
     
 
-    <h4 class="name" id="pause"><span class="type-signature"></span>pause<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="pause"><span class="type-signature"></span>pause<span class="signature">(level)</span><span class="type-signature"></span></h4>
 
     
 
@@ -1422,6 +1484,55 @@ will still be updated.
 
 
 
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>level</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Level of pause state, defaults to 1</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -1757,7 +1868,7 @@ will still be updated.
 
 
 <div class="description">
-    Cancels the pause and resume updating objects.
+    Cancels the pause and resume updating objects. (Sets pause level to 0)
 </div>
 
 
@@ -1801,7 +1912,7 @@ will still be updated.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line373">line 373</a>
+        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line377">line 377</a>
     </li></ul></dd>
     
 
@@ -2017,7 +2128,7 @@ Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line409">line 409</a>
+        <a href="managers_object.js.html">managers/object.js</a>, <a href="managers_object.js.html#line418">line 418</a>
     </li></ul></dd>
     
 
@@ -2143,7 +2254,7 @@ Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Dec 29 2015 13:56:29 GMT+0100 (CET) using the Minami theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.2</a> on Mon Jan 04 2016 16:20:18 GMT+0100 (CET) using the Minami theme.
 </footer>
 
 <script>prettyPrint();</script>
