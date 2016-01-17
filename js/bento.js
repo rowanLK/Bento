@@ -13,6 +13,7 @@
 bento.define('bento', [
     'bento/utils',
     'bento/lib/domready',
+    'bento/eventsystem',
     'bento/managers/asset',
     'bento/managers/input',
     'bento/managers/object',
@@ -25,6 +26,7 @@ bento.define('bento', [
 ], function (
     Utils,
     DomReady,
+    EventSystem,
     AssetManager,
     InputManager,
     ObjectManager,
@@ -73,6 +75,10 @@ bento.define('bento', [
             debug.debugBar.style.color = 'white';
             debug.debugBar.innerHTML = 'fps: 0';
             document.body.appendChild(debug.debugBar);
+
+            var button = document.createElement('button');
+            button.innerHTML = 'button';
+            debug.debugBar.appendChild(button);
         },
         setupCanvas = function (settings, callback) {
             var parent,
@@ -112,7 +118,7 @@ bento.define('bento', [
                 settings.renderer = 'webgl';
                 // canvas is accelerated in cocoonJS
                 // should also use canvas for android?
-                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/) {
+                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/ ) {
                     settings.renderer = 'canvas2d';
                 }
             }
@@ -170,6 +176,10 @@ bento.define('bento', [
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+             * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
+             * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
+             * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
+             * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
@@ -195,7 +205,7 @@ bento.define('bento', [
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
 
-                        module.input = InputManager(gameData);
+                        module.input = InputManager(gameData, settings);
                         module.objects = ObjectManager(gameData, settings);
                         module.assets = AssetManager();
                         module.audio = AudioManager(module);
@@ -209,7 +219,27 @@ bento.define('bento', [
                         } else {
                             runGame();
                         }
-
+                        // start watching for new modules
+                        bento.watch();
+                        // reload keys
+                        if (settings.reload) {
+                            if (settings.reload.simple) {
+                                EventSystem.on(settings.reload.simple, function () {
+                                    module.reload();
+                                });
+                            }
+                            if (settings.reload.assets) {
+                                EventSystem.on(settings.reload.assets, function () {
+                                    module.assets.reload(module.reload);
+                                });
+                            }
+                            if (settings.reload.jump) {
+                                EventSystem.on(settings.reload.jump, function () {
+                                    var res = prompt('Show which screen?');
+                                    module.screens.show(res);
+                                });
+                            }
+                        }
                     });
                 });
             },
@@ -245,6 +275,38 @@ bento.define('bento', [
              */
             getRenderer: function () {
                 return renderer;
+            },
+            /**
+             * Reloads modules and jumps to screen. If no screenName was passed,
+             * it reloads the current screen.
+             * @function
+             * @instance
+             * @param {String} screenName - screen to show
+             * @name reload
+             */
+            reload: function (screenName) {
+                var currentScreen,
+                    Bento = module;
+                if (!Bento.screens) {
+                    throw 'Bento has not beens started yet.';
+                }
+                currentScreen = Bento.screens.getCurrentScreen();
+
+                if (!currentScreen) {
+                    console.log('WARNING: No screen has been loaded.');
+                    return;
+                }
+
+                Bento.screens.reset();
+                Bento.objects.resume();
+
+                Bento.objects.stop();
+                bento.refresh();
+
+                // reload current screen
+                Bento.screens.show(screenName || currentScreen.name);
+                // restart the mainloop
+                setTimeout(Bento.objects.run, 120);
             },
             /**
              * Returns a gameData object

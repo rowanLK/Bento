@@ -480,8 +480,34 @@ bento.define('bento/managers/asset', [
              */
             getAssetGroups = function () {
                 return assetGroups;
+            },
+             /**
+             * Reloads all assets
+             * @function
+             * @instance
+             * @param {Function} callback - called when all assets are loaded
+             * @name reload
+             */
+            reload  = function (callback) {
+                var group,
+                    count = 0,
+                    loaded = 0,
+                    end = function () {
+                        loaded += 1;
+                        if (loaded === count && callback) {
+                            callback();
+                        }
+                    };
+                for (group in assetGroups) {
+                    if (!assetGroups.hasOwnProperty(group)) {
+                        continue;
+                    }
+                    Bento.assets.load(group, end, function (current, total) {});
+                    count += 1;
+                }
             };
         return {
+            reload: reload,
             loadAssetGroups: loadAssetGroups,
             load: load,
             loadImageFromUrl: loadImageFromUrl,

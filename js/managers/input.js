@@ -2,10 +2,12 @@
  * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
  * <br>Exports: Constructor, can be accessed through Bento.input namespace.
  * @module bento/managers/input
- * @param {Object} settings - Settings
- * @param {Vector2} settings.canvasScale - Reference to the current canvas scale.
- * @param {HtmlCanvas} settings.canvas - Reference to the canvas element.
- * @param {Rectangle} settings.viewport - Reference to viewport.
+ * @param {Object} gameData - gameData
+ * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
+ * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
+ * @param {Rectangle} gameData.viewport - Reference to viewport.
+ * @param {Object} settings - settings passed from Bento.setup
+ * @param {Boolean} settings.preventContextMenu - Prevents right click menu
  * @returns InputManager
  */
 bento.define('bento/managers/input', [
@@ -15,7 +17,7 @@ bento.define('bento/managers/input', [
 ], function (Utils, Vector2, EventSystem) {
     'use strict';
     var startPositions = {};
-    return function (settings) {
+    return function (gameData, settings) {
         var isPaused = false,
             isListening = false,
             canvas,
@@ -125,7 +127,7 @@ bento.define('bento/managers/input', [
                         console.log('WARNING: touch startPosition was not defined');
                     }
                 }
-                
+
             },
             addMousePosition = function (evt, type) {
                 var x = (evt.pageX - offsetLeft) / canvasScale.x,
@@ -206,7 +208,7 @@ bento.define('bento/managers/input', [
                 });
             },
             initKeyboard = function () {
-                var element = settings.canvas || window,
+                var element = gameData.canvas || window,
                     refocus = function (evt) {
                         if (element.focus) {
                             element.focus();
@@ -232,6 +234,7 @@ bento.define('bento/managers/input', [
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
                     EventSystem.fire('buttonDown', names[i]);
+                    EventSystem.fire('buttonDown-' + names[i]);
                 }
             },
             keyUp = function (evt) {
@@ -257,18 +260,39 @@ bento.define('bento/managers/input', [
             onResize = function () {
                 offsetLeft = canvas.offsetLeft;
                 offsetTop = canvas.offsetTop;
+            },
+            initMouseClicks = function () {
+                if (!document || !document.addEventListener) {
+                    return;
+                }
+                document.addEventListener('contextmenu', function (e) {
+                    EventSystem.fire('mouseDown-right');
+                    // prevent context menu
+                    if (settings.preventContextMenu) {
+                        e.preventDefault();
+                    }
+                }, false);
+                document.addEventListener('click', function (e) {
+                    if (e.which === 1) {
+                        EventSystem.fire('mouseDown-left');
+                        e.preventDefault();
+                    } else if (e.which === 2) {
+                        EventSystem.fire('mouseDown-middle');
+                        e.preventDefault();
+                    }
+                }, false);
             };
 
         window.addEventListener('resize', onResize, false);
         window.addEventListener('orientationchange', onResize, false);
 
-        if (!settings) {
-            throw 'Supply a settings object';
+        if (!gameData) {
+            throw 'Supply a gameData object';
         }
         // canvasScale is needed to take css scaling into account
-        canvasScale = settings.canvasScale;
-        canvas = settings.canvas;
-        viewport = settings.viewport;
+        canvasScale = gameData.canvasScale;
+        canvas = gameData.canvas;
+        viewport = gameData.viewport;
 
         if (canvas && !Utils.isCocoonJS()) {
             offsetLeft = canvas.offsetLeft;
@@ -277,9 +301,10 @@ bento.define('bento/managers/input', [
 
         // touch device
         initTouch();
-
         // keyboard
         initKeyboard();
+        // init clicks
+        initMouseClicks();
 
         return {
             /**
