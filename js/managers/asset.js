@@ -26,7 +26,7 @@ bento.define('bento/managers/asset', [
             loadAudio = function (name, source, callback) {
                 var i,
                     failed = true,
-                    loadAudio = function (index) {
+                    loadAudioFile = function (index, src) {
                         var audio = new Audia(),
                             canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
                         if (!!canPlay || window.ejecta) {
@@ -34,23 +34,19 @@ bento.define('bento/managers/asset', [
                             audio.onload = function () {
                                 callback(null, name, audio);
                             };
-                            audio.src = source[index];
+                            audio.src = src;
                             failed = false;
                             return true;
                         }
                         return false;
                     };
                 if (!Utils.isArray(source)) {
-                    source = [path + 'audio/' + source];
-                } else {
-                    // prepend asset paths
-                    for (i = 0; i < source.length; i += 1) {
-                        source[i] = path + 'audio/' + source[i];
-                    }
+                    // source = [path + 'audio/' + source];
+                    source = [source];
                 }
                 // try every type
                 for (i = 0; i < source.length; ++i) {
-                    if (loadAudio(i)) {
+                    if (loadAudioFile(i, path + 'audio/' + source[i])) {
                         break;
                     }
                 }
@@ -502,7 +498,7 @@ bento.define('bento/managers/asset', [
                     if (!assetGroups.hasOwnProperty(group)) {
                         continue;
                     }
-                    Bento.assets.load(group, end, function (current, total) {});
+                    load(group, end, function (current, total) {});
                     count += 1;
                 }
             };

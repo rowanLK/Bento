@@ -102,7 +102,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerDown = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
             return;
         }
         this.isPointerDown = true;
@@ -116,7 +116,7 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
             return;
         }
         mousePosition = e.localPosition;
@@ -135,7 +135,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerMove = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
             return;
         }
         if (this.callbacks.pointerMove) {
