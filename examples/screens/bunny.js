@@ -19,38 +19,43 @@ bento.define('bunny', [
 ) {
     'use strict';
     return function () {
-        var object = new Entity({
-            z: 0,
-            name: 'bunny',
-            originRelative: new Vector2(0.5, 1),
-            components: [
-                new Sprite({
-                    image: Bento.assets.getImage('bunnygirlsmall'),
-                    frameWidth: 32,
-                    frameHeight: 32,
-                    animations: {
-                        'idle': {
-                            speed: 0.1,
-                            frames: [0, 10, 11, 12]
-                        }
+        var sprite = new Sprite({
+                image: Bento.assets.getImage('bunnygirlsmall'),
+                frameWidth: 32,
+                frameHeight: 32,
+                animations: {
+                    'default': {
+                        speed: 0.1,
+                        frames: [0, 10, 11, 12]
+                    },
+                    'walk': {
+                        speed: 0.15,
+                        frames: [4, 5, 6, 7, 8, 9]
                     }
-                }),
-                new Clickable({
-                    pointerDown: function () {
-                        console.log('click')
-                        if (Bento.screens.getCurrentScreen().name === 'screen1') {
-                            Bento.screens.show('screen2');
-                        } else {
-                            Bento.screens.show('screen1');
-                        }
+                }
+            }),
+            animation = sprite.animation,
+            clickable = new Clickable({
+                onClick: function () {
+                    console.log('clicked!')
+                    if (Bento.screens.getCurrentScreen().name === 'screen1') {
+                        Bento.screens.show('screen2');
+                    } else {
+                        Bento.screens.show('screen1');
                     }
-                })
-            ],
-            family: [''],
-            init: function () {
-                this.getComponent('animation').setAnimation('idle');
-            }
-        });
-        return object;
+                }
+            }),
+            entity = new Entity({
+                z: 0,
+                name: 'bunny',
+                originRelative: new Vector2(0.5, 0.5),
+                components: [
+                    sprite,
+                    clickable
+                ],
+                family: ['bunnies']
+            });
+
+        return entity;
     };
 });

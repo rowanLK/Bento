@@ -3805,6 +3805,7 @@ or implied, of the author(s).
 bento.define('bento', [
     'bento/utils',
     'bento/lib/domready',
+    'bento/eventsystem',
     'bento/managers/asset',
     'bento/managers/input',
     'bento/managers/object',
@@ -3817,6 +3818,7 @@ bento.define('bento', [
 ], function (
     Utils,
     DomReady,
+    EventSystem,
     AssetManager,
     InputManager,
     ObjectManager,
@@ -3865,6 +3867,10 @@ bento.define('bento', [
             debug.debugBar.style.color = 'white';
             debug.debugBar.innerHTML = 'fps: 0';
             document.body.appendChild(debug.debugBar);
+
+            var button = document.createElement('button');
+            button.innerHTML = 'button';
+            debug.debugBar.appendChild(button);
         },
         setupCanvas = function (settings, callback) {
             var parent,
@@ -3904,7 +3910,7 @@ bento.define('bento', [
                 settings.renderer = 'webgl';
                 // canvas is accelerated in cocoonJS
                 // should also use canvas for android?
-                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/) {
+                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/ ) {
                     settings.renderer = 'canvas2d';
                 }
             }
@@ -3962,6 +3968,10 @@ bento.define('bento', [
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+             * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
+             * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
+             * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
+             * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
@@ -3987,7 +3997,7 @@ bento.define('bento', [
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
 
-                        module.input = InputManager(gameData);
+                        module.input = InputManager(gameData, settings);
                         module.objects = ObjectManager(gameData, settings);
                         module.assets = AssetManager();
                         module.audio = AudioManager(module);
@@ -4001,7 +4011,27 @@ bento.define('bento', [
                         } else {
                             runGame();
                         }
-
+                        // start watching for new modules
+                        bento.watch();
+                        // reload keys
+                        if (settings.reload) {
+                            if (settings.reload.simple) {
+                                EventSystem.on(settings.reload.simple, function () {
+                                    module.reload();
+                                });
+                            }
+                            if (settings.reload.assets) {
+                                EventSystem.on(settings.reload.assets, function () {
+                                    module.assets.reload(module.reload);
+                                });
+                            }
+                            if (settings.reload.jump) {
+                                EventSystem.on(settings.reload.jump, function () {
+                                    var res = prompt('Show which screen?');
+                                    module.screens.show(res);
+                                });
+                            }
+                        }
                     });
                 });
             },
@@ -4037,6 +4067,38 @@ bento.define('bento', [
              */
             getRenderer: function () {
                 return renderer;
+            },
+            /**
+             * Reloads modules and jumps to screen. If no screenName was passed,
+             * it reloads the current screen.
+             * @function
+             * @instance
+             * @param {String} screenName - screen to show
+             * @name reload
+             */
+            reload: function (screenName) {
+                var currentScreen,
+                    Bento = module;
+                if (!Bento.screens) {
+                    throw 'Bento has not beens started yet.';
+                }
+                currentScreen = Bento.screens.getCurrentScreen();
+
+                if (!currentScreen) {
+                    console.log('WARNING: No screen has been loaded.');
+                    return;
+                }
+
+                Bento.screens.reset();
+                Bento.objects.resume();
+
+                Bento.objects.stop();
+                bento.refresh();
+
+                // reload current screen
+                Bento.screens.show(screenName || currentScreen.name);
+                // restart the mainloop
+                setTimeout(Bento.objects.run, 120);
             },
             /**
              * Returns a gameData object
@@ -8767,8 +8829,34 @@ bento.define('bento/managers/asset', [
              */
             getAssetGroups = function () {
                 return assetGroups;
+            },
+             /**
+             * Reloads all assets
+             * @function
+             * @instance
+             * @param {Function} callback - called when all assets are loaded
+             * @name reload
+             */
+            reload  = function (callback) {
+                var group,
+                    count = 0,
+                    loaded = 0,
+                    end = function () {
+                        loaded += 1;
+                        if (loaded === count && callback) {
+                            callback();
+                        }
+                    };
+                for (group in assetGroups) {
+                    if (!assetGroups.hasOwnProperty(group)) {
+                        continue;
+                    }
+                    Bento.assets.load(group, end, function (current, total) {});
+                    count += 1;
+                }
             };
         return {
+            reload: reload,
             loadAssetGroups: loadAssetGroups,
             load: load,
             loadImageFromUrl: loadImageFromUrl,
@@ -9051,10 +9139,12 @@ bento.define('bento/managers/audio', [
  * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
  * <br>Exports: Constructor, can be accessed through Bento.input namespace.
  * @module bento/managers/input
- * @param {Object} settings - Settings
- * @param {Vector2} settings.canvasScale - Reference to the current canvas scale.
- * @param {HtmlCanvas} settings.canvas - Reference to the canvas element.
- * @param {Rectangle} settings.viewport - Reference to viewport.
+ * @param {Object} gameData - gameData
+ * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
+ * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
+ * @param {Rectangle} gameData.viewport - Reference to viewport.
+ * @param {Object} settings - settings passed from Bento.setup
+ * @param {Boolean} settings.preventContextMenu - Prevents right click menu
  * @returns InputManager
  */
 bento.define('bento/managers/input', [
@@ -9064,7 +9154,7 @@ bento.define('bento/managers/input', [
 ], function (Utils, Vector2, EventSystem) {
     'use strict';
     var startPositions = {};
-    return function (settings) {
+    return function (gameData, settings) {
         var isPaused = false,
             isListening = false,
             canvas,
@@ -9174,7 +9264,7 @@ bento.define('bento/managers/input', [
                         console.log('WARNING: touch startPosition was not defined');
                     }
                 }
-                
+
             },
             addMousePosition = function (evt, type) {
                 var x = (evt.pageX - offsetLeft) / canvasScale.x,
@@ -9255,7 +9345,7 @@ bento.define('bento/managers/input', [
                 });
             },
             initKeyboard = function () {
-                var element = settings.canvas || window,
+                var element = gameData.canvas || window,
                     refocus = function (evt) {
                         if (element.focus) {
                             element.focus();
@@ -9281,6 +9371,7 @@ bento.define('bento/managers/input', [
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
                     EventSystem.fire('buttonDown', names[i]);
+                    EventSystem.fire('buttonDown-' + names[i]);
                 }
             },
             keyUp = function (evt) {
@@ -9306,18 +9397,39 @@ bento.define('bento/managers/input', [
             onResize = function () {
                 offsetLeft = canvas.offsetLeft;
                 offsetTop = canvas.offsetTop;
+            },
+            initMouseClicks = function () {
+                if (!document || !document.addEventListener) {
+                    return;
+                }
+                document.addEventListener('contextmenu', function (e) {
+                    EventSystem.fire('mouseDown-right');
+                    // prevent context menu
+                    if (settings.preventContextMenu) {
+                        e.preventDefault();
+                    }
+                }, false);
+                document.addEventListener('click', function (e) {
+                    if (e.which === 1) {
+                        EventSystem.fire('mouseDown-left');
+                        e.preventDefault();
+                    } else if (e.which === 2) {
+                        EventSystem.fire('mouseDown-middle');
+                        e.preventDefault();
+                    }
+                }, false);
             };
 
         window.addEventListener('resize', onResize, false);
         window.addEventListener('orientationchange', onResize, false);
 
-        if (!settings) {
-            throw 'Supply a settings object';
+        if (!gameData) {
+            throw 'Supply a gameData object';
         }
         // canvasScale is needed to take css scaling into account
-        canvasScale = settings.canvasScale;
-        canvas = settings.canvas;
-        viewport = settings.viewport;
+        canvasScale = gameData.canvasScale;
+        canvas = gameData.canvas;
+        viewport = gameData.viewport;
 
         if (canvas && !Utils.isCocoonJS()) {
             offsetLeft = canvas.offsetLeft;
@@ -9326,9 +9438,10 @@ bento.define('bento/managers/input', [
 
         // touch device
         initTouch();
-
         // keyboard
         initKeyboard();
+        // init clicks
+        initMouseClicks();
 
         return {
             /**
@@ -9400,6 +9513,7 @@ bento.define('bento/managers/input', [
         };
     };
 });
+
 /**
  * Manager that controls mainloop and all objects. Attach entities to the object manager 
  * to add them to the game. The object manager loops through every object's update and 
