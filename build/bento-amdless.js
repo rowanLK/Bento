@@ -2266,12 +2266,14 @@ bento.define('bento/entity', [
          */
         this.float = false;
         /**
-         * Indicates if an object should continue updating when the game is paused
+         * Indicates if an object should continue updating when the game is paused.
+         * If updateWhenPaused is larger or equal than the pause level then the
+         * game ignores the pause.
          * @instance
-         * @default false
+         * @default 0
          * @name updateWhenPaused
          */
-        this.updateWhenPaused = false;
+        this.updateWhenPaused = 0;
         /**
          * Name of the entity
          * @instance
@@ -2402,7 +2404,7 @@ bento.define('bento/entity', [
             }
 
             this.z = settings.z || 0;
-            this.updateWhenPaused = settings.updateWhenPaused || false;
+            this.updateWhenPaused = settings.updateWhenPaused || 0;
             this.global = settings.global || false;
             this.float = settings.float || false;
             this.useHshg = settings.useHshg || false;
@@ -4072,7 +4074,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerDown = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
             return;
         }
         this.isPointerDown = true;
@@ -4086,7 +4088,7 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
             return;
         }
         mousePosition = e.localPosition;
@@ -4105,7 +4107,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerMove = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused() && !this.entity.updateWhenPaused) {
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
             return;
         }
         if (this.callbacks.pointerMove) {
@@ -7472,7 +7474,7 @@ bento.define('bento/managers/object', [
             quickAccess = {},
             isRunning = false,
             sortMode = settings.sortMode || 0,
-            isPaused = false,
+            isPaused = 0,
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
@@ -7552,7 +7554,7 @@ bento.define('bento/managers/object', [
                     if (!object) {
                         continue;
                     }
-                    if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
+                    if (object.update && (object.updateWhenPaused >= isPaused)) {
                         object.update(gameData);
                     }
                 }
@@ -7811,27 +7813,36 @@ bento.define('bento/managers/object', [
                  * will still be updated.
                  * @function
                  * @instance
+                 * @param {Number} level - Level of pause state, defaults to 1
                  * @name pause
                  */
-                pause: function () {
-                    isPaused = true;
+                pause: function (level) {
+                    isPaused = level;
+                    if (Utils.isUndefined(level)) {
+                        isPaused = 1;
+                    }
                 },
                 /**
-                 * Cancels the pause and resume updating objects.
+                 * Cancels the pause and resume updating objects. (Sets pause level to 0)
                  * @function
                  * @instance
                  * @name resume
                  */
                 resume: function () {
-                    isPaused = false;
+                    isPaused = 0;
                 },
                 /**
-                 * Returns true if paused
+                 * Returns pause level. If an object is passed to the function
+                 * it checks if that object should be paused or not
                  * @function
                  * @instance
+                 * @param {Object} [object] - Object to check if it's paused
                  * @name isPaused
                  */
-                isPaused: function () {
+                isPaused: function (obj) {
+                    if (Utils.isDefined(obj)) {
+                        return obj.updateWhenPaused < isPaused;
+                    }
                     return isPaused;
                 },
                 /**
