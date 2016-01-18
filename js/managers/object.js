@@ -26,7 +26,7 @@ bento.define('bento/managers/object', [
             quickAccess = {},
             isRunning = false,
             sortMode = settings.sortMode || 0,
-            isPaused = false,
+            isPaused = 0,
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
@@ -106,7 +106,7 @@ bento.define('bento/managers/object', [
                     if (!object) {
                         continue;
                     }
-                    if (object.update && ((isPaused && object.updateWhenPaused) || !isPaused)) {
+                    if (object.update && (object.updateWhenPaused >= isPaused)) {
                         object.update(gameData);
                     }
                 }
@@ -365,27 +365,36 @@ bento.define('bento/managers/object', [
                  * will still be updated.
                  * @function
                  * @instance
+                 * @param {Number} level - Level of pause state, defaults to 1
                  * @name pause
                  */
-                pause: function () {
-                    isPaused = true;
+                pause: function (level) {
+                    isPaused = level;
+                    if (Utils.isUndefined(level)) {
+                        isPaused = 1;
+                    }
                 },
                 /**
-                 * Cancels the pause and resume updating objects.
+                 * Cancels the pause and resume updating objects. (Sets pause level to 0)
                  * @function
                  * @instance
                  * @name resume
                  */
                 resume: function () {
-                    isPaused = false;
+                    isPaused = 0;
                 },
                 /**
-                 * Returns true if paused
+                 * Returns pause level. If an object is passed to the function
+                 * it checks if that object should be paused or not
                  * @function
                  * @instance
+                 * @param {Object} [object] - Object to check if it's paused
                  * @name isPaused
                  */
-                isPaused: function () {
+                isPaused: function (obj) {
+                    if (Utils.isDefined(obj)) {
+                        return obj.updateWhenPaused < isPaused;
+                    }
                     return isPaused;
                 },
                 /**

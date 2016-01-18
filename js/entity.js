@@ -84,12 +84,14 @@ bento.define('bento/entity', [
          */
         this.float = false;
         /**
-         * Indicates if an object should continue updating when the game is paused
+         * Indicates if an object should continue updating when the game is paused.
+         * If updateWhenPaused is larger or equal than the pause level then the
+         * game ignores the pause.
          * @instance
-         * @default false
+         * @default 0
          * @name updateWhenPaused
          */
-        this.updateWhenPaused = false;
+        this.updateWhenPaused = 0;
         /**
          * Name of the entity
          * @instance
@@ -220,7 +222,7 @@ bento.define('bento/entity', [
             }
 
             this.z = settings.z || 0;
-            this.updateWhenPaused = settings.updateWhenPaused || false;
+            this.updateWhenPaused = settings.updateWhenPaused || 0;
             this.global = settings.global || false;
             this.float = settings.float || false;
             this.useHshg = settings.useHshg || false;

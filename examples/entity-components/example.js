@@ -87,6 +87,7 @@ bento.require([
                             },
                         })
                     ],
+                    updateWhenPaused: 1,
                     position: new Vector2(16 + 32, 16),
                     originRelative: new Vector2(0.5, 0.5),
                     init: function () {
@@ -110,6 +111,7 @@ bento.require([
                             }
                         })
                     ],
+                    updateWhenPaused: 2,
                     position: new Vector2(16 + 64, 16),
                     originRelative: new Vector2(0.5, 0.5),
                     init: function () {
@@ -140,6 +142,7 @@ bento.require([
                             }
                         })
                     ],
+                    updateWhenPaused: 3,
                     position: new Vector2(16 + 96, 16),
                     originRelative: new Vector2(0.5, 0.5),
                     init: function () {
@@ -156,6 +159,8 @@ bento.require([
             Bento.objects.add(bunny3);
             Bento.objects.add(bunny4);
 
+            // test with pause
+            // Bento.objects.pause(2);
 
         }, function (current, total) {
             console.log(current + '/' + total);
