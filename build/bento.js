@@ -9645,6 +9645,7 @@ bento.define('bento/managers/object', [
             attach = function (object) {
                 var i, type, family;
                 object.z = object.z || 0;
+                object.updateWhenPaused = object.updateWhenPaused || 0;
                 objects.push(object);
                 if (object.init) {
                     object.init();
