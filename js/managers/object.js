@@ -1,8 +1,8 @@
 /**
- * Manager that controls mainloop and all objects. Attach entities to the object manager 
- * to add them to the game. The object manager loops through every object's update and 
+ * Manager that controls mainloop and all objects. Attach entities to the object manager
+ * to add them to the game. The object manager loops through every object's update and
  * draw functions. The settings object passed here is passed through Bento.setup().
- * <br>Exports: Constructor, can be accessed through Bento.objects namespace. 
+ * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
  * @module bento/managers/object
  * @param {Object} data - gameData object
  * @param {Object} settings - Settings object
@@ -151,7 +151,7 @@ bento.define('bento/managers/object', [
                 if (object.useHshg && object.getAABB) {
                     hshg.addObject(object);
                 }
-                
+
                 if (object.start) {
                     object.start(gameData);
                 }
@@ -165,7 +165,7 @@ bento.define('bento/managers/object', [
             },
             module = {
                 /**
-                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object 
+                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
                  * has the functions update and draw, they will be called during the loop.
                  * @function
                  * @instance
@@ -427,6 +427,16 @@ bento.define('bento/managers/object', [
                  */
                 setSortMode: function (mode) {
                     sortMode = mode;
+                },
+                /**
+                 * Calls the update function. Be careful when using this in another
+                 * update loop, as it will result in an endless loop.
+                 * @function
+                 * @instance
+                 * @name update
+                 */
+                update: function () {
+                    update();
                 }
             };
 
