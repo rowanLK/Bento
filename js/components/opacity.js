@@ -12,21 +12,21 @@ bento.define('bento/components/opacity', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var oldOpacity = 1,
-        Opacity = function (settings) {
+    var Opacity = function (settings) {
             settings = settings || {};
             this.name = 'opacity';
-            this.set = false;
-            this.opacity = settings.opacity || 1;
+            this.oldOpacity = 1;
+            this.opacity = 1;
+            if (Utils.isDefined(settings.opacity)) {
+                this.opacity = settings.opacity;
+            }
         };
     Opacity.prototype.draw = function (data) {
-        if (this.set) {
-            oldOpacity = data.renderer.getOpacity();
-            data.renderer.setOpacity(this.opacity);
-        }
+        this.oldOpacity = data.renderer.getOpacity();
+        data.renderer.setOpacity(this.opacity * this.oldOpacity);
     };
     Opacity.prototype.postDraw = function (data) {
-        data.renderer.setOpacity(oldOpacity);
+        data.renderer.setOpacity(this.oldOpacity);
     };
     /**
      * Set entity opacity
@@ -36,7 +36,6 @@ bento.define('bento/components/opacity', [
      * @name setOpacity
      */
     Opacity.prototype.setOpacity = function (value) {
-        this.set = true;
         this.opacity = value;
     };
     /**

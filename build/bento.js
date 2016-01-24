@@ -5688,6 +5688,7 @@ bento.define('bento/utils', [], function () {
  * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
  * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
  * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between frames
  * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
  * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
  * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
@@ -5744,6 +5745,7 @@ bento.define('bento/components/animation', [
         this.frameCountY = 1;
         this.frameWidth = 0;
         this.frameHeight = 0;
+        this.padding = 0;
 
         // set to default
         this.animations = {};
@@ -5818,6 +5820,9 @@ bento.define('bento/components/animation', [
             this.frameCountY = this.animationSettings.frameCountY || 1;
             this.frameHeight = this.spriteImage.height / this.frameCountY;
         }
+
+        this.padding = this.animationSettings.padding || 0;
+
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
         this.setAnimation('default');
@@ -5863,6 +5868,10 @@ bento.define('bento/components/animation', [
             this.currentAnimation.name = name;
             if (!keepCurrentFrame) {
                 this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimation.frames.length;
             }
         }
     };
@@ -5934,7 +5943,6 @@ bento.define('bento/components/animation', [
         reachedEnd = false;
         this.currentFrame += this.currentAnimation.speed || 1;
         if (this.currentAnimation.loop) {
-            // TODO: fix this while loop getting stuck
             while (this.currentFrame >= this.currentAnimation.frames.length) {
                 this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
                 reachedEnd = true;
@@ -5949,22 +5957,26 @@ bento.define('bento/components/animation', [
         }
     };
     Animation.prototype.draw = function (data) {
-        var cf, sx, sy,
+        var frameIndex,
+            sourceFrame, 
+            sourceX, 
+            sourceY,
             entity = data.entity,
             origin = entity.origin;
 
         if (!this.currentAnimation || !this.visible) {
             return;
         }
-        cf = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        sx = (this.currentAnimation.frames[cf] % this.frameCountX) * this.frameWidth;
-        sy = Math.floor(this.currentAnimation.frames[cf] / this.frameCountX) * this.frameHeight;
+        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sourceFrame = this.currentAnimation.frames[frameIndex];
+        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
 
         data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
         data.renderer.drawImage(
             this.spriteImage,
-            sx,
-            sy,
+            sourceX,
+            sourceY,
             this.frameWidth,
             this.frameHeight,
             0,
@@ -6287,21 +6299,21 @@ bento.define('bento/components/opacity', [
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-    var oldOpacity = 1,
-        Opacity = function (settings) {
+    var Opacity = function (settings) {
             settings = settings || {};
             this.name = 'opacity';
-            this.set = false;
-            this.opacity = settings.opacity || 1;
+            this.oldOpacity = 1;
+            this.opacity = 1;
+            if (Utils.isDefined(settings.opacity)) {
+                this.opacity = settings.opacity;
+            }
         };
     Opacity.prototype.draw = function (data) {
-        if (this.set) {
-            oldOpacity = data.renderer.getOpacity();
-            data.renderer.setOpacity(this.opacity);
-        }
+        this.oldOpacity = data.renderer.getOpacity();
+        data.renderer.setOpacity(this.opacity * this.oldOpacity);
     };
     Opacity.prototype.postDraw = function (data) {
-        data.renderer.setOpacity(oldOpacity);
+        data.renderer.setOpacity(this.oldOpacity);
     };
     /**
      * Set entity opacity
@@ -6311,7 +6323,6 @@ bento.define('bento/components/opacity', [
      * @name setOpacity
      */
     Opacity.prototype.setOpacity = function (value) {
-        this.set = true;
         this.opacity = value;
     };
     /**
