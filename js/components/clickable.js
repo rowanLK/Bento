@@ -4,12 +4,12 @@
  * <br>Exports: Constructor
  * @module bento/components/clickable
  * @param {Object} settings - Settings
- * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen 
- * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen 
- * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen 
- * @param {Function} settings.onClick - Called when pointer taps on the parent entity 
- * @param {Function} settings.onClickUp - The pointer was released above the parent entity 
- * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity 
+ * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
+ * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
+ * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
+ * @param {Function} settings.onClick - Called when pointer taps on the parent entity
+ * @param {Function} settings.onClickUp - The pointer was released above the parent entity
+ * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
  * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
  * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
  * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
@@ -25,6 +25,9 @@ bento.define('bento/components/clickable', [
     'bento/eventsystem'
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
+
+    var clickables = [];
+
     var Clickable = function (settings) {
         var nothing = function () {};
         this.entity = null;
@@ -68,10 +71,28 @@ bento.define('bento/components/clickable', [
             onHoverLeave: settings.onHoverLeave || nothing,
             onHoverEnter: settings.onHoverEnter || nothing
         };
-
+        /**
+         * Static array that holds a reference to all currently active Clickables
+         * @type {Array}
+         */
+        this.clickables = clickables;
     };
 
     Clickable.prototype.destroy = function () {
+        var index = clickables.indexOf(this),
+            i = 0,
+            len = 0;
+
+        if (index > -1)
+            clickables[index] = null;
+        // clear the array if it consists of only null's
+        for (i = 0, len = clickables.length; i < len; ++i) {
+            if (clickables[i])
+                break;
+            if (i === len - 1)
+                clickables.length = 0;
+        }
+
         EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
         EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
         EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
@@ -81,6 +102,9 @@ bento.define('bento/components/clickable', [
         if (this.initialized) {
             return;
         }
+
+        clickables.push(this);
+
         EventSystem.addEventListener('pointerDown', this.pointerDown, this);
         EventSystem.addEventListener('pointerUp', this.pointerUp, this);
         EventSystem.addEventListener('pointerMove', this.pointerMove, this);
