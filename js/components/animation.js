@@ -84,8 +84,11 @@ bento.define('bento/components/animation', [
      * @name setup
      */
     Animation.prototype.setup = function (settings) {
-        var self = this;
+        var self = this,
+            padding = 0;
+
         this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
 
         // add default animation
         if (!this.animations['default']) {
@@ -133,14 +136,14 @@ bento.define('bento/components/animation', [
             this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
         } else {
             this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = this.spriteImage.width / this.frameCountX;
+            this.frameWidth = this.spriteImage.width / this.frameCountX - padding * (this.frameCountX - 1);
         }
         if (this.animationSettings.frameHeight) {
             this.frameHeight = this.animationSettings.frameHeight;
             this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
         } else {
             this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = this.spriteImage.height / this.frameCountY;
+            this.frameHeight = this.spriteImage.height / this.frameCountY - padding * (this.frameCountY - 1);
         }
 
         this.padding = this.animationSettings.padding || 0;
@@ -177,7 +180,7 @@ bento.define('bento/components/animation', [
             }
             // TODO: entity.name is always an empty string
             if (highestFrame > this.frameCountX * this.frameCountY - 1)
-                console.log("Warning: the frames in animation " + animation + " are out of bounds. Can't use frame " + highestFrame + ".", this.entity);
+                console.log("Warning: the frames in animation " + animation + " of " + this.entity.name + " are out of bounds. Can't use frame " + highestFrame + ".");
         }
     };
     /**

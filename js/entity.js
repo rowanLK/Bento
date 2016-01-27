@@ -189,14 +189,6 @@ bento.define('bento/entity', [
 
         // read settings
         if (settings) {
-            if (settings.components) {
-                if (!Utils.isArray(settings.components)) {
-                    settings.components = [settings.components];
-                }
-                for (i = 0; i < settings.components.length; ++i) {
-                    this.attach(settings.components[i]);
-                }
-            }
             if (settings.position) {
                 this.position = settings.position;
             }
@@ -217,9 +209,6 @@ bento.define('bento/entity', [
                     this.family.push(settings.family[i]);
                 }
             }
-            if (settings.init) {
-                settings.init.apply(this);
-            }
 
             this.z = settings.z || 0;
             this.updateWhenPaused = settings.updateWhenPaused || 0;
@@ -228,6 +217,19 @@ bento.define('bento/entity', [
             this.useHshg = settings.useHshg || false;
             this.staticHshg = settings.staticHshg || false;
             this.onCollide = settings.onCollide;
+
+            if (settings.components) {
+                if (!Utils.isArray(settings.components)) {
+                    settings.components = [settings.components];
+                }
+                for (i = 0; i < settings.components.length; ++i) {
+                    this.attach(settings.components[i]);
+                }
+            }
+            
+            if (settings.init) {
+                settings.init.apply(this);
+            }
 
             if (settings.addNow) {
                 Bento.objects.add(this);
