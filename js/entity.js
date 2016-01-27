@@ -195,9 +195,6 @@ bento.define('bento/entity', [
             if (settings.origin) {
                 this.origin = settings.origin;
             }
-            if (settings.originRelative) {
-                this.setOriginRelative(settings.originRelative);
-            }
             if (settings.name) {
                 this.name = settings.name;
             }
@@ -218,6 +215,7 @@ bento.define('bento/entity', [
             this.staticHshg = settings.staticHshg || false;
             this.onCollide = settings.onCollide;
 
+            // attach components after initializing other variables
             if (settings.components) {
                 if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
@@ -226,7 +224,13 @@ bento.define('bento/entity', [
                     this.attach(settings.components[i]);
                 }
             }
-            
+
+            // origin relative depends on dimension, so do this after attaching components
+            if (settings.originRelative) {
+                this.setOriginRelative(settings.originRelative);
+            }
+
+            // you might want to init with all components
             if (settings.init) {
                 settings.init.apply(this);
             }

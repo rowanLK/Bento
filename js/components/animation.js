@@ -136,14 +136,14 @@ bento.define('bento/components/animation', [
             this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
         } else {
             this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = this.spriteImage.width / this.frameCountX - padding * (this.frameCountX - 1);
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
         }
         if (this.animationSettings.frameHeight) {
             this.frameHeight = this.animationSettings.frameHeight;
             this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
         } else {
             this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = this.spriteImage.height / this.frameCountY - padding * (this.frameCountY - 1);
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
         }
 
         this.padding = this.animationSettings.padding || 0;
