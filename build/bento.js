@@ -5559,7 +5559,7 @@ bento.define('bento/utils', [], function () {
          * @param {Number} max - maximum value
          * @return {Number} Randomized number
          */
-        getRandomRangeFloat: function (n) {
+        getRandomRangeFloat: function (min, max) {
             var diff = max - min;
             return min + Math.random() * diff;
         },
