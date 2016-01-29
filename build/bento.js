@@ -8410,6 +8410,1924 @@ bento.define('bento/lib/requestanimationframe', [], function () {
     return window.requestAnimationFrame;
 });
 /**
+ * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
+ * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
+ * assets to load, and where to find them.
+ * <br>Exports: Constructor, can be accessed through Bento.asset namespace
+ * @module bento/managers/asset
+ * @returns AssetManager
+ */
+bento.define('bento/managers/asset', [
+    'bento/packedimage',
+    'bento/utils',
+    'audia'
+], function (PackedImage, Utils, Audia) {
+    'use strict';
+    return function () {
+        var assetGroups = {},
+            path = '',
+            assets = {
+                audio: {},
+                json: {},
+                images: {},
+                binary: {}
+            },
+            texturePacker = {},
+            packs = [],
+            loadAudio = function (name, source, callback) {
+                var i,
+                    failed = true,
+                    loadAudioFile = function (index, src) {
+                        var audio = new Audia(),
+                            canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
+                        if (!!canPlay || window.ejecta) {
+                            // success!
+                            audio.onload = function () {
+                                callback(null, name, audio);
+                            };
+                            audio.src = src;
+                            failed = false;
+                            return true;
+                        }
+                        return false;
+                    };
+                if (!Utils.isArray(source)) {
+                    // source = [path + 'audio/' + source];
+                    source = [source];
+                }
+                // try every type
+                for (i = 0; i < source.length; ++i) {
+                    if (loadAudioFile(i, path + 'audio/' + source[i])) {
+                        break;
+                    }
+                }
+                if (failed) {
+                    callback('This audio type is not supported:', name, source);
+                }
+            },
+            loadJSON = function (name, source, callback) {
+                var xhr = new XMLHttpRequest();
+                if (xhr.overrideMimeType) {
+                    xhr.overrideMimeType('application/json');
+                }
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + source);
+                };
+                xhr.ontimeout = function () {
+                    callback('Timeout' + source);
+                };
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                            callback(null, name, JSON.parse(xhr.responseText));
+                        } else {
+                            callback('Error: State ' + xhr.readyState + ' ' + source);
+                        }
+                    }
+                };
+                xhr.send(null);
+            },
+            loadBinary = function (name, source, success, failure) {
+                var xhr = new XMLHttpRequest(),
+                    arrayBuffer,
+                    byteArray,
+                    buffer,
+                    i = 0;
+
+                xhr.open('GET', source, true);
+                xhr.onerror = function () {
+                    callback('Error ' + name);
+                };
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function (e) {
+                    var binary;
+                    arrayBuffer = xhr.response;
+                    if (arrayBuffer) {
+                        byteArray = new Uint8Array(arrayBuffer);
+                        buffer = [];
+                        for (i; i < byteArray.byteLength; ++i) {
+                            buffer[i] = String.fromCharCode(byteArray[i]);
+                        }
+                        // loadedAssets.binary[name] = buffer.join('');
+                        binary = buffer.join('');
+                        callback(null, name, binary);
+                    }
+                };
+                xhr.send();
+            },
+            loadImage = function (name, source, callback) {
+                var img = new Image();
+                img.src = source;
+                img.addEventListener('load', function () {
+                    callback(null, name, img);
+                }, false);
+                img.addEventListener('error', function (evt) {
+                    // TODO: Implement failure: should it retry to load the image?
+                    console.log('ERROR: loading image failed');
+                }, false);
+            },
+            /**
+             * Loads asset groups (json files containing names and asset paths to load)
+             * If the assetGroup parameter is passed to Bento.setup, this function will be
+             * called automatically by Bento.
+             * This will not load the assets (merely the assetgroups). To load the assets,
+             * you must call Bento.assets.load()
+             * @function
+             * @instance
+             * @param {Object} jsonFiles - Name with json path
+             * @param {Function} onReady - Callback when ready
+             * @param {Function} onLoaded - Callback when json file is loaded
+             * @name loadAssetGroups
+             */
+            loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
+                var jsonName,
+                    keyCount = Utils.getKeyLength(jsonFiles),
+                    loaded = 0,
+                    callback = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assetGroups[name] = json;
+                        loaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(loaded, keyCount);
+                        }
+                        if (keyCount === loaded && Utils.isDefined(onReady)) {
+                            onReady(null);
+                        }
+                    };
+                for (jsonName in jsonFiles) {
+                    if (jsonFiles.hasOwnProperty(jsonName)) {
+                        loadJSON(jsonName, jsonFiles[jsonName], callback);
+                    }
+                }
+            },
+            /**
+             * Loads assets from asset group.
+             * @function
+             * @instance
+             * @param {String} groupName - Name of asset group
+             * @param {Function} onReady - Callback when ready
+             * @param {Function} onLoaded - Callback when asset file is loaded
+             * @name load
+             */
+            load = function (groupName, onReady, onLoaded) {
+                var group = assetGroups[groupName],
+                    asset,
+                    assetsLoaded = 0,
+                    assetCount = 0,
+                    toLoad = [],
+                    checkLoaded = function () {
+                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
+                            initPackedImages();
+                            onReady(null);
+                        }
+                    },
+                    onLoadImage = function (err, name, image) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.images[name] = image;
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadPack = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        packs.push(name);
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadJson = function (err, name, json) {
+                        if (err) {
+                            console.log(err);
+                            return;
+                        }
+                        assets.json[name] = json;
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    onLoadAudio = function (err, name, audio) {
+                        if (err) {
+                            console.log(err);
+                        } else {
+                            assets.audio[name] = audio;
+                        }
+                        assetsLoaded += 1;
+                        if (Utils.isDefined(onLoaded)) {
+                            onLoaded(assetsLoaded, assetCount);
+                        }
+                        checkLoaded();
+                    },
+                    readyForLoading = function (fn, asset, path, callback) {
+                        toLoad.push({
+                            fn: fn,
+                            asset: asset,
+                            path: path,
+                            callback: callback
+                        });
+                    },
+                    loadAllAssets = function () {
+                        var i = 0,
+                            data;
+                        for (i = 0; i < toLoad.length; ++i) {
+                            data = toLoad[i];
+                            data.fn(data.asset, data.path, data.callback);
+                        }
+                    };
+
+                if (!Utils.isDefined(group)) {
+                    onReady('Could not find asset group ' + groupName);
+                    return;
+                }
+                // set path
+                if (Utils.isDefined(group.path)) {
+                    path = group.path;
+                }
+                // count the number of assets first
+                // get images
+                if (Utils.isDefined(group.images)) {
+                    assetCount += Utils.getKeyLength(group.images);
+                    for (asset in group.images) {
+                        if (!group.images.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
+                    }
+                }
+                // get packed images
+                if (Utils.isDefined(group.texturePacker)) {
+                    assetCount += Utils.getKeyLength(group.texturePacker);
+                    for (asset in group.texturePacker) {
+                        if (!group.texturePacker.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                    }
+                }
+                // get audio
+                if (Utils.isDefined(group.audio)) {
+                    assetCount += Utils.getKeyLength(group.audio);
+                    for (asset in group.audio) {
+                        if (!group.audio.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
+                    }
+                }
+                // get json
+                if (Utils.isDefined(group.json)) {
+                    assetCount += Utils.getKeyLength(group.json);
+                    for (asset in group.json) {
+                        if (!group.json.hasOwnProperty(asset)) {
+                            continue;
+                        }
+                        readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
+                    }
+                }
+                // load all assets
+                loadAllAssets();
+            },
+            /**
+             * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadImageFromUrl
+             */
+            loadImageFromUrl = function (name, url, callback) {
+                var onLoadImage = function (err, name, image) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.images[name] = image;
+                    if (callback) {
+                        callback(null, image);
+                    }
+                };
+                loadImage(name, url, onLoadImage);
+            },
+            /**
+             * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadJsonFromUrl
+             */
+            loadJsonFromUrl = function (name, url, callback) {
+                var onLoadJson = function (err, name, json) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.json[name] = json;
+                    if (callback) {
+                        callback(null, json);
+                    }
+                };
+                loadJSON(name, url, onLoadJson);
+            },
+            /**
+             * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
+             * @function
+             * @instance
+             * @param {String} name - Name of asset
+             * @param {String} url - Url path (relative to your index.html)
+             * @param {Function} callback - Callback function
+             * @name loadAudioFromUrl
+             */
+            loadAudioFromUrl = function (name, url, callback) {
+                var onLoadAudio = function (err, name, audio) {
+                    if (err) {
+                        console.log(err);
+                        if (callback) {
+                            callback(err);
+                        }
+                        return;
+                    }
+                    assets.audio[name] = audio;
+                    if (callback) {
+                        callback(audio);
+                    }
+                };
+                loadAudio(name, url, onLoadAudio);
+            },
+            /**
+             * Unloads assets (not implemented yet)
+             * @function
+             * @instance
+             * @param {String} groupName - Name of asset group
+             * @name unload
+             */
+            unload = function (groupName) {},
+            /**
+             * Returns a previously loaded image
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {PackedImage} Image
+             * @name getImage
+             */
+            getImage = function (name) {
+                var image, packedImage = texturePacker[name];
+                if (!packedImage) {
+                    image = getImageElement(name);
+                    if (!image) {
+                        throw 'Can not find ' + name;
+                    }
+                    packedImage = PackedImage(image);
+                    texturePacker[name] = packedImage;
+                }
+                return packedImage;
+            },
+            /**
+             * Returns a previously loaded image element
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {HTMLImage} Html Image element
+             * @name getImageElement
+             */
+            getImageElement = function (name) {
+                var asset = assets.images[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            /**
+             * Returns a previously loaded json object
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Object} Json object
+             * @name getJson
+             */
+            getJson = function (name) {
+                var asset = assets.json[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            /**
+             * Returns a previously loaded audio element (currently by howler)
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Audia} Audia object
+             * @name getAudio
+             */
+            getAudio = function (name) {
+                var asset = assets.audio[name];
+                if (!Utils.isDefined(asset)) {
+                    throw ('Asset ' + name + ' could not be found');
+                }
+                return asset;
+            },
+            /**
+             * Returns all assets
+             * @function
+             * @instance
+             * @param {String} name - Name of image
+             * @returns {Object} assets - Object with reference to all loaded assets
+             * @name getAssets
+             */
+            getAssets = function () {
+                return assets;
+            },
+            initPackedImages = function () {
+                var frame, pack, i, image, json, name;
+                while (packs.length) {
+                    pack = packs.pop();
+                    image = getImageElement(pack);
+                    json = getJson(pack);
+
+                    // parse json
+                    for (i = 0; i < json.frames.length; ++i) {
+                        name = json.frames[i].filename;
+                        name = name.substring(0, name.length - 4);
+                        frame = json.frames[i].frame;
+                        texturePacker[name] = PackedImage(image, frame);
+                    }
+                }
+            },
+            /**
+             * Returns asset group
+             * @function
+             * @instance
+             * @returns {Object} assetGroups - reference to loaded JSON file
+             * @name getAssetGroups
+             */
+            getAssetGroups = function () {
+                return assetGroups;
+            },
+             /**
+             * Reloads all assets
+             * @function
+             * @instance
+             * @param {Function} callback - called when all assets are loaded
+             * @name reload
+             */
+            reload  = function (callback) {
+                var group,
+                    count = 0,
+                    loaded = 0,
+                    end = function () {
+                        loaded += 1;
+                        if (loaded === count && callback) {
+                            callback();
+                        }
+                    };
+                for (group in assetGroups) {
+                    if (!assetGroups.hasOwnProperty(group)) {
+                        continue;
+                    }
+                    load(group, end, function (current, total) {});
+                    count += 1;
+                }
+            };
+        return {
+            reload: reload,
+            loadAssetGroups: loadAssetGroups,
+            load: load,
+            loadImageFromUrl: loadImageFromUrl,
+            loadJsonFromUrl: loadJsonFromUrl,
+            loadAudioFromUrl: loadAudioFromUrl,
+            unload: unload,
+            getImage: getImage,
+            getImageElement: getImageElement,
+            getJson: getJson,
+            getAudio: getAudio,
+            getAssets: getAssets,
+            getAssetGroups: getAssetGroups
+        };
+    };
+});
+/**
+ * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
+ * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
+ * asset names with sfx_ and bgm_ respectively.
+ * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
+ * @module bento/managers/audio
+ * @returns AudioManager
+ */
+bento.define('bento/managers/audio', [
+    'bento/utils'
+], function (Utils) {
+    return function (bento) {
+        var volume = 1,
+            mutedSound = false,
+            mutedMusic = false,
+            preventSounds = false,
+            isPlayingMusic = false,
+            howler,
+            musicLoop = false,
+            lastMusicPlayed = '',
+            currentMusicId = 0,
+            saveMuteSound,
+            saveMuteMusic,
+            assetManager = bento.assets,
+            canvasElement = bento.getCanvas(),
+            onVisibilityChanged = function (hidden) {
+                if (hidden) {
+                    // save audio preferences and mute
+                    saveMuteSound = mutedSound;
+                    saveMuteMusic = mutedMusic;
+                    obj.muteMusic(true);
+                    obj.muteSound(true);
+                } else {
+                    // reload audio preferences and replay music if necessary
+                    mutedSound = saveMuteSound;
+                    mutedMusic = saveMuteMusic;
+                    obj.playMusic(lastMusicPlayed, musicLoop);
+                }
+            },
+            obj = {
+                /**
+                 * Sets the volume (0 = minimum, 1 = maximum)
+                 * @name setVolume
+                 * @instance
+                 * @function
+                 * @param {Number} value - the volume
+                 * @param {String} name - name of the sound to change volume
+                 */
+                setVolume: function (value, name) {
+                    assetManager.getAudio(name).volume = value;
+                },
+                /**
+                 * Gets the volume (0 = minimum, 1 = maximum)
+                 * @name getVolume
+                 * @instance
+                 * @function
+                 * @param {String} name - name of the sound
+                 */
+                getVolume: function (name) {
+                    return assetManager.getAudio(name).volume;
+                },
+                /**
+                 * Plays a sound effect
+                 * @name playSound
+                 * @instance
+                 * @function
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to false)
+                 * @param {Function} [onEnd] - callback when the audio ends
+                 * @param {Boolean} [stopSound] - stops the sound if true
+                 */
+                playSound: function (name, loop, onEnd, stopSound) {
+                    var audio = assetManager.getAudio(name);
+                    if (!mutedSound && !preventSounds) {
+                        if (stopSound)
+                            obj.stopSound(name);
+                        if (Utils.isDefined(loop)) {
+                            audio.loop = loop;
+                        }
+                        if (Utils.isDefined(onEnd)) {
+                            audio.onended = onEnd;
+                        }
+                        audio.play();
+                    }
+                },
+                /**
+                 * Stops a specific sound effect
+                 * @name stopSound
+                 * @instance
+                 * @function
+                 */
+                stopSound: function (name) {
+                    var i, l, node;
+                    assetManager.getAudio(name).stop();
+                },
+                /**
+                 * Plays a music
+                 * @name playMusic
+                 * @instance
+                 * @function
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to true)
+                 * @param {Function} [onEnd] - callback when the audio ends
+                 * @param {Boolean} [stopAllMusic] - stops all music if true
+                 */
+                playMusic: function (name, loop, onEnd, stopAllMusic) {
+                    var audio;
+
+                    if (stopAllMusic)
+                        obj.stopAllMusic();
+
+                    lastMusicPlayed = name;
+                    if (Utils.isDefined(loop)) {
+                        musicLoop = loop;
+                    } else {
+                        musicLoop = true;
+                    }
+                    // set end event
+                    if (!mutedMusic && lastMusicPlayed !== '') {
+                        audio = assetManager.getAudio(name);
+                        if (onEnd) {
+                            audio.onended = onEnd;
+                        }
+                        audio.loop = musicLoop;
+                        audio.play();
+                        isPlayingMusic = true;
+                    }
+                },
+                /**
+                 * Stops a specific music
+                 * @name stopMusic
+                 * @param {String} name - name of the audio asset
+                 * @instance
+                 * @function
+                 */
+                stopMusic: function (name) {
+                    var i, l, node;
+                    assetManager.getAudio(name).stop();
+                    isPlayingMusic = false;
+                },
+                /**
+                 * Mute or unmute all sound
+                 * @name muteSound
+                 * @instance
+                 * @function
+                 * @param {Boolean} mute - whether to mute or not
+                 */
+                muteSound: function (mute) {
+                    mutedSound = mute;
+                    if (mutedSound) {
+                        // we stop all sounds because setting volume is not supported on all devices
+                        this.stopAllSound();
+                    }
+                },
+                /**
+                 * Mute or unmute all music
+                 * @instance
+                 * @name muteMusic
+                 * @function
+                 * @param {Boolean} mute - whether to mute or not
+                 * @param {Boolean} continueMusic - whether the music continues
+                 */
+                muteMusic: function (mute, continueMusic) {
+                    var last = lastMusicPlayed;
+                    mutedMusic = mute;
+
+                    if (!Utils.isDefined(continueMusic)) {
+                        continueMusic = false;
+                    }
+                    if (mutedMusic) {
+                        obj.stopAllMusic();
+                        lastMusicPlayed = last;
+                    } else if (continueMusic && lastMusicPlayed !== '') {
+                        obj.playMusic(lastMusicPlayed, musicLoop);
+                    }
+                },
+                /**
+                 * Stop all sound effects currently playing
+                 * @instance
+                 * @name stopAllSound
+                 * @function
+                 */
+                stopAllSound: function () {
+                    var sound,
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
+                            sounds[sound].stop();
+                        }
+                    }
+                },
+                /**
+                 * Stop all music currently playing
+                 * @instance
+                 * @name stopAllMusic
+                 * @function
+                 */
+                stopAllMusic: function () {
+                    var sound,
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
+                            sounds[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
+                        }
+                    }
+                    lastMusicPlayed = '';
+                    isPlayingMusic = false;
+                },
+                /**
+                 * Prevents any sound from playing without interrupting current sounds
+                 * @instance
+                 * @name preventSounds
+                 * @function
+                 */
+                preventSounds: function (bool) {
+                    preventSounds = bool;
+                },
+                /**
+                 * Returns true if any music is playing
+                 * @instance
+                 * @name isPlayingMusic
+                 * @function
+                 */
+                isPlayingMusic: function () {
+                    return isPlayingMusic;
+                }
+            };
+        // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
+        if ('hidden' in document) {
+            document.addEventListener("visibilitychange", function () {
+                onVisibilityChanged(document.hidden);
+            }, false);
+        } else if ('mozHidden' in document) {
+            document.addEventListener("mozvisibilitychange", function () {
+                onVisibilityChanged(document.mozHidden);
+            }, false);
+        } else if ('webkitHidden' in document) {
+            document.addEventListener("webkitvisibilitychange", function () {
+                onVisibilityChanged(document.webkitHidden);
+            }, false);
+        } else if ('msHidden' in document) {
+            document.addEventListener("msvisibilitychange", function () {
+                onVisibilityChanged(document.msHidden);
+            }, false);
+        } else if ('onpagehide' in window) {
+            window.addEventListener('pagehide', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('pageshow', function () {
+                onVisibilityChanged(false);
+            }, false);
+        } else if ('onblur' in document) {
+            window.addEventListener('blur', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focus', function () {
+                onVisibilityChanged(false);
+            }, false);
+            visHandled = true;
+        } else if ('onfocusout' in document) {
+            window.addEventListener('focusout', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focusin', function () {
+                onVisibilityChanged(false);
+            }, false);
+        }
+        return obj;
+    };
+});
+/**
+ * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
+ * <br>Exports: Constructor, can be accessed through Bento.input namespace.
+ * @module bento/managers/input
+ * @param {Object} gameData - gameData
+ * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
+ * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
+ * @param {Rectangle} gameData.viewport - Reference to viewport.
+ * @param {Object} settings - settings passed from Bento.setup
+ * @param {Boolean} settings.preventContextMenu - Prevents right click menu
+ * @returns InputManager
+ */
+bento.define('bento/managers/input', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
+    'use strict';
+    var startPositions = {};
+    return function (gameData, settings) {
+        var isPaused = false,
+            isListening = false,
+            canvas,
+            canvasScale,
+            viewport,
+            pointers = [],
+            keyStates = {},
+            offsetLeft = 0,
+            offsetTop = 0,
+            pointerDown = function (evt) {
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition,
+                    worldPosition: evt.worldPosition
+                });
+                EventSystem.fire('pointerDown', evt);
+            },
+            pointerMove = function (evt) {
+                EventSystem.fire('pointerMove', evt);
+                updatePointer(evt);
+            },
+            pointerUp = function (evt) {
+                EventSystem.fire('pointerUp', evt);
+                removePointer(evt);
+            },
+            touchStart = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i, 'start');
+                    pointerDown(evt);
+                }
+            },
+            touchMove = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i, 'move');
+                    pointerMove(evt);
+                }
+            },
+            touchEnd = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTouchPosition(evt, i, 'end');
+                    pointerUp(evt);
+                }
+            },
+            mouseDown = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt, 'start');
+                pointerDown(evt);
+            },
+            mouseMove = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt, 'move');
+                pointerMove(evt);
+            },
+            mouseUp = function (evt) {
+                evt.preventDefault();
+                addMousePosition(evt, 'end');
+                pointerUp(evt);
+            },
+            addTouchPosition = function (evt, n, type) {
+                var touch = evt.changedTouches[n],
+                    x = (touch.pageX - offsetLeft) / canvasScale.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y,
+                    startPos = {};
+
+                evt.preventDefault();
+                evt.id = 0;
+                evt.eventType = 'touch';
+                touch.position = new Vector2(x, y);
+                touch.worldPosition = touch.position.clone();
+                touch.worldPosition.x += viewport.x;
+                touch.worldPosition.y += viewport.y;
+                touch.localPosition = touch.position.clone();
+                // add 'normal' position
+                evt.position = touch.position.clone();
+                evt.worldPosition = touch.worldPosition.clone();
+                evt.localPosition = touch.localPosition.clone();
+                // id
+                evt.id = touch.identifier + 1;
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = touch.position.clone();
+                    startPos.startWorldPosition = touch.worldPosition.clone();
+                    startPos.startLocalPosition = touch.localPosition.clone();
+                    // save startPos
+                    startPositions[evt.id] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[evt.id];
+                    if (startPos && startPos.startPosition) {
+                        touch.diffPosition = touch.position.substract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        evt.diffPosition = touch.diffPosition.clone();
+                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
+                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
+                        delete startPositions[evt.id];
+                    } else {
+                        console.log('WARNING: touch startPosition was not defined');
+                    }
+                }
+
+            },
+            addMousePosition = function (evt, type) {
+                var x = (evt.pageX - offsetLeft) / canvasScale.x,
+                    y = (evt.pageY - offsetTop) / canvasScale.y,
+                    startPos = {},
+                    n = -1;
+                evt.id = 0;
+                evt.eventType = 'mouse';
+                evt.position = new Vector2(x, y);
+                evt.worldPosition = evt.position.clone();
+                evt.worldPosition.x += viewport.x;
+                evt.worldPosition.y += viewport.y;
+                evt.localPosition = evt.position.clone();
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = evt.position.clone();
+                    startPos.startWorldPosition = evt.worldPosition.clone();
+                    startPos.startLocalPosition = evt.localPosition.clone();
+                    // save startPos
+                    startPositions[n] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[n];
+                    evt.diffPosition = evt.position.substract(startPos.startPosition);
+                    evt.diffWorldPosition = evt.worldPosition.substract(startPos.startWorldPosition);
+                    evt.diffLocalPosition = evt.localPosition.substract(startPos.startLocalPosition);
+                }
+                // give it an id that doesn't clash with touch id
+                evt.id = -1;
+            },
+            updatePointer = function (evt) {
+                var i = 0;
+                for (i = 0; i < pointers.length; i += 1) {
+                    if (pointers[i].id === evt.id) {
+                        pointers[i].position = evt.position;
+                        pointers[i].worldPosition = evt.worldPosition;
+                        pointers[i].localPosition = evt.position;
+                        return;
+                    }
+                }
+            },
+            removePointer = function (evt) {
+                var i = 0;
+                for (i = 0; i < pointers.length; i += 1) {
+                    if (pointers[i].id === evt.id) {
+                        pointers.splice(i, 1);
+                        return;
+                    }
+                }
+            },
+            initTouch = function () {
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
+
+                document.body.addEventListener('touchstart', function (evt) {
+                    if (evt && evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt && evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
+                });
+                document.body.addEventListener('touchmove', function (evt) {
+                    if (evt && evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+                    if (evt && evt.stopPropagation) {
+                        evt.stopPropagation();
+                    }
+                    return false;
+                });
+            },
+            initKeyboard = function () {
+                var element = gameData.canvas || window,
+                    refocus = function (evt) {
+                        if (element.focus) {
+                            element.focus();
+                        }
+                    };
+                // fix for iframes
+                element.tabIndex = 0;
+                if (element.focus) {
+                    element.focus();
+                }
+                element.addEventListener('keydown', keyDown, false);
+                element.addEventListener('keyup', keyUp, false);
+                // refocus
+                element.addEventListener('mousedown', refocus, false);
+
+            },
+            keyDown = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                EventSystem.fire('keyDown', evt);
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i < names.length; ++i) {
+                    keyStates[names[i]] = true;
+                    EventSystem.fire('buttonDown', names[i]);
+                    EventSystem.fire('buttonDown-' + names[i]);
+                }
+            },
+            keyUp = function (evt) {
+                var i, names;
+                evt.preventDefault();
+                EventSystem.fire('keyUp', evt);
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                for (i = 0; i < names.length; ++i) {
+                    keyStates[names[i]] = false;
+                    EventSystem.fire('buttonUp', names[i]);
+                }
+            },
+            destroy = function () {
+                // remove all event listeners
+            },
+            /**
+             * Changes the offsets after resizing or screen re-orientation.
+             * @function
+             * @instance
+             * @name onResize
+             */
+            onResize = function () {
+                offsetLeft = canvas.offsetLeft;
+                offsetTop = canvas.offsetTop;
+            },
+            initMouseClicks = function () {
+                if (!document || !document.addEventListener) {
+                    return;
+                }
+                document.addEventListener('contextmenu', function (e) {
+                    EventSystem.fire('mouseDown-right');
+                    // prevent context menu
+                    if (settings.preventContextMenu) {
+                        e.preventDefault();
+                    }
+                }, false);
+                document.addEventListener('click', function (e) {
+                    if (e.which === 1) {
+                        EventSystem.fire('mouseDown-left');
+                        e.preventDefault();
+                    } else if (e.which === 2) {
+                        EventSystem.fire('mouseDown-middle');
+                        e.preventDefault();
+                    }
+                }, false);
+            };
+
+        window.addEventListener('resize', onResize, false);
+        window.addEventListener('orientationchange', onResize, false);
+
+        if (!gameData) {
+            throw 'Supply a gameData object';
+        }
+        // canvasScale is needed to take css scaling into account
+        canvasScale = gameData.canvasScale;
+        canvas = gameData.canvas;
+        viewport = gameData.viewport;
+
+        if (canvas && !Utils.isCocoonJS()) {
+            offsetLeft = canvas.offsetLeft;
+            offsetTop = canvas.offsetTop;
+        }
+
+        // touch device
+        initTouch();
+        // keyboard
+        initKeyboard();
+        // init clicks
+        initMouseClicks();
+
+        return {
+            /**
+             * Returns all current pointers down
+             * @function
+             * @instance
+             * @returns {Array} pointers - Array with pointer positions
+             * @name getPointers
+             */
+            getPointers: function () {
+                return pointers;
+            },
+            /**
+             * Removes all current pointers down
+             * @function
+             * @instance
+             * @returns {Array} pointers - Array with pointer positions
+             * @name resetPointers
+             */
+            resetPointers: function () {
+                pointers.length = 0;
+            },
+            /**
+             * Checks if a keyboard key is down
+             * @function
+             * @instance
+             * @param {String} name - name of the key
+             * @name isKeyDown
+             */
+            isKeyDown: function (name) {
+                return keyStates[name] || false;
+            },
+            /**
+             * Stop all pointer input
+             * @function
+             * @instance
+             * @name stop
+             */
+            stop: function () {
+                if (!isListening) {
+                    return;
+                }
+                canvas.removeEventListener('touchstart', touchStart);
+                canvas.removeEventListener('touchmove', touchMove);
+                canvas.removeEventListener('touchend', touchEnd);
+                canvas.removeEventListener('mousedown', mouseDown);
+                canvas.removeEventListener('mousemove', mouseMove);
+                canvas.removeEventListener('mouseup', mouseUp);
+                isListening = false;
+            },
+            /**
+             * Resumes all pointer input
+             * @function
+             * @instance
+             * @name resume
+             */
+            resume: function () {
+                if (isListening) {
+                    return;
+                }
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                canvas.addEventListener('mouseup', mouseUp);
+                isListening = true;
+            }
+        };
+    };
+});
+
+/**
+ * Manager that controls mainloop and all objects. Attach entities to the object manager
+ * to add them to the game. The object manager loops through every object's update and
+ * draw functions. The settings object passed here is passed through Bento.setup().
+ * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
+ * @module bento/managers/object
+ * @param {Object} data - gameData object
+ * @param {Object} settings - Settings object
+ * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
+ * @param {Object} settings.debug - Show debug info
+ * @param {Object} settings.useDeltaT - Use delta time (note: untested)
+ * @returns ObjectManager
+ */
+bento.define('bento/managers/object', [
+    'hshg',
+    'bento/utils'
+], function (Hshg, Utils) {
+    'use strict';
+    return function (data, settings) {
+        var objects = [],
+            lastTime = new Date().getTime(),
+            cumulativeTime = 0,
+            minimumFps = 30,
+            lastFrameTime = new Date().getTime(),
+            gameData,
+            quickAccess = {},
+            isRunning = false,
+            sortMode = settings.sortMode || 0,
+            isPaused = 0,
+            isStopped = false,
+            fpsMeter,
+            hshg = new Hshg(),
+            sortDefault = function () {
+                // default array sorting method (unstable)
+                objects.sort(function (a, b) {
+                    return a.z - b.z;
+                });
+
+            },
+            sort = function () {
+                // default method for sorting: stable sort
+                Utils.stableSort.inplace(objects, function (a, b) {
+                    return a.z - b.z;
+                });
+            },
+            cleanObjects = function () {
+                var i;
+                // loop objects array from end to start and remove null elements
+                for (i = objects.length - 1; i >= 0; --i) {
+                    if (objects[i] === null) {
+                        objects.splice(i, 1);
+                    }
+                }
+            },
+            mainLoop = function (time) {
+                var object,
+                    i,
+                    currentTime = new Date().getTime(),
+                    deltaT = currentTime - lastTime;
+
+                if (!isRunning) {
+                    return;
+                }
+
+                if (settings.debug && fpsMeter) {
+                    fpsMeter.tickStart();
+                }
+
+                lastTime = currentTime;
+                cumulativeTime += deltaT;
+                gameData.deltaT = deltaT;
+                if (settings.useDeltaT) {
+                    cumulativeTime = 1000 / 60;
+                }
+                while (cumulativeTime >= 1000 / 60) {
+                    cumulativeTime -= 1000 / 60;
+                    if (cumulativeTime > 1000 / minimumFps) {
+                        // deplete cumulative time
+                        while (cumulativeTime >= 1000 / 60) {
+                            cumulativeTime -= 1000 / 60;
+                        }
+                    }
+                    if (settings.useDeltaT) {
+                        cumulativeTime = 0;
+                    }
+                    update();
+                }
+                cleanObjects();
+                if (sortMode === Utils.SortMode.ALWAYS) {
+                    sort();
+                }
+                draw();
+
+                lastFrameTime = time;
+                if (settings.debug && fpsMeter) {
+                    fpsMeter.tick();
+                }
+
+                requestAnimationFrame(mainLoop);
+            },
+            update = function () {
+                var object,
+                    i;
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (object.update && (object.updateWhenPaused >= isPaused)) {
+                        object.update(gameData);
+                    }
+                }
+                if (!isPaused) {
+                    hshg.update();
+                    hshg.queryForCollisionPairs();
+                }
+            },
+            draw = function () {
+                var object,
+                    i;
+                gameData.renderer.begin();
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (object.draw) {
+                        object.draw(gameData);
+                    }
+                }
+                gameData.renderer.flush();
+            },
+            attach = function (object) {
+                var i, type, family;
+                object.z = object.z || 0;
+                object.updateWhenPaused = object.updateWhenPaused || 0;
+                objects.push(object);
+                if (object.init) {
+                    object.init();
+                }
+                // add object to access pools
+                if (object.family) {
+                    family = object.family;
+                    for (i = 0; i < family.length; ++i) {
+                        type = family[i];
+                        if (!quickAccess[type]) {
+                            quickAccess[type] = [];
+                        }
+                        quickAccess[type].push(object);
+                    }
+                }
+                if (object.useHshg && object.getAABB) {
+                    hshg.addObject(object);
+                }
+
+                if (object.start) {
+                    object.start(gameData);
+                }
+                if (object.attached) {
+                    object.attached(gameData);
+                }
+                object.isAdded = true;
+                if (sortMode === Utils.SortMode.SORT_ON_ADD) {
+                    sort();
+                }
+            },
+            module = {
+                /**
+                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
+                 * has the functions update and draw, they will be called during the loop.
+                 * @function
+                 * @instance
+                 * @param {Object} object - Any object, preferably an Entity
+                 * @name attach
+                 */
+                attach: attach,
+                add: attach,
+                /**
+                 * Removes entity/object
+                 * @function
+                 * @instance
+                 * @param {Object} object - Reference to the object to be removed
+                 * @name remove
+                 */
+                remove: function (object) {
+                    var i, type, index, family, pool;
+                    if (!object) {
+                        return;
+                    }
+                    index = objects.indexOf(object);
+                    if (index >= 0) {
+                        objects[index] = null;
+                        if (object.destroy) {
+                            object.destroy(gameData);
+                        }
+                        object.isAdded = false;
+                    }
+                    if (object.useHshg && object.getAABB) {
+                        hshg.removeObject(object);
+                    }
+                    // remove from access pools
+                    if (object.family) {
+                        family = object.family;
+                        for (i = 0; i < family.length; ++i) {
+                            type = family[i];
+                            pool = quickAccess[type];
+                            if (pool) {
+                                Utils.removeObject(quickAccess[type], object);
+                            }
+                        }
+                    }
+                },
+                /**
+                 * Removes all entities/objects except ones that have the property "global"
+                 * @function
+                 * @instance
+                 * @param {Boolean} removeGlobal - Also remove global objects
+                 * @name removeAll
+                 */
+                removeAll: function (removeGlobal) {
+                    var i,
+                        object;
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.global || removeGlobal) {
+                            module.remove(object);
+                        }
+                    }
+                    // bug in hshg: objects don't get removed here, so we respawn hshg
+                    hshg = new Hshg();
+                    // re-add all global objects
+                    cleanObjects();
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (object.useHshg && object.getAABB) {
+                            hshg.addObject(object);
+                        }
+                    }
+                },
+                /**
+                 * Returns the first object it can find with this name. Safer to use with a callback.
+                 * The callback is called immediately if the object is found (it's not asynchronous).
+                 * @function
+                 * @instance
+                 * @param {String} objectName - Name of the object
+                 * @param {Function} [callback] - Called if the object is found
+                 * @returns {Object} null if not found
+                 * @name get
+                 */
+                get: function (objectName, callback) {
+                    // retrieves the first object it finds by its name
+                    var i,
+                        object;
+
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.name) {
+                            continue;
+                        }
+                        if (object.name === objectName) {
+                            if (callback) {
+                                callback(object);
+                            }
+                            return object;
+                        }
+                    }
+                    return null;
+                },
+                /**
+                 * Returns an array of objects with a certain name
+                 * @function
+                 * @instance
+                 * @param {String} objectName - Name of the object
+                 * @param {Function} [callback] - Called with the object array
+                 * @returns {Array} An array of objects, empty if no objects found
+                 * @name getByName
+                 */
+                getByName: function (objectName, callback) {
+                    var i,
+                        object,
+                        array = [];
+
+                    for (i = 0; i < objects.length; ++i) {
+                        object = objects[i];
+                        if (!object) {
+                            continue;
+                        }
+                        if (!object.name) {
+                            continue;
+                        }
+                        if (object.name === objectName) {
+                            array.push(object);
+                        }
+                    }
+                    if (callback && array.length) {
+                        callback(array);
+                    }
+                    return array;
+                },
+                /**
+                 * Returns an array of objects by family name. Entities are added to pools
+                 * of each family you indicate in the Entity.family array the moment you call
+                 * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
+                 * This allows quick access of a group of similar entities. Families are cached so you
+                 * may get a reference to the array of objects even if it's not filled yet.
+                 * @function
+                 * @instance
+                 * @param {String} familyName - Name of the family
+                 * @param {Function} [callback] - Called with the object array
+                 * @returns {Array} An array of objects, empty if no objects found
+                 * @name getByFamily
+                 */
+                getByFamily: function (type, callback) {
+                    var array = quickAccess[type];
+                    if (!array) {
+                        // initialize it
+                        quickAccess[type] = [];
+                        array = quickAccess[type];
+                        console.log('Warning: family called ' + type + ' does not exist');
+                    }
+                    if (callback && array.length) {
+                        callback(array);
+                    }
+                    return array;
+                },
+                /**
+                 * Stops the mainloop on the next tick
+                 * @function
+                 * @instance
+                 * @name stop
+                 */
+                stop: function () {
+                    isRunning = false;
+                },
+                /**
+                 * Starts the mainloop
+                 * @function
+                 * @instance
+                 * @name run
+                 */
+                run: function () {
+                    if (!isRunning) {
+                        isRunning = true;
+                        mainLoop();
+                    }
+                },
+                /**
+                 * Returns the number of objects
+                 * @function
+                 * @instance
+                 * @returns {Number} The number of objects
+                 * @name count
+                 */
+                count: function () {
+                    return objects.length;
+                },
+                /**
+                 * Stops calling update on every object. Note that draw is still
+                 * being called. Objects with the property updateWhenPaused
+                 * will still be updated.
+                 * @function
+                 * @instance
+                 * @param {Number} level - Level of pause state, defaults to 1
+                 * @name pause
+                 */
+                pause: function (level) {
+                    isPaused = level;
+                    if (Utils.isUndefined(level)) {
+                        isPaused = 1;
+                    }
+                },
+                /**
+                 * Cancels the pause and resume updating objects. (Sets pause level to 0)
+                 * @function
+                 * @instance
+                 * @name resume
+                 */
+                resume: function () {
+                    isPaused = 0;
+                },
+                /**
+                 * Returns pause level. If an object is passed to the function
+                 * it checks if that object should be paused or not
+                 * @function
+                 * @instance
+                 * @param {Object} [object] - Object to check if it's paused
+                 * @name isPaused
+                 */
+                isPaused: function (obj) {
+                    if (Utils.isDefined(obj)) {
+                        return obj.updateWhenPaused < isPaused;
+                    }
+                    return isPaused;
+                },
+                /**
+                 * Forces objects to be drawn (Don't call this unless you need it)
+                 * @function
+                 * @instance
+                 * @name draw
+                 */
+                draw: function () {
+                    draw();
+                },
+                /**
+                 * Gets the current HSHG grid instance
+                 * @function
+                 * @instance
+                 * @name getHshg
+                 */
+                getHshg: function () {
+                    return hshg;
+                },
+                /**
+                 * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
+                 * Utils.SortMode.ALWAYS - sort on every update tick<br>
+                 * Utils.SortMode.NEVER - don't sort at all<br>
+                 * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
+                 * @function
+                 * @instance
+                 * @param {Utils.SortMode} mode - Sorting mode
+                 * @name setSortMode
+                 */
+                setSortMode: function (mode) {
+                    sortMode = mode;
+                },
+                /**
+                 * Calls the update function. Be careful when using this in another
+                 * update loop, as it will result in an endless loop.
+                 * @function
+                 * @instance
+                 * @name update
+                 */
+                update: function () {
+                    update();
+                }
+            };
+
+        if (!window.performance) {
+            window.performance = {
+                now: Date.now
+            };
+        }
+        gameData = data;
+        if (settings.debug && Utils.isDefined(window.FPSMeter)) {
+            FPSMeter.defaults.graph = 1;
+            fpsMeter = new FPSMeter();
+        }
+
+        // swap sort method with default sorting method
+        if (settings.defaultSort) {
+            sort = defaultSort;
+        }
+
+        return module;
+    };
+});
+/**
+ * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
+ * save values and Bento.saveState.load() to retrieve them.
+ * <br>Exports: Object, can be accessed through Bento.audio namespace. 
+ * @module bento/managers/savestate
+ * @returns SaveState
+ */
+bento.define('bento/managers/savestate', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var uniqueID = document.URL,
+        storage,
+        // an object that acts like a localStorageObject
+        storageFallBack = {
+            data: {},
+            setItem: function (key, value) {
+                var k,
+                    count = 0,
+                    data = this.data;
+                data[key] = value;
+                // update length
+                for (k in data) {
+                    if (data.hasOwnProperty(k)) {
+                        ++count;
+                    }
+                }
+                this.length = count;
+            },
+            getItem: function (key) {
+                var item = storageFallBack.data[key];
+                return Utils.isDefined(item) ? item : null;
+            },
+            removeItem: function (key) {
+                delete storageFallBack.data[key];
+            },
+            clear: function () {
+                this.data = {};
+                this.length = 0;
+            },
+            length: 0
+        };
+
+    // initialize
+    try {
+        storage = window.localStorage;
+        // try saving once
+        if (window.localStorage) {
+            window.localStorage.setItem(uniqueID + 'save', '0');
+        } else {
+            throw 'No local storage available';
+        }
+    } catch (e) {
+        console.log('Warning: you have disabled cookies on your browser. You cannot save progress in your game.');
+        storage = storageFallBack;
+    }
+    return {
+        /**
+         * Boolean that indicates if keys should be saved
+         * @instance
+         * @name saveKeys
+         */
+        saveKeys: false,
+        /**
+         * Saves/serializes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number/Object/Array to be saved
+         * @name save
+         */
+        save: function (elementKey, element) {
+            var keys;
+            if (typeof elementKey !== 'string') {
+                elementKey = JSON.stringify(elementKey);
+            }
+            storage.setItem(uniqueID + elementKey, JSON.stringify(element));
+
+            // also store the keys
+            if (this.saveKeys) {
+                keys = this.load('_keys', []);
+                keys.push(elementKey);
+                storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
+            }
+        },
+        /**
+         * Adds to a saved variable/number
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number to be added, if the value does not exists, it defaults to 0
+         * @name add
+         */
+        add: function (elementKey, element) {
+            var value = this.load(elementKey, 0);
+            value += element;
+            this.save(elementKey, value);
+        },
+        /**
+         * Loads/deserializes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} defaultValue - The value returns if saved variable doesn't exists
+         * @returns {Object} Returns saved value, otherwise defaultValue
+         * @name load
+         */
+        load: function (elementKey, defaultValue) {
+            var element;
+            element = storage.getItem(uniqueID + elementKey);
+            if (element === null || element === undefined) {
+                return defaultValue;
+            }
+            return JSON.parse(element);
+        },
+        /**
+         * Deletes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @name remove
+         */
+        remove: function (elementKey) {
+            storage.removeItem(uniqueID + elementKey);
+        },
+        /**
+         * Clears the savestate
+         * @function
+         * @instance
+         * @name clear
+         */
+        clear: function () {
+            storage.clear();
+        },
+        debug: function () {
+            console.log(localStorage);
+        },
+        /**
+         * Checks if localStorage has values
+         * @function
+         * @instance
+         * @name isEmpty
+         */
+        isEmpty: function () {
+            return storage.length === 0;
+        },
+        /**
+         * Sets an identifier that's prepended on every key.
+         * By default this is the game's URL, to prevend savefile clashing.
+         * @function
+         * @instance
+         * @param {String} name - ID name
+         * @name setId
+         */
+        setId: function (str) {
+            uniqueID = str;
+        },
+        /**
+         * Swaps the storage object. Allows you to use something else than localStorage. But the storage object
+         * must have similar methods as localStorage.
+         * @function
+         * @instance
+         * @param {Object} storageObject - an object that resembels localStorage
+         * @name setStorage
+         */
+        setStorage: function (storageObj) {
+            storage = storageObj;
+        },
+        /**
+         * Returns the current storage object
+         * @function
+         * @instance
+         * @name getStorage
+         */
+        getStorage: function () {
+            return storage;
+        }
+    };
+});
+/**
+ * Manager that controls screens. Screens are defined as separate modules. See {@link module:bento/screen}. To show
+ * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
+ * <br>Exports: Constructor, can be accessed through Bento.screens namespace. 
+ * @module bento/managers/screen
+ * @returns ScreenManager
+ */
+bento.define('bento/managers/screen', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    return function () {
+        var screens = {},
+            currentScreen = null,
+            getScreen = function (name) {
+                return screens[name];
+            },
+            screenManager = {
+                /**
+                 * Adds a new screen to the cache
+                 * @function
+                 * @instance
+                 * @param {Screen} screen - Screen object
+                 * @name add
+                 */
+                add: function (screen) {
+                    if (!screen.name) {
+                        throw 'Add name property to screen';
+                    }
+                    screens[screen.name] = screen;
+                },
+                /**
+                 * Shows a screen. If the screen was not added previously, it
+                 * will be loaded asynchronously by a require call.
+                 * @function
+                 * @instance
+                 * @param {String} name - Name of the screen
+                 * @param {Object} data - Extra data to pass on to the screen
+                 * @param {Function} callback - Called when screen is shown
+                 * @name show
+                 */
+                show: function (name, data, callback) {
+                    if (currentScreen !== null) {
+                        screenManager.hide();
+                    }
+                    currentScreen = screens[name];
+                    if (currentScreen) {
+                        if (currentScreen.onShow) {
+                            currentScreen.onShow(data);
+                        }
+                        if (callback) {
+                            callback();
+                        }
+                    } else {
+                        // load asynchronously
+                        bento.require([name], function (screenObj) {
+                            if (!screenObj.name) {
+                                screenObj.name = name;
+                            }
+                            screenManager.add(screenObj);
+                            // try again
+                            screenManager.show(name, data, callback);
+                        });
+                    }
+                },
+                /**
+                 * Hides a screen. You may call this to remove all objects on screen, but
+                 * it's not needed to call this yourself if you want to show a new screen.
+                 * Screens.hide is internally called on the current screen when Screens.show
+                 * is called.
+                 * @function
+                 * @instance
+                 * @param {Object} data - Extra data to pass on to the screen
+                 * @name hide
+                 */
+                hide: function (data) {
+                    if (!currentScreen) {
+                        return;
+                    }
+                    currentScreen.onHide(data);
+                    currentScreen = null;
+                },
+                /**
+                 * Return reference to the screen currently shown.
+                 * @function
+                 * @instance
+                 * @returns {Screen} The current screen
+                 * @name getCurrentScreen
+                 */
+                getCurrentScreen: function () {
+                    return currentScreen;
+                },
+                /**
+                 * Clears cache of screens
+                 * @function
+                 * @instance
+                 * @name reset
+                 */
+                reset: function () {
+                    screens = {};
+                }
+            };
+
+        return screenManager;
+
+    };
+});
+/**
  * A 2-dimensional array
  * <br>Exports: Constructor
  * @module bento/math/array2d
@@ -10310,1917 +12228,6 @@ bento.define('bento/tween', [
         // tween automatically starts ?
         tween.begin();
         return tween;
-    };
-});
-/**
- * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
- * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
- * assets to load, and where to find them.
- * <br>Exports: Constructor, can be accessed through Bento.asset namespace
- * @module bento/managers/asset
- * @returns AssetManager
- */
-bento.define('bento/managers/asset', [
-    'bento/packedimage',
-    'bento/utils',
-    'audia'
-], function (PackedImage, Utils, Audia) {
-    'use strict';
-    return function () {
-        var assetGroups = {},
-            path = '',
-            assets = {
-                audio: {},
-                json: {},
-                images: {},
-                binary: {}
-            },
-            texturePacker = {},
-            packs = [],
-            loadAudio = function (name, source, callback) {
-                var i,
-                    failed = true,
-                    loadAudioFile = function (index, src) {
-                        var audio = new Audia(),
-                            canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
-                        if (!!canPlay || window.ejecta) {
-                            // success!
-                            audio.onload = function () {
-                                callback(null, name, audio);
-                            };
-                            audio.src = src;
-                            failed = false;
-                            return true;
-                        }
-                        return false;
-                    };
-                if (!Utils.isArray(source)) {
-                    // source = [path + 'audio/' + source];
-                    source = [source];
-                }
-                // try every type
-                for (i = 0; i < source.length; ++i) {
-                    if (loadAudioFile(i, path + 'audio/' + source[i])) {
-                        break;
-                    }
-                }
-                if (failed) {
-                    callback('This audio type is not supported:', name, source);
-                }
-            },
-            loadJSON = function (name, source, callback) {
-                var xhr = new XMLHttpRequest();
-                if (xhr.overrideMimeType) {
-                    xhr.overrideMimeType('application/json');
-                }
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + source);
-                };
-                xhr.ontimeout = function () {
-                    callback('Timeout' + source);
-                };
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4) {
-                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
-                            callback(null, name, JSON.parse(xhr.responseText));
-                        } else {
-                            callback('Error: State ' + xhr.readyState + ' ' + source);
-                        }
-                    }
-                };
-                xhr.send(null);
-            },
-            loadBinary = function (name, source, success, failure) {
-                var xhr = new XMLHttpRequest(),
-                    arrayBuffer,
-                    byteArray,
-                    buffer,
-                    i = 0;
-
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + name);
-                };
-                xhr.responseType = 'arraybuffer';
-                xhr.onload = function (e) {
-                    var binary;
-                    arrayBuffer = xhr.response;
-                    if (arrayBuffer) {
-                        byteArray = new Uint8Array(arrayBuffer);
-                        buffer = [];
-                        for (i; i < byteArray.byteLength; ++i) {
-                            buffer[i] = String.fromCharCode(byteArray[i]);
-                        }
-                        // loadedAssets.binary[name] = buffer.join('');
-                        binary = buffer.join('');
-                        callback(null, name, binary);
-                    }
-                };
-                xhr.send();
-            },
-            loadImage = function (name, source, callback) {
-                var img = new Image();
-                img.src = source;
-                img.addEventListener('load', function () {
-                    callback(null, name, img);
-                }, false);
-                img.addEventListener('error', function (evt) {
-                    // TODO: Implement failure: should it retry to load the image?
-                    console.log('ERROR: loading image failed');
-                }, false);
-            },
-            /**
-             * Loads asset groups (json files containing names and asset paths to load)
-             * If the assetGroup parameter is passed to Bento.setup, this function will be
-             * called automatically by Bento.
-             * This will not load the assets (merely the assetgroups). To load the assets,
-             * you must call Bento.assets.load()
-             * @function
-             * @instance
-             * @param {Object} jsonFiles - Name with json path
-             * @param {Function} onReady - Callback when ready
-             * @param {Function} onLoaded - Callback when json file is loaded
-             * @name loadAssetGroups
-             */
-            loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
-                var jsonName,
-                    keyCount = Utils.getKeyLength(jsonFiles),
-                    loaded = 0,
-                    callback = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assetGroups[name] = json;
-                        loaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(loaded, keyCount);
-                        }
-                        if (keyCount === loaded && Utils.isDefined(onReady)) {
-                            onReady(null);
-                        }
-                    };
-                for (jsonName in jsonFiles) {
-                    if (jsonFiles.hasOwnProperty(jsonName)) {
-                        loadJSON(jsonName, jsonFiles[jsonName], callback);
-                    }
-                }
-            },
-            /**
-             * Loads assets from asset group.
-             * @function
-             * @instance
-             * @param {String} groupName - Name of asset group
-             * @param {Function} onReady - Callback when ready
-             * @param {Function} onLoaded - Callback when asset file is loaded
-             * @name load
-             */
-            load = function (groupName, onReady, onLoaded) {
-                var group = assetGroups[groupName],
-                    asset,
-                    assetsLoaded = 0,
-                    assetCount = 0,
-                    toLoad = [],
-                    checkLoaded = function () {
-                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
-                            initPackedImages();
-                            onReady(null);
-                        }
-                    },
-                    onLoadImage = function (err, name, image) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.images[name] = image;
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadPack = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.json[name] = json;
-                        packs.push(name);
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadJson = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.json[name] = json;
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadAudio = function (err, name, audio) {
-                        if (err) {
-                            console.log(err);
-                        } else {
-                            assets.audio[name] = audio;
-                        }
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    readyForLoading = function (fn, asset, path, callback) {
-                        toLoad.push({
-                            fn: fn,
-                            asset: asset,
-                            path: path,
-                            callback: callback
-                        });
-                    },
-                    loadAllAssets = function () {
-                        var i = 0,
-                            data;
-                        for (i = 0; i < toLoad.length; ++i) {
-                            data = toLoad[i];
-                            data.fn(data.asset, data.path, data.callback);
-                        }
-                    };
-
-                if (!Utils.isDefined(group)) {
-                    onReady('Could not find asset group ' + groupName);
-                    return;
-                }
-                // set path
-                if (Utils.isDefined(group.path)) {
-                    path = group.path;
-                }
-                // count the number of assets first
-                // get images
-                if (Utils.isDefined(group.images)) {
-                    assetCount += Utils.getKeyLength(group.images);
-                    for (asset in group.images) {
-                        if (!group.images.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
-                    }
-                }
-                // get packed images
-                if (Utils.isDefined(group.texturePacker)) {
-                    assetCount += Utils.getKeyLength(group.texturePacker);
-                    for (asset in group.texturePacker) {
-                        if (!group.texturePacker.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
-                    }
-                }
-                // get audio
-                if (Utils.isDefined(group.audio)) {
-                    assetCount += Utils.getKeyLength(group.audio);
-                    for (asset in group.audio) {
-                        if (!group.audio.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
-                    }
-                }
-                // get json
-                if (Utils.isDefined(group.json)) {
-                    assetCount += Utils.getKeyLength(group.json);
-                    for (asset in group.json) {
-                        if (!group.json.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
-                    }
-                }
-                // load all assets
-                loadAllAssets();
-            },
-            /**
-             * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadImageFromUrl
-             */
-            loadImageFromUrl = function (name, url, callback) {
-                var onLoadImage = function (err, name, image) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.images[name] = image;
-                    if (callback) {
-                        callback(null, image);
-                    }
-                };
-                loadImage(name, url, onLoadImage);
-            },
-            /**
-             * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadJsonFromUrl
-             */
-            loadJsonFromUrl = function (name, url, callback) {
-                var onLoadJson = function (err, name, json) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.json[name] = json;
-                    if (callback) {
-                        callback(null, json);
-                    }
-                };
-                loadJSON(name, url, onLoadJson);
-            },
-            /**
-             * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadAudioFromUrl
-             */
-            loadAudioFromUrl = function (name, url, callback) {
-                var onLoadAudio = function (err, name, audio) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.audio[name] = audio;
-                    if (callback) {
-                        callback(audio);
-                    }
-                };
-                loadAudio(name, url, onLoadAudio);
-            },
-            /**
-             * Unloads assets (not implemented yet)
-             * @function
-             * @instance
-             * @param {String} groupName - Name of asset group
-             * @name unload
-             */
-            unload = function (groupName) {},
-            /**
-             * Returns a previously loaded image
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {PackedImage} Image
-             * @name getImage
-             */
-            getImage = function (name) {
-                var image, packedImage = texturePacker[name];
-                if (!packedImage) {
-                    image = getImageElement(name);
-                    if (!image) {
-                        throw 'Can not find ' + name;
-                    }
-                    packedImage = PackedImage(image);
-                    texturePacker[name] = packedImage;
-                }
-                return packedImage;
-            },
-            /**
-             * Returns a previously loaded image element
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {HTMLImage} Html Image element
-             * @name getImageElement
-             */
-            getImageElement = function (name) {
-                var asset = assets.images[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns a previously loaded json object
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Object} Json object
-             * @name getJson
-             */
-            getJson = function (name) {
-                var asset = assets.json[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns a previously loaded audio element (currently by howler)
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Audia} Audia object
-             * @name getAudio
-             */
-            getAudio = function (name) {
-                var asset = assets.audio[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns all assets
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Object} assets - Object with reference to all loaded assets
-             * @name getAssets
-             */
-            getAssets = function () {
-                return assets;
-            },
-            initPackedImages = function () {
-                var frame, pack, i, image, json, name;
-                while (packs.length) {
-                    pack = packs.pop();
-                    image = getImageElement(pack);
-                    json = getJson(pack);
-
-                    // parse json
-                    for (i = 0; i < json.frames.length; ++i) {
-                        name = json.frames[i].filename;
-                        name = name.substring(0, name.length - 4);
-                        frame = json.frames[i].frame;
-                        texturePacker[name] = PackedImage(image, frame);
-                    }
-                }
-            },
-            /**
-             * Returns asset group
-             * @function
-             * @instance
-             * @returns {Object} assetGroups - reference to loaded JSON file
-             * @name getAssetGroups
-             */
-            getAssetGroups = function () {
-                return assetGroups;
-            },
-             /**
-             * Reloads all assets
-             * @function
-             * @instance
-             * @param {Function} callback - called when all assets are loaded
-             * @name reload
-             */
-            reload  = function (callback) {
-                var group,
-                    count = 0,
-                    loaded = 0,
-                    end = function () {
-                        loaded += 1;
-                        if (loaded === count && callback) {
-                            callback();
-                        }
-                    };
-                for (group in assetGroups) {
-                    if (!assetGroups.hasOwnProperty(group)) {
-                        continue;
-                    }
-                    load(group, end, function (current, total) {});
-                    count += 1;
-                }
-            };
-        return {
-            reload: reload,
-            loadAssetGroups: loadAssetGroups,
-            load: load,
-            loadImageFromUrl: loadImageFromUrl,
-            loadJsonFromUrl: loadJsonFromUrl,
-            loadAudioFromUrl: loadAudioFromUrl,
-            unload: unload,
-            getImage: getImage,
-            getImageElement: getImageElement,
-            getJson: getJson,
-            getAudio: getAudio,
-            getAssets: getAssets,
-            getAssetGroups: getAssetGroups
-        };
-    };
-});
-/**
- * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
- * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
- * asset names with sfx_ and bgm_ respectively.
- * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
- * @module bento/managers/audio
- * @returns AudioManager
- */
-bento.define('bento/managers/audio', [
-    'bento/utils'
-], function (Utils) {
-    return function (bento) {
-        var volume = 1,
-            mutedSound = false,
-            mutedMusic = false,
-            preventSounds = false,
-            isPlayingMusic = false,
-            howler,
-            musicLoop = false,
-            lastMusicPlayed = '',
-            currentMusicId = 0,
-            saveMuteSound,
-            saveMuteMusic,
-            assetManager = bento.assets,
-            canvasElement = bento.getCanvas(),
-            onVisibilityChanged = function (hidden) {
-                if (hidden) {
-                    // save audio preferences and mute
-                    saveMuteSound = mutedSound;
-                    saveMuteMusic = mutedMusic;
-                    obj.muteMusic(true);
-                    obj.muteSound(true);
-                } else {
-                    // reload audio preferences and replay music if necessary
-                    mutedSound = saveMuteSound;
-                    mutedMusic = saveMuteMusic;
-                    obj.playMusic(lastMusicPlayed, musicLoop);
-                }
-            },
-            obj = {
-                /**
-                 * Sets the volume (0 = minimum, 1 = maximum)
-                 * @name setVolume
-                 * @instance
-                 * @function
-                 * @param {Number} value - the volume
-                 * @param {String} name - name of the sound to change volume
-                 */
-                setVolume: function (value, name) {
-                    assetManager.getAudio(name).volume = value;
-                },
-                /**
-                 * Gets the volume (0 = minimum, 1 = maximum)
-                 * @name getVolume
-                 * @instance
-                 * @function
-                 * @param {String} name - name of the sound
-                 */
-                getVolume: function (name) {
-                    return assetManager.getAudio(name).volume;
-                },
-                /**
-                 * Plays a sound effect
-                 * @name playSound
-                 * @instance
-                 * @function
-                 * @param {String} name - name of the audio asset
-                 * @param {Boolean} [loop] - should the audio loop (defaults to false)
-                 * @param {Function} [onEnd] - callback when the audio ends
-                 */
-                playSound: function (name, loop, onEnd) {
-                    var audio = assetManager.getAudio(name);
-                    if (!mutedSound && !preventSounds) {
-                        if (Utils.isDefined(loop)) {
-                            audio.loop = loop;
-                        }
-                        if (Utils.isDefined(onEnd)) {
-                            audio.onended = onEnd;
-                        }
-                        audio.play();
-                    }
-                },
-                /**
-                 * Stops a specific sound effect
-                 * @name stopSound
-                 * @instance
-                 * @function
-                 */
-                stopSound: function (name) {
-                    var i, l, node;
-                    assetManager.getAudio(name).stop();
-                },
-                /**
-                 * Plays a music
-                 * @name playMusic
-                 * @instance
-                 * @function
-                 * @param {String} name - name of the audio asset
-                 * @param {Boolean} [loop] - should the audio loop (defaults to true)
-                 * @param {Function} [onEnd] - callback when the audio ends
-                 */
-                playMusic: function (name, loop, onEnd) {
-                    var audio;
-
-                    lastMusicPlayed = name;
-                    if (Utils.isDefined(loop)) {
-                        musicLoop = loop;
-                    } else {
-                        musicLoop = true;
-                    }
-                    // set end event
-                    if (!mutedMusic && lastMusicPlayed !== '') {
-                        audio = assetManager.getAudio(name);
-                        if (onEnd) {
-                            audio.onended = onEnd;
-                        }
-                        audio.loop = musicLoop;
-                        audio.play();
-                        isPlayingMusic = true;
-                    }
-                },
-                /**
-                 * Stops a specific music
-                 * @name stopMusic
-                 * @param {String} name - name of the audio asset
-                 * @instance
-                 * @function
-                 */
-                stopMusic: function (name) {
-                    var i, l, node;
-                    assetManager.getAudio(name).stop();
-                    isPlayingMusic = false;
-                },
-                /**
-                 * Mute or unmute all sound
-                 * @name muteSound
-                 * @instance
-                 * @function
-                 * @param {Boolean} mute - whether to mute or not
-                 */
-                muteSound: function (mute) {
-                    mutedSound = mute;
-                    if (mutedSound) {
-                        // we stop all sounds because setting volume is not supported on all devices
-                        this.stopAllSound();
-                    }
-                },
-                /**
-                 * Mute or unmute all music
-                 * @instance
-                 * @name muteMusic
-                 * @function
-                 * @param {Boolean} mute - whether to mute or not
-                 * @param {Boolean} continueMusic - whether the music continues
-                 */
-                muteMusic: function (mute, continueMusic) {
-                    var last = lastMusicPlayed;
-                    mutedMusic = mute;
-
-                    if (!Utils.isDefined(continueMusic)) {
-                        continueMusic = false;
-                    }
-                    if (mutedMusic) {
-                        obj.stopAllMusic();
-                        lastMusicPlayed = last;
-                    } else if (continueMusic && lastMusicPlayed !== '') {
-                        obj.playMusic(lastMusicPlayed, musicLoop);
-                    }
-                },
-                /**
-                 * Stop all sound effects currently playing
-                 * @instance
-                 * @name stopAllSound
-                 * @function
-                 */
-                stopAllSound: function () {
-                    var sound,
-                        sounds = assetManager.getAssets().audio;
-                    for (sound in sounds) {
-                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
-                            sounds[sound].stop();
-                        }
-                    }
-                },
-                /**
-                 * Stop all music currently playing
-                 * @instance
-                 * @name stopAllMusic
-                 * @function
-                 */
-                stopAllMusic: function () {
-                    var sound,
-                        sounds = assetManager.getAssets().audio;
-                    for (sound in sounds) {
-                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
-                            sounds[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
-                        }
-                    }
-                    lastMusicPlayed = '';
-                    isPlayingMusic = false;
-                },
-                /**
-                 * Prevents any sound from playing without interrupting current sounds
-                 * @instance
-                 * @name preventSounds
-                 * @function
-                 */
-                preventSounds: function (bool) {
-                    preventSounds = bool;
-                },
-                /**
-                 * Returns true if any music is playing
-                 * @instance
-                 * @name isPlayingMusic
-                 * @function
-                 */
-                isPlayingMusic: function () {
-                    return isPlayingMusic;
-                }
-            };
-        // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
-        if ('hidden' in document) {
-            document.addEventListener("visibilitychange", function () {
-                onVisibilityChanged(document.hidden);
-            }, false);
-        } else if ('mozHidden' in document) {
-            document.addEventListener("mozvisibilitychange", function () {
-                onVisibilityChanged(document.mozHidden);
-            }, false);
-        } else if ('webkitHidden' in document) {
-            document.addEventListener("webkitvisibilitychange", function () {
-                onVisibilityChanged(document.webkitHidden);
-            }, false);
-        } else if ('msHidden' in document) {
-            document.addEventListener("msvisibilitychange", function () {
-                onVisibilityChanged(document.msHidden);
-            }, false);
-        } else if ('onpagehide' in window) {
-            window.addEventListener('pagehide', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('pageshow', function () {
-                onVisibilityChanged(false);
-            }, false);
-        } else if ('onblur' in document) {
-            window.addEventListener('blur', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('focus', function () {
-                onVisibilityChanged(false);
-            }, false);
-            visHandled = true;
-        } else if ('onfocusout' in document) {
-            window.addEventListener('focusout', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('focusin', function () {
-                onVisibilityChanged(false);
-            }, false);
-        }
-        return obj;
-    };
-});
-/**
- * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
- * <br>Exports: Constructor, can be accessed through Bento.input namespace.
- * @module bento/managers/input
- * @param {Object} gameData - gameData
- * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
- * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
- * @param {Rectangle} gameData.viewport - Reference to viewport.
- * @param {Object} settings - settings passed from Bento.setup
- * @param {Boolean} settings.preventContextMenu - Prevents right click menu
- * @returns InputManager
- */
-bento.define('bento/managers/input', [
-    'bento/utils',
-    'bento/math/vector2',
-    'bento/eventsystem'
-], function (Utils, Vector2, EventSystem) {
-    'use strict';
-    var startPositions = {};
-    return function (gameData, settings) {
-        var isPaused = false,
-            isListening = false,
-            canvas,
-            canvasScale,
-            viewport,
-            pointers = [],
-            keyStates = {},
-            offsetLeft = 0,
-            offsetTop = 0,
-            pointerDown = function (evt) {
-                pointers.push({
-                    id: evt.id,
-                    position: evt.position,
-                    eventType: evt.eventType,
-                    localPosition: evt.localPosition,
-                    worldPosition: evt.worldPosition
-                });
-                EventSystem.fire('pointerDown', evt);
-            },
-            pointerMove = function (evt) {
-                EventSystem.fire('pointerMove', evt);
-                updatePointer(evt);
-            },
-            pointerUp = function (evt) {
-                EventSystem.fire('pointerUp', evt);
-                removePointer(evt);
-            },
-            touchStart = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i, 'start');
-                    pointerDown(evt);
-                }
-            },
-            touchMove = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i, 'move');
-                    pointerMove(evt);
-                }
-            },
-            touchEnd = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
-                    addTouchPosition(evt, i, 'end');
-                    pointerUp(evt);
-                }
-            },
-            mouseDown = function (evt) {
-                evt.preventDefault();
-                addMousePosition(evt, 'start');
-                pointerDown(evt);
-            },
-            mouseMove = function (evt) {
-                evt.preventDefault();
-                addMousePosition(evt, 'move');
-                pointerMove(evt);
-            },
-            mouseUp = function (evt) {
-                evt.preventDefault();
-                addMousePosition(evt, 'end');
-                pointerUp(evt);
-            },
-            addTouchPosition = function (evt, n, type) {
-                var touch = evt.changedTouches[n],
-                    x = (touch.pageX - offsetLeft) / canvasScale.x,
-                    y = (touch.pageY - offsetTop) / canvasScale.y,
-                    startPos = {};
-
-                evt.preventDefault();
-                evt.id = 0;
-                evt.eventType = 'touch';
-                touch.position = new Vector2(x, y);
-                touch.worldPosition = touch.position.clone();
-                touch.worldPosition.x += viewport.x;
-                touch.worldPosition.y += viewport.y;
-                touch.localPosition = touch.position.clone();
-                // add 'normal' position
-                evt.position = touch.position.clone();
-                evt.worldPosition = touch.worldPosition.clone();
-                evt.localPosition = touch.localPosition.clone();
-                // id
-                evt.id = touch.identifier + 1;
-                // diff position
-                if (type === 'start') {
-                    startPos.startPosition = touch.position.clone();
-                    startPos.startWorldPosition = touch.worldPosition.clone();
-                    startPos.startLocalPosition = touch.localPosition.clone();
-                    // save startPos
-                    startPositions[evt.id] = startPos;
-                }
-                if (type === 'end') {
-                    // load startPos
-                    startPos = startPositions[evt.id];
-                    if (startPos && startPos.startPosition) {
-                        touch.diffPosition = touch.position.substract(startPos.startPosition);
-                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
-                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
-                        evt.diffPosition = touch.diffPosition.clone();
-                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
-                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
-                        delete startPositions[evt.id];
-                    } else {
-                        console.log('WARNING: touch startPosition was not defined');
-                    }
-                }
-
-            },
-            addMousePosition = function (evt, type) {
-                var x = (evt.pageX - offsetLeft) / canvasScale.x,
-                    y = (evt.pageY - offsetTop) / canvasScale.y,
-                    startPos = {},
-                    n = -1;
-                evt.id = 0;
-                evt.eventType = 'mouse';
-                evt.position = new Vector2(x, y);
-                evt.worldPosition = evt.position.clone();
-                evt.worldPosition.x += viewport.x;
-                evt.worldPosition.y += viewport.y;
-                evt.localPosition = evt.position.clone();
-                // diff position
-                if (type === 'start') {
-                    startPos.startPosition = evt.position.clone();
-                    startPos.startWorldPosition = evt.worldPosition.clone();
-                    startPos.startLocalPosition = evt.localPosition.clone();
-                    // save startPos
-                    startPositions[n] = startPos;
-                }
-                if (type === 'end') {
-                    // load startPos
-                    startPos = startPositions[n];
-                    evt.diffPosition = evt.position.substract(startPos.startPosition);
-                    evt.diffWorldPosition = evt.worldPosition.substract(startPos.startWorldPosition);
-                    evt.diffLocalPosition = evt.localPosition.substract(startPos.startLocalPosition);
-                }
-                // give it an id that doesn't clash with touch id
-                evt.id = -1;
-            },
-            updatePointer = function (evt) {
-                var i = 0;
-                for (i = 0; i < pointers.length; i += 1) {
-                    if (pointers[i].id === evt.id) {
-                        pointers[i].position = evt.position;
-                        pointers[i].worldPosition = evt.worldPosition;
-                        pointers[i].localPosition = evt.position;
-                        return;
-                    }
-                }
-            },
-            removePointer = function (evt) {
-                var i = 0;
-                for (i = 0; i < pointers.length; i += 1) {
-                    if (pointers[i].id === evt.id) {
-                        pointers.splice(i, 1);
-                        return;
-                    }
-                }
-            },
-            initTouch = function () {
-                canvas.addEventListener('touchstart', touchStart);
-                canvas.addEventListener('touchmove', touchMove);
-                canvas.addEventListener('touchend', touchEnd);
-                canvas.addEventListener('mousedown', mouseDown);
-                canvas.addEventListener('mousemove', mouseMove);
-                canvas.addEventListener('mouseup', mouseUp);
-                isListening = true;
-
-                document.body.addEventListener('touchstart', function (evt) {
-                    if (evt && evt.preventDefault) {
-                        evt.preventDefault();
-                    }
-                    if (evt && evt.stopPropagation) {
-                        evt.stopPropagation();
-                    }
-                    return false;
-                });
-                document.body.addEventListener('touchmove', function (evt) {
-                    if (evt && evt.preventDefault) {
-                        evt.preventDefault();
-                    }
-                    if (evt && evt.stopPropagation) {
-                        evt.stopPropagation();
-                    }
-                    return false;
-                });
-            },
-            initKeyboard = function () {
-                var element = gameData.canvas || window,
-                    refocus = function (evt) {
-                        if (element.focus) {
-                            element.focus();
-                        }
-                    };
-                // fix for iframes
-                element.tabIndex = 0;
-                if (element.focus) {
-                    element.focus();
-                }
-                element.addEventListener('keydown', keyDown, false);
-                element.addEventListener('keyup', keyUp, false);
-                // refocus
-                element.addEventListener('mousedown', refocus, false);
-
-            },
-            keyDown = function (evt) {
-                var i, names;
-                evt.preventDefault();
-                EventSystem.fire('keyDown', evt);
-                // get names
-                names = Utils.keyboardMapping[evt.keyCode];
-                for (i = 0; i < names.length; ++i) {
-                    keyStates[names[i]] = true;
-                    EventSystem.fire('buttonDown', names[i]);
-                    EventSystem.fire('buttonDown-' + names[i]);
-                }
-            },
-            keyUp = function (evt) {
-                var i, names;
-                evt.preventDefault();
-                EventSystem.fire('keyUp', evt);
-                // get names
-                names = Utils.keyboardMapping[evt.keyCode];
-                for (i = 0; i < names.length; ++i) {
-                    keyStates[names[i]] = false;
-                    EventSystem.fire('buttonUp', names[i]);
-                }
-            },
-            destroy = function () {
-                // remove all event listeners
-            },
-            /**
-             * Changes the offsets after resizing or screen re-orientation.
-             * @function
-             * @instance
-             * @name onResize
-             */
-            onResize = function () {
-                offsetLeft = canvas.offsetLeft;
-                offsetTop = canvas.offsetTop;
-            },
-            initMouseClicks = function () {
-                if (!document || !document.addEventListener) {
-                    return;
-                }
-                document.addEventListener('contextmenu', function (e) {
-                    EventSystem.fire('mouseDown-right');
-                    // prevent context menu
-                    if (settings.preventContextMenu) {
-                        e.preventDefault();
-                    }
-                }, false);
-                document.addEventListener('click', function (e) {
-                    if (e.which === 1) {
-                        EventSystem.fire('mouseDown-left');
-                        e.preventDefault();
-                    } else if (e.which === 2) {
-                        EventSystem.fire('mouseDown-middle');
-                        e.preventDefault();
-                    }
-                }, false);
-            };
-
-        window.addEventListener('resize', onResize, false);
-        window.addEventListener('orientationchange', onResize, false);
-
-        if (!gameData) {
-            throw 'Supply a gameData object';
-        }
-        // canvasScale is needed to take css scaling into account
-        canvasScale = gameData.canvasScale;
-        canvas = gameData.canvas;
-        viewport = gameData.viewport;
-
-        if (canvas && !Utils.isCocoonJS()) {
-            offsetLeft = canvas.offsetLeft;
-            offsetTop = canvas.offsetTop;
-        }
-
-        // touch device
-        initTouch();
-        // keyboard
-        initKeyboard();
-        // init clicks
-        initMouseClicks();
-
-        return {
-            /**
-             * Returns all current pointers down
-             * @function
-             * @instance
-             * @returns {Array} pointers - Array with pointer positions
-             * @name getPointers
-             */
-            getPointers: function () {
-                return pointers;
-            },
-            /**
-             * Removes all current pointers down
-             * @function
-             * @instance
-             * @returns {Array} pointers - Array with pointer positions
-             * @name resetPointers
-             */
-            resetPointers: function () {
-                pointers.length = 0;
-            },
-            /**
-             * Checks if a keyboard key is down
-             * @function
-             * @instance
-             * @param {String} name - name of the key
-             * @name isKeyDown
-             */
-            isKeyDown: function (name) {
-                return keyStates[name] || false;
-            },
-            /**
-             * Stop all pointer input
-             * @function
-             * @instance
-             * @name stop
-             */
-            stop: function () {
-                if (!isListening) {
-                    return;
-                }
-                canvas.removeEventListener('touchstart', touchStart);
-                canvas.removeEventListener('touchmove', touchMove);
-                canvas.removeEventListener('touchend', touchEnd);
-                canvas.removeEventListener('mousedown', mouseDown);
-                canvas.removeEventListener('mousemove', mouseMove);
-                canvas.removeEventListener('mouseup', mouseUp);
-                isListening = false;
-            },
-            /**
-             * Resumes all pointer input
-             * @function
-             * @instance
-             * @name resume
-             */
-            resume: function () {
-                if (isListening) {
-                    return;
-                }
-                canvas.addEventListener('touchstart', touchStart);
-                canvas.addEventListener('touchmove', touchMove);
-                canvas.addEventListener('touchend', touchEnd);
-                canvas.addEventListener('mousedown', mouseDown);
-                canvas.addEventListener('mousemove', mouseMove);
-                canvas.addEventListener('mouseup', mouseUp);
-                isListening = true;
-            }
-        };
-    };
-});
-
-/**
- * Manager that controls mainloop and all objects. Attach entities to the object manager
- * to add them to the game. The object manager loops through every object's update and
- * draw functions. The settings object passed here is passed through Bento.setup().
- * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
- * @module bento/managers/object
- * @param {Object} data - gameData object
- * @param {Object} settings - Settings object
- * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
- * @param {Object} settings.debug - Show debug info
- * @param {Object} settings.useDeltaT - Use delta time (note: untested)
- * @returns ObjectManager
- */
-bento.define('bento/managers/object', [
-    'hshg',
-    'bento/utils'
-], function (Hshg, Utils) {
-    'use strict';
-    return function (data, settings) {
-        var objects = [],
-            lastTime = new Date().getTime(),
-            cumulativeTime = 0,
-            minimumFps = 30,
-            lastFrameTime = new Date().getTime(),
-            gameData,
-            quickAccess = {},
-            isRunning = false,
-            sortMode = settings.sortMode || 0,
-            isPaused = 0,
-            isStopped = false,
-            fpsMeter,
-            hshg = new Hshg(),
-            sortDefault = function () {
-                // default array sorting method (unstable)
-                objects.sort(function (a, b) {
-                    return a.z - b.z;
-                });
-
-            },
-            sort = function () {
-                // default method for sorting: stable sort
-                Utils.stableSort.inplace(objects, function (a, b) {
-                    return a.z - b.z;
-                });
-            },
-            cleanObjects = function () {
-                var i;
-                // loop objects array from end to start and remove null elements
-                for (i = objects.length - 1; i >= 0; --i) {
-                    if (objects[i] === null) {
-                        objects.splice(i, 1);
-                    }
-                }
-            },
-            mainLoop = function (time) {
-                var object,
-                    i,
-                    currentTime = new Date().getTime(),
-                    deltaT = currentTime - lastTime;
-
-                if (!isRunning) {
-                    return;
-                }
-
-                if (settings.debug && fpsMeter) {
-                    fpsMeter.tickStart();
-                }
-
-                lastTime = currentTime;
-                cumulativeTime += deltaT;
-                gameData.deltaT = deltaT;
-                if (settings.useDeltaT) {
-                    cumulativeTime = 1000 / 60;
-                }
-                while (cumulativeTime >= 1000 / 60) {
-                    cumulativeTime -= 1000 / 60;
-                    if (cumulativeTime > 1000 / minimumFps) {
-                        // deplete cumulative time
-                        while (cumulativeTime >= 1000 / 60) {
-                            cumulativeTime -= 1000 / 60;
-                        }
-                    }
-                    if (settings.useDeltaT) {
-                        cumulativeTime = 0;
-                    }
-                    update();
-                }
-                cleanObjects();
-                if (sortMode === Utils.SortMode.ALWAYS) {
-                    sort();
-                }
-                draw();
-
-                lastFrameTime = time;
-                if (settings.debug && fpsMeter) {
-                    fpsMeter.tick();
-                }
-
-                requestAnimationFrame(mainLoop);
-            },
-            update = function () {
-                var object,
-                    i;
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (object.update && (object.updateWhenPaused >= isPaused)) {
-                        object.update(gameData);
-                    }
-                }
-                if (!isPaused) {
-                    hshg.update();
-                    hshg.queryForCollisionPairs();
-                }
-            },
-            draw = function () {
-                var object,
-                    i;
-                gameData.renderer.begin();
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (object.draw) {
-                        object.draw(gameData);
-                    }
-                }
-                gameData.renderer.flush();
-            },
-            attach = function (object) {
-                var i, type, family;
-                object.z = object.z || 0;
-                object.updateWhenPaused = object.updateWhenPaused || 0;
-                objects.push(object);
-                if (object.init) {
-                    object.init();
-                }
-                // add object to access pools
-                if (object.family) {
-                    family = object.family;
-                    for (i = 0; i < family.length; ++i) {
-                        type = family[i];
-                        if (!quickAccess[type]) {
-                            quickAccess[type] = [];
-                        }
-                        quickAccess[type].push(object);
-                    }
-                }
-                if (object.useHshg && object.getAABB) {
-                    hshg.addObject(object);
-                }
-
-                if (object.start) {
-                    object.start(gameData);
-                }
-                if (object.attached) {
-                    object.attached(gameData);
-                }
-                object.isAdded = true;
-                if (sortMode === Utils.SortMode.SORT_ON_ADD) {
-                    sort();
-                }
-            },
-            module = {
-                /**
-                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
-                 * has the functions update and draw, they will be called during the loop.
-                 * @function
-                 * @instance
-                 * @param {Object} object - Any object, preferably an Entity
-                 * @name attach
-                 */
-                attach: attach,
-                add: attach,
-                /**
-                 * Removes entity/object
-                 * @function
-                 * @instance
-                 * @param {Object} object - Reference to the object to be removed
-                 * @name remove
-                 */
-                remove: function (object) {
-                    var i, type, index, family, pool;
-                    if (!object) {
-                        return;
-                    }
-                    index = objects.indexOf(object);
-                    if (index >= 0) {
-                        objects[index] = null;
-                        if (object.destroy) {
-                            object.destroy(gameData);
-                        }
-                        object.isAdded = false;
-                    }
-                    if (object.useHshg && object.getAABB) {
-                        hshg.removeObject(object);
-                    }
-                    // remove from access pools
-                    if (object.family) {
-                        family = object.family;
-                        for (i = 0; i < family.length; ++i) {
-                            type = family[i];
-                            pool = quickAccess[type];
-                            if (pool) {
-                                Utils.removeObject(quickAccess[type], object);
-                            }
-                        }
-                    }
-                },
-                /**
-                 * Removes all entities/objects except ones that have the property "global"
-                 * @function
-                 * @instance
-                 * @param {Boolean} removeGlobal - Also remove global objects
-                 * @name removeAll
-                 */
-                removeAll: function (removeGlobal) {
-                    var i,
-                        object;
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (!object.global || removeGlobal) {
-                            module.remove(object);
-                        }
-                    }
-                    // bug in hshg: objects don't get removed here, so we respawn hshg
-                    hshg = new Hshg();
-                    // re-add all global objects
-                    cleanObjects();
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (object.useHshg && object.getAABB) {
-                            hshg.addObject(object);
-                        }
-                    }
-                },
-                /**
-                 * Returns the first object it can find with this name. Safer to use with a callback.
-                 * The callback is called immediately if the object is found (it's not asynchronous).
-                 * @function
-                 * @instance
-                 * @param {String} objectName - Name of the object
-                 * @param {Function} [callback] - Called if the object is found
-                 * @returns {Object} null if not found
-                 * @name get
-                 */
-                get: function (objectName, callback) {
-                    // retrieves the first object it finds by its name
-                    var i,
-                        object;
-
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (!object.name) {
-                            continue;
-                        }
-                        if (object.name === objectName) {
-                            if (callback) {
-                                callback(object);
-                            }
-                            return object;
-                        }
-                    }
-                    return null;
-                },
-                /**
-                 * Returns an array of objects with a certain name
-                 * @function
-                 * @instance
-                 * @param {String} objectName - Name of the object
-                 * @param {Function} [callback] - Called with the object array
-                 * @returns {Array} An array of objects, empty if no objects found
-                 * @name getByName
-                 */
-                getByName: function (objectName, callback) {
-                    var i,
-                        object,
-                        array = [];
-
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (!object.name) {
-                            continue;
-                        }
-                        if (object.name === objectName) {
-                            array.push(object);
-                        }
-                    }
-                    if (callback && array.length) {
-                        callback(array);
-                    }
-                    return array;
-                },
-                /**
-                 * Returns an array of objects by family name. Entities are added to pools
-                 * of each family you indicate in the Entity.family array the moment you call
-                 * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
-                 * This allows quick access of a group of similar entities. Families are cached so you
-                 * may get a reference to the array of objects even if it's not filled yet.
-                 * @function
-                 * @instance
-                 * @param {String} familyName - Name of the family
-                 * @param {Function} [callback] - Called with the object array
-                 * @returns {Array} An array of objects, empty if no objects found
-                 * @name getByFamily
-                 */
-                getByFamily: function (type, callback) {
-                    var array = quickAccess[type];
-                    if (!array) {
-                        // initialize it
-                        quickAccess[type] = [];
-                        array = quickAccess[type];
-                        console.log('Warning: family called ' + type + ' does not exist');
-                    }
-                    if (callback && array.length) {
-                        callback(array);
-                    }
-                    return array;
-                },
-                /**
-                 * Stops the mainloop on the next tick
-                 * @function
-                 * @instance
-                 * @name stop
-                 */
-                stop: function () {
-                    isRunning = false;
-                },
-                /**
-                 * Starts the mainloop
-                 * @function
-                 * @instance
-                 * @name run
-                 */
-                run: function () {
-                    if (!isRunning) {
-                        isRunning = true;
-                        mainLoop();
-                    }
-                },
-                /**
-                 * Returns the number of objects
-                 * @function
-                 * @instance
-                 * @returns {Number} The number of objects
-                 * @name count
-                 */
-                count: function () {
-                    return objects.length;
-                },
-                /**
-                 * Stops calling update on every object. Note that draw is still
-                 * being called. Objects with the property updateWhenPaused
-                 * will still be updated.
-                 * @function
-                 * @instance
-                 * @param {Number} level - Level of pause state, defaults to 1
-                 * @name pause
-                 */
-                pause: function (level) {
-                    isPaused = level;
-                    if (Utils.isUndefined(level)) {
-                        isPaused = 1;
-                    }
-                },
-                /**
-                 * Cancels the pause and resume updating objects. (Sets pause level to 0)
-                 * @function
-                 * @instance
-                 * @name resume
-                 */
-                resume: function () {
-                    isPaused = 0;
-                },
-                /**
-                 * Returns pause level. If an object is passed to the function
-                 * it checks if that object should be paused or not
-                 * @function
-                 * @instance
-                 * @param {Object} [object] - Object to check if it's paused
-                 * @name isPaused
-                 */
-                isPaused: function (obj) {
-                    if (Utils.isDefined(obj)) {
-                        return obj.updateWhenPaused < isPaused;
-                    }
-                    return isPaused;
-                },
-                /**
-                 * Forces objects to be drawn (Don't call this unless you need it)
-                 * @function
-                 * @instance
-                 * @name draw
-                 */
-                draw: function () {
-                    draw();
-                },
-                /**
-                 * Gets the current HSHG grid instance
-                 * @function
-                 * @instance
-                 * @name getHshg
-                 */
-                getHshg: function () {
-                    return hshg;
-                },
-                /**
-                 * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
-                 * Utils.SortMode.ALWAYS - sort on every update tick<br>
-                 * Utils.SortMode.NEVER - don't sort at all<br>
-                 * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
-                 * @function
-                 * @instance
-                 * @param {Utils.SortMode} mode - Sorting mode
-                 * @name setSortMode
-                 */
-                setSortMode: function (mode) {
-                    sortMode = mode;
-                },
-                /**
-                 * Calls the update function. Be careful when using this in another
-                 * update loop, as it will result in an endless loop.
-                 * @function
-                 * @instance
-                 * @name update
-                 */
-                update: function () {
-                    update();
-                }
-            };
-
-        if (!window.performance) {
-            window.performance = {
-                now: Date.now
-            };
-        }
-        gameData = data;
-        if (settings.debug && Utils.isDefined(window.FPSMeter)) {
-            FPSMeter.defaults.graph = 1;
-            fpsMeter = new FPSMeter();
-        }
-
-        // swap sort method with default sorting method
-        if (settings.defaultSort) {
-            sort = defaultSort;
-        }
-
-        return module;
-    };
-});
-/**
- * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
- * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.audio namespace. 
- * @module bento/managers/savestate
- * @returns SaveState
- */
-bento.define('bento/managers/savestate', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    var uniqueID = document.URL,
-        storage,
-        // an object that acts like a localStorageObject
-        storageFallBack = {
-            data: {},
-            setItem: function (key, value) {
-                var k,
-                    count = 0,
-                    data = this.data;
-                data[key] = value;
-                // update length
-                for (k in data) {
-                    if (data.hasOwnProperty(k)) {
-                        ++count;
-                    }
-                }
-                this.length = count;
-            },
-            getItem: function (key) {
-                var item = storageFallBack.data[key];
-                return Utils.isDefined(item) ? item : null;
-            },
-            removeItem: function (key) {
-                delete storageFallBack.data[key];
-            },
-            clear: function () {
-                this.data = {};
-                this.length = 0;
-            },
-            length: 0
-        };
-
-    // initialize
-    try {
-        storage = window.localStorage;
-        // try saving once
-        if (window.localStorage) {
-            window.localStorage.setItem(uniqueID + 'save', '0');
-        } else {
-            throw 'No local storage available';
-        }
-    } catch (e) {
-        console.log('Warning: you have disabled cookies on your browser. You cannot save progress in your game.');
-        storage = storageFallBack;
-    }
-    return {
-        /**
-         * Boolean that indicates if keys should be saved
-         * @instance
-         * @name saveKeys
-         */
-        saveKeys: false,
-        /**
-         * Saves/serializes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} value - Number/Object/Array to be saved
-         * @name save
-         */
-        save: function (elementKey, element) {
-            var keys;
-            if (typeof elementKey !== 'string') {
-                elementKey = JSON.stringify(elementKey);
-            }
-            storage.setItem(uniqueID + elementKey, JSON.stringify(element));
-
-            // also store the keys
-            if (this.saveKeys) {
-                keys = this.load('_keys', []);
-                keys.push(elementKey);
-                storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
-            }
-        },
-        /**
-         * Adds to a saved variable/number
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} value - Number to be added, if the value does not exists, it defaults to 0
-         * @name add
-         */
-        add: function (elementKey, element) {
-            var value = this.load(elementKey, 0);
-            value += element;
-            this.save(elementKey, value);
-        },
-        /**
-         * Loads/deserializes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} defaultValue - The value returns if saved variable doesn't exists
-         * @returns {Object} Returns saved value, otherwise defaultValue
-         * @name load
-         */
-        load: function (elementKey, defaultValue) {
-            var element;
-            element = storage.getItem(uniqueID + elementKey);
-            if (element === null || element === undefined) {
-                return defaultValue;
-            }
-            return JSON.parse(element);
-        },
-        /**
-         * Deletes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @name remove
-         */
-        remove: function (elementKey) {
-            storage.removeItem(uniqueID + elementKey);
-        },
-        /**
-         * Clears the savestate
-         * @function
-         * @instance
-         * @name clear
-         */
-        clear: function () {
-            storage.clear();
-        },
-        debug: function () {
-            console.log(localStorage);
-        },
-        /**
-         * Checks if localStorage has values
-         * @function
-         * @instance
-         * @name isEmpty
-         */
-        isEmpty: function () {
-            return storage.length === 0;
-        },
-        /**
-         * Sets an identifier that's prepended on every key.
-         * By default this is the game's URL, to prevend savefile clashing.
-         * @function
-         * @instance
-         * @param {String} name - ID name
-         * @name setId
-         */
-        setId: function (str) {
-            uniqueID = str;
-        },
-        /**
-         * Swaps the storage object. Allows you to use something else than localStorage. But the storage object
-         * must have similar methods as localStorage.
-         * @function
-         * @instance
-         * @param {Object} storageObject - an object that resembels localStorage
-         * @name setStorage
-         */
-        setStorage: function (storageObj) {
-            storage = storageObj;
-        },
-        /**
-         * Returns the current storage object
-         * @function
-         * @instance
-         * @name getStorage
-         */
-        getStorage: function () {
-            return storage;
-        }
-    };
-});
-/**
- * Manager that controls screens. Screens are defined as separate modules. See {@link module:bento/screen}. To show
- * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
- * <br>Exports: Constructor, can be accessed through Bento.screens namespace. 
- * @module bento/managers/screen
- * @returns ScreenManager
- */
-bento.define('bento/managers/screen', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    return function () {
-        var screens = {},
-            currentScreen = null,
-            getScreen = function (name) {
-                return screens[name];
-            },
-            screenManager = {
-                /**
-                 * Adds a new screen to the cache
-                 * @function
-                 * @instance
-                 * @param {Screen} screen - Screen object
-                 * @name add
-                 */
-                add: function (screen) {
-                    if (!screen.name) {
-                        throw 'Add name property to screen';
-                    }
-                    screens[screen.name] = screen;
-                },
-                /**
-                 * Shows a screen. If the screen was not added previously, it
-                 * will be loaded asynchronously by a require call.
-                 * @function
-                 * @instance
-                 * @param {String} name - Name of the screen
-                 * @param {Object} data - Extra data to pass on to the screen
-                 * @param {Function} callback - Called when screen is shown
-                 * @name show
-                 */
-                show: function (name, data, callback) {
-                    if (currentScreen !== null) {
-                        screenManager.hide();
-                    }
-                    currentScreen = screens[name];
-                    if (currentScreen) {
-                        if (currentScreen.onShow) {
-                            currentScreen.onShow(data);
-                        }
-                        if (callback) {
-                            callback();
-                        }
-                    } else {
-                        // load asynchronously
-                        bento.require([name], function (screenObj) {
-                            if (!screenObj.name) {
-                                screenObj.name = name;
-                            }
-                            screenManager.add(screenObj);
-                            // try again
-                            screenManager.show(name, data, callback);
-                        });
-                    }
-                },
-                /**
-                 * Hides a screen. You may call this to remove all objects on screen, but
-                 * it's not needed to call this yourself if you want to show a new screen.
-                 * Screens.hide is internally called on the current screen when Screens.show
-                 * is called.
-                 * @function
-                 * @instance
-                 * @param {Object} data - Extra data to pass on to the screen
-                 * @name hide
-                 */
-                hide: function (data) {
-                    if (!currentScreen) {
-                        return;
-                    }
-                    currentScreen.onHide(data);
-                    currentScreen = null;
-                },
-                /**
-                 * Return reference to the screen currently shown.
-                 * @function
-                 * @instance
-                 * @returns {Screen} The current screen
-                 * @name getCurrentScreen
-                 */
-                getCurrentScreen: function () {
-                    return currentScreen;
-                },
-                /**
-                 * Clears cache of screens
-                 * @function
-                 * @instance
-                 * @name reset
-                 */
-                reset: function () {
-                    screens = {};
-                }
-            };
-
-        return screenManager;
-
     };
 });
 /**

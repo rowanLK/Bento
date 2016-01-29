@@ -67,10 +67,13 @@ bento.define('bento/managers/audio', [
                  * @param {String} name - name of the audio asset
                  * @param {Boolean} [loop] - should the audio loop (defaults to false)
                  * @param {Function} [onEnd] - callback when the audio ends
+                 * @param {Boolean} [stopSound] - stops the sound if true
                  */
-                playSound: function (name, loop, onEnd) {
+                playSound: function (name, loop, onEnd, stopSound) {
                     var audio = assetManager.getAudio(name);
                     if (!mutedSound && !preventSounds) {
+                        if (stopSound)
+                            obj.stopSound(name);
                         if (Utils.isDefined(loop)) {
                             audio.loop = loop;
                         }
@@ -98,9 +101,13 @@ bento.define('bento/managers/audio', [
                  * @param {String} name - name of the audio asset
                  * @param {Boolean} [loop] - should the audio loop (defaults to true)
                  * @param {Function} [onEnd] - callback when the audio ends
+                 * @param {Boolean} [stopAllMusic] - stops all music if true
                  */
-                playMusic: function (name, loop, onEnd) {
+                playMusic: function (name, loop, onEnd, stopAllMusic) {
                     var audio;
+
+                    if (stopAllMusic)
+                        obj.stopAllMusic();
 
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
