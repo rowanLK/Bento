@@ -3,9 +3,9 @@
  * <br>Exports: Constructor
  * @module bento/components/animation
  * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally. 
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName) 
- * @param {Function} settings.onLoad - Called when image is loaded through URL 
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
+ * @param {Function} settings.onLoad - Called when image is loaded through URL
  * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
  * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
  * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
@@ -24,7 +24,7 @@ var sprite = new Sprite({
         frameCountX: 3,
         frameCountY: 3,
         animations: {
-            "default": { 
+            "default": {
                 frames: [0]
             },
             "walk": {
@@ -39,7 +39,7 @@ var sprite = new Sprite({
      }),
     entity = new Entity({
         components: [sprite] // attach sprite to entity
-                             // alternative to passing a components array is by calling entity.attach(sprite); 
+                             // alternative to passing a components array is by calling entity.attach(sprite);
     });
 
 // attach entity to game
@@ -84,8 +84,11 @@ bento.define('bento/components/animation', [
      * @name setup
      */
     Animation.prototype.setup = function (settings) {
-        var self = this;
+        var self = this,
+            padding = 0;
+
         this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
 
         // add default animation
         if (!this.animations['default']) {
@@ -122,7 +125,7 @@ bento.define('bento/components/animation', [
                 });
                 // wait until asset is loaded and then retry
                 return;
-           }
+            }
         } else {
             // no image specified
             return;
@@ -133,14 +136,14 @@ bento.define('bento/components/animation', [
             this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
         } else {
             this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = this.spriteImage.width / this.frameCountX;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
         }
         if (this.animationSettings.frameHeight) {
             this.frameHeight = this.animationSettings.frameHeight;
             this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
         } else {
             this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = this.spriteImage.height / this.frameCountY;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
         }
 
         this.padding = this.animationSettings.padding || 0;
@@ -157,10 +160,28 @@ bento.define('bento/components/animation', [
     };
 
     Animation.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
+
         this.entity = data.entity;
         // set dimension of entity object
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            // TODO: entity.name is always an empty string
+            if (highestFrame > this.frameCountX * this.frameCountY - 1)
+                console.log("Warning: the frames in animation " + animation + " of " + this.entity.name + " are out of bounds. Can't use frame " + highestFrame + ".");
+        }
     };
     /**
      * Set component to a different animation. The animation won't change if it's already playing.
@@ -280,8 +301,8 @@ bento.define('bento/components/animation', [
     };
     Animation.prototype.draw = function (data) {
         var frameIndex,
-            sourceFrame, 
-            sourceX, 
+            sourceFrame,
+            sourceX,
             sourceY,
             entity = data.entity,
             origin = entity.origin;
