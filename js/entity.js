@@ -189,22 +189,11 @@ bento.define('bento/entity', [
 
         // read settings
         if (settings) {
-            if (settings.components) {
-                if (!Utils.isArray(settings.components)) {
-                    settings.components = [settings.components];
-                }
-                for (i = 0; i < settings.components.length; ++i) {
-                    this.attach(settings.components[i]);
-                }
-            }
             if (settings.position) {
                 this.position = settings.position;
             }
             if (settings.origin) {
                 this.origin = settings.origin;
-            }
-            if (settings.originRelative) {
-                this.setOriginRelative(settings.originRelative);
             }
             if (settings.name) {
                 this.name = settings.name;
@@ -217,9 +206,6 @@ bento.define('bento/entity', [
                     this.family.push(settings.family[i]);
                 }
             }
-            if (settings.init) {
-                settings.init.apply(this);
-            }
 
             this.z = settings.z || 0;
             this.updateWhenPaused = settings.updateWhenPaused || 0;
@@ -228,6 +214,26 @@ bento.define('bento/entity', [
             this.useHshg = settings.useHshg || false;
             this.staticHshg = settings.staticHshg || false;
             this.onCollide = settings.onCollide;
+
+            // attach components after initializing other variables
+            if (settings.components) {
+                if (!Utils.isArray(settings.components)) {
+                    settings.components = [settings.components];
+                }
+                for (i = 0; i < settings.components.length; ++i) {
+                    this.attach(settings.components[i]);
+                }
+            }
+
+            // origin relative depends on dimension, so do this after attaching components
+            if (settings.originRelative) {
+                this.setOriginRelative(settings.originRelative);
+            }
+
+            // you might want to init with all components
+            if (settings.init) {
+                settings.init.apply(this);
+            }
 
             if (settings.addNow) {
                 Bento.objects.add(this);
