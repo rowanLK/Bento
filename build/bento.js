@@ -11516,7 +11516,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
  * @param {Object} settings - Required, set the width and height
  * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
  * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
- * @param {Html Element} (settings.canvas) - Reference to an existing canvas object. Optional.
+ * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
  * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
  */
 bento.define('bento/canvas', [
@@ -11575,8 +11575,12 @@ bento.define('bento/canvas', [
             originalRenderer,
             renderer,
             packedImage,
+            sprite,
+            entity,
+            components,
+            // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
             component = {
-                name: 'canvas',
+                name: 'rendererSwapper',
                 draw: function (data) {
                     // clear up canvas
                     if (!settings.preventAutoClear) {
@@ -11591,7 +11595,6 @@ bento.define('bento/canvas', [
                     // swap renderer
                     originalRenderer = data.renderer;
                     data.renderer = renderer;
-                    data.context = context;
 
                     // re-apply the origin translation
                     data.renderer.save();
@@ -11601,12 +11604,8 @@ bento.define('bento/canvas', [
                     data.renderer.restore();
                     // swap back
                     data.renderer = originalRenderer;
-                    data.context = null;
                 }
-            },
-            sprite,
-            entity,
-            components;
+            };
 
         // init canvas
         if (settings.canvas) {
@@ -11630,6 +11629,7 @@ bento.define('bento/canvas', [
         });
 
         // init entity and its components
+        // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
         components = [sprite, component]
         // attach any other component in settings
         if (settings.components) {
@@ -11654,7 +11654,7 @@ bento.define('bento/canvas', [
              * Returns the canvas element
              * @function
              * @instance
-             * @returns {Html Canvas} Canvas object
+             * @returns {HTML-Canvas-Element} Canvas object
              * @name getCanvas
              */
             getCanvas: function () {
@@ -11664,7 +11664,7 @@ bento.define('bento/canvas', [
              * Returns the 2d context, to perform manual drawing operations
              * @function
              * @instance
-             * @returns {Html Canvas Context} Context object
+             * @returns {HTML-Canvas-Context} Context object
              * @name getContext
              */
             getContext: function () {

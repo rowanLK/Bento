@@ -63,8 +63,12 @@ bento.define('bento/canvas', [
             originalRenderer,
             renderer,
             packedImage,
+            sprite,
+            entity,
+            components,
+            // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
             component = {
-                name: 'canvas',
+                name: 'rendererSwapper',
                 draw: function (data) {
                     // clear up canvas
                     if (!settings.preventAutoClear) {
@@ -79,7 +83,6 @@ bento.define('bento/canvas', [
                     // swap renderer
                     originalRenderer = data.renderer;
                     data.renderer = renderer;
-                    data.context = context;
 
                     // re-apply the origin translation
                     data.renderer.save();
@@ -89,12 +92,8 @@ bento.define('bento/canvas', [
                     data.renderer.restore();
                     // swap back
                     data.renderer = originalRenderer;
-                    data.context = null;
                 }
-            },
-            sprite,
-            entity,
-            components;
+            };
 
         // init canvas
         if (settings.canvas) {
@@ -118,6 +117,7 @@ bento.define('bento/canvas', [
         });
 
         // init entity and its components
+        // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
         components = [sprite, component]
         // attach any other component in settings
         if (settings.components) {
