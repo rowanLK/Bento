@@ -1,11 +1,13 @@
 /**
- * An entity that uses a HTML5 2d canvas as image. Attach other entities to draw on this canvas.
- * @param {Object} settings - 
- * @param {Function} settings.constructor - function that returns the object for pooling
- * @param {Function} settings.destructor - function that resets object for reuse
- * @param {Number} settings.poolSize - amount to pre-initialize
+ * An Entity that helps using a HTML5 2d canvas as Sprite. Its component temporarily takes over
+ * the renderer, so any entity that gets attached to the parent will start drawing on the canvas.
+ * @param {Object} settings - Required, set the width and height
+ * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
+ * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
+ * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
+ * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
  */
- bento.define('bento/canvas', [
+bento.define('bento/canvas', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
@@ -14,7 +16,10 @@
     'bento/entity',
     'bento/eventsystem',
     'bento/utils',
-    'bento/tween'
+    'bento/tween',
+    'bento/packedimage',
+    'bento/objectpool',
+    'bento/renderers/canvas2d'
 ], function (
     Bento,
     Vector2,
@@ -24,32 +29,137 @@
     Entity,
     EventSystem,
     Utils,
-    Tween
+    Tween,
+    PackedImage,
+    ObjectPool,
+    Canvas2D
 ) {
     'use strict';
-    
+    var canvasPool = new ObjectPool({
+        poolSize: 20,
+        constructor: function () {
+            var canvas = document.createElement('canvas');
+
+            return canvas;
+        },
+        destructor: function (obj) {
+            // clear canvas
+            var context = obj.getContext('2d');
+            context.clearRect(0, 0, obj.width, obj.height);
+            // clear texture
+            if (obj.texture) {
+                obj.texture = null;
+            }
+            return obj;
+        }
+    });
     return function (settings) {
         var viewport = Bento.getViewport(),
-            sprite = new Sprite({
-                imageName: '',
-                frameCountX: 1,
-                frameCountY: 1,
-                animations: {
-                    'default': {
-                        speed: 0,
-                        frames: [0]
+            i,
+            l,
+            sprite,
+            canvas,
+            context,
+            originalRenderer,
+            renderer,
+            packedImage,
+            component = {
+                name: 'canvas',
+                draw: function (data) {
+                    // clear up canvas
+                    if (!settings.preventAutoClear) {
+                        context.clearRect(0, 0, canvas.width, canvas.height);
                     }
+
+                    // clear up webgl
+                    if (canvas.texture) {
+                        canvas.texture = null;
+                    }
+
+                    // swap renderer
+                    originalRenderer = data.renderer;
+                    data.renderer = renderer;
+                    data.context = context;
+
+                    // re-apply the origin translation
+                    data.renderer.save();
+                    data.renderer.translate(entity.origin.x, entity.origin.y);
+                },
+                postDraw: function (data) {
+                    data.renderer.restore();
+                    // swap back
+                    data.renderer = originalRenderer;
+                    data.context = null;
                 }
-            }),
-            entity = new Entity({
-                z: 0,
-                name: '',
-                position: settings.position || new Vector2(0, 0),
-                originRelative: new Vector2(0, 0),
-                updateWhenPaused: false,
-                family: [''],
-                components: [sprite]
-            });
+            },
+            sprite,
+            entity,
+            components;
+
+        // init canvas
+        if (settings.canvas) {
+            canvas = settings.canvas;
+        } else {
+            canvas = canvasPool.get();
+            canvas.width = settings.width;
+            canvas.height = settings.height;
+        }
+        context = canvas.getContext('2d');
+
+        // init renderer
+        renderer = new Canvas2D(canvas, {
+            pixelSize: settings.pixelSize || 1
+        });
+
+        // init sprite
+        packedImage = new PackedImage(canvas),
+        sprite = new Sprite({
+            image: packedImage
+        });
+
+        // init entity and its components
+        components = [sprite, component]
+        // attach any other component in settings
+        if (settings.components) {
+            for (i = 0, l = settings.components.length; i < l; ++i) {
+                components.push(settings.components[i]);
+            }
+        }
+        entity = new Entity({
+            z: settings.z,
+            name: settings.name,
+            origin: settings.origin,
+            originRelative: settings.originRelative,
+            position: settings.position,
+            components: components,
+            family: settings.family,
+            init: settings.init
+        });
+
+        // public interface
+        entity.extend({
+            /**
+             * Returns the canvas element
+             * @function
+             * @instance
+             * @returns {HTML-Canvas-Element} Canvas object
+             * @name getCanvas
+             */
+            getCanvas: function () {
+                return canvas;
+            },
+            /**
+             * Returns the 2d context, to perform manual drawing operations
+             * @function
+             * @instance
+             * @returns {HTML-Canvas-Context} Context object
+             * @name getContext
+             */
+            getContext: function () {
+                return context;
+            }
+        });
+
         return entity;
     };
 });
