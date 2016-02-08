@@ -1,0 +1,11 @@
+{
+    "imageName": "bunnygirlsmall",
+    "frameWidth": 32,
+    "frameHeight": 32,
+    "animations": {
+        "idle": {
+            "speed": 0.1,
+            "frames": [0, 10, 11, 12]
+        }
+    }
+}

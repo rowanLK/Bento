@@ -1,0 +1,14 @@
+{
+    "path": "assets/",
+    "images": {
+        "bunnygirlsmall": "bunnygirlsmall.png",
+        "triangle": "triangle.png",
+        "buttona": "buttona.png",
+        "buttonb": "buttonb.png",
+        "buttonl": "buttonl.png",
+        "buttonr": "buttonr.png"
+    },
+    "json": {
+        "bunny": "bunny.json"
+    }
+}
