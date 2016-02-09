@@ -56,7 +56,7 @@ bento.require([
                             frameWidth: 32,
                             frameHeight: 32,
                             onClick: function () {
-                                console.log('clicked')
+                                console.log('clicked');
                             },
                             onHoverEnter: function (evt) {
                                 color = [0, 1, 0, 1];
@@ -98,7 +98,7 @@ bento.require([
                     //     viewport.y -= 1;
                     // }
                 }
-            })
+            });
             button2 = makeButton();
             button2.name = 'button2';
             // button2.rotation.setAngleDegree(45);

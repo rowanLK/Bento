@@ -198,7 +198,7 @@ bento.define('bento/components/clickable', [
             }
         }
     };
-    // TODO: does not work with floating entities
+
     Clickable.prototype.transformEvent = function (evt) {
         var positionVector,
             translateMatrix = new Matrix(3, 3),
@@ -210,7 +210,8 @@ bento.define('bento/components/clickable', [
             position,
             parent,
             parents = [],
-            i;
+            i,
+            isFloating = false;
 
         // no parents
         if (!this.entity.parent) {
@@ -221,19 +222,24 @@ bento.define('bento/components/clickable', [
             }
             return evt;
         }
-        // make a copy
-        evt = this.cloneEvent(evt);
-        if (this.entity.float) {
-            positionVector = evt.localPosition.toMatrix();
-        } else {
-            positionVector = evt.worldPosition.toMatrix();
-        }
-
         // get all parents
         parent = this.entity;
         while (parent.parent) {
             parent = parent.parent;
             parents.unshift(parent);
+        }
+        // is top parent floating?
+        if (parents.length && parents[0].float) {
+            isFloating = true;
+        }
+
+
+        // make a copy
+        evt = this.cloneEvent(evt);
+        if (this.entity.float || isFloating) {
+            positionVector = evt.localPosition.toMatrix();
+        } else {
+            positionVector = evt.worldPosition.toMatrix();
         }
 
         /**
