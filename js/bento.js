@@ -176,6 +176,7 @@ bento.define('bento', [
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+             * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
              * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
              * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen

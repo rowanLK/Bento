@@ -3968,6 +3968,7 @@ bento.define('bento', [
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+             * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
              * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
              * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
@@ -4654,6 +4655,11 @@ Bento.objects.attach(entity);
     Entity.prototype.attach = function (child) {
         var mixin = {},
             parent = this;
+        
+        if (child.isAdded || child.parent) {
+            console.log('Warning: Child ' + child.name + ' was already attached before.');
+            return;
+        }
 
         this.components.push(child);
 
@@ -9706,7 +9712,7 @@ bento.define('bento/managers/object', [
             attach = function (object) {
                 var i, type, family;
 
-                if (object.isAdded) {
+                if (object.isAdded || object.parent) {
                     console.log('Warning: Entity ' + object.name + ' was already added.');
                     return;
                 }
@@ -11366,11 +11372,25 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
      * @param {Number} distance - Distance
      * @returns {Boolean} Returns true if farther than distance
      * @instance
-     * @name fartherThan
+     * @name isFartherThan
      */
-    Vector2.prototype.fartherThan = function (vector, distance) {
+    Vector2.prototype.isFartherThan = function (vector, distance) {
         var diff = vector.substract(this);
         return diff.x * diff.x + diff.y * diff.y > distance * distance;
+    };
+    /**
+     * Check if distance between 2 vector is closer than a certain value
+     * This function is more performant than using Vector2.distance()
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @param {Number} distance - Distance
+     * @returns {Boolean} Returns true if farther than distance
+     * @instance
+     * @name isCloserThan
+     */
+    Vector2.prototype.isCloserThan = function (vector, distance) {
+        var diff = vector.substract(this);
+        return diff.x * diff.x + diff.y * diff.y < distance * distance;
     };
     /**
      * Rotates the vector by a certain amount of radians

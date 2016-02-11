@@ -133,7 +133,7 @@ bento.define('bento/managers/object', [
             attach = function (object) {
                 var i, type, family;
 
-                if (object.isAdded) {
+                if (object.isAdded || object.parent) {
                     console.log('Warning: Entity ' + object.name + ' was already added.');
                     return;
                 }

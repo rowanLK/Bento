@@ -483,6 +483,11 @@ Bento.objects.attach(entity);
     Entity.prototype.attach = function (child) {
         var mixin = {},
             parent = this;
+        
+        if (child.isAdded || child.parent) {
+            console.log('Warning: Child ' + child.name + ' was already attached before.');
+            return;
+        }
 
         this.components.push(child);
 

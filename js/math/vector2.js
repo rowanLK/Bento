@@ -235,11 +235,25 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
      * @param {Number} distance - Distance
      * @returns {Boolean} Returns true if farther than distance
      * @instance
-     * @name fartherThan
+     * @name isFartherThan
      */
-    Vector2.prototype.fartherThan = function (vector, distance) {
+    Vector2.prototype.isFartherThan = function (vector, distance) {
         var diff = vector.substract(this);
         return diff.x * diff.x + diff.y * diff.y > distance * distance;
+    };
+    /**
+     * Check if distance between 2 vector is closer than a certain value
+     * This function is more performant than using Vector2.distance()
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @param {Number} distance - Distance
+     * @returns {Boolean} Returns true if farther than distance
+     * @instance
+     * @name isCloserThan
+     */
+    Vector2.prototype.isCloserThan = function (vector, distance) {
+        var diff = vector.substract(this);
+        return diff.x * diff.x + diff.y * diff.y < distance * distance;
     };
     /**
      * Rotates the vector by a certain amount of radians
