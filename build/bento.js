@@ -12857,8 +12857,10 @@ bento.define('bento/gui/clickbutton', [
             },
             sprite = new Sprite({
                 image: settings.image,
-                frameWidth: settings.frameWidth || 32,
-                frameHeight: settings.frameHeight || 32,
+                frameWidth: settings.frameWidth,
+                frameHeight: settings.frameHeight,
+                frameCountX: settings.frameCountX,
+                frameCountY: settings.frameCountY,
                 animations: animations
             }),
             clickable = new Clickable({
