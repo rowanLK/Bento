@@ -5637,6 +5637,29 @@ bento.define('bento/utils', [], function () {
             }
         },
         /**
+         * A simple hashing function, similar to Java's String.hashCode()
+         * source: http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+         * @function
+         * @instance
+         * @param {String} string - String to hash
+         * @name checksum
+         */
+        checksum: function (str) {
+            var hash = 0,
+                strlen = str.length,
+                i,
+                c;
+            if (strlen === 0) {
+                return hash;
+            }
+            for (i = 0; i < strlen; ++i) {
+                c = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + c;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash;
+        },
+        /**
          * Checks useragent if device is an apple device. Works on web only.
          * @function
          * @instance
@@ -11562,6 +11585,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
  * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
  * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
  * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
+ * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
  */
 bento.define('bento/canvas', [
     'bento',
@@ -11609,14 +11633,6 @@ bento.define('bento/canvas', [
             return obj;
         }
     });
-    /**
-     * @param {Object} settings
-     * @param {Boolean} settings.preventAutoClear - stop canvas from clearing every tick
-     * @param {Number} settings.width - width of canvas
-     * @param {Number} settings.height - height of canvas
-     * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
-     * @param {HTMLCanvas} [settings.canvas] - use this canvas element instead of creating one
-     */
     return function (settings) {
         var viewport = Bento.getViewport(),
             i,

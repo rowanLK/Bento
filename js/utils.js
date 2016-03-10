@@ -507,6 +507,29 @@ bento.define('bento/utils', [], function () {
             }
         },
         /**
+         * A simple hashing function, similar to Java's String.hashCode()
+         * source: http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+         * @function
+         * @instance
+         * @param {String} string - String to hash
+         * @name checksum
+         */
+        checksum: function (str) {
+            var hash = 0,
+                strlen = str.length,
+                i,
+                c;
+            if (strlen === 0) {
+                return hash;
+            }
+            for (i = 0; i < strlen; ++i) {
+                c = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + c;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash;
+        },
+        /**
          * Checks useragent if device is an apple device. Works on web only.
          * @function
          * @instance
