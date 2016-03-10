@@ -6,6 +6,7 @@
  * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
  * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
  * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
+ * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
  */
 bento.define('bento/canvas', [
     'bento',

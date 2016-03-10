@@ -43,6 +43,7 @@ bento.define('bento', [
         canvas,
         context,
         renderer,
+        bentoSettings,
         styleScaling = true,
         canvasRatio = 0,
         windowRatio,
@@ -176,6 +177,7 @@ bento.define('bento', [
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+             * @param {Boolean} settings.subPixel - Round
              * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
              * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
@@ -184,6 +186,7 @@ bento.define('bento', [
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
+                bentoSettings = settings;
                 DomReady(function () {
                     var runGame = function () {
                         module.objects.run();
@@ -243,6 +246,16 @@ bento.define('bento', [
                         }
                     });
                 });
+            },
+            /**
+             * Returns the settings object supplied to Bento.setup
+             * @function
+             * @instance
+             * @returns Object
+             * @name getSettings
+             */
+            getSettings: function () {
+                return bentoSettings;
             },
             /**
              * Returns the current viewport (reference).

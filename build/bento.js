@@ -3835,6 +3835,7 @@ bento.define('bento', [
         canvas,
         context,
         renderer,
+        bentoSettings,
         styleScaling = true,
         canvasRatio = 0,
         windowRatio,
@@ -3968,6 +3969,7 @@ bento.define('bento', [
              * @param {Rectangle} settings.canvasDimension - base resolution for the game
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+             * @param {Boolean} settings.subPixel - Round
              * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
              * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
@@ -3976,6 +3978,7 @@ bento.define('bento', [
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
+                bentoSettings = settings;
                 DomReady(function () {
                     var runGame = function () {
                         module.objects.run();
@@ -4035,6 +4038,16 @@ bento.define('bento', [
                         }
                     });
                 });
+            },
+            /**
+             * Returns the settings object supplied to Bento.setup
+             * @function
+             * @instance
+             * @returns Object
+             * @name getSettings
+             */
+            getSettings: function () {
+                return bentoSettings;
             },
             /**
              * Returns the current viewport (reference).
@@ -6990,11 +7003,16 @@ bento.define('bento/components/sprite', [
  * @returns Returns a component object.
  */
 bento.define('bento/components/translation', [
+    'bento',
     'bento/utils',
     'bento/math/vector2'
-], function (Utils, Vector2) {
+], function (Bento, Utils, Vector2) {
     'use strict';
+    var bentoSettings;
     var Translation = function (settings) {
+        if (!bentoSettings) {
+            bentoSettings = Bento.getSettings();
+        }
         settings = settings || {};
         this.name = 'translation';
         this.subPixel = settings.subPixel || false;
@@ -7022,7 +7040,7 @@ bento.define('bento/components/translation', [
             scroll = data.viewport;
 
         data.renderer.save();
-        if (this.subPixel) {
+        if (this.subPixel || bentoSettings.subPixel) {
             data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
         } else {
             data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
@@ -11591,6 +11609,14 @@ bento.define('bento/canvas', [
             return obj;
         }
     });
+    /**
+     * @param {Object} settings
+     * @param {Boolean} settings.preventAutoClear - stop canvas from clearing every tick
+     * @param {Number} settings.width - width of canvas
+     * @param {Number} settings.height - height of canvas
+     * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
+     * @param {HTMLCanvas} [settings.canvas] - use this canvas element instead of creating one
+     */
     return function (settings) {
         var viewport = Bento.getViewport(),
             i,

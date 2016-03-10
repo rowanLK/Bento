@@ -7,11 +7,16 @@
  * @returns Returns a component object.
  */
 bento.define('bento/components/translation', [
+    'bento',
     'bento/utils',
     'bento/math/vector2'
-], function (Utils, Vector2) {
+], function (Bento, Utils, Vector2) {
     'use strict';
+    var bentoSettings;
     var Translation = function (settings) {
+        if (!bentoSettings) {
+            bentoSettings = Bento.getSettings();
+        }
         settings = settings || {};
         this.name = 'translation';
         this.subPixel = settings.subPixel || false;
@@ -39,7 +44,7 @@ bento.define('bento/components/translation', [
             scroll = data.viewport;
 
         data.renderer.save();
-        if (this.subPixel) {
+        if (this.subPixel || bentoSettings.subPixel) {
             data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
         } else {
             data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
