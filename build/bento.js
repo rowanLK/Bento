@@ -4637,6 +4637,7 @@ entity.addX(10);
      * The child will have a 'parent' property, which references the parent entity.
      * @function
      * @param {Object} child - The child object to attach (can be anything)
+     * @param {Boolean} force - Allow duplicate attaching
      * @instance
      * @example 
 var entity = new Entity({}),
@@ -4665,11 +4666,11 @@ Bento.objects.attach(entity);
      * @name attach
      * @returns {Entity} Returns itself (useful for chaining attach calls)
      */
-    Entity.prototype.attach = function (child) {
+    Entity.prototype.attach = function (child, force) {
         var mixin = {},
             parent = this;
         
-        if (child.isAdded || child.parent) {
+        if (!force && (child.isAdded || child.parent)) {
             console.log('Warning: Child ' + child.name + ' was already attached before.');
             return;
         }
@@ -4735,6 +4736,7 @@ Bento.objects.attach(entity);
      *
      * @callback FoundCallback
      * @param {Component} component - The component
+     * @param {Number} index - Index of the component
      */
     /**
      * Returns the first child found with a certain name
@@ -4751,7 +4753,7 @@ Bento.objects.attach(entity);
             component = this.components[i];
             if (component && component.name === name) {
                 if (callback) {
-                    callback.apply(component, [component]);
+                    callback.apply(component, [component, i]);
                 }
                 return component;
             }
@@ -10199,7 +10201,12 @@ bento.define('bento/managers/savestate', [
             if (element === null || element === undefined) {
                 return defaultValue;
             }
-            return JSON.parse(element);
+            try {
+                return JSON.parse(element);
+            } catch (e) {
+                console.log('WARNING: save file corrupted.', e);
+                return defaultValue;
+            }
         },
         /**
          * Deletes a variable
@@ -11616,7 +11623,7 @@ bento.define('bento/canvas', [
 ) {
     'use strict';
     var canvasPool = new ObjectPool({
-        poolSize: 20,
+        poolSize: 1,
         constructor: function () {
             var canvas = document.createElement('canvas');
 
@@ -11643,13 +11650,19 @@ bento.define('bento/canvas', [
             originalRenderer,
             renderer,
             packedImage,
-            sprite,
             entity,
             components,
+            drawn = false,
             // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
             component = {
                 name: 'rendererSwapper',
                 draw: function (data) {
+                    // draw once
+                    if (settings.drawOnce) { // TODO: not working yet
+                        if (drawn) {
+                            return;
+                        }
+                    }
                     // clear up canvas
                     if (!settings.preventAutoClear) {
                         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -11672,6 +11685,11 @@ bento.define('bento/canvas', [
                     data.renderer.restore();
                     // swap back
                     data.renderer = originalRenderer;
+
+                    // draw once
+                    if (settings.drawOnce) {
+                        drawn = true;
+                    }
                 }
             };
 
@@ -11691,14 +11709,14 @@ bento.define('bento/canvas', [
         });
 
         // init sprite
-        packedImage = new PackedImage(canvas),
+        packedImage = new PackedImage(canvas);
         sprite = new Sprite({
             image: packedImage
         });
 
         // init entity and its components
         // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
-        components = [sprite, component]
+        components = [sprite, component];
         // attach any other component in settings
         if (settings.components) {
             for (i = 0, l = settings.components.length; i < l; ++i) {

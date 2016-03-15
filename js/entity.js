@@ -452,6 +452,7 @@ entity.addX(10);
      * The child will have a 'parent' property, which references the parent entity.
      * @function
      * @param {Object} child - The child object to attach (can be anything)
+     * @param {Boolean} force - Allow duplicate attaching
      * @instance
      * @example 
 var entity = new Entity({}),
@@ -480,11 +481,11 @@ Bento.objects.attach(entity);
      * @name attach
      * @returns {Entity} Returns itself (useful for chaining attach calls)
      */
-    Entity.prototype.attach = function (child) {
+    Entity.prototype.attach = function (child, force) {
         var mixin = {},
             parent = this;
         
-        if (child.isAdded || child.parent) {
+        if (!force && (child.isAdded || child.parent)) {
             console.log('Warning: Child ' + child.name + ' was already attached before.');
             return;
         }
@@ -550,6 +551,7 @@ Bento.objects.attach(entity);
      *
      * @callback FoundCallback
      * @param {Component} component - The component
+     * @param {Number} index - Index of the component
      */
     /**
      * Returns the first child found with a certain name
@@ -566,7 +568,7 @@ Bento.objects.attach(entity);
             component = this.components[i];
             if (component && component.name === name) {
                 if (callback) {
-                    callback.apply(component, [component]);
+                    callback.apply(component, [component, i]);
                 }
                 return component;
             }

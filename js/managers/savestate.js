@@ -111,7 +111,12 @@ bento.define('bento/managers/savestate', [
             if (element === null || element === undefined) {
                 return defaultValue;
             }
-            return JSON.parse(element);
+            try {
+                return JSON.parse(element);
+            } catch (e) {
+                console.log('WARNING: save file corrupted.', e);
+                return defaultValue;
+            }
         },
         /**
          * Deletes a variable

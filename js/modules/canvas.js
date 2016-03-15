@@ -37,7 +37,7 @@ bento.define('bento/canvas', [
 ) {
     'use strict';
     var canvasPool = new ObjectPool({
-        poolSize: 20,
+        poolSize: 1,
         constructor: function () {
             var canvas = document.createElement('canvas');
 
@@ -64,13 +64,19 @@ bento.define('bento/canvas', [
             originalRenderer,
             renderer,
             packedImage,
-            sprite,
             entity,
             components,
+            drawn = false,
             // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
             component = {
                 name: 'rendererSwapper',
                 draw: function (data) {
+                    // draw once
+                    if (settings.drawOnce) { // TODO: not working yet
+                        if (drawn) {
+                            return;
+                        }
+                    }
                     // clear up canvas
                     if (!settings.preventAutoClear) {
                         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -93,6 +99,11 @@ bento.define('bento/canvas', [
                     data.renderer.restore();
                     // swap back
                     data.renderer = originalRenderer;
+
+                    // draw once
+                    if (settings.drawOnce) {
+                        drawn = true;
+                    }
                 }
             };
 
@@ -112,14 +123,14 @@ bento.define('bento/canvas', [
         });
 
         // init sprite
-        packedImage = new PackedImage(canvas),
+        packedImage = new PackedImage(canvas);
         sprite = new Sprite({
             image: packedImage
         });
 
         // init entity and its components
         // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
-        components = [sprite, component]
+        components = [sprite, component];
         // attach any other component in settings
         if (settings.components) {
             for (i = 0, l = settings.components.length; i < l; ++i) {
