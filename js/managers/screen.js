@@ -6,8 +6,9 @@
  * @returns ScreenManager
  */
 bento.define('bento/managers/screen', [
+    'bento/eventsystem',
     'bento/utils'
-], function (Utils) {
+], function (EventSystem, Utils) {
     'use strict';
     return function () {
         var screens = {},
@@ -48,6 +49,7 @@ bento.define('bento/managers/screen', [
                         if (currentScreen.onShow) {
                             currentScreen.onShow(data);
                         }
+                        EventSystem.fire('screenShown', currentScreen);
                         if (callback) {
                             callback();
                         }
@@ -78,6 +80,7 @@ bento.define('bento/managers/screen', [
                         return;
                     }
                     currentScreen.onHide(data);
+                    EventSystem.fire('screenHidden', currentScreen);
                     currentScreen = null;
                 },
                 /**

@@ -226,9 +226,13 @@ bento.define('bento/managers/audio', [
                  * Returns true if any music is playing
                  * @instance
                  * @name isPlayingMusic
+                 * @param {String} [name] - Check whether this particular music is playing
                  * @function
                  */
-                isPlayingMusic: function () {
+                isPlayingMusic: function (name) {
+                    if (name) {
+                        return lastMusicPlayed === name;
+                    }
                     return isPlayingMusic;
                 }
             };

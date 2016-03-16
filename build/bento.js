@@ -9192,9 +9192,13 @@ bento.define('bento/managers/audio', [
                  * Returns true if any music is playing
                  * @instance
                  * @name isPlayingMusic
+                 * @param {String} [name] - Check whether this particular music is playing
                  * @function
                  */
-                isPlayingMusic: function () {
+                isPlayingMusic: function (name) {
+                    if (name) {
+                        return lastMusicPlayed === name;
+                    }
                     return isPlayingMusic;
                 }
             };
@@ -10280,8 +10284,9 @@ bento.define('bento/managers/savestate', [
  * @returns ScreenManager
  */
 bento.define('bento/managers/screen', [
+    'bento/eventsystem',
     'bento/utils'
-], function (Utils) {
+], function (EventSystem, Utils) {
     'use strict';
     return function () {
         var screens = {},
@@ -10322,6 +10327,7 @@ bento.define('bento/managers/screen', [
                         if (currentScreen.onShow) {
                             currentScreen.onShow(data);
                         }
+                        EventSystem.fire('screenShown', currentScreen);
                         if (callback) {
                             callback();
                         }
@@ -10352,6 +10358,7 @@ bento.define('bento/managers/screen', [
                         return;
                     }
                     currentScreen.onHide(data);
+                    EventSystem.fire('screenHidden', currentScreen);
                     currentScreen = null;
                 },
                 /**
