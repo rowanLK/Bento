@@ -4,7 +4,7 @@
  * draw functions. The settings object passed here is passed through Bento.setup().
  * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
  * @module bento/managers/object
- * @param {Object} data - gameData object
+ * @param {Function} getGameData - Function that returns gameData object
  * @param {Object} settings - Settings object
  * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
  * @param {Object} settings.debug - Show debug info
@@ -16,13 +16,12 @@ bento.define('bento/managers/object', [
     'bento/utils'
 ], function (Hshg, Utils) {
     'use strict';
-    return function (data, settings) {
+    return function (getGameData, settings) {
         var objects = [],
             lastTime = new Date().getTime(),
             cumulativeTime = 0,
             minimumFps = 30,
             lastFrameTime = new Date().getTime(),
-            gameData,
             quickAccess = {},
             isRunning = false,
             sortMode = settings.sortMode || 0,
@@ -56,7 +55,8 @@ bento.define('bento/managers/object', [
                 var object,
                     i,
                     currentTime = new Date().getTime(),
-                    deltaT = currentTime - lastTime;
+                    deltaT = currentTime - lastTime,
+                    data = getGameData();
 
                 if (!isRunning) {
                     return;
@@ -68,7 +68,8 @@ bento.define('bento/managers/object', [
 
                 lastTime = currentTime;
                 cumulativeTime += deltaT;
-                gameData.deltaT = deltaT;
+                data = getGameData();
+                data.deltaT = deltaT;
                 if (settings.useDeltaT) {
                     cumulativeTime = 1000 / 60;
                 }
@@ -83,13 +84,13 @@ bento.define('bento/managers/object', [
                     if (settings.useDeltaT) {
                         cumulativeTime = 0;
                     }
-                    update();
+                    update(data);
                 }
                 cleanObjects();
                 if (sortMode === Utils.SortMode.ALWAYS) {
                     sort();
                 }
-                draw();
+                draw(data);
 
                 lastFrameTime = time;
                 if (settings.debug && fpsMeter) {
@@ -98,16 +99,19 @@ bento.define('bento/managers/object', [
 
                 requestAnimationFrame(mainLoop);
             },
-            update = function () {
+            update = function (data) {
                 var object,
                     i;
+
+                data = data || getGameData();
+
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;
                     }
                     if (object.update && (object.updateWhenPaused >= isPaused)) {
-                        object.update(gameData);
+                        object.update(data);
                     }
                 }
                 if (!isPaused) {
@@ -115,23 +119,28 @@ bento.define('bento/managers/object', [
                     hshg.queryForCollisionPairs();
                 }
             },
-            draw = function () {
+            draw = function (data) {
                 var object,
                     i;
-                gameData.renderer.begin();
+                data = data || getGameData();
+                
+                data.renderer.begin();
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;
                     }
                     if (object.draw) {
-                        object.draw(gameData);
+                        object.draw(data);
                     }
                 }
-                gameData.renderer.flush();
+                data.renderer.flush();
             },
             attach = function (object) {
-                var i, type, family;
+                var i, 
+                    type, 
+                    family,
+                    data = getGameData();
 
                 if (object.isAdded || object.parent) {
                     console.log('Warning: Entity ' + object.name + ' was already added.');
@@ -160,10 +169,10 @@ bento.define('bento/managers/object', [
                 }
 
                 if (object.start) {
-                    object.start(gameData);
+                    object.start(data);
                 }
                 if (object.attached) {
-                    object.attached(gameData);
+                    object.attached(data);
                 }
                 object.isAdded = true;
                 if (sortMode === Utils.SortMode.SORT_ON_ADD) {
@@ -189,7 +198,12 @@ bento.define('bento/managers/object', [
                  * @name remove
                  */
                 remove: function (object) {
-                    var i, type, index, family, pool;
+                    var i, 
+                        type, 
+                        index, 
+                        family, 
+                        pool, 
+                        data = getGameData();
                     if (!object) {
                         return;
                     }
@@ -197,7 +211,7 @@ bento.define('bento/managers/object', [
                     if (index >= 0) {
                         objects[index] = null;
                         if (object.destroy) {
-                            object.destroy(gameData);
+                            object.destroy(data);
                         }
                         object.isAdded = false;
                     }
@@ -408,10 +422,11 @@ bento.define('bento/managers/object', [
                  * Forces objects to be drawn (Don't call this unless you need it)
                  * @function
                  * @instance
+                 * @param {GameData} [data] - Data object (see Bento.getGameData)
                  * @name draw
                  */
-                draw: function () {
-                    draw();
+                draw: function (data) {
+                    draw(data);
                 },
                 /**
                  * Gets the current HSHG grid instance
@@ -440,10 +455,11 @@ bento.define('bento/managers/object', [
                  * update loop, as it will result in an endless loop.
                  * @function
                  * @instance
+                 * @param {GameData} [data] - Data object (see Bento.getGameData)
                  * @name update
                  */
-                update: function () {
-                    update();
+                update: function (data) {
+                    update(data);
                 }
             };
 
@@ -452,7 +468,6 @@ bento.define('bento/managers/object', [
                 now: Date.now
             };
         }
-        gameData = data;
         if (settings.debug && Utils.isDefined(window.FPSMeter)) {
             FPSMeter.defaults.graph = 1;
             fpsMeter = new FPSMeter();

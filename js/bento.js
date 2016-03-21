@@ -210,7 +210,7 @@ bento.define('bento', [
                         onResize();
 
                         module.input = InputManager(gameData, settings);
-                        module.objects = ObjectManager(gameData, settings);
+                        module.objects = ObjectManager(module.getGameData, settings);
                         module.assets = AssetManager();
                         module.audio = AudioManager(module);
                         module.screens = ScreenManager();
@@ -333,7 +333,8 @@ bento.define('bento', [
              * @returns {Renderer} data.renderer - Reference to current Renderer
              * @returns {Vector2} data.canvasScale - Reference to current canvas scale
              * @returns {Rectangle} data.viewport - Reference to viewport object
-             * @returns {Entity} data.entity - The current entity passing the data object (injected by Entity objects)
+             * @returns {Entity} data.entity - The current entity passing the data object
+             * @returns {Number} data.deltaT - Time passed since last tick
              * @name getGameData
              */
             getGameData: function () {
@@ -342,7 +343,8 @@ bento.define('bento', [
                     renderer: renderer,
                     canvasScale: canvasScale,
                     viewport: viewport,
-                    entity: null
+                    entity: null,
+                    deltaT: 0
                 };
             },
             /**
