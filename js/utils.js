@@ -516,7 +516,7 @@ bento.define('bento/utils', [], function () {
          */
         checksum: function (str) {
             var hash = 0,
-                strlen = str.length,
+                strlen = (str || '').length,
                 i,
                 c;
             if (strlen === 0) {

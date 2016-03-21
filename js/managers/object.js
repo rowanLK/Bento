@@ -150,6 +150,7 @@ bento.define('bento/managers/object', [
                 object.z = object.z || 0;
                 object.updateWhenPaused = object.updateWhenPaused || 0;
                 objects.push(object);
+                object.isAdded = true;
                 if (object.init) {
                     object.init();
                 }
@@ -174,7 +175,6 @@ bento.define('bento/managers/object', [
                 if (object.attached) {
                     object.attached(data);
                 }
-                object.isAdded = true;
                 if (sortMode === Utils.SortMode.SORT_ON_ADD) {
                     sort();
                 }
