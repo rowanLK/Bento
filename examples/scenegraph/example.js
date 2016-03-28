@@ -3,10 +3,7 @@ bento.require([
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/entity',
-    'bento/components/animation',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
+    'bento/components/sprite',
     'bento/components/fill',
     'bento/components/clickable',
     'bento/tween',
@@ -16,10 +13,7 @@ bento.require([
     Vector2,
     Rectangle,
     Entity,
-    Animation,
-    Translation,
-    Rotation,
-    Scale,
+    Sprite,
     Fill,
     Clickable,
     Tween,
@@ -43,13 +37,32 @@ bento.require([
                         color: [1, 1, 1, 1]
                     })]
                 }),
+                // cursor test with getLocalPosition
+                cursor = new Entity({
+                    z: 10,
+                    name: 'cursor',
+                    position: new Vector2(0, 0),
+                    originRelative: new Vector2(0.5, 0.5),
+                    components: [
+                        new Sprite({
+                            imageName: 'cursor'
+                        }),
+                        new Clickable({
+                            pointerMove: function (evt) {
+                                var localPos = cursor.getLocalPosition(evt.worldPosition);
+                                cursor.position.x = localPos.x;
+                                cursor.position.y = localPos.y;
+                            }
+                        })
+                    ]
+                }),
                 button1,
                 button2,
                 button3,
                 button4,
                 makeButton = function () {
                     var color = [1, 0, 0, 1],
-                        button = ClickButton({
+                        button = new ClickButton({
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             position: new Vector2(0, 0),
                             originRelative: new Vector2(0.5, 0.5),
@@ -122,6 +135,8 @@ bento.require([
 
             Bento.objects.add(button1);
             // Bento.objects.add(button4);
+
+            // button3.attach(cursor);
 
         }, function (current, total) {
             console.log(current + '/' + total);
