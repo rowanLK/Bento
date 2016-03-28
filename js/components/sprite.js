@@ -16,56 +16,46 @@ bento.define('bento/components/sprite', [
     'bento/components/rotation',
     'bento/components/scale',
     'bento/components/opacity',
-    'bento/components/animation',
-    'bento/components/pixi'
-], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation, Pixi) {
+    'bento/components/animation'
+], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation) {
     'use strict';
     var renderer,
         component = function (settings) {
             this.entity = null;
             this.settings = settings;
-            // detect renderer
-            if (!renderer) {
-                renderer = Bento.getRenderer();
-            }
 
-            // use pixi or default sprite renderer
-            if (renderer.name === 'pixi') {
-                this.opacity = new Opacity(settings);
-                this.animation = new Pixi(settings);
-            } else {
-                /**
-                 * Reference to the Translation component
-                 * @instance
-                 * @name translation
-                 */
-                this.translation = new Translation(settings);
-                /**
-                 * Reference to the Rotation component
-                 * @instance
-                 * @name rotation
-                 */
-                this.rotation = new Rotation(settings);
-                /**
-                 * Reference to the Scale component
-                 * @instance
-                 * @name scale
-                 */
-                this.scale = new Scale(settings);
-                /**
-                 * Reference to the Opacity component
-                 * @instance
-                 * @name rotation
-                 */
-                this.opacity = new Opacity(settings);
-                /**
-                 * If renderer is set to pixi, this property is the Pixi component.
-                 * Otherwise it's the Animation component
-                 * @instance
-                 * @name animation
-                 */
-                this.animation = new Animation(settings);
-            }
+            /**
+             * Reference to the Translation component
+             * @instance
+             * @name translation
+             */
+            this.translation = new Translation(settings);
+            /**
+             * Reference to the Rotation component
+             * @instance
+             * @name rotation
+             */
+            this.rotation = new Rotation(settings);
+            /**
+             * Reference to the Scale component
+             * @instance
+             * @name scale
+             */
+            this.scale = new Scale(settings);
+            /**
+             * Reference to the Opacity component
+             * @instance
+             * @name rotation
+             */
+            this.opacity = new Opacity(settings);
+            /**
+             * If renderer is set to pixi, this property is the Pixi component.
+             * Otherwise it's the Animation component
+             * @instance
+             * @name animation
+             */
+            this.animation = new Animation(settings);
+
 
             this.components = settings.components || [];
         };

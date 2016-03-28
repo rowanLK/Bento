@@ -7,8 +7,9 @@ bento.require([
     'bento/components/translation',
     'bento/components/fill',
     'bento/components/clickable',
-    'bento/utils'
-], function (Bento, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable, Utils) {
+    'bento/utils',
+    'bento/autoresize'
+], function (Bento, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable, Utils, AutoResize) {
     var hash = window.location ? window.location.hash : '',
         renderer = 'auto',
         getRandom = function (val) {
@@ -45,14 +46,14 @@ bento.require([
     Bento.setup({
         canvasId: 'canvas',
         debug: true,
-        canvasDimension: new Rectangle(0, 0, 640, 960),
+        canvasDimension: new AutoResize(new Rectangle(0, 0, 640, 960), 960, 1136),
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: renderer,
-        smoothing: true,
-        deltaT: true,
-        sortMode: Utils.SortMode.ALWAYS
+        renderer: renderer
+        // smoothing: true,
+        // deltaT: true,
+        // sortMode: Utils.SortMode.ALWAYS
     }, function () {
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
