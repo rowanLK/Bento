@@ -12471,6 +12471,7 @@ bento.define('bento/renderers/pixi', [
         var pixiRenderer;
         var spriteRenderer;
         var test = false;
+        var pixelSize = settings.pixelSize || 1;
         var renderer = {
             name: 'pixi',
             init: function () {
@@ -12572,9 +12573,16 @@ bento.define('bento/renderers/pixi', [
             },
             begin: function () {
                 spriteRenderer.start();
+                if (pixelSize !== 1) {
+                    this.save();
+                    this.scale(pixelSize, pixelSize);
+                }
             },
             flush: function () {
                 spriteRenderer.flush();
+                if (pixelSize !== 1) {
+                    this.restore();
+                }
             },
             setColor: function (color) {
 
@@ -12593,6 +12601,9 @@ bento.define('bento/renderers/pixi', [
         // init pixi
         Matrix = PIXI.math.Matrix;
         matrix = new Matrix();
+        // resize canvas according to pixelSize
+        canvas.width *= pixelSize;
+        canvas.height *= pixelSize;
         pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
             view: canvas,
             backgroundColor: 0x000000
