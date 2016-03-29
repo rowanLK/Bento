@@ -104,7 +104,7 @@ bento.define('bento', [
             canvas.height = viewport.height;
             canvasRatio = viewport.height / viewport.width;
 
-            settings.renderer = settings.renderer || 'auto';
+            settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'auto';
 
             if (settings.renderer === 'auto') {
                 // automatically set/overwrite pixelSize
@@ -174,10 +174,12 @@ bento.define('bento', [
              * @instance
              * @param {Object} settings - settings for the game
              * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-             * @param {Rectangle} settings.canvasDimension - base resolution for the game
+             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.  
+             * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
-             * @param {Boolean} settings.subPixel - Round
+             * @param {Boolean} settings.subPixel - Disable rounding of pixels
+             * @param {Number} settings.pixelSize - Defaults to 1. You may resize pixels by setting this value. A kind of cheating with pixelart games.
              * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
              * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen

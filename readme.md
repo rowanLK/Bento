@@ -69,9 +69,9 @@ bento.require([
 Bento has the following dependencies
 
 * Require.js by jrburke
+* PIXI by GoodBoyDigital
 * gl-sprites by mattdesl
 * Audia by richaur (AMD implementation by sprky0)
-* hshg by kirbysayshi
 
 ## License
 
