@@ -1,12 +1,15 @@
 /**
  * An Entity that helps using a HTML5 2d canvas as Sprite. Its component temporarily takes over
  * the renderer, so any entity that gets attached to the parent will start drawing on the canvas.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, set the width and height
  * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
  * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
  * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
  * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
  * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
+ * @module bento/canvas
+ * @returns Entity
  */
 bento.define('bento/canvas', [
     'bento',
@@ -154,7 +157,7 @@ bento.define('bento/canvas', [
              * Returns the canvas element
              * @function
              * @instance
-             * @returns {HTML-Canvas-Element} Canvas object
+             * @returns HTML Canvas Element
              * @name getCanvas
              */
             getCanvas: function () {
@@ -164,7 +167,7 @@ bento.define('bento/canvas', [
              * Returns the 2d context, to perform manual drawing operations
              * @function
              * @instance
-             * @returns {HTML-Canvas-Context} Context object
+             * @returns HTML Canvas 2d Context
              * @name getContext
              */
             getContext: function () {

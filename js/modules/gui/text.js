@@ -1,3 +1,10 @@
+/**
+ * An entity that displays text.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/text
+ * @returns Entity
+ */
 bento.define('bento/gui/text', [
     'bento',
     'bento/math/vector2',
@@ -86,7 +93,7 @@ bento.define('bento/gui/text', [
             packedImage = new PackedImage(canvas),
             extraWidthMult = 1,
             fontSizeCache = {},
-            /**
+            /*
              * Prepare font settings, gradients, max width/height etc.
              */
             init = function (textSettings) {
@@ -111,7 +118,7 @@ bento.define('bento/gui/text', [
                     }
                 }
 
-                /**
+                /*
                  * Gradient settings
                  * overwrites fontColor behavior
                  */
@@ -131,7 +138,7 @@ bento.define('bento/gui/text', [
                         overlaySprite.initialized = true;
                     }
                 }
-                /**
+                /*
                  * Alignment settings
                  */
                 if (textSettings.align) {
@@ -140,7 +147,7 @@ bento.define('bento/gui/text', [
                 if (Utils.isDefined(textSettings.ySpacing)) {
                     ySpacing = textSettings.ySpacing * extraWidthMult;
                 }
-                /**
+                /*
                  * Font settings
                  */
                 if (textSettings.font) {
@@ -162,7 +169,7 @@ bento.define('bento/gui/text', [
                 if (Utils.isDefined(textSettings.fontWeight)) {
                     fontWeight = textSettings.fontWeight;
                 }
-                /**
+                /*
                  * Stroke settings
                  * Sets a stroke over the text. You can apply multiple strokes by
                  * supplying an array of lineWidths / strokeStyles
@@ -216,7 +223,7 @@ bento.define('bento/gui/text', [
                     maxLineWidth = Math.max(maxLineWidth, lineWidth[i] * 2);
                 }
 
-                /**
+                /*
                  * entity settings
                  */
                 if (Utils.isDefined(textSettings.linebreaks)) {
@@ -243,13 +250,13 @@ bento.define('bento/gui/text', [
                     entity.setText(text);
                 }
             },
-            /**
+            /*
              * TODO: catch langauge change event
              */
             onLanguageChange = function (name, image, id) {
 
             },
-            /**
+            /*
              * Draw text to canvas
              */
             updateCanvas = function () {
@@ -396,9 +403,8 @@ bento.define('bento/gui/text', [
                     image: packedImage
                 });
             },
-            /**
+            /*
              * Restore context and previous font settings
-             * @param {Object} context - Canvas context
              */
             restoreContext = function (context) {
                 context.textAlign = 'left';
@@ -409,9 +415,8 @@ bento.define('bento/gui/text', [
                 context.globalCompositeOperation = compositeOperation;
                 context.restore();
             },
-            /**
+            /*
              * Save context and set font settings for drawing
-             * @param {Object} context - Canvas context
              */
             setContext = function (context) {
                 context.save();
@@ -420,7 +425,7 @@ bento.define('bento/gui/text', [
                 context.font = fontWeight + ' ' + fontSize.toString() + 'px ' + font;
                 compositeOperation = context.globalCompositeOperation;
             },
-            /**
+            /*
              * Splits the string into an array per line (canvas does not support
              * drawing of linebreaks in text)
              */
@@ -506,7 +511,7 @@ bento.define('bento/gui/text', [
                     canvasHeight += fontSize + ySpacing;
                 }
             },
-            /**
+            /*
              * Prepares the gradient object for every string line
              * @param {Number} width - Gradient width
              * @param {index} index - String index of strings array
@@ -619,6 +624,10 @@ bento.define('bento/gui/text', [
             }).extend({
                 /**
                  * Retrieve current text
+                 * @function
+                 * @instance
+                 * @name getText
+                 * @returns String
                  */
                 getText: function () {
                     return text;
@@ -627,6 +636,9 @@ bento.define('bento/gui/text', [
                  * Sets and displays current text
                  * @param {String} text - The string you want to set
                  * @param {Object} settings (optional) - Apply new settings for text visuals
+                 * @function
+                 * @instance
+                 * @name setText
                  */
                 setText: function (str, settings) {
                     var cachedFontSize = 0,

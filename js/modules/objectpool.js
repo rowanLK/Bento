@@ -1,9 +1,12 @@
 /**
  * General object pool
+ * <br>Exports: Constructor
  * @param {Object} settings - Settings object is required
  * @param {Function} settings.constructor - function that returns the object for pooling
  * @param {Function} settings.destructor - function that resets object for reuse
  * @param {Number} settings.poolSize - amount to pre-initialize
+ * @module bento/objectpool
+ * @returns ObjectPool
  */
 bento.define('bento/objectpool', [
     'bento',

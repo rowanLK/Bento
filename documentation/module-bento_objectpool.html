@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento/managers/input - Documentation</title>
+    <title>bento/objectpool - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,7 +28,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento/managers/input</h1>
+    <h1 class="page-title">bento/objectpool</h1>
     
 
     
@@ -50,7 +50,7 @@
     <div class="container-overview">
     
         
-            <div class="description">Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.<br>Exports: Constructor, can be accessed through Bento.input namespace.</div>
+            <div class="description">General object pool<br>Exports: Constructor</div>
         
 
         
@@ -91,124 +91,6 @@
 
         <tr>
             
-                <td class="name"><code>gameData</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">gameData
-                <h6>Properties</h6>
-                
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>canvasScale</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Vector2</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Reference to the current canvas scale.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>canvas</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">HtmlCanvas</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Reference to the canvas element.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>viewport</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Rectangle</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Reference to viewport.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-            </td>
-        </tr>
-
-    
-
-        <tr>
-            
                 <td class="name"><code>settings</code></td>
             
 
@@ -225,7 +107,7 @@
 
             
 
-            <td class="description last">settings passed from Bento.setup
+            <td class="description last">Settings object is required
                 <h6>Properties</h6>
                 
 
@@ -251,13 +133,13 @@
 
         <tr>
             
-                <td class="name"><code>preventContextMenu</code></td>
+                <td class="name"><code>constructor</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Boolean</span>
+<span class="param-type">function</span>
 
 
             
@@ -267,7 +149,53 @@
 
             
 
-            <td class="description last">Prevents right click menu</td>
+            <td class="description last">function that returns the object for pooling</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>destructor</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">function that resets object for reuse</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>poolSize</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">amount to pre-initialize</td>
         </tr>
 
     
@@ -315,7 +243,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_input.js.html">managers/input.js</a>, <a href="managers_input.js.html#line1">line 1</a>
+        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line1">line 1</a>
     </li></ul></dd>
     
 
@@ -342,7 +270,7 @@
 
         
 <div class="param-desc">
-    InputManager
+    ObjectPool
 </div>
 
 
@@ -375,14 +303,14 @@
 
     
 
-    <h4 class="name" id="getPointers"><span class="type-signature"></span>getPointers<span class="signature">()</span><span class="type-signature"> &rarr; {Array}</span></h4>
+    <h4 class="name" id="~discard"><span class="type-signature">(inner) </span>discard<span class="signature">()</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Returns all current pointers down
+    Puts object back in the pool
 </div>
 
 
@@ -426,160 +354,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_input.js.html">managers/input.js</a>, <a href="managers_input.js.html#line310">line 310</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    pointers - Array with pointer positions
-</div>
-
-
-
-<dl class="param-type">
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Array</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="isKeyDown"><span class="type-signature"></span>isKeyDown<span class="signature">(name)</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Checks if a keyboard key is down
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>name</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">name of the key</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_input.js.html">managers/input.js</a>, <a href="managers_input.js.html#line330">line 330</a>
+        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line51">line 51</a>
     </li></ul></dd>
     
 
@@ -610,14 +385,14 @@
 
     
 
-    <h4 class="name" id="onResize"><span class="type-signature"></span>onResize<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="~get"><span class="type-signature">(inner) </span>get<span class="signature">()</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Changes the offsets after resizing or screen re-orientation.
+    Returns a new object from the pool, the pool is populated automatically if empty
 </div>
 
 
@@ -661,275 +436,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_input.js.html">managers/input.js</a>, <a href="managers_input.js.html#line254">line 254</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="resetPointers"><span class="type-signature"></span>resetPointers<span class="signature">()</span><span class="type-signature"> &rarr; {Array}</span></h4>
-
-    
-
-
-
-<div class="description">
-    Removes all current pointers down
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_input.js.html">managers/input.js</a>, <a href="managers_input.js.html#line320">line 320</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    pointers - Array with pointer positions
-</div>
-
-
-
-<dl class="param-type">
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Array</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="resume"><span class="type-signature"></span>resume<span class="signature">()</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Resumes all pointer input
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_input.js.html">managers/input.js</a>, <a href="managers_input.js.html#line358">line 358</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="stop"><span class="type-signature"></span>stop<span class="signature">()</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Stop all pointer input
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="managers_input.js.html">managers/input.js</a>, <a href="managers_input.js.html#line340">line 340</a>
+        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line40">line 40</a>
     </li></ul></dd>
     
 

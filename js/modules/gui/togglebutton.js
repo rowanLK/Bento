@@ -1,3 +1,10 @@
+/**
+ * An entity that behaves like a toggle button.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/togglebutton
+ * @returns Entity
+ */
 bento.define('bento/gui/togglebutton', [
     'bento',
     'bento/math/vector2',

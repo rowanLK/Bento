@@ -1,3 +1,10 @@
+/**
+ * An entity that behaves like a counter.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/counter
+ * @returns Entity
+ */
 bento.define('bento/gui/counter', [
     'bento',
     'bento/entity',

@@ -1,4 +1,11 @@
-bento.define('bento/gui/clickbutton', [
+/**
+ * An entity that behaves like a click button.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/clickbutton
+ * @returns Entity
+ */
+ bento.define('bento/gui/clickbutton', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
