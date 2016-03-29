@@ -237,7 +237,7 @@ bento.define('bento/tween', [
                     if (!running) {
                         return;
                     }
-                    ++time;
+                    time += data.speed;
                     // run update
                     if (settings.do) {
                         settings.do.apply(this, [interpolate(

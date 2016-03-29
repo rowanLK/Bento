@@ -283,7 +283,8 @@ bento.define('bento/entity', [
                 component.update(data);
             }
         }
-        ++this.timer;
+        
+        this.timer += data.speed;
 
         // clean up
         cleanComponents(this);
@@ -690,6 +691,7 @@ Bento.objects.attach(entity);
      * @name getWorldPosition
      * @returns {Vector2} Returns a position
      */
+    // TODO: using Matrix is slow and bulky, optimize this
     Entity.prototype.getWorldPosition = function () {
         var positionVector,
             translateMatrix = new Matrix(3, 3),

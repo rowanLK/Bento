@@ -3830,9 +3830,7 @@ bento.define('bento', [
     Renderer
 ) {
     'use strict';
-    var lastTime = new Date().getTime(),
-        cumulativeTime = 1000 / 60,
-        canvas,
+    var canvas,
         context,
         renderer,
         bentoSettings,
@@ -3840,6 +3838,7 @@ bento.define('bento', [
         canvasRatio = 0,
         windowRatio,
         manualResize = false,
+        throttle = 1,
         canvasScale = {
             x: 1,
             y: 1
@@ -3859,6 +3858,7 @@ bento.define('bento', [
             if (Utils.isCocoonJS()) {
                 return;
             }
+            // TODO: make a proper debug bar
             debug.debugBar = document.createElement('div');
             debug.debugBar.style['font-family'] = 'Arial';
             debug.debugBar.style.padding = '8px';
@@ -3918,13 +3918,7 @@ bento.define('bento', [
             // setup renderer
             Renderer(settings.renderer, canvas, settings, function (rend) {
                 renderer = rend;
-                gameData = {
-                    canvas: canvas,
-                    renderer: rend,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
-                };
+                gameData = module.getGameData();
                 callback();
             });
 
@@ -4111,6 +4105,9 @@ bento.define('bento', [
                 Bento.objects.stop();
                 bento.refresh();
 
+                // reset game speed
+                throttle = 1;
+
                 // reload current screen
                 Bento.screens.show(screenName || currentScreen.name);
                 // restart the mainloop
@@ -4129,6 +4126,7 @@ bento.define('bento', [
              * @returns {Rectangle} data.viewport - Reference to viewport object
              * @returns {Entity} data.entity - The current entity passing the data object
              * @returns {Number} data.deltaT - Time passed since last tick
+             * @returns {Number} data.throttle - Game speed (1 is normal)
              * @name getGameData
              */
             getGameData: function () {
@@ -4138,9 +4136,33 @@ bento.define('bento', [
                     canvasScale: canvasScale,
                     viewport: viewport,
                     entity: null,
-                    deltaT: 0
+                    event: null,
+                    deltaT: 0,
+                    speed: throttle
                 };
             },
+            /**
+             * Gets the current game speed
+             * @function
+             * @instance
+             * @returns Number
+             * @name getGameSpeed
+             */
+            getGameSpeed: function () {
+                return throttle;
+            },
+            /**
+             * Sets the current game speed. Defaults to 1.
+             * @function
+             * @instance
+             * @param {Number} speed - Game speed
+             * @returns Number
+             * @name setGameSpeed
+             */
+            setGameSpeed: function (value) {
+                throttle = value;
+            },
+            
             /**
              * Asset manager
              * @see module:bento/managers/asset
@@ -4472,7 +4494,8 @@ bento.define('bento/entity', [
                 component.update(data);
             }
         }
-        ++this.timer;
+        
+        this.timer += data.speed;
 
         // clean up
         cleanComponents(this);
@@ -4879,6 +4902,7 @@ Bento.objects.attach(entity);
      * @name getWorldPosition
      * @returns {Vector2} Returns a position
      */
+    // TODO: using Matrix is slow and bulky, optimize this
     Entity.prototype.getWorldPosition = function () {
         var positionVector,
             translateMatrix = new Matrix(3, 3),
@@ -6083,13 +6107,13 @@ bento.define('bento/components/animation', [
     Animation.prototype.getFrameWidth = function () {
         return this.frameWidth;
     };
-    Animation.prototype.update = function () {
+    Animation.prototype.update = function (data) {
         var reachedEnd;
         if (!this.currentAnimation) {
             return;
         }
         reachedEnd = false;
-        this.currentFrame += this.currentAnimation.speed || 1;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
         if (this.currentAnimation.loop) {
             while (this.currentFrame >= this.currentAnimation.frames.length) {
                 this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
@@ -11356,12 +11380,15 @@ bento.define('bento/autoresize', [
 /**
  * An Entity that helps using a HTML5 2d canvas as Sprite. Its component temporarily takes over
  * the renderer, so any entity that gets attached to the parent will start drawing on the canvas.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, set the width and height
  * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
  * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
  * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
  * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
  * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
+ * @module bento/canvas
+ * @returns Entity
  */
 bento.define('bento/canvas', [
     'bento',
@@ -11509,7 +11536,7 @@ bento.define('bento/canvas', [
              * Returns the canvas element
              * @function
              * @instance
-             * @returns {HTML-Canvas-Element} Canvas object
+             * @returns HTML Canvas Element
              * @name getCanvas
              */
             getCanvas: function () {
@@ -11519,7 +11546,7 @@ bento.define('bento/canvas', [
              * Returns the 2d context, to perform manual drawing operations
              * @function
              * @instance
-             * @returns {HTML-Canvas-Context} Context object
+             * @returns HTML Canvas 2d Context
              * @name getContext
              */
             getContext: function () {
@@ -11553,10 +11580,13 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
 });
 /**
  * General object pool
+ * <br>Exports: Constructor
  * @param {Object} settings - Settings object is required
  * @param {Function} settings.constructor - function that returns the object for pooling
  * @param {Function} settings.destructor - function that resets object for reuse
  * @param {Number} settings.poolSize - amount to pre-initialize
+ * @module bento/objectpool
+ * @returns ObjectPool
  */
 bento.define('bento/objectpool', [
     'bento',
@@ -12283,7 +12313,7 @@ bento.define('bento/tween', [
                     if (!running) {
                         return;
                     }
-                    ++time;
+                    time += data.speed;
                     // run update
                     if (settings.do) {
                         settings.do.apply(this, [interpolate(
@@ -12762,7 +12792,14 @@ bento.define('bento/renderers/webgl', [
         }
     };
 });
-bento.define('bento/gui/clickbutton', [
+/**
+ * An entity that behaves like a click button.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/clickbutton
+ * @returns Entity
+ */
+ bento.define('bento/gui/clickbutton', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
@@ -12896,6 +12933,13 @@ bento.define('bento/gui/clickbutton', [
         return entity;
     };
 });
+/**
+ * An entity that behaves like a counter.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/counter
+ * @returns Entity
+ */
 bento.define('bento/gui/counter', [
     'bento',
     'bento/entity',
@@ -13123,6 +13167,13 @@ bento.define('bento/gui/counter', [
         return base;
     };
 });
+/**
+ * An entity that displays text.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/text
+ * @returns Entity
+ */
 bento.define('bento/gui/text', [
     'bento',
     'bento/math/vector2',
@@ -13211,7 +13262,7 @@ bento.define('bento/gui/text', [
             packedImage = new PackedImage(canvas),
             extraWidthMult = 1,
             fontSizeCache = {},
-            /**
+            /*
              * Prepare font settings, gradients, max width/height etc.
              */
             init = function (textSettings) {
@@ -13236,7 +13287,7 @@ bento.define('bento/gui/text', [
                     }
                 }
 
-                /**
+                /*
                  * Gradient settings
                  * overwrites fontColor behavior
                  */
@@ -13256,7 +13307,7 @@ bento.define('bento/gui/text', [
                         overlaySprite.initialized = true;
                     }
                 }
-                /**
+                /*
                  * Alignment settings
                  */
                 if (textSettings.align) {
@@ -13265,7 +13316,7 @@ bento.define('bento/gui/text', [
                 if (Utils.isDefined(textSettings.ySpacing)) {
                     ySpacing = textSettings.ySpacing * extraWidthMult;
                 }
-                /**
+                /*
                  * Font settings
                  */
                 if (textSettings.font) {
@@ -13287,7 +13338,7 @@ bento.define('bento/gui/text', [
                 if (Utils.isDefined(textSettings.fontWeight)) {
                     fontWeight = textSettings.fontWeight;
                 }
-                /**
+                /*
                  * Stroke settings
                  * Sets a stroke over the text. You can apply multiple strokes by
                  * supplying an array of lineWidths / strokeStyles
@@ -13341,7 +13392,7 @@ bento.define('bento/gui/text', [
                     maxLineWidth = Math.max(maxLineWidth, lineWidth[i] * 2);
                 }
 
-                /**
+                /*
                  * entity settings
                  */
                 if (Utils.isDefined(textSettings.linebreaks)) {
@@ -13368,13 +13419,13 @@ bento.define('bento/gui/text', [
                     entity.setText(text);
                 }
             },
-            /**
+            /*
              * TODO: catch langauge change event
              */
             onLanguageChange = function (name, image, id) {
 
             },
-            /**
+            /*
              * Draw text to canvas
              */
             updateCanvas = function () {
@@ -13521,9 +13572,8 @@ bento.define('bento/gui/text', [
                     image: packedImage
                 });
             },
-            /**
+            /*
              * Restore context and previous font settings
-             * @param {Object} context - Canvas context
              */
             restoreContext = function (context) {
                 context.textAlign = 'left';
@@ -13534,9 +13584,8 @@ bento.define('bento/gui/text', [
                 context.globalCompositeOperation = compositeOperation;
                 context.restore();
             },
-            /**
+            /*
              * Save context and set font settings for drawing
-             * @param {Object} context - Canvas context
              */
             setContext = function (context) {
                 context.save();
@@ -13545,7 +13594,7 @@ bento.define('bento/gui/text', [
                 context.font = fontWeight + ' ' + fontSize.toString() + 'px ' + font;
                 compositeOperation = context.globalCompositeOperation;
             },
-            /**
+            /*
              * Splits the string into an array per line (canvas does not support
              * drawing of linebreaks in text)
              */
@@ -13631,7 +13680,7 @@ bento.define('bento/gui/text', [
                     canvasHeight += fontSize + ySpacing;
                 }
             },
-            /**
+            /*
              * Prepares the gradient object for every string line
              * @param {Number} width - Gradient width
              * @param {index} index - String index of strings array
@@ -13744,6 +13793,10 @@ bento.define('bento/gui/text', [
             }).extend({
                 /**
                  * Retrieve current text
+                 * @function
+                 * @instance
+                 * @name getText
+                 * @returns String
                  */
                 getText: function () {
                     return text;
@@ -13752,6 +13805,9 @@ bento.define('bento/gui/text', [
                  * Sets and displays current text
                  * @param {String} text - The string you want to set
                  * @param {Object} settings (optional) - Apply new settings for text visuals
+                 * @function
+                 * @instance
+                 * @name setText
                  */
                 setText: function (str, settings) {
                     var cachedFontSize = 0,
@@ -13790,6 +13846,13 @@ bento.define('bento/gui/text', [
         return entity;
     };
 });
+/**
+ * An entity that behaves like a toggle button.
+ * TODO: document settings parameter
+ * <br>Exports: Constructor
+ * @module bento/gui/togglebutton
+ * @returns Entity
+ */
 bento.define('bento/gui/togglebutton', [
     'bento',
     'bento/math/vector2',

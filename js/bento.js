@@ -38,9 +38,7 @@ bento.define('bento', [
     Renderer
 ) {
     'use strict';
-    var lastTime = new Date().getTime(),
-        cumulativeTime = 1000 / 60,
-        canvas,
+    var canvas,
         context,
         renderer,
         bentoSettings,
@@ -48,6 +46,7 @@ bento.define('bento', [
         canvasRatio = 0,
         windowRatio,
         manualResize = false,
+        throttle = 1,
         canvasScale = {
             x: 1,
             y: 1
@@ -67,6 +66,7 @@ bento.define('bento', [
             if (Utils.isCocoonJS()) {
                 return;
             }
+            // TODO: make a proper debug bar
             debug.debugBar = document.createElement('div');
             debug.debugBar.style['font-family'] = 'Arial';
             debug.debugBar.style.padding = '8px';
@@ -126,13 +126,7 @@ bento.define('bento', [
             // setup renderer
             Renderer(settings.renderer, canvas, settings, function (rend) {
                 renderer = rend;
-                gameData = {
-                    canvas: canvas,
-                    renderer: rend,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null
-                };
+                gameData = module.getGameData();
                 callback();
             });
 
@@ -319,6 +313,9 @@ bento.define('bento', [
                 Bento.objects.stop();
                 bento.refresh();
 
+                // reset game speed
+                throttle = 1;
+
                 // reload current screen
                 Bento.screens.show(screenName || currentScreen.name);
                 // restart the mainloop
@@ -337,6 +334,7 @@ bento.define('bento', [
              * @returns {Rectangle} data.viewport - Reference to viewport object
              * @returns {Entity} data.entity - The current entity passing the data object
              * @returns {Number} data.deltaT - Time passed since last tick
+             * @returns {Number} data.throttle - Game speed (1 is normal)
              * @name getGameData
              */
             getGameData: function () {
@@ -346,9 +344,33 @@ bento.define('bento', [
                     canvasScale: canvasScale,
                     viewport: viewport,
                     entity: null,
-                    deltaT: 0
+                    event: null,
+                    deltaT: 0,
+                    speed: throttle
                 };
             },
+            /**
+             * Gets the current game speed
+             * @function
+             * @instance
+             * @returns Number
+             * @name getGameSpeed
+             */
+            getGameSpeed: function () {
+                return throttle;
+            },
+            /**
+             * Sets the current game speed. Defaults to 1.
+             * @function
+             * @instance
+             * @param {Number} speed - Game speed
+             * @returns Number
+             * @name setGameSpeed
+             */
+            setGameSpeed: function (value) {
+                throttle = value;
+            },
+            
             /**
              * Asset manager
              * @see module:bento/managers/asset

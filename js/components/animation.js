@@ -278,13 +278,13 @@ bento.define('bento/components/animation', [
     Animation.prototype.getFrameWidth = function () {
         return this.frameWidth;
     };
-    Animation.prototype.update = function () {
+    Animation.prototype.update = function (data) {
         var reachedEnd;
         if (!this.currentAnimation) {
             return;
         }
         reachedEnd = false;
-        this.currentFrame += this.currentAnimation.speed || 1;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
         if (this.currentAnimation.loop) {
             while (this.currentFrame >= this.currentAnimation.frames.length) {
                 this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
