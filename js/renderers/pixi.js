@@ -1,8 +1,22 @@
+/**
+ * Renderer using PIXI by GoodBoyDigital
+ * Very unfinished, can only draw sprites for now.
+ */
 bento.define('bento/renderers/pixi', [
     'bento',
-    'bento/utils'
-], function (Bento, Utils) {
+    'bento/utils',
+    'bento/renderers/canvas2d'
+], function (Bento, Utils, Canvas2d) {
     return function (canvas, settings) {
+        var canWebGl = (function () {
+            // try making a canvas
+            try {
+                var canvas = document.createElement('canvas');
+                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+            } catch (e) {
+                return false;
+            }
+        })();
         var matrix;
         var Matrix;
         var matrices = [];
@@ -11,6 +25,7 @@ bento.define('bento/renderers/pixi', [
         var pixiRenderer;
         var spriteRenderer;
         var test = false;
+        var cocoonScale = 1;
         var pixelSize = settings.pixelSize || 1;
         var renderer = {
             name: 'pixi',
@@ -74,6 +89,7 @@ bento.define('bento/renderers/pixi', [
                 matrix = wt;
 
             },
+            // TODO
             fillRect: function (color, x, y, w, h) {},
             fillCircle: function (color, x, y, radius) {},
             drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
@@ -89,7 +105,7 @@ bento.define('bento/renderers/pixi', [
                 texture = new PIXI.Texture(image.texture, rectangle);
                 texture._updateUvs();
 
-                // simulate a sprite for the pixi SpriteRenderer
+                // simulate a sprite for the pixi SpriteRenderer??
                 // sprite = {
                 //     _texture: texture,
                 //     anchor: {
@@ -101,31 +117,30 @@ bento.define('bento/renderers/pixi', [
                 //     shader: null,
                 //     blendMode: 0
                 // };
+
+                // can't get the above to work, spawn a normal pixi sprite
                 sprite = new PIXI.Sprite(texture);
                 sprite.worldTransform = matrix;
                 sprite.worldAlpha = alpha;
-                if (!test) {
-                    test = true;
-                    console.log(sprite);
-                }
+
                 // push into batch
                 spriteRenderer.render(sprite);
             },
             begin: function () {
                 spriteRenderer.start();
-                if (pixelSize !== 1) {
+                if (pixelSize !== 1 || Utils.isCocoonJs()) {
                     this.save();
-                    this.scale(pixelSize, pixelSize);
+                    this.scale(pixelSize * cocoonScale, pixelSize * cocoonScale);
                 }
             },
             flush: function () {
                 spriteRenderer.flush();
-                if (pixelSize !== 1) {
+                if (pixelSize !== 1 || Utils.isCocoonJs()) {
                     this.restore();
                 }
             },
             setColor: function (color) {
-
+                // TODO
             },
             getOpacity: function () {
                 return alpha;
@@ -134,25 +149,35 @@ bento.define('bento/renderers/pixi', [
                 alpha = value;
             }
         };
-        if (!window.PIXI) {
-            throw 'Pixi library missing';
+
+        if (canWebGl && Utils.isDefined(window.PIXI)) {
+            // init pixi
+            Matrix = PIXI.Matrix;
+            matrix = new Matrix();
+            // additional scale
+            if (Utils.isCocoonJs()) {
+                cocoonScale = window.innerWidth / canvas.width;
+                console.log('Cocoon-Pixi scale', cocoonScale);
+            }
+            // resize canvas according to pixelSize
+            canvas.width *= pixelSize * cocoonScale;
+            canvas.height *= pixelSize * cocoonScale;
+            pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
+                view: canvas,
+                backgroundColor: 0x000000
+            });
+            spriteRenderer = pixiRenderer.plugins.sprite;
+            pixiRenderer.setObjectRenderer(spriteRenderer);
+
+            console.log('Init pixi as renderer');
+            return renderer;
+        } else {
+            if (!window.PIXI) {
+                console.log('WARNING: PIXI library is missing, reverting to Canvas2D renderer');
+            } else if (!canWebGl) {
+                console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');
+            }
+            return Canvas2d(canvas, settings);
         }
-
-        // init pixi
-        Matrix = PIXI.math.Matrix;
-        matrix = new Matrix();
-        // resize canvas according to pixelSize
-        canvas.width *= pixelSize;
-        canvas.height *= pixelSize;
-        pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
-            view: canvas,
-            backgroundColor: 0x000000
-        });
-        spriteRenderer = pixiRenderer.plugins.sprite;
-        pixiRenderer.setObjectRenderer(spriteRenderer);
-
-        console.log('Init pixi as renderer');
-
-        return renderer;
     };
 });
