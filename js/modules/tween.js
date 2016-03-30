@@ -227,17 +227,23 @@ bento.define('bento/tween', [
             onComplete: function () {} (optional)
             id: Number (optional),
             updateWhenPaused: Boolean (optional)
+            ignoreGameSpeed: Boolean (optional)
         }*/
         var time = 0,
             added = false,
             running = true,
+            ignoreGameSpeed = settings.ignoreGameSpeed,
             tween = new Entity(settings).extend({
                 id: settings.id,
                 update: function (data) {
                     if (!running) {
                         return;
                     }
-                    time += data.speed;
+                    if (ignoreGameSpeed) {
+                        time += 1;
+                    } else {
+                        time += data.speed;
+                    }
                     // run update
                     if (settings.do) {
                         settings.do.apply(this, [interpolate(
