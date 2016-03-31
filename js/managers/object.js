@@ -13,8 +13,9 @@
  */
 bento.define('bento/managers/object', [
     'hshg',
-    'bento/utils'
-], function (Hshg, Utils) {
+    'bento/utils',
+    'bento/eventsystem'
+], function (Hshg, Utils, EventSystem) {
     'use strict';
     return function (getGameData, settings) {
         var objects = [],
@@ -105,6 +106,7 @@ bento.define('bento/managers/object', [
 
                 data = data || getGameData();
 
+                EventSystem.fire('preUpdate', data);
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
                     if (!object) {
@@ -118,12 +120,14 @@ bento.define('bento/managers/object', [
                     hshg.update();
                     hshg.queryForCollisionPairs();
                 }
+                EventSystem.fire('postUpdate', data);
             },
             draw = function (data) {
                 var object,
                     i;
                 data = data || getGameData();
                 
+                EventSystem.fire('preDraw', data);
                 data.renderer.begin();
                 for (i = 0; i < objects.length; ++i) {
                     object = objects[i];
@@ -135,6 +139,7 @@ bento.define('bento/managers/object', [
                     }
                 }
                 data.renderer.flush();
+                EventSystem.fire('postDraw', data);
             },
             attach = function (object) {
                 var i, 
