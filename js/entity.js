@@ -17,8 +17,8 @@
  * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused
  * @param {Boolean} settings.global - Should entity remain after hiding a screen
  * @param {Boolean} settings.float - Should entity move with the screen
- * @param {Boolean} settings.useHshg - Should entity use HSHG for collisions
- * @param {Boolean} settings.staticHshg - Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
+ * @param {Boolean} settings.useHshg - (DEPRECATED)Should entity use HSHG for collisions
+ * @param {Boolean} settings.staticHshg - (DEPRECATED)Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
  * @example 
 var entity = new Entity({
     z: 0,
@@ -54,6 +54,11 @@ bento.define('bento/entity', [
 
     var Entity = function (settings) {
         var i;
+        /**
+         * Unique id
+         * @instance
+         * @name id
+         */
         this.id = id++;
         /**
          * z-index of an object
@@ -211,6 +216,7 @@ bento.define('bento/entity', [
             this.updateWhenPaused = settings.updateWhenPaused || 0;
             this.global = settings.global || false;
             this.float = settings.float || false;
+            // hshg: deprecated
             this.useHshg = settings.useHshg || false;
             this.staticHshg = settings.staticHshg || false;
             this.onCollide = settings.onCollide;
@@ -239,6 +245,9 @@ bento.define('bento/entity', [
                 Bento.objects.add(this);
             }
         }
+    };
+    Entity.prototype.isEntity = function () {
+        return true;
     };
 
     Entity.prototype.start = function (data) {
@@ -283,7 +292,7 @@ bento.define('bento/entity', [
                 component.update(data);
             }
         }
-        
+
         this.timer += data.speed;
 
         // clean up
@@ -485,7 +494,7 @@ Bento.objects.attach(entity);
     Entity.prototype.attach = function (child, force) {
         var mixin = {},
             parent = this;
-        
+
         if (!force && (child.isAdded || child.parent)) {
             console.log('Warning: Child ' + child.name + ' was already attached before.');
             return;
@@ -605,44 +614,112 @@ Bento.objects.attach(entity);
      * @param {Entity} other - The other entity colliding
      */
     /**
-     * Checks if entity is colliding with another entity
+     * Checks if entity is colliding with another entity or entities
      * @function
      * @instance
-     * @param {Entity} other - The other entity
-     * @param {Vector2} [offset] - A position offset
-     * @param {CollisionCallback} [callback] - Called when entities are colliding
+     * @param {Object} settings
+     * @param {Entity} settings.entity - The other entity
+     * @param {Entity} settings.entities - Or an array of entities to check with
+     * @param {Entity} settings.name - Or the other entity's name (use family for better performance)
+     * @param {String} settings.family - Or the name of the family to collide with
+     * @param {Vector2} [settings.offset] - A position offset
+     * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
      * @name collidesWith
-     * @returns {Boolean} True if entities collide
+     * @returns {Boolean} True if entity collides
      */
-    Entity.prototype.collidesWith = function (other, offset, callback) {
-        var intersect;
-        if (!Utils.isDefined(offset)) {
-            offset = new Vector2(0, 0);
+    // TODO: make examples
+    // * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more
+    // * @param {Array} settings.families - multiple families
+    Entity.prototype.collidesWith = function (settings, deprecated_offset, deprecated_callback) {
+        var intersect = false;
+        var box;
+        var i;
+        var obj;
+        var array = [];
+        var offset = new Vector2(0, 0);
+        var callback;
+
+        if (settings.isEntity) {
+            // old method with parameters: collidesWith(entity, offset, callback)
+            array = [settings];
+            offset = deprecated_offset || offset;
+            callback = deprecated_callback;
+        } else if (Utils.isArray(settings)) {
+            // old method with parameters: collidesWith(array, offset, callback)
+            array = settings;
+            offset = deprecated_offset || offset;
+            callback = deprecated_callback;
+        } else {
+            // read settings
+            offset = settings.offset || offset;
+            callback = settings.onCollide;
+
+            if (settings.entity) {
+                // single entity
+                if (!settings.entity.isEntity) {
+                    console.log('WARNING: settings.entity is not an entity');
+                    return null;
+                }
+                array = [settings.entity];
+            } else if (settings.entities) {
+                if (!Utils.isArray(settings.entities)) {
+                    console.log('WARNING: settings.entity is not an entity');
+                    return null;
+                }
+                array = [settings.entities];
+            } else if (settings.name) {
+                array = Bento.objects.getByName(settings.name);
+            } else if (settings.family) {
+                array = Bento.objects.getByFamily(settings.family);
+            }
         }
-        intersect = this.getBoundingBox().offset(offset).intersect(other.getBoundingBox());
-        if (intersect && callback) {
-            callback(other);
+
+        if (!array.length) {
+            return null;
         }
-        return intersect;
+        box = this.getBoundingBox().offset(offset);
+        for (i = 0; i < array.length; ++i) {
+            obj = array[i];
+            if (obj.id && obj.id === this.id) {
+                continue;
+            }
+            if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
+                if (callback) {
+                    callback(obj);
+                }
+                return obj;
+            }
+        }
+        return null;
     };
     /**
      * Checks if entity is colliding with any entity in an array
      * Returns the first entity it finds that collides with the entity.
      * @function
      * @instance
-     * @param {Array} other - Array of entities, ignores self if present
-     * @param {Vector2} [offset] - A position offset
-     * @param {CollisionCallback} [callback] - Called when entities are colliding
+     * @param {Object} settings
+     * @param {Array} settings.entities - Array of entities, ignores self if present
+     * @param {Array} settings.family - Name of family
+     * @param {Vector2} [settings.offset] - A position offset
+     * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @name collidesWithGroup
      * @returns {Entity} Returns the entity it collides with, null if none found
      */
-    Entity.prototype.collidesWithGroup = function (array, offset, callback) {
-        var i,
-            obj,
-            box;
-        if (!Utils.isDefined(offset)) {
-            offset = new Vector2(0, 0);
+    Entity.prototype.collidesWithGroup = function (settings, deprecated_offset, deprecated_callback) {
+        var i, obj, box;
+        var array, offset, callback;
+
+        // old method with parameters
+        if (Utils.isArray(settings) || Utils.isDefined(deprecated_offset) || Utils.isDefined(deprecated_callback)) {
+            array = settings;
+            offset = deprecated_offset || new Vector2(0, 0);
+            callback = deprecated_callback;
+        } else {
+            array = settings.other;
+            offset = settings.offset;
+            callback = settings.onCollide;
         }
+
         if (!Utils.isArray(array)) {
             // throw 'Collision check must be with an Array of object';
             console.log('Collision check must be with an Array of object');

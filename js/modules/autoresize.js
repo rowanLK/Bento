@@ -1,6 +1,7 @@
 /**
- * A helper module that returns a rectangle as the best fit of a multiplication of the screen size.
- * Assuming portrait mode, autoresize first tries to fit the width and then fills up the height
+ * A helper module that returns a rectangle with the same aspect ratio as the screen size.
+ * Assuming portrait mode, autoresize holds the width and then fills up the height
+ * If the height goes over the max or minimum size, then the width gets adapted.
  * <br>Exports: Constructor
  * @module bento/autoresize
  * @param {Rectangle} canvasDimension - Default size
@@ -24,7 +25,6 @@ bento.define('bento/autoresize', [
                 var temp = canvasDimension.width;
                 canvasDimension.width = canvasDimension.height;
                 canvasDimension.height = temp;
-                console.log('swap')
             },
             setup = function () {
                 var ratio = deviceWidth / deviceHeight;
@@ -58,6 +58,7 @@ bento.define('bento/autoresize', [
             scrollAndResize = function () {
                 window.scrollTo(0, 0);
             };
+
 
         window.addEventListener('orientationchange', scrollAndResize, false);
 
