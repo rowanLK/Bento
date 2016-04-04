@@ -5,8 +5,9 @@
 bento.define('bento/renderers/pixi', [
     'bento',
     'bento/utils',
+    'bento/math/transformmatrix',
     'bento/renderers/canvas2d'
-], function (Bento, Utils, Canvas2d) {
+], function (Bento, Utils, TransformMatrix, Canvas2d) {
     return function (canvas, settings) {
         var canWebGl = (function () {
             // try making a canvas
@@ -40,54 +41,16 @@ bento.define('bento/renderers/pixi', [
                 matrix = matrices.pop();
             },
             translate: function (x, y) {
-                // matrix.translate(x, y);
-                var pt = matrix;
-                var wt = new Matrix().translate(x, y);
-                var tx = x;
-                var ty = y;
-
-                wt.a = pt.a;
-                wt.b = pt.b;
-                wt.c = pt.c;
-                wt.d = pt.d;
-                wt.tx = tx * pt.a + ty * pt.c + pt.tx;
-                wt.ty = tx * pt.b + ty * pt.d + pt.ty;
-
-                matrix = wt;
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.translate(x, y));
             },
             scale: function (x, y) {
-                // matrix.scale(x, y);
-
-                var pt = matrix;
-                var wt = new Matrix().scale(x, y);
-
-                wt.a = x * pt.a;
-                wt.b = x * pt.b;
-                wt.c = y * pt.c;
-                wt.d = y * pt.d;
-                wt.tx = pt.tx;
-                wt.ty = pt.ty;
-
-                matrix = wt;
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.scale(x, y));
             },
             rotate: function (angle) {
-                // matrix.rotate(angle);
-
-                var sin = Math.sin(angle);
-                var cos = Math.cos(angle);
-                var pt = matrix;
-                var wt = new Matrix().rotate(angle);
-
-                // concat the parent matrix with the objects transform.
-                wt.a = cos * pt.a + sin * pt.c;
-                wt.b = cos * pt.b + sin * pt.d;
-                wt.c = -sin * pt.a + cos * pt.c;
-                wt.d = -sin * pt.b + cos * pt.d;
-                wt.tx = pt.tx;
-                wt.ty = pt.ty;
-
-                matrix = wt;
-
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.rotate(angle));
             },
             // TODO
             fillRect: function (color, x, y, w, h) {},
@@ -152,8 +115,8 @@ bento.define('bento/renderers/pixi', [
 
         if (canWebGl && Utils.isDefined(window.PIXI)) {
             // init pixi
-            Matrix = PIXI.Matrix;
-            matrix = new Matrix();
+            // Matrix = PIXI.Matrix;
+            matrix = new TransformMatrix();
             // additional scale
             if (Utils.isCocoonJs()) {
                 cocoonScale = window.innerWidth / canvas.width;

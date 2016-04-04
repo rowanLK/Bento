@@ -11057,11 +11057,139 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
         //
         return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
     };
+    /**
+     * Returns the center position of the rectangle
+     * @function
+     * @returns {Vector2} Vector position
+     * @instance
+     * @name getCenter
+     */
+    Rectangle.prototype.getCenter = function () {
+        return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
+    };
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
     };
 
     return Rectangle;
+});
+/**
+ * 3x 3 Matrix specifically used for transformations
+ * [ a b tx ]
+ * [ c d ty ]
+ * [ 0 0 1  ]
+ * <br>Exports: Constructor
+ * @module bento/math/transformmatrix
+ * @returns {Matrix} Returns a matrix object.
+ */
+bento.define('bento/math/transformmatrix', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+
+    function Matrix() {
+        this.a = 1;
+        this.b = 0;
+        this.c = 0;
+        this.d = 1;
+        this.tx = 0;
+        this.ty = 0;
+    }
+
+    Matrix.prototype.multiplyWithVector = function (vector2) {
+        var result = new Vector2();
+        var x = vector2.x;
+        var y = vector2.y;
+
+        result.x = this.a * x + this.c * y + this.tx;
+        result.y = this.b * x + this.d * y + this.ty;
+
+        return result;
+    };
+
+    Matrix.prototype.inverseMultiplyWithVector = function (vector2) {
+        var result = new Vector2();
+        var x = vector2.x;
+        var y = vector2.y;
+        var det = 1 / (this.a * this.d - this.c * this.b);
+
+        result.x = this.d * x * det + -this.c * y * det + (this.ty * this.c - this.tx * this.d) * det;
+        result.y = this.a * y * det + -this.b * x * det + (-this.ty * this.a + this.tx * this.b) * det;
+
+        return result;
+    };
+
+    Matrix.prototype.translate = function (x, y) {
+        this.tx += x;
+        this.ty += y;
+
+        return this;
+    };
+
+    Matrix.prototype.scale = function (x, y) {
+        this.a *= x;
+        this.b *= y;
+        this.c *= x;
+        this.d *= y;
+        this.tx *= x;
+        this.ty *= y;
+
+        return this;
+    };
+
+    Matrix.prototype.rotate = function (angle) {
+        var cos = Math.cos(angle);
+        var sin = Math.sin(angle);
+        var a = this.a;
+        var b = this.b;
+        var c = this.c;
+        var d = this.d;
+        var tx = this.tx;
+        var ty = this.ty;
+
+        this.a = a * cos - b * sin;
+        this.b = a * sin + b * cos;
+        this.c = c * cos - d * sin;
+        this.d = c * sin + d * cos;
+        this.tx = tx * cos - ty * sin;
+        this.ty = tx * sin + ty * cos;
+
+        return this;
+    };
+
+    Matrix.prototype.multiplyWith = function (matrix) {
+        var a = this.a;
+        var b = this.b;
+        var c = this.c;
+        var d = this.d;
+
+        this.a = matrix.a * a + matrix.b * c;
+        this.b = matrix.a * b + matrix.b * d;
+        this.c = matrix.c * a + matrix.d * c;
+        this.d = matrix.c * b + matrix.d * d;
+        this.tx = matrix.tx * a + matrix.ty * c + this.tx;
+        this.ty = matrix.tx * b + matrix.ty * d + this.ty;
+
+        return this;
+    };
+    Matrix.prototype.multiply = function (matrix) {
+        return this.clone().multiplyWith(matrix);
+    };
+
+    Matrix.prototype.clone = function () {
+        var matrix = new Matrix();
+        matrix.a = this.a;
+        matrix.b = this.b;
+        matrix.c = this.c;
+        matrix.d = this.d;
+        matrix.tx = this.tx;
+        matrix.ty = this.ty;
+
+        return matrix;
+    };
+
+    return Matrix;
 });
 /**
  * 2 dimensional vector
@@ -12540,6 +12668,9 @@ bento.define('bento/renderers/canvas2d', [
                 restoreContext: function () {
                     context = original;
                 },
+                getContext: function () {
+                    return context;
+                },
                 begin: function () {
                     if (context === original && pixelSize !== 1) {
                         context.save();
@@ -12586,8 +12717,9 @@ bento.define('bento/renderers/canvas2d', [
 bento.define('bento/renderers/pixi', [
     'bento',
     'bento/utils',
+    'bento/math/transformmatrix',
     'bento/renderers/canvas2d'
-], function (Bento, Utils, Canvas2d) {
+], function (Bento, Utils, TransformMatrix, Canvas2d) {
     return function (canvas, settings) {
         var canWebGl = (function () {
             // try making a canvas
@@ -12621,54 +12753,16 @@ bento.define('bento/renderers/pixi', [
                 matrix = matrices.pop();
             },
             translate: function (x, y) {
-                // matrix.translate(x, y);
-                var pt = matrix;
-                var wt = new Matrix().translate(x, y);
-                var tx = x;
-                var ty = y;
-
-                wt.a = pt.a;
-                wt.b = pt.b;
-                wt.c = pt.c;
-                wt.d = pt.d;
-                wt.tx = tx * pt.a + ty * pt.c + pt.tx;
-                wt.ty = tx * pt.b + ty * pt.d + pt.ty;
-
-                matrix = wt;
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.translate(x, y));
             },
             scale: function (x, y) {
-                // matrix.scale(x, y);
-
-                var pt = matrix;
-                var wt = new Matrix().scale(x, y);
-
-                wt.a = x * pt.a;
-                wt.b = x * pt.b;
-                wt.c = y * pt.c;
-                wt.d = y * pt.d;
-                wt.tx = pt.tx;
-                wt.ty = pt.ty;
-
-                matrix = wt;
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.scale(x, y));
             },
             rotate: function (angle) {
-                // matrix.rotate(angle);
-
-                var sin = Math.sin(angle);
-                var cos = Math.cos(angle);
-                var pt = matrix;
-                var wt = new Matrix().rotate(angle);
-
-                // concat the parent matrix with the objects transform.
-                wt.a = cos * pt.a + sin * pt.c;
-                wt.b = cos * pt.b + sin * pt.d;
-                wt.c = -sin * pt.a + cos * pt.c;
-                wt.d = -sin * pt.b + cos * pt.d;
-                wt.tx = pt.tx;
-                wt.ty = pt.ty;
-
-                matrix = wt;
-
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.rotate(angle));
             },
             // TODO
             fillRect: function (color, x, y, w, h) {},
@@ -12733,8 +12827,8 @@ bento.define('bento/renderers/pixi', [
 
         if (canWebGl && Utils.isDefined(window.PIXI)) {
             // init pixi
-            Matrix = PIXI.Matrix;
-            matrix = new Matrix();
+            // Matrix = PIXI.Matrix;
+            matrix = new TransformMatrix();
             // additional scale
             if (Utils.isCocoonJs()) {
                 cocoonScale = window.innerWidth / canvas.width;

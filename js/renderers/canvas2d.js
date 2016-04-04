@@ -92,6 +92,9 @@ bento.define('bento/renderers/canvas2d', [
                 restoreContext: function () {
                     context = original;
                 },
+                getContext: function () {
+                    return context;
+                },
                 begin: function () {
                     if (context === original && pixelSize !== 1) {
                         context.save();
