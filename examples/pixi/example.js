@@ -121,6 +121,12 @@ bento.require([
             Bento.objects.add(bunny3);
             Bento.objects.add(bunny4);
 
+            bunny4.attach({
+                draw: function (data) {
+                    data.renderer.fillRect([1, 0, 0, 1], 0, 0, 16, 16);
+                }
+            });
+
         }, function (current, total) {
             console.log(current + '/' + total);
         });

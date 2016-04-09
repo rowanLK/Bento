@@ -12737,9 +12737,30 @@ bento.define('bento/renderers/pixi', [
         var color = 0xFFFFFF;
         var pixiRenderer;
         var spriteRenderer;
+        var graphicsRenderer;
+        var particleRenderer;
         var test = false;
         var cocoonScale = 1;
         var pixelSize = settings.pixelSize || 1;
+        var getPixiMatrix = function () {
+            var pixiMatrix = new PIXI.Matrix();
+            pixiMatrix.a = matrix.a;
+            pixiMatrix.b = matrix.b;
+            pixiMatrix.c = matrix.c;
+            pixiMatrix.d = matrix.d;
+            pixiMatrix.tx = matrix.tx;
+            pixiMatrix.ty = matrix.ty;
+            return pixiMatrix;
+        };
+        var getGraphics = function (color) {
+            var graphics = new PIXI.Graphics();
+            var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+            var alpha = color[3];
+            graphics.beginFill(colorInt, alpha);
+            graphics.worldTransform = getPixiMatrix();
+            graphics.worldAlpha = alpha;
+            return graphics;
+        };
         var renderer = {
             name: 'pixi',
             init: function () {
@@ -12764,9 +12785,21 @@ bento.define('bento/renderers/pixi', [
                 var transform = new TransformMatrix();
                 matrix.multiplyWith(transform.rotate(angle));
             },
-            // TODO
-            fillRect: function (color, x, y, w, h) {},
-            fillCircle: function (color, x, y, radius) {},
+            fillRect: function (color, x, y, w, h) {
+                var graphics = getGraphics(color);
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            fillCircle: function (color, x, y, radius) {
+                var graphics = getGraphics(color);
+                graphics.drawCircle(x, y, radius);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+
+            },
             drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                 var image = packedImage.image;
                 var rectangle;
@@ -12799,6 +12832,7 @@ bento.define('bento/renderers/pixi', [
                 sprite.worldAlpha = alpha;
 
                 // push into batch
+                pixiRenderer.setObjectRenderer(spriteRenderer);
                 spriteRenderer.render(sprite);
             },
             begin: function () {
@@ -12814,14 +12848,15 @@ bento.define('bento/renderers/pixi', [
                     this.restore();
                 }
             },
-            setColor: function (color) {
-                // TODO
-            },
             getOpacity: function () {
                 return alpha;
             },
             setOpacity: function (value) {
                 alpha = value;
+            },
+            // PIXI feature only
+            drawParticleContainer: function () {
+                // TODO
             }
         };
 
@@ -12842,7 +12877,7 @@ bento.define('bento/renderers/pixi', [
                 backgroundColor: 0x000000
             });
             spriteRenderer = pixiRenderer.plugins.sprite;
-            pixiRenderer.setObjectRenderer(spriteRenderer);
+            graphicsRenderer = pixiRenderer.plugins.graphics;
 
             console.log('Init pixi as renderer');
             return renderer;
