@@ -31,8 +31,10 @@ bento.define('bento/gui/togglebutton', [
             toggled = false,
             sprite = new Sprite({
                 image: settings.image,
-                frameWidth: settings.frameWidth || 32,
-                frameHeight: settings.frameHeight || 32,
+                frameWidth: settings.frameWidth,
+                frameHeight: settings.frameHeight,
+                frameCountX: settings.frameCountX,
+                frameCountY: settings.frameCountY,
                 animations: settings.animations || {
                     'up': {
                         speed: 0,
