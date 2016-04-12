@@ -27,6 +27,9 @@ bento.define('bento/managers/input', [
             keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
+            remote,
+            remoteButtonsPressed = [],
+            remoteButtonStates = {},
             pointerDown = function (evt) {
                 pointers.push({
                     id: evt.id,
@@ -281,6 +284,67 @@ bento.define('bento/managers/input', [
                         e.preventDefault();
                     }
                 }, false);
+            },
+            /**
+             * Adds a check for input from the apple remote before every update. Only if on tvOS.
+             *
+             * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
+             * continually checking for input is the only way for now.
+             */
+            initRemote = function () {
+                var i = 0,
+                    gamepads;
+
+                if (window.ejecta) {
+                    // get all connected gamepads
+                    gamepads = navigator.getGamepads();
+                    // find apple remote gamepad
+                    for (i = 0; i < gamepads.length; ++i)
+                        if (gamepads[i] && gamepads[i].profile === 'microGamepad')
+                            remote = gamepads[i];
+
+                    for (i = 0; i < remote.buttons.length; ++i)
+                        remoteButtonsPressed.push(remote.buttons[i].pressed);
+
+                    // check for button input before the regular update
+                    EventSystem.on('preUpdate', checkRemote);
+                }
+            },
+            /**
+             * Checks if a remote button has been pressed. Runs before every frame, if added.
+             */
+            checkRemote = function () {
+                var i = 0,
+                    len = 0;
+
+                // uses an array to check against the state of the buttons from the previous frame
+                for (i = 0, len = remote.buttons.length; i < len; ++i) {
+                    if (remote.buttons[i].pressed !== remoteButtonsPressed[i]) {
+                        if (remote.buttons[i].pressed) {
+                            remoteButtonDown(i);
+                        } else {
+                            remoteButtonUp(i);
+                        }
+                    }
+                }
+            },
+            remoteButtonDown = function (id) {
+                var i = 0,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = true;
+
+                for (i = 0; i < names.length; ++i)
+                    remoteButtonStates[names[i]] = true;
+            },
+            remoteButtonUp = function (id) {
+                var i = 0,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = false;
+
+                for (i = 0; i < names.length; ++i)
+                    remoteButtonStates[names[i]] = false;
             };
 
         window.addEventListener('resize', onResize, false);
@@ -305,6 +369,8 @@ bento.define('bento/managers/input', [
         initKeyboard();
         // init clicks
         initMouseClicks();
+        // apple remote (only on tvOS)
+        initRemote();
 
         return {
             /**
@@ -336,6 +402,16 @@ bento.define('bento/managers/input', [
              */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
+            },
+            /**
+             * Checks if a remote button is down
+             * @function
+             * @instance
+             * @param {String} name - name of the button
+             * @name isRemoteButtonDown
+             */
+            isRemoteButtonDown: function (name) {
+                return remoteButtonStates[name] || false;
             },
             /**
              * Stop all pointer input

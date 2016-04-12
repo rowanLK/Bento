@@ -314,8 +314,6 @@
 
 	module.exports = extend
 
-	var hasOwnProperty = Object.prototype.hasOwnProperty;
-
 	function extend() {
 	    var target = {}
 
@@ -323,7 +321,7 @@
 	        var source = arguments[i]
 
 	        for (var key in source) {
-	            if (hasOwnProperty.call(source, key)) {
+	            if (source.hasOwnProperty(key)) {
 	                target[key] = source[key]
 	            }
 	        }
@@ -2380,12 +2378,12 @@
 	 */
 
 	module.exports = function (obj) {
-	  return !!(obj != null &&
-	    (obj._isBuffer || // For Safari 5-7 (missing Object.prototype.constructor)
-	      (obj.constructor &&
-	      typeof obj.constructor.isBuffer === 'function' &&
-	      obj.constructor.isBuffer(obj))
-	    ))
+	  return !!(
+	    obj != null &&
+	    obj.constructor &&
+	    typeof obj.constructor.isBuffer === 'function' &&
+	    obj.constructor.isBuffer(obj)
+	  )
 	}
 
 
@@ -3710,15 +3708,12 @@
 /* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer, global) {/*!
+	/* WEBPACK VAR INJECTION */(function(Buffer) {/*!
 	 * The buffer module from node.js, for the browser.
 	 *
 	 * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
 	 * @license  MIT
 	 */
-	/* eslint-disable no-proto */
-
-	'use strict'
 
 	var base64 = __webpack_require__(27)
 	var ieee754 = __webpack_require__(28)
@@ -3758,11 +3753,7 @@
 	 * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
 	 * get the Object implementation, which is slower but behaves correctly.
 	 */
-	Buffer.TYPED_ARRAY_SUPPORT = global.TYPED_ARRAY_SUPPORT !== undefined
-	  ? global.TYPED_ARRAY_SUPPORT
-	  : typedArraySupport()
-
-	function typedArraySupport () {
+	Buffer.TYPED_ARRAY_SUPPORT = (function () {
 	  function Bar () {}
 	  try {
 	    var arr = new Uint8Array(1)
@@ -3775,7 +3766,7 @@
 	  } catch (e) {
 	    return false
 	  }
-	}
+	})()
 
 	function kMaxLength () {
 	  return Buffer.TYPED_ARRAY_SUPPORT
@@ -3802,10 +3793,8 @@
 	    return new Buffer(arg)
 	  }
 
-	  if (!Buffer.TYPED_ARRAY_SUPPORT) {
-	    this.length = 0
-	    this.parent = undefined
-	  }
+	  this.length = 0
+	  this.parent = undefined
 
 	  // Common case.
 	  if (typeof arg === 'number') {
@@ -3933,20 +3922,10 @@
 	  return that
 	}
 
-	if (Buffer.TYPED_ARRAY_SUPPORT) {
-	  Buffer.prototype.__proto__ = Uint8Array.prototype
-	  Buffer.__proto__ = Uint8Array
-	} else {
-	  // pre-set for values that may exist in the future
-	  Buffer.prototype.length = undefined
-	  Buffer.prototype.parent = undefined
-	}
-
 	function allocate (that, length) {
 	  if (Buffer.TYPED_ARRAY_SUPPORT) {
 	    // Return an augmented `Uint8Array` instance, for best performance
 	    that = Buffer._augment(new Uint8Array(length))
-	    that.__proto__ = Buffer.prototype
 	  } else {
 	    // Fallback: Return an object instance of the Buffer class
 	    that.length = length
@@ -4089,6 +4068,10 @@
 	  }
 	}
 	Buffer.byteLength = byteLength
+
+	// pre-set for values that may exist in the future
+	Buffer.prototype.length = undefined
+	Buffer.prototype.parent = undefined
 
 	function slowToString (encoding, start, end) {
 	  var loweredCase = false
@@ -4731,7 +4714,7 @@
 	  offset = offset | 0
 	  if (!noAssert) checkInt(this, value, offset, 1, 0xff, 0)
 	  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
-	  this[offset] = (value & 0xff)
+	  this[offset] = value
 	  return offset + 1
 	}
 
@@ -4748,7 +4731,7 @@
 	  offset = offset | 0
 	  if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
 	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value & 0xff)
+	    this[offset] = value
 	    this[offset + 1] = (value >>> 8)
 	  } else {
 	    objectWriteUInt16(this, value, offset, true)
@@ -4762,7 +4745,7 @@
 	  if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
 	  if (Buffer.TYPED_ARRAY_SUPPORT) {
 	    this[offset] = (value >>> 8)
-	    this[offset + 1] = (value & 0xff)
+	    this[offset + 1] = value
 	  } else {
 	    objectWriteUInt16(this, value, offset, false)
 	  }
@@ -4784,7 +4767,7 @@
 	    this[offset + 3] = (value >>> 24)
 	    this[offset + 2] = (value >>> 16)
 	    this[offset + 1] = (value >>> 8)
-	    this[offset] = (value & 0xff)
+	    this[offset] = value
 	  } else {
 	    objectWriteUInt32(this, value, offset, true)
 	  }
@@ -4799,7 +4782,7 @@
 	    this[offset] = (value >>> 24)
 	    this[offset + 1] = (value >>> 16)
 	    this[offset + 2] = (value >>> 8)
-	    this[offset + 3] = (value & 0xff)
+	    this[offset + 3] = value
 	  } else {
 	    objectWriteUInt32(this, value, offset, false)
 	  }
@@ -4852,7 +4835,7 @@
 	  if (!noAssert) checkInt(this, value, offset, 1, 0x7f, -0x80)
 	  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
 	  if (value < 0) value = 0xff + value + 1
-	  this[offset] = (value & 0xff)
+	  this[offset] = value
 	  return offset + 1
 	}
 
@@ -4861,7 +4844,7 @@
 	  offset = offset | 0
 	  if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
 	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value & 0xff)
+	    this[offset] = value
 	    this[offset + 1] = (value >>> 8)
 	  } else {
 	    objectWriteUInt16(this, value, offset, true)
@@ -4875,7 +4858,7 @@
 	  if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
 	  if (Buffer.TYPED_ARRAY_SUPPORT) {
 	    this[offset] = (value >>> 8)
-	    this[offset + 1] = (value & 0xff)
+	    this[offset + 1] = value
 	  } else {
 	    objectWriteUInt16(this, value, offset, false)
 	  }
@@ -4887,7 +4870,7 @@
 	  offset = offset | 0
 	  if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
 	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value & 0xff)
+	    this[offset] = value
 	    this[offset + 1] = (value >>> 8)
 	    this[offset + 2] = (value >>> 16)
 	    this[offset + 3] = (value >>> 24)
@@ -4906,7 +4889,7 @@
 	    this[offset] = (value >>> 24)
 	    this[offset + 1] = (value >>> 16)
 	    this[offset + 2] = (value >>> 8)
-	    this[offset + 3] = (value & 0xff)
+	    this[offset + 3] = value
 	  } else {
 	    objectWriteUInt32(this, value, offset, false)
 	  }
@@ -5181,7 +5164,7 @@
 	      }
 
 	      // valid surrogate pair
-	      codePoint = (leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00) + 0x10000
+	      codePoint = leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00 | 0x10000
 	    } else if (leadSurrogate) {
 	      // valid bmp char, but last char was a lead
 	      if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
@@ -5259,7 +5242,7 @@
 	  return i
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(26).Buffer, (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(26).Buffer))
 
 /***/ },
 /* 27 */
@@ -5485,10 +5468,38 @@
 /* 29 */
 /***/ function(module, exports) {
 
-	var toString = {}.toString;
+	
+	/**
+	 * isArray
+	 */
 
-	module.exports = Array.isArray || function (arr) {
-	  return toString.call(arr) == '[object Array]';
+	var isArray = Array.isArray;
+
+	/**
+	 * toString
+	 */
+
+	var str = Object.prototype.toString;
+
+	/**
+	 * Whether or not the given `val`
+	 * is an array.
+	 *
+	 * example:
+	 *
+	 *        isArray([]);
+	 *        // > true
+	 *        isArray(arguments);
+	 *        // > false
+	 *        isArray('');
+	 *        // > false
+	 *
+	 * @param {mixed} val
+	 * @return {bool}
+	 */
+
+	module.exports = isArray || function (val) {
+	  return !! val && '[object Array]' == str.call(val);
 	};
 
 
@@ -6135,12 +6146,12 @@
 	 */
 
 	module.exports = function (obj) {
-	  return !!(obj != null &&
-	    (obj._isBuffer || // For Safari 5-7 (missing Object.prototype.constructor)
-	      (obj.constructor &&
-	      typeof obj.constructor.isBuffer === 'function' &&
-	      obj.constructor.isBuffer(obj))
-	    ))
+	  return !!(
+	    obj != null &&
+	    obj.constructor &&
+	    typeof obj.constructor.isBuffer === 'function' &&
+	    obj.constructor.isBuffer(obj)
+	  )
 	}
 
 
@@ -8498,12 +8509,12 @@
 	 */
 
 	module.exports = function (obj) {
-	  return !!(obj != null &&
-	    (obj._isBuffer || // For Safari 5-7 (missing Object.prototype.constructor)
-	      (obj.constructor &&
-	      typeof obj.constructor.isBuffer === 'function' &&
-	      obj.constructor.isBuffer(obj))
-	    ))
+	  return !!(
+	    obj != null &&
+	    obj.constructor &&
+	    typeof obj.constructor.isBuffer === 'function' &&
+	    obj.constructor.isBuffer(obj)
+	  )
 	}
 
 
