@@ -413,6 +413,9 @@ bento.define('bento/managers/input', [
             isRemoteButtonDown: function (name) {
                 return remoteButtonStates[name] || false;
             },
+            getRemoteAxes: function () {
+                return remote.axes;
+            },
             /**
              * Stop all pointer input
              * @function
