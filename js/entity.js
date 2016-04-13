@@ -785,7 +785,7 @@ Bento.objects.attach(entity);
 
         // no parents
         if (!this.parent) {
-            if (!this.float) {
+            if (this.float) {
                 return this.position.add(Bento.getViewport().getCorner());
             } else {
                 return this.position;
@@ -873,7 +873,7 @@ Bento.objects.attach(entity);
 
         // no parents
         if (!this.parent) {
-            if (!this.float) {
+            if (this.float) {
                 return worldPosition.subtract(Bento.getViewport().getCorner());
             } else {
                 return worldPosition;
