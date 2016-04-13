@@ -9508,7 +9508,6 @@ bento.define('bento/managers/input', [
              * Removes all current pointers down
              * @function
              * @instance
-             * @returns {Array} pointers - Array with pointer positions
              * @name resetPointers
              */
             resetPointers: function () {
@@ -9519,6 +9518,7 @@ bento.define('bento/managers/input', [
              * @function
              * @instance
              * @param {String} name - name of the key
+             * @returns {Boolean} Returns true if the provided key is down.
              * @name isKeyDown
              */
             isKeyDown: function (name) {
@@ -9529,13 +9529,21 @@ bento.define('bento/managers/input', [
              * @function
              * @instance
              * @param {String} name - name of the button
+             * @returns {Boolean} Returns true if the provided button is down.
              * @name isRemoteButtonDown
              */
             isRemoteButtonDown: function (name) {
                 return remoteButtonStates[name] || false;
             },
+            /**
+             * Returns the current float values of the x and y axes of the touch area
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getRemoteAxes
+             */
             getRemoteAxes: function () {
-                return remote.axes;
+                return new Vector2(remote.axes[0], remote.axes[1]);
             },
             /**
              * Stop all pointer input
