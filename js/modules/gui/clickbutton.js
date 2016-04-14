@@ -5,7 +5,7 @@
  * @module bento/gui/clickbutton
  * @returns Entity
  */
- bento.define('bento/gui/clickbutton', [
+bento.define('bento/gui/clickbutton', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
@@ -135,6 +135,17 @@
         if (Utils.isDefined(settings.active)) {
             active = settings.active;
         }
+
+        // keep track of clickbuttons on tvOS
+        if (window.ejecta)
+            entity.attach({
+                start: function () {
+                    EventSystem.fire('clickbuttonAdded', entity);
+                },
+                destroy: function () {
+                    EventSystem.fire('clickbuttonRemoved', entity);
+                }
+            });
 
         return entity;
     };
