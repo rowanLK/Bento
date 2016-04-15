@@ -9304,6 +9304,11 @@ bento.define('bento/managers/input', [
                 }
             },
             initTouch = function () {
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
+                }
                 canvas.addEventListener('touchstart', touchStart);
                 canvas.addEventListener('touchmove', touchMove);
                 canvas.addEventListener('touchend', touchEnd);
@@ -9466,6 +9471,92 @@ bento.define('bento/managers/input', [
 
                 for (i = 0; i < names.length; ++i)
                     remoteButtonStates[names[i]] = false;
+            },
+            tvPointerDown = function (evt) {
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition,
+                    worldPosition: evt.worldPosition
+                });
+                EventSystem.fire('tvPointerDown', evt);
+            },
+            tvPointerMove = function (evt) {
+                EventSystem.fire('tvPointerMove', evt);
+                updatePointer(evt);
+            },
+            tvPointerUp = function (evt) {
+                EventSystem.fire('tvPointerUp', evt);
+                removePointer(evt);
+            },
+            tvTouchStart = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'start');
+                    tvPointerDown(evt);
+                }
+            },
+            tvTouchMove = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'move');
+                    tvPointerMove(evt);
+                }
+            },
+            tvTouchEnd = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'end');
+                    tvPointerUp(evt);
+                }
+            },
+            addTvTouchPosition = function (evt, n, type) {
+                var touch = evt.changedTouches[n],
+                    x = (touch.pageX - offsetLeft) / canvasScale.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y,
+                    startPos = {};
+
+                evt.preventDefault();
+                evt.id = 0;
+                evt.eventType = 'tvtouch';
+                touch.position = new Vector2(x, y);
+                touch.worldPosition = touch.position.clone();
+                touch.worldPosition.x += viewport.x;
+                touch.worldPosition.y += viewport.y;
+                touch.localPosition = touch.position.clone();
+                // add 'normal' position
+                evt.position = touch.position.clone();
+                evt.worldPosition = touch.worldPosition.clone();
+                evt.localPosition = touch.localPosition.clone();
+                // id
+                evt.id = touch.identifier + 1;
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = touch.position.clone();
+                    startPos.startWorldPosition = touch.worldPosition.clone();
+                    startPos.startLocalPosition = touch.localPosition.clone();
+                    // save startPos
+                    startPositions[evt.id] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[evt.id];
+                    if (startPos && startPos.startPosition) {
+                        touch.diffPosition = touch.position.substract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        evt.diffPosition = touch.diffPosition.clone();
+                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
+                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
+                        delete startPositions[evt.id];
+                    } else {
+                        console.log('WARNING: touch startPosition was not defined');
+                    }
+                }
             };
 
         window.addEventListener('resize', onResize, false);
@@ -9555,6 +9646,11 @@ bento.define('bento/managers/input', [
                 if (!isListening) {
                     return;
                 }
+                if (window.ejecta) {
+                    canvas.removeEventListener('tvtouchstart', tvTouchStart);
+                    canvas.removeEventListener('tvtouchmove', tvTouchMove);
+                    canvas.removeEventListener('tvtouchend', tvTouchEnd);
+                }
                 canvas.removeEventListener('touchstart', touchStart);
                 canvas.removeEventListener('touchmove', touchMove);
                 canvas.removeEventListener('touchend', touchEnd);
@@ -9572,6 +9668,11 @@ bento.define('bento/managers/input', [
             resume: function () {
                 if (isListening) {
                     return;
+                }
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
                 }
                 canvas.addEventListener('touchstart', touchStart);
                 canvas.addEventListener('touchmove', touchMove);
