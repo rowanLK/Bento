@@ -506,6 +506,16 @@ bento.define('bento/managers/input', [
                 return remoteButtonStates[name] || false;
             },
             /**
+             * Defines if pressing 'menu' button will go back to Apple TV home screen
+             * @function
+             * @instance
+             * @param {Boolean} Set to false if you want to assign custom behaviour for the 'menu' button
+             * @name setRemoteExitOnMenuPress
+             */
+            setRemoteExitOnMenuPress: function (bool) {
+                remote.exitOnMenuPress = bool;
+            },
+            /**
              * Returns the current float values of the x and y axes of the touch area
              * @function
              * @instance
