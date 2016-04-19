@@ -129,6 +129,9 @@ bento.define('bento/gui/clickbutton', [
                 },
                 doCallback: function () {
                     settings.onClick.apply(entity);
+                },
+                isActive: function () {
+                    return active;
                 }
             });
 
