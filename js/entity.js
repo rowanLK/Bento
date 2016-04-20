@@ -620,7 +620,7 @@ Bento.objects.attach(entity);
      * @param {Object} settings
      * @param {Entity} settings.entity - The other entity
      * @param {Entity} settings.entities - Or an array of entities to check with
-     * @param {Entity} settings.name - Or the other entity's name (use family for better performance)
+     * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
@@ -692,7 +692,7 @@ Bento.objects.attach(entity);
         }
         return null;
     };
-    /**
+    /* DEPRECATED
      * Checks if entity is colliding with any entity in an array
      * Returns the first entity it finds that collides with the entity.
      * @function
