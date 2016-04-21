@@ -3000,7 +3000,13 @@ var requirejs, require, define;
                 startWatching = true;
             }
         };
+    
+    // add global name
     window.bento = window.bento || bento;
+    
+    // undefine global define and require, in case it clashes with other require systems
+    window.require = undefined;
+    window.define = undefined;
 }());
 /*
     Audia: <audio> implemented using the Web Audio API
@@ -4903,7 +4909,7 @@ Bento.objects.attach(entity);
         }
         return null;
     };
-    /**
+    /* DEPRECATED
      * Checks if entity is colliding with any entity in an array
      * Returns the first entity it finds that collides with the entity.
      * @function
@@ -5880,6 +5886,70 @@ bento.define('bento/utils', [], function () {
                 hash = hash & hash; // Convert to 32bit integer
             }
             return hash;
+        },
+        /**
+         * Returns a clone of a JSON object
+         * @function
+         * @instance
+         * @param {Object} jsonObj - Object literal that adheres to JSON standards
+         * @name cloneJson
+         */
+        cloneJson: function (jsonObj) {
+            var out;
+            try {
+                out = JSON.parse(JSON.stringify(jsonObj));
+            } catch (e) {
+                out = {};
+                console.log('WARNING: object cloning failed');
+            }
+            return out;
+        },
+        /**
+         * Loops through an array
+         * @function
+         * @instance
+         * @param {Array} array - Array to loop through
+         * @param {Function} callback - Callback function
+         * @name forEach
+         */
+        forEach: function (array, callback) {
+            var i;
+            var l;
+            var stop = false;
+            var breakLoop = function () {
+                stop = true;
+            };
+            for (i = 0, l = array.length; i < l; ++i) {
+                callback(array[i], i, l, breakLoop);
+                if (stop) {
+                    return;
+                }
+            }
+        },
+        /**
+         * Checks whether a value is between two other values
+         * @function
+         * @instance
+         * @param {Number} min - lower limit
+         * @param {Number} value - value to check that's between min and max
+         * @param {Number} max - upper limit
+         * @param {Boolean} includeEdge - includes edge values
+         * @name isBetween
+         */
+        isBetween: function (min, value, max, includeEdge) {
+            if (includeEdge) {
+                return min <= value && value <= max;
+            }
+            return min < value && value < max;
+        },
+        /**
+         * Picks one of the parameters of this function and returns it
+         * @function
+         * @instance
+         * @name pickRandom
+         */
+        pickRandom: function () {
+            return arguments[this.getRandom(arguments.length)];
         },
         /**
          * Checks useragent if device is an apple device. Works on web only.
@@ -12990,6 +13060,12 @@ bento.define('bento/renderers/pixi', [
                 var rectangle;
                 var sprite;
                 var texture;
+                // If image and frame size don't correspond Pixi will throw an error and break the game.
+                // This check tries to prevent that.
+                if (sx + sw > image.width || sy + sh > image.height) {
+                    console.log("Warning: image and frame size do not correspond.", image);
+                    return;
+                }
                 if (!image.texture) {
                     // initialize pixi baseTexture
                     image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);

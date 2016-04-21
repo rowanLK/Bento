@@ -551,6 +551,70 @@ bento.define('bento/utils', [], function () {
             return hash;
         },
         /**
+         * Returns a clone of a JSON object
+         * @function
+         * @instance
+         * @param {Object} jsonObj - Object literal that adheres to JSON standards
+         * @name cloneJson
+         */
+        cloneJson: function (jsonObj) {
+            var out;
+            try {
+                out = JSON.parse(JSON.stringify(jsonObj));
+            } catch (e) {
+                out = {};
+                console.log('WARNING: object cloning failed');
+            }
+            return out;
+        },
+        /**
+         * Loops through an array
+         * @function
+         * @instance
+         * @param {Array} array - Array to loop through
+         * @param {Function} callback - Callback function
+         * @name forEach
+         */
+        forEach: function (array, callback) {
+            var i;
+            var l;
+            var stop = false;
+            var breakLoop = function () {
+                stop = true;
+            };
+            for (i = 0, l = array.length; i < l; ++i) {
+                callback(array[i], i, l, breakLoop);
+                if (stop) {
+                    return;
+                }
+            }
+        },
+        /**
+         * Checks whether a value is between two other values
+         * @function
+         * @instance
+         * @param {Number} min - lower limit
+         * @param {Number} value - value to check that's between min and max
+         * @param {Number} max - upper limit
+         * @param {Boolean} includeEdge - includes edge values
+         * @name isBetween
+         */
+        isBetween: function (min, value, max, includeEdge) {
+            if (includeEdge) {
+                return min <= value && value <= max;
+            }
+            return min < value && value < max;
+        },
+        /**
+         * Picks one of the parameters of this function and returns it
+         * @function
+         * @instance
+         * @name pickRandom
+         */
+        pickRandom: function () {
+            return arguments[this.getRandom(arguments.length)];
+        },
+        /**
          * Checks useragent if device is an apple device. Works on web only.
          * @function
          * @instance
