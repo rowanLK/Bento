@@ -63,5 +63,11 @@
                 startWatching = true;
             }
         };
+    
+    // add global name
     window.bento = window.bento || bento;
+    
+    // undefine global define and require, in case it clashes with other require systems
+    window.require = undefined;
+    window.define = undefined;
 }());

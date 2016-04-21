@@ -4236,7 +4236,7 @@ bento.define('bento', [
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - (DEPRECATED)Should entity use HSHG for collisions
  * @param {Boolean} settings.staticHshg - (DEPRECATED)Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
- * @example 
+ * @example
 var entity = new Entity({
     z: 0,
     name: 'myEntity',
@@ -4672,7 +4672,7 @@ entity.addX(10);
         }
     };
     /**
-     * Attaches a child object to the entity. Entities can form a scenegraph this way. 
+     * Attaches a child object to the entity. Entities can form a scenegraph this way.
      * This is one of the most important functions in Bento. It allows you to attach new behaviors
      * to the entity by attaching components or other Entities.
      * The parent entity calls start(), destroy(), update() and draw() in the child.
@@ -4681,7 +4681,7 @@ entity.addX(10);
      * @param {Object} child - The child object to attach (can be anything)
      * @param {Boolean} force - Allow duplicate attaching
      * @instance
-     * @example 
+     * @example
 var entity = new Entity({}),
     // we define a simple object literal that acts as a container for functions
     child = {
@@ -4836,8 +4836,8 @@ Bento.objects.attach(entity);
      * @instance
      * @param {Object} settings
      * @param {Entity} settings.entity - The other entity
-     * @param {Entity} settings.entities - Or an array of entities to check with
-     * @param {Entity} settings.name - Or the other entity's name (use family for better performance)
+     * @param {Array} settings.entities - Or an array of entities to check with
+     * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
@@ -5005,7 +5005,7 @@ Bento.objects.attach(entity);
             if (this.float) {
                 return this.position.add(Bento.getViewport().getCorner());
             } else {
-                return this.position;
+                return this.position.clone();
             }
         }
 
@@ -10116,6 +10116,9 @@ bento.define('bento/managers/savestate', [
             // also store the keys
             if (this.saveKeys) {
                 keys = this.load('_keys', []);
+                if (keys.indexOf(elementKey) > 0) {
+                    return;
+                }
                 keys.push(elementKey);
                 storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
             }
