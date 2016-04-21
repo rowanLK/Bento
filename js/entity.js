@@ -788,7 +788,7 @@ Bento.objects.attach(entity);
             if (this.float) {
                 return this.position.add(Bento.getViewport().getCorner());
             } else {
-                return this.position;
+                return this.position.clone();
             }
         }
 
