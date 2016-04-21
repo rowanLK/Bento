@@ -619,7 +619,7 @@ Bento.objects.attach(entity);
      * @instance
      * @param {Object} settings
      * @param {Entity} settings.entity - The other entity
-     * @param {Entity} settings.entities - Or an array of entities to check with
+     * @param {Array} settings.entities - Or an array of entities to check with
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
