@@ -19,7 +19,7 @@
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - (DEPRECATED)Should entity use HSHG for collisions
  * @param {Boolean} settings.staticHshg - (DEPRECATED)Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
- * @example 
+ * @example
 var entity = new Entity({
     z: 0,
     name: 'myEntity',
@@ -455,7 +455,7 @@ entity.addX(10);
         }
     };
     /**
-     * Attaches a child object to the entity. Entities can form a scenegraph this way. 
+     * Attaches a child object to the entity. Entities can form a scenegraph this way.
      * This is one of the most important functions in Bento. It allows you to attach new behaviors
      * to the entity by attaching components or other Entities.
      * The parent entity calls start(), destroy(), update() and draw() in the child.
@@ -464,7 +464,7 @@ entity.addX(10);
      * @param {Object} child - The child object to attach (can be anything)
      * @param {Boolean} force - Allow duplicate attaching
      * @instance
-     * @example 
+     * @example
 var entity = new Entity({}),
     // we define a simple object literal that acts as a container for functions
     child = {
@@ -788,7 +788,7 @@ Bento.objects.attach(entity);
             if (this.float) {
                 return this.position.add(Bento.getViewport().getCorner());
             } else {
-                return this.position;
+                return this.position.clone();
             }
         }
 
