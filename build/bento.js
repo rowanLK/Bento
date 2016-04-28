@@ -6547,6 +6547,8 @@ bento.define('bento/components/clickable', [
             i,
             isFloating = false;
 
+        evt = this.cloneEvent(evt);
+
         // no parents
         if (!this.entity.parent) {
             if (!this.entity.float) {
@@ -6567,9 +6569,7 @@ bento.define('bento/components/clickable', [
             isFloating = true;
         }
 
-
         // make a copy
-        evt = this.cloneEvent(evt);
         if (this.entity.float || isFloating) {
             positionVector = evt.localPosition.toMatrix();
         } else {
