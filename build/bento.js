@@ -5221,6 +5221,12 @@ bento.define('bento/eventsystem', [
 
     return {
         /**
+         * Ignore warnings
+         * @instance
+         * @name suppressWarnings
+         */
+        suppressWarnings: false,
+        /**
          * Fires an event
          * @function
          * @instance
@@ -5246,8 +5252,11 @@ bento.define('bento/eventsystem', [
                     } else {
                         listener.callback(eventData);
                     }
-                } else {
-                    // TODO: fix this
+                } else if (!this.suppressWarnings) {
+                    // TODO: this warning appears when event listeners are removed 
+                    // during another listener being triggered. For example, removing an entity
+                    // while that entity was listening to the same event.
+                    // In a lot of cases, this is normal... Consider removing this warning?
                     console.log('Warning: listener is not a function');
                 }
             }
@@ -5283,10 +5292,13 @@ bento.define('bento/eventsystem', [
     };
 });
 /**
- * A wrapper for HTML images, holds data for image atlas.
+ * A wrapper for HTML images, holds data for image atlas. Bento renderers only work with PackedImage and not plain
+ * HTML Image elements. This allows for easy transitions to using, for example, TexturePacker. 
+ * (That's why it's called PackedImage, for a lack of better naming).
+ * If you plan to use a HTML Canvas as image source, always remember to wrap it in a PackedImage.
  * <br>Exports: Constructor
  * @module bento/packedimage
- * @param {HTMLImageElement} image - HTML Image Element
+ * @param {HTMLImageElement} image - HTML Image Element or HTML Canvas Element
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
  * @returns {HTMLImage} rectangle.image - Reference to the image
@@ -6154,9 +6166,10 @@ bento.define('bento/components/animation', [
                     highestFrame = animations[animation].frames[i];
                 }
             }
-            // TODO: entity.name is always an empty string
-            if (highestFrame > this.frameCountX * this.frameCountY - 1)
-                console.log("Warning: the frames in animation " + animation + " of " + this.entity.name + " are out of bounds. Can't use frame " + highestFrame + ".");
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
         }
     };
     /**
@@ -6308,6 +6321,14 @@ bento.define('bento/components/animation', [
     Animation.prototype.toString = function () {
         return '[object Animation]';
     };
+
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
 
     return Animation;
 });
@@ -13158,7 +13179,7 @@ bento.define('bento/renderers/webgl', [
             }),
             entitySettings = Utils.extend({
                 z: 0,
-                name: '',
+                name: 'clickButton',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
                 components: [
