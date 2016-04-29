@@ -299,6 +299,26 @@ bento.define('bento/utils', [], function () {
             }
 
             return keys;
+        })(),
+        remoteMapping = (function () {
+            // the commented out keys are not used by the remote's micro gamepad
+            var buttons = {
+                "0": ["A", "a", "click"], // click on touch area
+                // "1": ["B"],
+                "2": ["X", "x", "play", "pause"], // pause/play button
+                // "3": ["Y"],
+                // "4": ["L1"],
+                // "5": ["R1"],
+                // "6": ["L2"],
+                // "7": ["R2"],
+                "12": ["up"], // upper half touch area
+                "13": ["down"], // lower half touch area
+                "14": ["left"], // left half touch area
+                "15": ["right"], // right half touch area
+                "16": ["menu"] // menu button
+            };
+
+            return buttons;
         })();
 
     utils = {
@@ -389,6 +409,7 @@ bento.define('bento/utils', [], function () {
         getKeyLength: getKeyLength,
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
+        remoteMapping: remoteMapping,
         /**
          * Returns a random integer [0...n)
          * @function
