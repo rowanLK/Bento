@@ -33,7 +33,7 @@ gulp.task('webgl', function () {
     });
 });
 
-gulp.task('default', ['webgl'], function () {
+gulp.task('default', [], function () {
     // place code for your default task here
     return gulp.src([
             'js/lib/fpsmeter.js',
