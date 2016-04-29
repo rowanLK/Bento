@@ -58,6 +58,12 @@ bento.define('bento/eventsystem', [
 
     return {
         /**
+         * Ignore warnings
+         * @instance
+         * @name suppressWarnings
+         */
+        suppressWarnings: false,
+        /**
          * Fires an event
          * @function
          * @instance
@@ -83,8 +89,11 @@ bento.define('bento/eventsystem', [
                     } else {
                         listener.callback(eventData);
                     }
-                } else {
-                    // TODO: fix this
+                } else if (!this.suppressWarnings) {
+                    // TODO: this warning appears when event listeners are removed 
+                    // during another listener being triggered. For example, removing an entity
+                    // while that entity was listening to the same event.
+                    // In a lot of cases, this is normal... Consider removing this warning?
                     console.log('Warning: listener is not a function');
                 }
             }

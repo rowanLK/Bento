@@ -5221,6 +5221,12 @@ bento.define('bento/eventsystem', [
 
     return {
         /**
+         * Ignore warnings
+         * @instance
+         * @name suppressWarnings
+         */
+        suppressWarnings: false,
+        /**
          * Fires an event
          * @function
          * @instance
@@ -5246,8 +5252,11 @@ bento.define('bento/eventsystem', [
                     } else {
                         listener.callback(eventData);
                     }
-                } else {
-                    // TODO: fix this
+                } else if (!this.suppressWarnings) {
+                    // TODO: this warning appears when event listeners are removed 
+                    // during another listener being triggered. For example, removing an entity
+                    // while that entity was listening to the same event.
+                    // In a lot of cases, this is normal... Consider removing this warning?
                     console.log('Warning: listener is not a function');
                 }
             }
@@ -5283,10 +5292,13 @@ bento.define('bento/eventsystem', [
     };
 });
 /**
- * A wrapper for HTML images, holds data for image atlas.
+ * A wrapper for HTML images, holds data for image atlas. Bento renderers only work with PackedImage and not plain
+ * HTML Image elements. This allows for easy transitions to using, for example, TexturePacker. 
+ * (That's why it's called PackedImage, for a lack of better naming).
+ * If you plan to use a HTML Canvas as image source, always remember to wrap it in a PackedImage.
  * <br>Exports: Constructor
  * @module bento/packedimage
- * @param {HTMLImageElement} image - HTML Image Element
+ * @param {HTMLImageElement} image - HTML Image Element or HTML Canvas Element
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
  * @returns {HTMLImage} rectangle.image - Reference to the image
@@ -5861,7 +5873,7 @@ bento.define('bento/utils', [], function () {
         repeat: function (number, fn) {
             var i;
             for (i = 0; i < number; ++i) {
-                fn();
+                fn(i, number);
             }
         },
         /**
@@ -6175,9 +6187,10 @@ bento.define('bento/components/animation', [
                     highestFrame = animations[animation].frames[i];
                 }
             }
-            // TODO: entity.name is always an empty string
-            if (highestFrame > this.frameCountX * this.frameCountY - 1)
-                console.log("Warning: the frames in animation " + animation + " of " + this.entity.name + " are out of bounds. Can't use frame " + highestFrame + ".");
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
         }
     };
     /**
@@ -6329,6 +6342,14 @@ bento.define('bento/components/animation', [
     Animation.prototype.toString = function () {
         return '[object Animation]';
     };
+
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
 
     return Animation;
 });
@@ -6547,6 +6568,8 @@ bento.define('bento/components/clickable', [
             i,
             isFloating = false;
 
+        evt = this.cloneEvent(evt);
+
         // no parents
         if (!this.entity.parent) {
             if (!this.entity.float) {
@@ -6567,9 +6590,7 @@ bento.define('bento/components/clickable', [
             isFloating = true;
         }
 
-
         // make a copy
-        evt = this.cloneEvent(evt);
         if (this.entity.float || isFloating) {
             positionVector = evt.localPosition.toMatrix();
         } else {
@@ -12598,9 +12619,10 @@ bento.define('bento/tiled', [
  */
 bento.define('bento/tween', [
     'bento',
+    'bento/math/vector2',
     'bento/utils',
     'bento/entity'
-], function (Bento, Utils, Entity) {
+], function (Bento, Vector2, Utils, Entity) {
     'use strict';
     var robbertPenner = {
             // t: current time, b: begInnIng value, c: change In value, d: duration
@@ -12786,10 +12808,24 @@ bento.define('bento/tween', [
             // e = ending value
             // t = time variable (going from 0 to 1)
             var fn = interpolations[type];
-            if (fn) {
-                return fn(s, e, t, alpha, beta);
+            if (s.isVector2 && e.isVector2) {
+                if (fn) {
+                    return new Vector2(
+                        fn(s.x, e.x, t, alpha, beta),
+                        fn(s.y, e.y, t, alpha, beta)
+                    );
+                } else {
+                    return new Vector2(
+                        robbertPenner[type](t, s.x, e.x - s.x, 1),
+                        robbertPenner[type](t, s.y, e.y - s.y, 1)
+                    );
+                }
             } else {
-                return robbertPenner[type](t, s, e - s, 1);
+                if (fn) {
+                    return fn(s, e, t, alpha, beta);
+                } else {
+                    return robbertPenner[type](t, s, e - s, 1);
+                }
             }
         };
     return function (settings) {
@@ -13376,7 +13412,7 @@ bento.define('bento/gui/clickbutton', [
             }),
             entitySettings = Utils.extend({
                 z: 0,
-                name: '',
+                name: 'clickButton',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
                 components: [
@@ -14294,6 +14330,16 @@ bento.define('bento/gui/text', [
                  */
                 getText: function () {
                     return text;
+                },
+                /**
+                 * Get array of the string setup settings
+                 * @function
+                 * @instance
+                 * @name getStrings
+                 * @returns Array
+                 */
+                getStrings: function () {
+                    return strings;
                 },
                 /**
                  * Sets and displays current text

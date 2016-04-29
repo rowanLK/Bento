@@ -102,7 +102,7 @@ bento.define('bento/gui/clickbutton', [
             }),
             entitySettings = Utils.extend({
                 z: 0,
-                name: '',
+                name: 'clickButton',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
                 components: [
