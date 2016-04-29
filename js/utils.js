@@ -503,7 +503,7 @@ bento.define('bento/utils', [], function () {
         repeat: function (number, fn) {
             var i;
             for (i = 0; i < number; ++i) {
-                fn();
+                fn(i, number);
             }
         },
         /**

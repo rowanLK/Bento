@@ -5852,7 +5852,7 @@ bento.define('bento/utils', [], function () {
         repeat: function (number, fn) {
             var i;
             for (i = 0; i < number; ++i) {
-                fn();
+                fn(i, number);
             }
         },
         /**
@@ -12401,9 +12401,10 @@ bento.define('bento/tiled', [
  */
 bento.define('bento/tween', [
     'bento',
+    'bento/math/vector2',
     'bento/utils',
     'bento/entity'
-], function (Bento, Utils, Entity) {
+], function (Bento, Vector2, Utils, Entity) {
     'use strict';
     var robbertPenner = {
             // t: current time, b: begInnIng value, c: change In value, d: duration
@@ -12589,10 +12590,24 @@ bento.define('bento/tween', [
             // e = ending value
             // t = time variable (going from 0 to 1)
             var fn = interpolations[type];
-            if (fn) {
-                return fn(s, e, t, alpha, beta);
+            if (s.isVector2 && e.isVector2) {
+                if (fn) {
+                    return new Vector2(
+                        fn(s.x, e.x, t, alpha, beta),
+                        fn(s.y, e.y, t, alpha, beta)
+                    );
+                } else {
+                    return new Vector2(
+                        robbertPenner[type](t, s.x, e.x - s.x, 1),
+                        robbertPenner[type](t, s.y, e.y - s.y, 1)
+                    );
+                }
             } else {
-                return robbertPenner[type](t, s, e - s, 1);
+                if (fn) {
+                    return fn(s, e, t, alpha, beta);
+                } else {
+                    return robbertPenner[type](t, s, e - s, 1);
+                }
             }
         };
     return function (settings) {
