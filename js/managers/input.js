@@ -27,6 +27,9 @@ bento.define('bento/managers/input', [
             keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
+            remote,
+            remoteButtonsPressed = [],
+            remoteButtonStates = {},
             pointerDown = function (evt) {
                 pointers.push({
                     id: evt.id,
@@ -180,6 +183,11 @@ bento.define('bento/managers/input', [
                 }
             },
             initTouch = function () {
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
+                }
                 canvas.addEventListener('touchstart', touchStart);
                 canvas.addEventListener('touchmove', touchMove);
                 canvas.addEventListener('touchend', touchEnd);
@@ -281,6 +289,153 @@ bento.define('bento/managers/input', [
                         e.preventDefault();
                     }
                 }, false);
+            },
+            /**
+             * Adds a check for input from the apple remote before every update. Only if on tvOS.
+             *
+             * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
+             * continually checking for input is the only way for now.
+             */
+            initRemote = function () {
+                var i = 0,
+                    gamepads;
+
+                if (window.ejecta) {
+                    // get all connected gamepads
+                    gamepads = navigator.getGamepads();
+                    // find apple remote gamepad
+                    for (i = 0; i < gamepads.length; ++i)
+                        if (gamepads[i] && gamepads[i].profile === 'microGamepad')
+                            remote = gamepads[i];
+
+                    for (i = 0; i < remote.buttons.length; ++i)
+                        remoteButtonsPressed.push(remote.buttons[i].pressed);
+
+                    // check for button input before the regular update
+                    EventSystem.on('preUpdate', checkRemote);
+                }
+            },
+            /**
+             * Checks if a remote button has been pressed. Runs before every frame, if added.
+             */
+            checkRemote = function () {
+                var i = 0,
+                    len = 0;
+
+                // uses an array to check against the state of the buttons from the previous frame
+                for (i = 0, len = remote.buttons.length; i < len; ++i) {
+                    if (remote.buttons[i].pressed !== remoteButtonsPressed[i]) {
+                        if (remote.buttons[i].pressed) {
+                            remoteButtonDown(i);
+                        } else {
+                            remoteButtonUp(i);
+                        }
+                    }
+                }
+            },
+            remoteButtonDown = function (id) {
+                var i = 0,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = true;
+
+                for (i = 0; i < names.length; ++i)
+                    remoteButtonStates[names[i]] = true;
+            },
+            remoteButtonUp = function (id) {
+                var i = 0,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = false;
+
+                for (i = 0; i < names.length; ++i)
+                    remoteButtonStates[names[i]] = false;
+            },
+            tvPointerDown = function (evt) {
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition,
+                    worldPosition: evt.worldPosition
+                });
+                EventSystem.fire('tvPointerDown', evt);
+            },
+            tvPointerMove = function (evt) {
+                EventSystem.fire('tvPointerMove', evt);
+                updatePointer(evt);
+            },
+            tvPointerUp = function (evt) {
+                EventSystem.fire('tvPointerUp', evt);
+                removePointer(evt);
+            },
+            tvTouchStart = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'start');
+                    tvPointerDown(evt);
+                }
+            },
+            tvTouchMove = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'move');
+                    tvPointerMove(evt);
+                }
+            },
+            tvTouchEnd = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'end');
+                    tvPointerUp(evt);
+                }
+            },
+            addTvTouchPosition = function (evt, n, type) {
+                var touch = evt.changedTouches[n],
+                    x = (touch.pageX - offsetLeft) / canvasScale.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y,
+                    startPos = {};
+
+                evt.preventDefault();
+                evt.id = 0;
+                evt.eventType = 'tvtouch';
+                touch.position = new Vector2(x, y);
+                touch.worldPosition = touch.position.clone();
+                touch.worldPosition.x += viewport.x;
+                touch.worldPosition.y += viewport.y;
+                touch.localPosition = touch.position.clone();
+                // add 'normal' position
+                evt.position = touch.position.clone();
+                evt.worldPosition = touch.worldPosition.clone();
+                evt.localPosition = touch.localPosition.clone();
+                // id
+                evt.id = touch.identifier + 1;
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = touch.position.clone();
+                    startPos.startWorldPosition = touch.worldPosition.clone();
+                    startPos.startLocalPosition = touch.localPosition.clone();
+                    // save startPos
+                    startPositions[evt.id] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[evt.id];
+                    if (startPos && startPos.startPosition) {
+                        touch.diffPosition = touch.position.substract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        evt.diffPosition = touch.diffPosition.clone();
+                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
+                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
+                        delete startPositions[evt.id];
+                    } else {
+                        console.log('WARNING: touch startPosition was not defined');
+                    }
+                }
             };
 
         window.addEventListener('resize', onResize, false);
@@ -305,6 +460,8 @@ bento.define('bento/managers/input', [
         initKeyboard();
         // init clicks
         initMouseClicks();
+        // apple remote (only on tvOS)
+        initRemote();
 
         return {
             /**
@@ -321,7 +478,6 @@ bento.define('bento/managers/input', [
              * Removes all current pointers down
              * @function
              * @instance
-             * @returns {Array} pointers - Array with pointer positions
              * @name resetPointers
              */
             resetPointers: function () {
@@ -332,10 +488,42 @@ bento.define('bento/managers/input', [
              * @function
              * @instance
              * @param {String} name - name of the key
+             * @returns {Boolean} Returns true if the provided key is down.
              * @name isKeyDown
              */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
+            },
+            /**
+             * Checks if a remote button is down
+             * @function
+             * @instance
+             * @param {String} name - name of the button
+             * @returns {Boolean} Returns true if the provided button is down.
+             * @name isRemoteButtonDown
+             */
+            isRemoteButtonDown: function (name) {
+                return remoteButtonStates[name] || false;
+            },
+            /**
+             * Defines if pressing 'menu' button will go back to Apple TV home screen
+             * @function
+             * @instance
+             * @param {Boolean} Set to false if you want to assign custom behaviour for the 'menu' button
+             * @name setRemoteExitOnMenuPress
+             */
+            setRemoteExitOnMenuPress: function (bool) {
+                remote.exitOnMenuPress = bool;
+            },
+            /**
+             * Returns the current float values of the x and y axes of the touch area
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getRemoteAxes
+             */
+            getRemoteAxes: function () {
+                return new Vector2(remote.axes[0], remote.axes[1]);
             },
             /**
              * Stop all pointer input
@@ -346,6 +534,11 @@ bento.define('bento/managers/input', [
             stop: function () {
                 if (!isListening) {
                     return;
+                }
+                if (window.ejecta) {
+                    canvas.removeEventListener('tvtouchstart', tvTouchStart);
+                    canvas.removeEventListener('tvtouchmove', tvTouchMove);
+                    canvas.removeEventListener('tvtouchend', tvTouchEnd);
                 }
                 canvas.removeEventListener('touchstart', touchStart);
                 canvas.removeEventListener('touchmove', touchMove);
@@ -364,6 +557,11 @@ bento.define('bento/managers/input', [
             resume: function () {
                 if (isListening) {
                     return;
+                }
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
                 }
                 canvas.addEventListener('touchstart', touchStart);
                 canvas.addEventListener('touchmove', touchMove);
