@@ -121,7 +121,8 @@ bento.define('bento/components/clickable', [
             position: evt.position.clone(),
             eventType: evt.eventType,
             localPosition: evt.localPosition.clone(),
-            worldPosition: evt.worldPosition.clone()
+            worldPosition: evt.worldPosition.clone(),
+            diffPosition: evt.diffPosition ? evt.diffPosition.clone() : undefined
         };
     };
     Clickable.prototype.pointerDown = function (evt) {
