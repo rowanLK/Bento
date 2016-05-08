@@ -17,6 +17,9 @@ bento.define('bento/renderers/canvas2d', [
                 restore: function () {
                     context.restore();
                 },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    context.setTransform(a, b, c, d, tx, ty);
+                },
                 translate: function (x, y) {
                     context.translate(x, y);
                 },

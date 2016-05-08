@@ -38,19 +38,20 @@ bento.define('bento/entity', [
     'bento/utils',
     'bento/math/vector2',
     'bento/math/rectangle',
-    'bento/math/matrix'
-], function (Bento, Utils, Vector2, Rectangle, Matrix) {
+    'bento/math/transformmatrix',
+    'bento/transform'
+], function (Bento, Utils, Vector2, Rectangle, Matrix, Transform) {
     'use strict';
     var cleanComponents = function (entity) {
-            // remove null components
-            var i;
-            for (i = entity.components.length - 1; i >= 0; --i) {
-                if (!entity.components[i]) {
-                    entity.components.splice(i, 1);
-                }
+        // remove null components
+        var i;
+        for (i = entity.components.length - 1; i >= 0; --i) {
+            if (!entity.components[i]) {
+                entity.components.splice(i, 1);
             }
-        },
-        id = 0;
+        }
+    };
+    var id = 0;
 
     var Entity = function (settings) {
         var i;
@@ -171,12 +172,25 @@ bento.define('bento/entity', [
          */
         this.rotation = 0;
         /**
+         * Opacity of the entity
+         * @instance
+         * @default 1
+         * @name alpha
+         */
+        this.alpha = 1;
+        /**
          * Whether the entity calls the draw function
          * @instance
          * @default true
          * @name visible
          */
         this.visible = true;
+        /**
+         * Transform module
+         * @instance
+         * @name transform
+         */
+        this.transform = new Transform(this);
         /**
          * Entity's parent object, is set by the attach function
          * @instance
@@ -299,13 +313,18 @@ bento.define('bento/entity', [
         cleanComponents(this);
     };
     Entity.prototype.draw = function (data) {
-        var i,
-            l,
-            component;
+        var i, l, component;
+        var matrix;
         if (!this.visible) {
             return;
         }
-        data = data || {};
+        data = data || {
+            viewport: Bento.getViewport(),
+            renderer: Bento.getRenderer()
+        };
+
+        this.transform.draw(data);
+
         // call components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
@@ -322,7 +341,10 @@ bento.define('bento/entity', [
                 component.postDraw(data);
             }
         }
+
+        this.transform.postDraw(data);
     };
+
     /**
      * Extends properties of entity
      * @function
@@ -762,92 +784,14 @@ Bento.objects.attach(entity);
         };
     };
     /**
-     * Transforms a child entity position to the world position
+     * Transforms this entity's position to the world position
      * @function
      * @instance
      * @name getWorldPosition
      * @returns {Vector2} Returns a position
      */
-    // TODO: using Matrix is slow and bulky, optimize this
     Entity.prototype.getWorldPosition = function () {
-        var positionVector,
-            translateMatrix = new Matrix(3, 3),
-            scaleMatrix = new Matrix(3, 3),
-            rotateMatrix = new Matrix(3, 3),
-            sin,
-            cos,
-            type,
-            position,
-            parent,
-            parents = [],
-            i,
-            isFloating = false;
-
-        // no parents
-        if (!this.parent) {
-            if (this.float) {
-                return this.position.add(Bento.getViewport().getCorner());
-            } else {
-                return this.position.clone();
-            }
-        }
-
-        // get all parents
-        parent = this;
-        while (parent.parent) {
-            parent = parent.parent;
-            parents.unshift(parent);
-        }
-        // is top parent floating?
-        if (parents.length && parents[0].float) {
-            isFloating = true;
-        }
-
-        // make a copy
-        if (this.float || isFloating) {
-            positionVector = this.position.add(Bento.getViewport().getCorner()).toMatrix();
-        } else {
-            positionVector = this.position.toMatrix();
-        }
-
-        /**
-         * transform the position vector with each component
-         */
-        for (i = 0; i < parents.length; ++i) {
-            parent = parents[i];
-
-            // todo: order of components
-            if (parent.scale) {
-                // construct a scaling matrix and apply to position vector
-                scaleMatrix.set(0, 0, parent.scale.x);
-                scaleMatrix.set(1, 1, parent.scale.y);
-                positionVector.multiplyWith(scaleMatrix);
-            }
-            // only scale/rotatable if there is a component
-            if (parent.rotation) {
-                // construct a rotation matrix and apply to position vector
-                sin = Math.sin(parent.rotation);
-                cos = Math.cos(parent.rotation);
-                rotateMatrix.set(0, 0, cos);
-                rotateMatrix.set(1, 0, -sin);
-                rotateMatrix.set(0, 1, sin);
-                rotateMatrix.set(1, 1, cos);
-                positionVector.multiplyWith(rotateMatrix);
-            }
-            if (parent.position) {
-                // construct a translation matrix and apply to position vector
-                position = parent.position;
-                translateMatrix.set(2, 0, position.x);
-                translateMatrix.set(2, 1, position.y);
-                positionVector.multiplyWith(translateMatrix);
-            }
-
-        }
-
-        return new Vector2(
-            positionVector.get(0, 0),
-            positionVector.get(0, 1)
-        );
+        return this.transform.getWorldPosition();
     };
 
     /**
@@ -855,87 +799,11 @@ Bento.objects.attach(entity);
      * @function
      * @instance
      * @name getLocalPosition
+     * @param {Vector2} worldPosition - A position to transform to local position
      * @returns {Vector2} Returns a position relative to the entity's parent
      */
     Entity.prototype.getLocalPosition = function (worldPosition) {
-        var positionVector,
-            translateMatrix = new Matrix(3, 3),
-            scaleMatrix = new Matrix(3, 3),
-            rotateMatrix = new Matrix(3, 3),
-            sin,
-            cos,
-            type,
-            position,
-            parent,
-            parents = [],
-            i,
-            isFloating = false;
-
-        // no parents
-        if (!this.parent) {
-            if (this.float) {
-                return worldPosition.subtract(Bento.getViewport().getCorner());
-            } else {
-                return worldPosition;
-            }
-        }
-
-        // get all parents
-        parent = this;
-        while (parent.parent) {
-            parent = parent.parent;
-            parents.unshift(parent);
-        }
-        // is top parent floating?
-        if (parents.length && parents[0].float) {
-            isFloating = true;
-        }
-
-        // make a copy
-        if (this.float || isFloating) {
-            positionVector = worldPosition.add(Bento.getViewport().getCorner()).toMatrix();
-        } else {
-            positionVector = worldPosition.toMatrix();
-        }
-
-        /**
-         * Reverse transform the position vector with each component
-         */
-        for (i = 0; i < parents.length; ++i) {
-            parent = parents[i];
-
-            // todo: order of components
-            if (parent.position) {
-                // construct a translation matrix and apply to position vector
-                position = parent.position;
-                translateMatrix.set(2, 0, -position.x);
-                translateMatrix.set(2, 1, -position.y);
-                positionVector.multiplyWith(translateMatrix);
-            }
-            // todo: only scale/rotatable if there is a component
-            if (parent.rotation) {
-                // construct a rotation matrix and apply to position vector
-                sin = Math.sin(-parent.rotation);
-                cos = Math.cos(-parent.rotation);
-                rotateMatrix.set(0, 0, cos);
-                rotateMatrix.set(1, 0, -sin);
-                rotateMatrix.set(0, 1, sin);
-                rotateMatrix.set(1, 1, cos);
-                positionVector.multiplyWith(rotateMatrix);
-            }
-            if (parent.scale) {
-                // construct a scaling matrix and apply to position vector
-                scaleMatrix.set(0, 0, 1 / parent.scale.x);
-                scaleMatrix.set(1, 1, 1 / parent.scale.y);
-                positionVector.multiplyWith(scaleMatrix);
-            }
-
-        }
-
-        return new Vector2(
-            positionVector.get(0, 0),
-            positionVector.get(0, 1)
-        );
+        return this.transform.getLocalPosition(worldPosition);
     };
 
     Entity.prototype.toString = function () {

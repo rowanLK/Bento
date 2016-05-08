@@ -16,11 +16,11 @@ bento.define('bento/components/rotation', [
     };
 
     Rotation.prototype.draw = function (data) {
-        data.renderer.save();
-        data.renderer.rotate(data.entity.rotation);
+        // data.renderer.save();
+        // data.renderer.rotate(data.entity.rotation);
     };
     Rotation.prototype.postDraw = function (data) {
-        data.renderer.restore();
+        // data.renderer.restore();
     };
     Rotation.prototype.attached = function (data) {
         this.entity = data.entity;

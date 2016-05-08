@@ -40,6 +40,14 @@ bento.define('bento/renderers/pixi', [
             restore: function () {
                 matrix = matrices.pop();
             },
+            setTransform: function (a, b, c, d, tx, ty) {
+                matrix.a = a;
+                matrix.b = b;
+                matrix.c = c;
+                matrix.d = d;
+                matrix.tx = tx;
+                matrix.ty = ty;
+            },
             translate: function (x, y) {
                 var transform = new TransformMatrix();
                 matrix.multiplyWith(transform.translate(x, y));

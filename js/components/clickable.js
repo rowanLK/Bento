@@ -21,7 +21,7 @@ bento.define('bento/components/clickable', [
     'bento',
     'bento/utils',
     'bento/math/vector2',
-    'bento/math/matrix',
+    'bento/math/transformmatrix',
     'bento/eventsystem'
 ], function (Bento, Utils, Vector2, Matrix, EventSystem) {
     'use strict';
@@ -201,82 +201,7 @@ bento.define('bento/components/clickable', [
     };
 
     Clickable.prototype.transformEvent = function (evt) {
-        var positionVector,
-            translateMatrix = new Matrix(3, 3),
-            scaleMatrix = new Matrix(3, 3),
-            rotateMatrix = new Matrix(3, 3),
-            sin,
-            cos,
-            type,
-            position,
-            parent,
-            parents = [],
-            i,
-            isFloating = false;
-
-        evt = this.cloneEvent(evt);
-
-        // no parents
-        if (!this.entity.parent) {
-            if (!this.entity.float) {
-                evt.localPosition = evt.worldPosition.clone();
-            } else {
-                evt.localPosition = evt.position.clone();
-            }
-            return evt;
-        }
-        // get all parents
-        parent = this.entity;
-        while (parent.parent) {
-            parent = parent.parent;
-            parents.unshift(parent);
-        }
-        // is top parent floating?
-        if (parents.length && parents[0].float) {
-            isFloating = true;
-        }
-
-        // make a copy
-        if (this.entity.float || isFloating) {
-            positionVector = evt.localPosition.toMatrix();
-        } else {
-            positionVector = evt.worldPosition.toMatrix();
-        }
-
-        /**
-         * reverse transform the event position vector
-         */
-        for (i = 0; i < parents.length; ++i) {
-            parent = parents[i];
-
-            // construct a translation matrix and apply to position vector
-            if (parent.position) {
-                position = parent.position;
-                translateMatrix.set(2, 0, -position.x);
-                translateMatrix.set(2, 1, -position.y);
-                positionVector.multiplyWith(translateMatrix);
-            }
-            // only scale/rotatable if there is a component
-            if (parent.rotation) {
-                // construct a rotation matrix and apply to position vector
-                sin = Math.sin(-parent.rotation);
-                cos = Math.cos(-parent.rotation);
-                rotateMatrix.set(0, 0, cos);
-                rotateMatrix.set(1, 0, -sin);
-                rotateMatrix.set(0, 1, sin);
-                rotateMatrix.set(1, 1, cos);
-                positionVector.multiplyWith(rotateMatrix);
-            }
-            if (parent.scale) {
-                // construct a scaling matrix and apply to position vector
-                scaleMatrix.set(0, 0, 1 / parent.scale.x);
-                scaleMatrix.set(1, 1, 1 / parent.scale.y);
-                positionVector.multiplyWith(scaleMatrix);
-            }
-        }
-        evt.localPosition.x = positionVector.get(0, 0);
-        evt.localPosition.y = positionVector.get(0, 1);
-
+        evt.localPosition = this.entity.getLocalPosition(evt.worldPosition);
         return evt;
     };
     Clickable.prototype.attached = function (data) {
