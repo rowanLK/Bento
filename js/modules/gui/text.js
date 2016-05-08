@@ -399,7 +399,7 @@ bento.define('bento/gui/text', [
                 restoreContext(ctx);
                 canvas.texture = null;
                 packedImage = new PackedImage(canvas);
-                sprite.animation.setup({
+                sprite.setup({
                     image: packedImage
                 });
             },
@@ -681,8 +681,6 @@ bento.define('bento/gui/text', [
                 }
             });
         init(settings);
-
-        sprite.translation.subPixel = true;
 
         return entity;
     };
