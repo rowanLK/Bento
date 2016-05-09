@@ -624,11 +624,11 @@ Bento.objects.attach(entity);
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
+     * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
      * @name collidesWith
-     * @returns {Boolean} True if entity collides
+     * @returns {Entity/Array} The collided entity/entities, otherwise null
      */
     // TODO: make examples
-    // * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more
     // * @param {Array} settings.families - multiple families
     Entity.prototype.collidesWith = function (settings, deprecated_offset, deprecated_callback) {
         var intersect = false;
@@ -638,6 +638,8 @@ Bento.objects.attach(entity);
         var array = [];
         var offset = new Vector2(0, 0);
         var callback;
+        var firstOnly = true;
+        var collisions = null;
 
         if (settings.isEntity) {
             // old method with parameters: collidesWith(entity, offset, callback)
@@ -652,6 +654,9 @@ Bento.objects.attach(entity);
         } else {
             // read settings
             offset = settings.offset || offset;
+            if (Utils.isDefined(settings.firstOnly)) {
+                firstOnly = settings.firstOnly;
+            }
             callback = settings.onCollide;
 
             if (settings.entity) {
@@ -687,10 +692,17 @@ Bento.objects.attach(entity);
                 if (callback) {
                     callback(obj);
                 }
-                return obj;
+                if (firstOnly) {
+                    // return the first collision it can find
+                    return obj;
+                } else {
+                    // collect other collisions
+                    collisions = collisions || [];
+                    collisions.push(obj);
+                }
             }
         }
-        return null;
+        return collisions;
     };
     /* DEPRECATED
      * Checks if entity is colliding with any entity in an array
