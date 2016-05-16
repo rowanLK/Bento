@@ -55,16 +55,16 @@ bento.define('bento/gui/togglebutton', [
                     sprite,
                     new Clickable({
                         onClick: function () {
-                            sprite.animation.setAnimation('down');
+                            sprite.setAnimation('down');
                         },
                         onHoldEnter: function () {
-                            sprite.animation.setAnimation('down');
+                            sprite.setAnimation('down');
                         },
                         onHoldLeave: function () {
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                            sprite.setAnimation(toggled ? 'down' : 'up');
                         },
                         pointerUp: function () {
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                            sprite.setAnimation(toggled ? 'down' : 'up');
                         },
                         onHoldEnd: function () {
                             if (!active) {
@@ -82,7 +82,7 @@ bento.define('bento/gui/togglebutton', [
                                     Bento.audio.playSound(settings.sfx);
                                 }
                             }
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                            sprite.setAnimation(toggled ? 'down' : 'up');
                         }
                     })
                 ],
@@ -108,7 +108,7 @@ bento.define('bento/gui/togglebutton', [
                             }
                         }
                     }
-                    sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                    sprite.setAnimation(toggled ? 'down' : 'up');
                 }
             });
 
@@ -119,7 +119,7 @@ bento.define('bento/gui/togglebutton', [
         if (settings.toggled) {
             toggled = true;
         }
-        sprite.animation.setAnimation(toggled ? 'down' : 'up');
+        sprite.setAnimation(toggled ? 'down' : 'up');
         return entity;
     };
 });

@@ -111,7 +111,6 @@ bento.define('bento/gui/counter', [
                     }, settings.digit || {}),
                     entity = new Entity(digitSettings);
 
-                entity.sprite = sprite.animation;
                 return entity;
             },
             /*
@@ -148,7 +147,9 @@ bento.define('bento/gui/counter', [
                 for (i = 0; i < children.length; ++i) {
                     digit = children[i];
                     digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
-                    digit.sprite.setAnimation(valueStr.substr(i, 1));
+                    digit.getComponent('sprite', function (sprite) {
+                        sprite.setAnimation(valueStr.substr(i, 1));
+                    });
                 }
 
                 /* alignment */

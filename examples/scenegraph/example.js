@@ -25,7 +25,8 @@ bento.require([
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: 'auto'
+        renderer: 'canvas2d',
+        pixelSize: 3
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', function (err) {
@@ -93,6 +94,7 @@ bento.require([
                 };
 
             button1 = makeButton();
+            // button1.float = true;
             button1.name = 'button1';
             button1.position = new Vector2(80, 80);
             button1.attach({
@@ -103,13 +105,13 @@ bento.require([
                     // if (Bento.input.isKeyDown('right')) {
                     //     button1.getComponent('rotation').addAngleDegree(-1);
                     // }
-                    // if (Bento.input.isKeyDown('down')) {
-                    //     viewport.y += 1;
-                    // }
+                    if (Bento.input.isKeyDown('down')) {
+                        viewport.y += 1;
+                    }
 
-                    // if (Bento.input.isKeyDown('up')) {
-                    //     viewport.y -= 1;
-                    // }
+                    if (Bento.input.isKeyDown('up')) {
+                        viewport.y -= 1;
+                    }
                 }
             });
             button2 = makeButton();
