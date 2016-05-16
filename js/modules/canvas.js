@@ -75,11 +75,10 @@ bento.define('bento/canvas', [
                 name: 'rendererSwapper',
                 draw: function (data) {
                     // draw once
-                    if (settings.drawOnce) { // TODO: not working yet
-                        if (drawn) {
-                            return;
-                        }
+                    if (drawn) {
+                        return;
                     }
+                    
                     // clear up canvas
                     if (!settings.preventAutoClear) {
                         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -99,6 +98,9 @@ bento.define('bento/canvas', [
                     data.renderer.translate(entity.origin.x, entity.origin.y);
                 },
                 postDraw: function (data) {
+                    if (drawn) {
+                        return;
+                    }
                     data.renderer.restore();
                     // swap back
                     data.renderer = originalRenderer;
