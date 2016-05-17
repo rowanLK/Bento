@@ -243,6 +243,11 @@ bento.define('bento/managers/input', [
                 EventSystem.fire('keyDown', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
+                // Microsoft's Edge browser sees the Xbox controller's buttons as keys
+                // and fires this event with a keycode we don't have, resulting in an error.
+                // This conditional catches that error.
+                if (!names)
+                    return;
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
                     EventSystem.fire('buttonDown', names[i]);
@@ -255,6 +260,11 @@ bento.define('bento/managers/input', [
                 EventSystem.fire('keyUp', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
+                // Microsoft's Edge browser sees the Xbox controller's buttons as keys
+                // and fires this event with a keycode we don't have, resulting in an error.
+                // This conditional catches that error.
+                if (!names)
+                    return;
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = false;
                     EventSystem.fire('buttonUp', names[i]);
@@ -583,6 +593,16 @@ bento.define('bento/managers/input', [
              */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
+            },
+            isAnyKeyDown: function () {
+                var state,
+                    anyKey = false;
+
+                for (state in keyStates)
+                    if (state)
+                        anyKey = true;
+
+                return anyKey;
             },
             /**
              * Is the gamepad connected?
