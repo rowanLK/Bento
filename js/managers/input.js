@@ -27,6 +27,10 @@ bento.define('bento/managers/input', [
             keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
+            gamepad,
+            gamepads,
+            gamepadButtonsPressed = [],
+            gamepadButtonStates = {},
             remote,
             remoteButtonsPressed = [],
             remoteButtonStates = {},
@@ -291,6 +295,90 @@ bento.define('bento/managers/input', [
                 }, false);
             },
             /**
+             * Adds event listeners for connecting/disconnecting a gamepad
+             */
+            initGamepad = function () {
+                window.addEventListener('gamepadconnected', gamepadConnected);
+                window.addEventListener('gamepaddisconnected', gamepadDisconnected);
+            },
+            /**
+             * Fired when the browser detects that a gamepad has been connected or the first time a button/axis of the gamepad is used.
+             * Adds a pre-update loop check for gamepads and gamepad input
+             * @param {GamepadEvent} evt
+             */
+            gamepadConnected = function (evt) {
+                // check for button input before the regular update
+                EventSystem.on('preUpdate', checkGamepad);
+
+                console.log('Gamepad connected:', evt.gamepad);
+            },
+            /**
+             * Fired when the browser detects that a gamepad has been disconnected.
+             * Removes the reference to the gamepad
+             * @param {GamepadEvent} evt
+             */
+            gamepadDisconnected = function (evt) {
+                gamepad = undefined;
+
+                // stop checking for button input
+                EventSystem.off('preUpdate', checkGamepad);
+            },
+            /**
+             * Gets a list of all gamepads and checks if any buttons are pressed.
+             */
+            checkGamepad = function () {
+                var i = 0,
+                    len = 0;
+
+                // get gamepad every frame because Chrome doesn't store a reference to the gamepad's state
+                gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+                for (i = 0, len = gamepads.length; i < len; ++i) {
+                    if (gamepads[i]) {
+                        gamepad = gamepads[i];
+                    }
+                }
+
+                if (!gamepad)
+                    return;
+
+                // uses an array to check against the state of the buttons from the previous frame
+                for (i = 0, len = gamepad.buttons.length; i < len; ++i) {
+                    if (gamepad.buttons[i].pressed !== gamepadButtonsPressed[i]) {
+                        if (gamepad.buttons[i].pressed) {
+                            gamepadButtonDown(i);
+                        } else {
+                            gamepadButtonUp(i);
+                        }
+                    }
+                }
+            },
+            gamepadButtonDown = function (id) {
+                var i = 0,
+                    names = Utils.gamepadMapping[id],
+                    len = 0;
+
+                // save value in array
+                gamepadButtonsPressed[id] = true;
+
+                for (i = 0, len = names.length; i < len; ++i) {
+                    gamepadButtonStates[names[i]] = true;
+                    EventSystem.fire('gamepadButtonDown', names[i]);
+                }
+            },
+            gamepadButtonUp = function (id) {
+                var i = 0,
+                    names = Utils.gamepadMapping[id],
+                    len = 0;
+
+                // save value in array
+                gamepadButtonsPressed[id] = false;
+
+                for (i = 0, len = names.length; i < len; ++i) {
+                    gamepadButtonStates[names[i]] = false;
+                    EventSystem.fire('gamepadButtonUp', names[i]);
+                }
+            },
+            /**
              * Adds a check for input from the apple remote before every update. Only if on tvOS.
              *
              * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
@@ -298,15 +386,15 @@ bento.define('bento/managers/input', [
              */
             initRemote = function () {
                 var i = 0,
-                    gamepads;
+                    tvOSGamepads;
 
                 if (window.ejecta) {
                     // get all connected gamepads
-                    gamepads = navigator.getGamepads();
+                    tvOSGamepads = navigator.getGamepads();
                     // find apple remote gamepad
-                    for (i = 0; i < gamepads.length; ++i)
-                        if (gamepads[i] && gamepads[i].profile === 'microGamepad')
-                            remote = gamepads[i];
+                    for (i = 0; i < tvOSGamepads.length; ++i)
+                        if (tvOSGamepads[i] && tvOSGamepads[i].profile === 'microGamepad')
+                            remote = tvOSGamepads[i];
 
                     for (i = 0; i < remote.buttons.length; ++i)
                         remoteButtonsPressed.push(remote.buttons[i].pressed);
@@ -462,6 +550,8 @@ bento.define('bento/managers/input', [
         initMouseClicks();
         // apple remote (only on tvOS)
         initRemote();
+        // start listening for gamepads
+        initGamepad();
 
         return {
             /**
@@ -493,6 +583,30 @@ bento.define('bento/managers/input', [
              */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
+            },
+            /**
+             * Is the gamepad connected?
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if gamepad is connected, false otherwise.
+             * @name isGamepadButtonDown
+             */
+            isGamepadConnected: function () {
+                if (gamepad)
+                    return true;
+                else
+                    return false;
+            },
+            /**
+             * Checks if a gamepad button is down
+             * @function
+             * @instance
+             * @param {String} name - name of the button
+             * @returns {Boolean} Returns true if the provided button is down.
+             * @name isGamepadButtonDown
+             */
+            isGamepadButtonDown: function (name) {
+                return gamepadButtonStates[name] || false;
             },
             /**
              * Checks if a remote button is down

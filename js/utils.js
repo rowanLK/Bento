@@ -319,6 +319,33 @@ bento.define('bento/utils', [], function () {
             };
 
             return buttons;
+        })(),
+        /**
+         * Mapping for the Xbox controller
+         * @return {Object} mapping of all the buttons
+         */
+        gamepadMapping = (function () {
+            var buttons = {
+                "0": ["A", "a"],
+                "1": ["B", "b"],
+                "2": ["X", "x"],
+                "3": ["Y", "y"],
+                "4": ["L1", "l1"],
+                "5": ["R1", "r1"],
+                "6": ["L2", "l2"],
+                "7": ["R2", "r2"],
+                "8": ["back", "select"],
+                "9": ["start"],
+                "10": ["right-thumb", "right-stick"],
+                "11": ["left-thumb", "left-stick"],
+                "12": ["up"],
+                "13": ["down"],
+                "14": ["left"],
+                "15": ["right"],
+                "16": ["menu", "home"]
+            };
+
+            return buttons;
         })();
 
     utils = {
@@ -410,6 +437,7 @@ bento.define('bento/utils', [], function () {
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         remoteMapping: remoteMapping,
+        gamepadMapping: gamepadMapping,
         /**
          * Returns a random integer [0...n)
          * @function
