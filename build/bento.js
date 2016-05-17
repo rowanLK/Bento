@@ -5605,6 +5605,32 @@ bento.define('bento/utils', [], function () {
                     "190": ["period", "."],
                     "191": ["slash", "forwardslash", "/"],
                     "192": ["graveaccent", "`"],
+
+                    "195": ["GamepadA"],
+                    "196": ["GamepadB"],
+                    "197": ["GamepadX"],
+                    "198": ["GamepadY"],
+                    "199": ["GamepadRightShoulder"], // R1
+                    "200": ["GamepadLeftShoulder"], // L1
+                    "201": ["GamepadLeftTrigger"], // L2
+                    "202": ["GamepadRightTrigger"], // R2
+                    "203": ["GamepadDPadUp"],
+                    "204": ["GamepadDPadDown"],
+                    "205": ["GamepadDPadLeft"],
+                    "206": ["GamepadDPadRight"],
+                    "207": ["GamepadMenu"], // 'start' button
+                    "208": ["GamepadView"], // 'select' button
+                    "209": ["GamepadLeftThumbstick"], // pressed left thumbstick
+                    "210": ["GamepadRightThumbstick"], // pressed right thumbstick
+                    "211": ["GamepadLeftThumbstickUp"],
+                    "212": ["GamepadLeftThumbstickDown"],
+                    "213": ["GamepadLeftThumbstickRight"],
+                    "214": ["GamepadLeftThumbstickLeft"],
+                    "215": ["GamepadRightThumbstickUp"],
+                    "216": ["GamepadRightThumbstickDown"],
+                    "217": ["GamepadRightThumbstickRight"],
+                    "218": ["GamepadRightThumbstickLeft"],
+
                     "219": ["openbracket", "["],
                     "220": ["backslash", "\\"],
                     "221": ["closebracket", "]"],
@@ -9496,11 +9522,6 @@ bento.define('bento/managers/input', [
                 EventSystem.fire('keyDown', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
-                // Microsoft's Edge browser sees the Xbox controller's buttons as keys
-                // and fires this event with a keycode we don't have, resulting in an error.
-                // This conditional catches that error.
-                if (!names)
-                    return;
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
                     EventSystem.fire('buttonDown', names[i]);
@@ -9513,11 +9534,6 @@ bento.define('bento/managers/input', [
                 EventSystem.fire('keyUp', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
-                // Microsoft's Edge browser sees the Xbox controller's buttons as keys
-                // and fires this event with a keycode we don't have, resulting in an error.
-                // This conditional catches that error.
-                if (!names)
-                    return;
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = false;
                     EventSystem.fire('buttonUp', names[i]);

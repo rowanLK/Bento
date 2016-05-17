@@ -244,6 +244,32 @@ bento.define('bento/utils', [], function () {
                     "190": ["period", "."],
                     "191": ["slash", "forwardslash", "/"],
                     "192": ["graveaccent", "`"],
+
+                    "195": ["GamepadA"],
+                    "196": ["GamepadB"],
+                    "197": ["GamepadX"],
+                    "198": ["GamepadY"],
+                    "199": ["GamepadRightShoulder"], // R1
+                    "200": ["GamepadLeftShoulder"], // L1
+                    "201": ["GamepadLeftTrigger"], // L2
+                    "202": ["GamepadRightTrigger"], // R2
+                    "203": ["GamepadDPadUp"],
+                    "204": ["GamepadDPadDown"],
+                    "205": ["GamepadDPadLeft"],
+                    "206": ["GamepadDPadRight"],
+                    "207": ["GamepadMenu"], // 'start' button
+                    "208": ["GamepadView"], // 'select' button
+                    "209": ["GamepadLeftThumbstick"], // pressed left thumbstick
+                    "210": ["GamepadRightThumbstick"], // pressed right thumbstick
+                    "211": ["GamepadLeftThumbstickUp"],
+                    "212": ["GamepadLeftThumbstickDown"],
+                    "213": ["GamepadLeftThumbstickRight"],
+                    "214": ["GamepadLeftThumbstickLeft"],
+                    "215": ["GamepadRightThumbstickUp"],
+                    "216": ["GamepadRightThumbstickDown"],
+                    "217": ["GamepadRightThumbstickRight"],
+                    "218": ["GamepadRightThumbstickLeft"],
+
                     "219": ["openbracket", "["],
                     "220": ["backslash", "\\"],
                     "221": ["closebracket", "]"],
