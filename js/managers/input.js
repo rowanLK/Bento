@@ -357,12 +357,15 @@ bento.define('bento/managers/input', [
                     names = Utils.gamepadMapping[id],
                     len = 0;
 
+                // confusing name is used to keep the terminology similar to keyDown/keyUp
+                EventSystem.fire('gamepadKeyDown', id);
                 // save value in array
                 gamepadButtonsPressed[id] = true;
 
                 for (i = 0, len = names.length; i < len; ++i) {
                     gamepadButtonStates[names[i]] = true;
                     EventSystem.fire('gamepadButtonDown', names[i]);
+                    EventSystem.fire('gamepadButtonDown-' + names[i]);
                 }
             },
             gamepadButtonUp = function (id) {
@@ -370,6 +373,8 @@ bento.define('bento/managers/input', [
                     names = Utils.gamepadMapping[id],
                     len = 0;
 
+                // confusing name is used to keep the terminology similar to keyDown/keyUp
+                EventSystem.fire('gamepadKeyUp', id);
                 // save value in array
                 gamepadButtonsPressed[id] = false;
 
@@ -584,15 +589,21 @@ bento.define('bento/managers/input', [
             isKeyDown: function (name) {
                 return keyStates[name] || false;
             },
+            /**
+             * Checks if any keyboard key is pressed
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if any provided key is down.
+             * @name isAnyKeyDown
+             */
             isAnyKeyDown: function () {
-                var state,
-                    anyKey = false;
+                var state;
 
                 for (state in keyStates)
-                    if (state)
-                        anyKey = true;
+                    if (keyStates[state])
+                        return true;
 
-                return anyKey;
+                return false;
             },
             /**
              * Is the gamepad connected?
@@ -617,6 +628,22 @@ bento.define('bento/managers/input', [
              */
             isGamepadButtonDown: function (name) {
                 return gamepadButtonStates[name] || false;
+            },
+            /**
+             * Checks if any gamepad button is pressed
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if any button is down.
+             * @name isAnyGamepadButtonDown
+             */
+            isAnyGamepadButtonDown: function () {
+                var state;
+
+                for (state in gamepadButtonStates)
+                    if (gamepadButtonStates[state])
+                        return true;
+
+                return false;
             },
             /**
              * Checks if a remote button is down
