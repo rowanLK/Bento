@@ -9925,6 +9925,26 @@ bento.define('bento/managers/input', [
                 return false;
             },
             /**
+             * Returns the current float values of the x and y axes of left thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesLeft
+             */
+            getGamepadAxesLeft: function () {
+                return new Vector2(gamepad.axes[0], gamepad.axes[1]);
+            },
+            /**
+             * Returns the current float values of the x and y axes of right thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesRight
+             */
+            getGamepadAxesRight: function () {
+                return new Vector2(gamepad.axes[2], gamepad.axes[3]);
+            },
+            /**
              * Checks if a remote button is down
              * @function
              * @instance
@@ -13667,8 +13687,8 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS
-        if (window.ejecta)
+        // keep track of clickbuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
             entity.attach({
                 start: function () {
                     EventSystem.fire('clickbuttonAdded', entity);
@@ -14619,7 +14639,8 @@ bento.define('bento/gui/togglebutton', [
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
-    'bento/tween'
+    'bento/tween',
+    'bento/eventsystem'
 ], function (
     Bento,
     Vector2,
@@ -14628,7 +14649,8 @@ bento.define('bento/gui/togglebutton', [
     Clickable,
     Entity,
     Utils,
-    Tween
+    Tween,
+    EventSystem
 ) {
     'use strict';
     return function (settings) {
@@ -14715,6 +14737,9 @@ bento.define('bento/gui/togglebutton', [
                         }
                     }
                     sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                },
+                mimicClick: function () {
+                    entity.getComponent('clickable').callbacks.onHoldEnd();
                 }
             });
 
@@ -14726,6 +14751,18 @@ bento.define('bento/gui/togglebutton', [
             toggled = true;
         }
         sprite.animation.setAnimation(toggled ? 'down' : 'up');
+
+        // keep track of togglebuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
+            entity.attach({
+                start: function () {
+                    EventSystem.fire('clickbuttonAdded', entity);
+                },
+                destroy: function () {
+                    EventSystem.fire('clickbuttonRemoved', entity);
+                }
+            });
+
         return entity;
     };
 });

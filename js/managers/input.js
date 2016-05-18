@@ -646,6 +646,26 @@ bento.define('bento/managers/input', [
                 return false;
             },
             /**
+             * Returns the current float values of the x and y axes of left thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesLeft
+             */
+            getGamepadAxesLeft: function () {
+                return new Vector2(gamepad.axes[0], gamepad.axes[1]);
+            },
+            /**
+             * Returns the current float values of the x and y axes of right thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesRight
+             */
+            getGamepadAxesRight: function () {
+                return new Vector2(gamepad.axes[2], gamepad.axes[3]);
+            },
+            /**
              * Checks if a remote button is down
              * @function
              * @instance

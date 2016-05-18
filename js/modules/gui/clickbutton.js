@@ -139,8 +139,8 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS
-        if (window.ejecta)
+        // keep track of clickbuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
             entity.attach({
                 start: function () {
                     EventSystem.fire('clickbuttonAdded', entity);
