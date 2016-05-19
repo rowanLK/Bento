@@ -5630,6 +5630,7 @@ bento.define('bento/utils', [], function () {
                     "216": ["GamepadRightThumbstickDown"],
                     "217": ["GamepadRightThumbstickRight"],
                     "218": ["GamepadRightThumbstickLeft"],
+                    "7": ["GamepadXboxButton"], // the middle xbox button
 
                     "219": ["openbracket", "["],
                     "220": ["backslash", "\\"],
