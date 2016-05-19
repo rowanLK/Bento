@@ -30,6 +30,7 @@ bento.define('bento/managers/object', [
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
+            suppressThrows,
             sortDefault = function () {
                 // default array sorting method (unstable)
                 objects.sort(function (a, b) {
@@ -126,7 +127,7 @@ bento.define('bento/managers/object', [
                 var object,
                     i;
                 data = data || getGameData();
-                
+
                 EventSystem.fire('preDraw', data);
                 data.renderer.begin();
                 for (i = 0; i < objects.length; ++i) {
@@ -142,13 +143,16 @@ bento.define('bento/managers/object', [
                 EventSystem.fire('postDraw', data);
             },
             attach = function (object) {
-                var i, 
-                    type, 
+                var i,
+                    type,
                     family,
                     data = getGameData();
 
                 if (object.isAdded || object.parent) {
-                    console.log('Warning: Entity ' + object.name + ' was already added.');
+                    if (suppressThrows)
+                        console.log('Warning: Entity ' + object.name + ' was already added.');
+                    else
+                        throw 'ERROR: Entity was already added.';
                     return;
                 }
 
@@ -203,11 +207,11 @@ bento.define('bento/managers/object', [
                  * @name remove
                  */
                 remove: function (object) {
-                    var i, 
-                        type, 
-                        index, 
-                        family, 
-                        pool, 
+                    var i,
+                        type,
+                        index,
+                        family,
+                        pool,
                         data = getGameData();
                     if (!object) {
                         return;
@@ -482,6 +486,8 @@ bento.define('bento/managers/object', [
         if (settings.defaultSort) {
             sort = defaultSort;
         }
+
+        suppressThrows = Utils.getSuppressThrows();
 
         return module;
     };
