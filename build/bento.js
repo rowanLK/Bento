@@ -3966,7 +3966,7 @@ bento.define('bento', [
              * @instance
              * @param {Object} settings - settings for the game
              * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.  
+             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
              * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
@@ -3977,6 +3977,7 @@ bento.define('bento', [
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
              * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
              * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
+             * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
@@ -3997,6 +3998,7 @@ bento.define('bento', [
                     }
                     settings.sortMode = settings.sortMode || 0;
                     setupCanvas(settings, function () {
+                        Utils.setSuppressThrows(settings.dev ? false : true);
                         // window resize listeners
                         manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
@@ -4168,7 +4170,7 @@ bento.define('bento', [
             setGameSpeed: function (value) {
                 throttle = value;
             },
-            
+
             /**
              * Asset manager
              * @see module:bento/managers/asset
@@ -4462,6 +4464,8 @@ bento.define('bento/entity', [
                 Bento.objects.add(this);
             }
         }
+
+        Entity.suppressThrows = Utils.getSuppressThrows();
     };
     Entity.prototype.isEntity = function () {
         return true;
@@ -4713,7 +4717,10 @@ Bento.objects.attach(entity);
             parent = this;
 
         if (!force && (child.isAdded || child.parent)) {
-            console.log('Warning: Child ' + child.name + ' was already attached before.');
+            if (Entity.suppressThrows)
+                console.log('Warning: Child ' + child.name + ' was already attached.');
+            else
+                throw 'ERROR: Child was already attached.';
             return;
         }
 
@@ -5171,6 +5178,8 @@ Bento.objects.attach(entity);
         return '[object Entity]';
     };
 
+    Entity.suppressThrows = true;
+
     return Entity;
 });
 /**
@@ -5605,33 +5614,6 @@ bento.define('bento/utils', [], function () {
                     "190": ["period", "."],
                     "191": ["slash", "forwardslash", "/"],
                     "192": ["graveaccent", "`"],
-
-                    "195": ["GamepadA"],
-                    "196": ["GamepadB"],
-                    "197": ["GamepadX"],
-                    "198": ["GamepadY"],
-                    "199": ["GamepadRightShoulder"], // R1
-                    "200": ["GamepadLeftShoulder"], // L1
-                    "201": ["GamepadLeftTrigger"], // L2
-                    "202": ["GamepadRightTrigger"], // R2
-                    "203": ["GamepadDPadUp"],
-                    "204": ["GamepadDPadDown"],
-                    "205": ["GamepadDPadLeft"],
-                    "206": ["GamepadDPadRight"],
-                    "207": ["GamepadMenu"], // 'start' button
-                    "208": ["GamepadView"], // 'select' button
-                    "209": ["GamepadLeftThumbstick"], // pressed left thumbstick
-                    "210": ["GamepadRightThumbstick"], // pressed right thumbstick
-                    "211": ["GamepadLeftThumbstickUp"],
-                    "212": ["GamepadLeftThumbstickDown"],
-                    "213": ["GamepadLeftThumbstickRight"],
-                    "214": ["GamepadLeftThumbstickLeft"],
-                    "215": ["GamepadRightThumbstickUp"],
-                    "216": ["GamepadRightThumbstickDown"],
-                    "217": ["GamepadRightThumbstickRight"],
-                    "218": ["GamepadRightThumbstickLeft"],
-                    "7": ["GamepadXboxButton"], // the middle xbox button
-
                     "219": ["openbracket", "["],
                     "220": ["backslash", "\\"],
                     "221": ["closebracket", "]"],
@@ -5708,33 +5690,7 @@ bento.define('bento/utils', [], function () {
 
             return buttons;
         })(),
-        /**
-         * Mapping for the Xbox controller
-         * @return {Object} mapping of all the buttons
-         */
-        gamepadMapping = (function () {
-            var buttons = {
-                "0": ["A", "a"],
-                "1": ["B", "b"],
-                "2": ["X", "x"],
-                "3": ["Y", "y"],
-                "4": ["L1", "l1"],
-                "5": ["R1", "r1"],
-                "6": ["L2", "l2"],
-                "7": ["R2", "r2"],
-                "8": ["back", "select"],
-                "9": ["start"],
-                "10": ["right-thumb", "right-stick"],
-                "11": ["left-thumb", "left-stick"],
-                "12": ["up"],
-                "13": ["down"],
-                "14": ["left"],
-                "15": ["right"],
-                "16": ["menu", "home"]
-            };
-
-            return buttons;
-        })();
+        suppressThrows = true;
 
     utils = {
         /**
@@ -5825,7 +5781,6 @@ bento.define('bento/utils', [], function () {
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         remoteMapping: remoteMapping,
-        gamepadMapping: gamepadMapping,
         /**
          * Returns a random integer [0...n)
          * @function
@@ -6070,6 +6025,26 @@ bento.define('bento/utils', [], function () {
             ALWAYS: 0,
             NEVER: 1,
             SORT_ON_ADD: 2
+        },
+        /**
+         * Are throws being suppressed?
+         * @function
+         * @instance
+         * @returns {Object} Returns true if throws are suppressed, false if not
+         * @name getSuppressThrows
+         */
+        getSuppressThrows: function () {
+            return suppressThrows;
+        },
+        /**
+         * Turn the suppression of throws on or off
+         * @function
+         * @instance
+         * @param {Boolean} bool - true to suppress throws, false to not suppress throws
+         * @name setSuppressThrows
+         */
+        setSuppressThrows: function (bool) {
+            suppressThrows = bool;
         }
     };
     return utils;
@@ -9307,10 +9282,6 @@ bento.define('bento/managers/input', [
             keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
-            gamepad,
-            gamepads,
-            gamepadButtonsPressed = [],
-            gamepadButtonStates = {},
             remote,
             remoteButtonsPressed = [],
             remoteButtonStates = {},
@@ -9575,95 +9546,6 @@ bento.define('bento/managers/input', [
                 }, false);
             },
             /**
-             * Adds event listeners for connecting/disconnecting a gamepad
-             */
-            initGamepad = function () {
-                window.addEventListener('gamepadconnected', gamepadConnected);
-                window.addEventListener('gamepaddisconnected', gamepadDisconnected);
-            },
-            /**
-             * Fired when the browser detects that a gamepad has been connected or the first time a button/axis of the gamepad is used.
-             * Adds a pre-update loop check for gamepads and gamepad input
-             * @param {GamepadEvent} evt
-             */
-            gamepadConnected = function (evt) {
-                // check for button input before the regular update
-                EventSystem.on('preUpdate', checkGamepad);
-
-                console.log('Gamepad connected:', evt.gamepad);
-            },
-            /**
-             * Fired when the browser detects that a gamepad has been disconnected.
-             * Removes the reference to the gamepad
-             * @param {GamepadEvent} evt
-             */
-            gamepadDisconnected = function (evt) {
-                gamepad = undefined;
-
-                // stop checking for button input
-                EventSystem.off('preUpdate', checkGamepad);
-            },
-            /**
-             * Gets a list of all gamepads and checks if any buttons are pressed.
-             */
-            checkGamepad = function () {
-                var i = 0,
-                    len = 0;
-
-                // get gamepad every frame because Chrome doesn't store a reference to the gamepad's state
-                gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
-                for (i = 0, len = gamepads.length; i < len; ++i) {
-                    if (gamepads[i]) {
-                        gamepad = gamepads[i];
-                    }
-                }
-
-                if (!gamepad)
-                    return;
-
-                // uses an array to check against the state of the buttons from the previous frame
-                for (i = 0, len = gamepad.buttons.length; i < len; ++i) {
-                    if (gamepad.buttons[i].pressed !== gamepadButtonsPressed[i]) {
-                        if (gamepad.buttons[i].pressed) {
-                            gamepadButtonDown(i);
-                        } else {
-                            gamepadButtonUp(i);
-                        }
-                    }
-                }
-            },
-            gamepadButtonDown = function (id) {
-                var i = 0,
-                    names = Utils.gamepadMapping[id],
-                    len = 0;
-
-                // confusing name is used to keep the terminology similar to keyDown/keyUp
-                EventSystem.fire('gamepadKeyDown', id);
-                // save value in array
-                gamepadButtonsPressed[id] = true;
-
-                for (i = 0, len = names.length; i < len; ++i) {
-                    gamepadButtonStates[names[i]] = true;
-                    EventSystem.fire('gamepadButtonDown', names[i]);
-                    EventSystem.fire('gamepadButtonDown-' + names[i]);
-                }
-            },
-            gamepadButtonUp = function (id) {
-                var i = 0,
-                    names = Utils.gamepadMapping[id],
-                    len = 0;
-
-                // confusing name is used to keep the terminology similar to keyDown/keyUp
-                EventSystem.fire('gamepadKeyUp', id);
-                // save value in array
-                gamepadButtonsPressed[id] = false;
-
-                for (i = 0, len = names.length; i < len; ++i) {
-                    gamepadButtonStates[names[i]] = false;
-                    EventSystem.fire('gamepadButtonUp', names[i]);
-                }
-            },
-            /**
              * Adds a check for input from the apple remote before every update. Only if on tvOS.
              *
              * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
@@ -9671,15 +9553,15 @@ bento.define('bento/managers/input', [
              */
             initRemote = function () {
                 var i = 0,
-                    tvOSGamepads;
+                    gamepads;
 
                 if (window.ejecta) {
                     // get all connected gamepads
-                    tvOSGamepads = navigator.getGamepads();
+                    gamepads = navigator.getGamepads();
                     // find apple remote gamepad
-                    for (i = 0; i < tvOSGamepads.length; ++i)
-                        if (tvOSGamepads[i] && tvOSGamepads[i].profile === 'microGamepad')
-                            remote = tvOSGamepads[i];
+                    for (i = 0; i < gamepads.length; ++i)
+                        if (gamepads[i] && gamepads[i].profile === 'microGamepad')
+                            remote = gamepads[i];
 
                     for (i = 0; i < remote.buttons.length; ++i)
                         remoteButtonsPressed.push(remote.buttons[i].pressed);
@@ -9835,8 +9717,6 @@ bento.define('bento/managers/input', [
         initMouseClicks();
         // apple remote (only on tvOS)
         initRemote();
-        // start listening for gamepads
-        initGamepad();
 
         return {
             /**
@@ -9868,82 +9748,6 @@ bento.define('bento/managers/input', [
              */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
-            },
-            /**
-             * Checks if any keyboard key is pressed
-             * @function
-             * @instance
-             * @returns {Boolean} Returns true if any provided key is down.
-             * @name isAnyKeyDown
-             */
-            isAnyKeyDown: function () {
-                var state;
-
-                for (state in keyStates)
-                    if (keyStates[state])
-                        return true;
-
-                return false;
-            },
-            /**
-             * Is the gamepad connected?
-             * @function
-             * @instance
-             * @returns {Boolean} Returns true if gamepad is connected, false otherwise.
-             * @name isGamepadButtonDown
-             */
-            isGamepadConnected: function () {
-                if (gamepad)
-                    return true;
-                else
-                    return false;
-            },
-            /**
-             * Checks if a gamepad button is down
-             * @function
-             * @instance
-             * @param {String} name - name of the button
-             * @returns {Boolean} Returns true if the provided button is down.
-             * @name isGamepadButtonDown
-             */
-            isGamepadButtonDown: function (name) {
-                return gamepadButtonStates[name] || false;
-            },
-            /**
-             * Checks if any gamepad button is pressed
-             * @function
-             * @instance
-             * @returns {Boolean} Returns true if any button is down.
-             * @name isAnyGamepadButtonDown
-             */
-            isAnyGamepadButtonDown: function () {
-                var state;
-
-                for (state in gamepadButtonStates)
-                    if (gamepadButtonStates[state])
-                        return true;
-
-                return false;
-            },
-            /**
-             * Returns the current float values of the x and y axes of left thumbstick
-             * @function
-             * @instance
-             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
-             * @name getGamepadAxesLeft
-             */
-            getGamepadAxesLeft: function () {
-                return new Vector2(gamepad.axes[0], gamepad.axes[1]);
-            },
-            /**
-             * Returns the current float values of the x and y axes of right thumbstick
-             * @function
-             * @instance
-             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
-             * @name getGamepadAxesRight
-             */
-            getGamepadAxesRight: function () {
-                return new Vector2(gamepad.axes[2], gamepad.axes[3]);
             },
             /**
              * Checks if a remote button is down
@@ -10057,6 +9861,7 @@ bento.define('bento/managers/object', [
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
+            suppressThrows,
             sortDefault = function () {
                 // default array sorting method (unstable)
                 objects.sort(function (a, b) {
@@ -10153,7 +9958,7 @@ bento.define('bento/managers/object', [
                 var object,
                     i;
                 data = data || getGameData();
-                
+
                 EventSystem.fire('preDraw', data);
                 data.renderer.begin();
                 for (i = 0; i < objects.length; ++i) {
@@ -10169,13 +9974,16 @@ bento.define('bento/managers/object', [
                 EventSystem.fire('postDraw', data);
             },
             attach = function (object) {
-                var i, 
-                    type, 
+                var i,
+                    type,
                     family,
                     data = getGameData();
 
                 if (object.isAdded || object.parent) {
-                    console.log('Warning: Entity ' + object.name + ' was already added.');
+                    if (suppressThrows)
+                        console.log('Warning: Entity ' + object.name + ' was already added.');
+                    else
+                        throw 'ERROR: Entity was already added.';
                     return;
                 }
 
@@ -10230,11 +10038,11 @@ bento.define('bento/managers/object', [
                  * @name remove
                  */
                 remove: function (object) {
-                    var i, 
-                        type, 
-                        index, 
-                        family, 
-                        pool, 
+                    var i,
+                        type,
+                        index,
+                        family,
+                        pool,
                         data = getGameData();
                     if (!object) {
                         return;
@@ -10509,6 +10317,8 @@ bento.define('bento/managers/object', [
         if (settings.defaultSort) {
             sort = defaultSort;
         }
+
+        suppressThrows = Utils.getSuppressThrows();
 
         return module;
     };
@@ -13688,8 +13498,8 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS and Windows
-        if (window.ejecta || window.Windows)
+        // keep track of clickbuttons on tvOS
+        if (window.ejecta)
             entity.attach({
                 start: function () {
                     EventSystem.fire('clickbuttonAdded', entity);
@@ -14640,8 +14450,7 @@ bento.define('bento/gui/togglebutton', [
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
-    'bento/tween',
-    'bento/eventsystem'
+    'bento/tween'
 ], function (
     Bento,
     Vector2,
@@ -14650,8 +14459,7 @@ bento.define('bento/gui/togglebutton', [
     Clickable,
     Entity,
     Utils,
-    Tween,
-    EventSystem
+    Tween
 ) {
     'use strict';
     return function (settings) {
@@ -14738,9 +14546,6 @@ bento.define('bento/gui/togglebutton', [
                         }
                     }
                     sprite.animation.setAnimation(toggled ? 'down' : 'up');
-                },
-                mimicClick: function () {
-                    entity.getComponent('clickable').callbacks.onHoldEnd();
                 }
             });
 
@@ -14752,18 +14557,6 @@ bento.define('bento/gui/togglebutton', [
             toggled = true;
         }
         sprite.animation.setAnimation(toggled ? 'down' : 'up');
-
-        // keep track of togglebuttons on tvOS and Windows
-        if (window.ejecta || window.Windows)
-            entity.attach({
-                start: function () {
-                    EventSystem.fire('clickbuttonAdded', entity);
-                },
-                destroy: function () {
-                    EventSystem.fire('clickbuttonRemoved', entity);
-                }
-            });
-
         return entity;
     };
 });

@@ -373,7 +373,8 @@ bento.define('bento/utils', [], function () {
             };
 
             return buttons;
-        })();
+        })(),
+        suppressThrows = true;
 
     utils = {
         /**
@@ -709,6 +710,26 @@ bento.define('bento/utils', [], function () {
             ALWAYS: 0,
             NEVER: 1,
             SORT_ON_ADD: 2
+        },
+        /**
+         * Are throws being suppressed?
+         * @function
+         * @instance
+         * @returns {Object} Returns true if throws are suppressed, false if not
+         * @name getSuppressThrows
+         */
+        getSuppressThrows: function () {
+            return suppressThrows;
+        },
+        /**
+         * Turn the suppression of throws on or off
+         * @function
+         * @instance
+         * @param {Boolean} bool - true to suppress throws, false to not suppress throws
+         * @name setSuppressThrows
+         */
+        setSuppressThrows: function (bool) {
+            suppressThrows = bool;
         }
     };
     return utils;
