@@ -168,7 +168,7 @@ bento.define('bento', [
              * @instance
              * @param {Object} settings - settings for the game
              * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.  
+             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
              * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
@@ -179,6 +179,7 @@ bento.define('bento', [
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
              * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
              * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
+             * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
@@ -199,6 +200,7 @@ bento.define('bento', [
                     }
                     settings.sortMode = settings.sortMode || 0;
                     setupCanvas(settings, function () {
+                        Utils.setSuppressThrows(settings.dev ? false : true);
                         // window resize listeners
                         manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
@@ -370,7 +372,7 @@ bento.define('bento', [
             setGameSpeed: function (value) {
                 throttle = value;
             },
-            
+
             /**
              * Asset manager
              * @see module:bento/managers/asset
