@@ -3000,7 +3000,13 @@ var requirejs, require, define;
                 startWatching = true;
             }
         };
+    
+    // add global name
     window.bento = window.bento || bento;
+    
+    // undefine global define and require, in case it clashes with other require systems
+    window.require = undefined;
+    window.define = undefined;
 }());
 /*
     Audia: <audio> implemented using the Web Audio API
@@ -4230,7 +4236,7 @@ bento.define('bento', [
  * @param {Boolean} settings.float - Should entity move with the screen
  * @param {Boolean} settings.useHshg - (DEPRECATED)Should entity use HSHG for collisions
  * @param {Boolean} settings.staticHshg - (DEPRECATED)Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
- * @example 
+ * @example
 var entity = new Entity({
     z: 0,
     name: 'myEntity',
@@ -4249,19 +4255,20 @@ bento.define('bento/entity', [
     'bento/utils',
     'bento/math/vector2',
     'bento/math/rectangle',
-    'bento/math/matrix'
-], function (Bento, Utils, Vector2, Rectangle, Matrix) {
+    'bento/math/transformmatrix',
+    'bento/transform'
+], function (Bento, Utils, Vector2, Rectangle, Matrix, Transform) {
     'use strict';
     var cleanComponents = function (entity) {
-            // remove null components
-            var i;
-            for (i = entity.components.length - 1; i >= 0; --i) {
-                if (!entity.components[i]) {
-                    entity.components.splice(i, 1);
-                }
+        // remove null components
+        var i;
+        for (i = entity.components.length - 1; i >= 0; --i) {
+            if (!entity.components[i]) {
+                entity.components.splice(i, 1);
             }
-        },
-        id = 0;
+        }
+    };
+    var id = 0;
 
     var Entity = function (settings) {
         var i;
@@ -4382,12 +4389,25 @@ bento.define('bento/entity', [
          */
         this.rotation = 0;
         /**
+         * Opacity of the entity
+         * @instance
+         * @default 1
+         * @name alpha
+         */
+        this.alpha = 1;
+        /**
          * Whether the entity calls the draw function
          * @instance
          * @default true
          * @name visible
          */
         this.visible = true;
+        /**
+         * Transform module
+         * @instance
+         * @name transform
+         */
+        this.transform = new Transform(this);
         /**
          * Entity's parent object, is set by the attach function
          * @instance
@@ -4510,13 +4530,18 @@ bento.define('bento/entity', [
         cleanComponents(this);
     };
     Entity.prototype.draw = function (data) {
-        var i,
-            l,
-            component;
+        var i, l, component;
+        var matrix;
         if (!this.visible) {
             return;
         }
-        data = data || {};
+        data = data || {
+            viewport: Bento.getViewport(),
+            renderer: Bento.getRenderer()
+        };
+
+        this.transform.draw(data);
+
         // call components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
@@ -4533,7 +4558,10 @@ bento.define('bento/entity', [
                 component.postDraw(data);
             }
         }
+
+        this.transform.postDraw(data);
     };
+
     /**
      * Extends properties of entity
      * @function
@@ -4666,7 +4694,7 @@ entity.addX(10);
         }
     };
     /**
-     * Attaches a child object to the entity. Entities can form a scenegraph this way. 
+     * Attaches a child object to the entity. Entities can form a scenegraph this way.
      * This is one of the most important functions in Bento. It allows you to attach new behaviors
      * to the entity by attaching components or other Entities.
      * The parent entity calls start(), destroy(), update() and draw() in the child.
@@ -4675,7 +4703,7 @@ entity.addX(10);
      * @param {Object} child - The child object to attach (can be anything)
      * @param {Boolean} force - Allow duplicate attaching
      * @instance
-     * @example 
+     * @example
 var entity = new Entity({}),
     // we define a simple object literal that acts as a container for functions
     child = {
@@ -4830,16 +4858,16 @@ Bento.objects.attach(entity);
      * @instance
      * @param {Object} settings
      * @param {Entity} settings.entity - The other entity
-     * @param {Entity} settings.entities - Or an array of entities to check with
-     * @param {Entity} settings.name - Or the other entity's name (use family for better performance)
+     * @param {Array} settings.entities - Or an array of entities to check with
+     * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
+     * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
      * @name collidesWith
-     * @returns {Boolean} True if entity collides
+     * @returns {Entity/Array} The collided entity/entities, otherwise null
      */
     // TODO: make examples
-    // * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more
     // * @param {Array} settings.families - multiple families
     Entity.prototype.collidesWith = function (settings, deprecated_offset, deprecated_callback) {
         var intersect = false;
@@ -4849,6 +4877,8 @@ Bento.objects.attach(entity);
         var array = [];
         var offset = new Vector2(0, 0);
         var callback;
+        var firstOnly = true;
+        var collisions = null;
 
         if (settings.isEntity) {
             // old method with parameters: collidesWith(entity, offset, callback)
@@ -4863,6 +4893,9 @@ Bento.objects.attach(entity);
         } else {
             // read settings
             offset = settings.offset || offset;
+            if (Utils.isDefined(settings.firstOnly)) {
+                firstOnly = settings.firstOnly;
+            }
             callback = settings.onCollide;
 
             if (settings.entity) {
@@ -4898,12 +4931,19 @@ Bento.objects.attach(entity);
                 if (callback) {
                     callback(obj);
                 }
-                return obj;
+                if (firstOnly) {
+                    // return the first collision it can find
+                    return obj;
+                } else {
+                    // collect other collisions
+                    collisions = collisions || [];
+                    collisions.push(obj);
+                }
             }
         }
-        return null;
+        return collisions;
     };
-    /**
+    /* DEPRECATED
      * Checks if entity is colliding with any entity in an array
      * Returns the first entity it finds that collides with the entity.
      * @function
@@ -4973,92 +5013,14 @@ Bento.objects.attach(entity);
         };
     };
     /**
-     * Transforms a child entity position to the world position
+     * Transforms this entity's position to the world position
      * @function
      * @instance
      * @name getWorldPosition
      * @returns {Vector2} Returns a position
      */
-    // TODO: using Matrix is slow and bulky, optimize this
     Entity.prototype.getWorldPosition = function () {
-        var positionVector,
-            translateMatrix = new Matrix(3, 3),
-            scaleMatrix = new Matrix(3, 3),
-            rotateMatrix = new Matrix(3, 3),
-            sin,
-            cos,
-            type,
-            position,
-            parent,
-            parents = [],
-            i,
-            isFloating = false;
-
-        // no parents
-        if (!this.parent) {
-            if (!this.float) {
-                return this.position.add(Bento.getViewport().getCorner());
-            } else {
-                return this.position;
-            }
-        }
-
-        // get all parents
-        parent = this;
-        while (parent.parent) {
-            parent = parent.parent;
-            parents.unshift(parent);
-        }
-        // is top parent floating?
-        if (parents.length && parents[0].float) {
-            isFloating = true;
-        }
-
-        // make a copy
-        if (this.float || isFloating) {
-            positionVector = this.position.add(Bento.getViewport().getCorner()).toMatrix();
-        } else {
-            positionVector = this.position.toMatrix();
-        }
-
-        /**
-         * transform the position vector with each component
-         */
-        for (i = 0; i < parents.length; ++i) {
-            parent = parents[i];
-
-            // todo: order of components
-            if (parent.scale) {
-                // construct a scaling matrix and apply to position vector
-                scaleMatrix.set(0, 0, parent.scale.x);
-                scaleMatrix.set(1, 1, parent.scale.y);
-                positionVector.multiplyWith(scaleMatrix);
-            }
-            // only scale/rotatable if there is a component
-            if (parent.rotation) {
-                // construct a rotation matrix and apply to position vector
-                sin = Math.sin(parent.rotation);
-                cos = Math.cos(parent.rotation);
-                rotateMatrix.set(0, 0, cos);
-                rotateMatrix.set(1, 0, -sin);
-                rotateMatrix.set(0, 1, sin);
-                rotateMatrix.set(1, 1, cos);
-                positionVector.multiplyWith(rotateMatrix);
-            }
-            if (parent.position) {
-                // construct a translation matrix and apply to position vector
-                position = parent.position;
-                translateMatrix.set(2, 0, position.x);
-                translateMatrix.set(2, 1, position.y);
-                positionVector.multiplyWith(translateMatrix);
-            }
-
-        }
-
-        return new Vector2(
-            positionVector.get(0, 0),
-            positionVector.get(0, 1)
-        );
+        return this.transform.getWorldPosition();
     };
 
     /**
@@ -5066,87 +5028,11 @@ Bento.objects.attach(entity);
      * @function
      * @instance
      * @name getLocalPosition
+     * @param {Vector2} worldPosition - A position to transform to local position
      * @returns {Vector2} Returns a position relative to the entity's parent
      */
     Entity.prototype.getLocalPosition = function (worldPosition) {
-        var positionVector,
-            translateMatrix = new Matrix(3, 3),
-            scaleMatrix = new Matrix(3, 3),
-            rotateMatrix = new Matrix(3, 3),
-            sin,
-            cos,
-            type,
-            position,
-            parent,
-            parents = [],
-            i,
-            isFloating = false;
-
-        // no parents
-        if (!this.parent) {
-            if (!this.float) {
-                return worldPosition.subtract(Bento.getViewport().getCorner());
-            } else {
-                return worldPosition;
-            }
-        }
-
-        // get all parents
-        parent = this;
-        while (parent.parent) {
-            parent = parent.parent;
-            parents.unshift(parent);
-        }
-        // is top parent floating?
-        if (parents.length && parents[0].float) {
-            isFloating = true;
-        }
-
-        // make a copy
-        if (this.float || isFloating) {
-            positionVector = worldPosition.add(Bento.getViewport().getCorner()).toMatrix();
-        } else {
-            positionVector = worldPosition.toMatrix();
-        }
-
-        /**
-         * Reverse transform the position vector with each component
-         */
-        for (i = 0; i < parents.length; ++i) {
-            parent = parents[i];
-
-            // todo: order of components
-            if (parent.position) {
-                // construct a translation matrix and apply to position vector
-                position = parent.position;
-                translateMatrix.set(2, 0, -position.x);
-                translateMatrix.set(2, 1, -position.y);
-                positionVector.multiplyWith(translateMatrix);
-            }
-            // todo: only scale/rotatable if there is a component
-            if (parent.rotation) {
-                // construct a rotation matrix and apply to position vector
-                sin = Math.sin(-parent.rotation);
-                cos = Math.cos(-parent.rotation);
-                rotateMatrix.set(0, 0, cos);
-                rotateMatrix.set(1, 0, -sin);
-                rotateMatrix.set(0, 1, sin);
-                rotateMatrix.set(1, 1, cos);
-                positionVector.multiplyWith(rotateMatrix);
-            }
-            if (parent.scale) {
-                // construct a scaling matrix and apply to position vector
-                scaleMatrix.set(0, 0, 1 / parent.scale.x);
-                scaleMatrix.set(1, 1, 1 / parent.scale.y);
-                positionVector.multiplyWith(scaleMatrix);
-            }
-
-        }
-
-        return new Vector2(
-            positionVector.get(0, 0),
-            positionVector.get(0, 1)
-        );
+        return this.transform.getLocalPosition(worldPosition);
     };
 
     Entity.prototype.toString = function () {
@@ -5215,6 +5101,12 @@ bento.define('bento/eventsystem', [
 
     return {
         /**
+         * Ignore warnings
+         * @instance
+         * @name suppressWarnings
+         */
+        suppressWarnings: false,
+        /**
          * Fires an event
          * @function
          * @instance
@@ -5240,8 +5132,11 @@ bento.define('bento/eventsystem', [
                     } else {
                         listener.callback(eventData);
                     }
-                } else {
-                    // TODO: fix this
+                } else if (!this.suppressWarnings) {
+                    // TODO: this warning appears when event listeners are removed 
+                    // during another listener being triggered. For example, removing an entity
+                    // while that entity was listening to the same event.
+                    // In a lot of cases, this is normal... Consider removing this warning?
                     console.log('Warning: listener is not a function');
                 }
             }
@@ -5277,10 +5172,13 @@ bento.define('bento/eventsystem', [
     };
 });
 /**
- * A wrapper for HTML images, holds data for image atlas.
+ * A wrapper for HTML images, holds data for image atlas. Bento renderers only work with PackedImage and not plain
+ * HTML Image elements. This allows for easy transitions to using, for example, TexturePacker. 
+ * (That's why it's called PackedImage, for a lack of better naming).
+ * If you plan to use a HTML Canvas as image source, always remember to wrap it in a PackedImage.
  * <br>Exports: Constructor
  * @module bento/packedimage
- * @param {HTMLImageElement} image - HTML Image Element
+ * @param {HTMLImageElement} image - HTML Image Element or HTML Canvas Element
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
  * @returns {HTMLImage} rectangle.image - Reference to the image
@@ -5296,6 +5194,106 @@ bento.define('bento/packedimage', [
     };
 });
 /*
+ * Time profiler
+ */
+bento.define('bento/profiler', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween
+) {
+    'use strict';
+    var ticTime = 0;
+    var startTime = 0;
+    var totalTime = 0;
+    var times = {};
+    var totals = {};
+    var measures = {};
+    var measurements = 0;
+    var hasStarted = false;
+    var start = function () {
+        hasStarted = true;
+        startTime = window.performance.now();
+    };
+    var stop = function () {
+        totalTime += window.performance.now() - startTime;
+        measurements += 1;
+
+        if (this.reportAfter && measurements > this.reportAfter) {
+            measurements = 0;
+            this.report();
+        }
+        hasStarted = false;
+    };
+    var report = function () {
+        var key;
+        console.log('== Report for time spent ==');
+        console.log('Total time:', totalTime.toFixed(2) + 'ms');
+        for (key in totals) {
+            if (!totals.hasOwnProperty(key)) {
+                continue;
+            }
+
+            console.log(
+                key, 
+                '\n  ' + totals[key].toFixed(2) + 'ms', 
+                '\n  ' + (totals[key] / totalTime * 100).toFixed(0) + '%',
+                '\n  ' + measures[key] + ' tics'
+            );
+        }
+    };
+    var tic = function (name) {
+        if (!hasStarted) {
+            return;
+        }
+        if (name) {
+            times[name] = window.performance.now();
+            totals[name] = totals[name] || 0;
+            measures[name] = measures[name] || 0;
+        } else {
+            ticTime = window.performance.now();
+        }
+    };
+    var toc = function (name, log) {
+        if (!hasStarted) {
+            return;
+        }
+        if (log) {
+            if (name) {
+                console.log(name, window.performance.now() - times[name]);
+            } else {
+                console.log(window.performance.now() - ticTime);
+            }
+        }
+        totals[name] += window.performance.now() - times[name];
+        measures[name] += 1;
+    };
+
+    return {
+        reportAfter: 10, // number of measurements to report after
+        start: start,
+        stop: stop,
+        report: report,
+        tic: tic,
+        toc: toc
+    };
+});
+/*
  * Base functions for renderer. Has many equivalent functions to a canvas context.
  * <br>Exports: Constructor
  * @module bento/renderer
@@ -5307,6 +5305,7 @@ bento.define('bento/renderer', [
         var module = {
             save: function () {},
             restore: function () {},
+            setTransform: function (a, b, c, d, tx, ty) {},
             translate: function () {},
             scale: function (x, y) {},
             rotate: function (angle) {},
@@ -5328,6 +5327,207 @@ bento.define('bento/renderer', [
             callback(module);
         });
     };
+});
+/**
+ * Transform module
+ */
+bento.define('bento/transform', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/transformmatrix',
+], function (
+    Bento,
+    Vector2,
+    Matrix
+) {
+    'use strict';
+    var twoPi = Math.PI * 2;
+
+    var Transform = function (entity) {
+        this.matrix = new Matrix();
+        this.entity = entity;
+
+        // cache values
+        this.sin = 0;
+        this.cos = 1;
+        this.rotationCache = 0;
+        this.oldAlpha = 1;
+
+        // additional transforms
+        this.x = 0;
+        this.y = 0;
+    };
+
+    Transform.prototype.draw = function (data) {
+        var entity = this.entity;
+        var matrix = this.matrix;
+        var alpha = entity.alpha;
+        var rotation = entity.rotation;
+        var sin = this.sin;
+        var cos = this.cos;
+        var renderer = data.renderer;
+        var viewport = data.viewport;
+
+        // cache sin and cos
+        if (rotation !== this.rotationCache) {
+            this.rotationCache = rotation;
+            this.sin = Math.sin(rotation);
+            this.cos = Math.cos(rotation);
+            sin = this.sin;
+            cos = this.cos;
+        }
+
+        // save
+        renderer.save();
+
+        // translate
+        if (Transform.subPixel) {
+            renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
+        } else {
+            renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
+        }
+        // scroll (only applies to parent objects)
+        if (!entity.parent && !entity.float) {
+            renderer.translate(-viewport.x, -viewport.y);
+        }
+
+        if (entity.rotation % twoPi) {
+            // rotated?
+            renderer.rotate(rotation, sin, cos);
+        }
+        // scale
+        renderer.scale(entity.scale.x, entity.scale.y);
+        // alpha
+        this.oldAlpha = data.renderer.getOpacity();
+        renderer.setOpacity(this.oldAlpha * alpha);
+    };
+
+    Transform.prototype.postDraw = function (data) {
+        var renderer = data.renderer;
+
+        // restore
+        renderer.setOpacity(this.oldAlpha);
+        renderer.restore();
+    };
+
+    Transform.prototype.getWorldPosition = function () {
+        var positionVector,
+            matrix,
+            entity = this.entity,
+            position,
+            parent,
+            parents = [],
+            i,
+            isFloating = false;
+
+        // no parents
+        if (!entity.parent) {
+            if (entity.float) {
+                return entity.position.add(Bento.getViewport().getCorner());
+            } else {
+                return entity.position.clone();
+            }
+        }
+
+        // get all parents
+        parent = entity;
+        while (parent.parent) {
+            parent = parent.parent;
+            parents.unshift(parent);
+        }
+        // is top parent floating?
+        if (parents.length && parents[0].float) {
+            isFloating = true;
+        }
+
+        // make a copy
+        if (entity.float || isFloating) {
+            positionVector = entity.position.add(Bento.getViewport().getCorner());
+        } else {
+            positionVector = entity.position.clone();
+        }
+
+        /**
+         * transform the position vector with each component
+         */
+        for (i = 0; i < parents.length; ++i) {
+            parent = parents[i];
+
+            // construct a scaling matrix and apply to position vector
+            matrix = new Matrix().scale(parent.scale.x, parent.scale.y);
+            matrix.multiplyWithVector(positionVector);
+            // construct a rotation matrix and apply to position vector
+            matrix = new Matrix().rotate(parent.rotation);
+            matrix.multiplyWithVector(positionVector);
+            // construct a translation matrix and apply to position vector
+            matrix = new Matrix().translate(parent.position.x, parent.position.y);
+            matrix.multiplyWithVector(positionVector);
+        }
+
+        return positionVector;
+    }
+
+    Transform.prototype.getLocalPosition = function (worldPosition) {
+        var positionVector,
+            matrix,
+            entity = this.entity,
+            position,
+            parent,
+            parents = [],
+            i,
+            isFloating = false;
+
+        // no parents
+        if (!entity.parent) {
+            if (entity.float) {
+                return worldPosition.subtract(Bento.getViewport().getCorner());
+            } else {
+                return worldPosition;
+            }
+        }
+
+        // get all parents
+        parent = entity;
+        while (parent.parent) {
+            parent = parent.parent;
+            parents.unshift(parent);
+        }
+        // is top parent floating?
+        if (parents.length && parents[0].float) {
+            isFloating = true;
+        }
+
+        // make a copy
+        if (entity.float || isFloating) {
+            positionVector = worldPosition.subtract(Bento.getViewport().getCorner());
+        } else {
+            positionVector = worldPosition.clone();
+        }
+
+        /**
+         * Reverse transform the position vector with each component
+         */
+        for (i = 0; i < parents.length; ++i) {
+            parent = parents[i];
+
+            // construct a translation matrix and apply to position vector
+            position = parent.position;
+            matrix = new Matrix().translate(-position.x, -position.y);
+            matrix.multiplyWithVector(positionVector);
+            // construct a rotation matrix and apply to position vector
+            matrix = new Matrix().rotate(-parent.rotation)
+            matrix.multiplyWithVector(positionVector);
+            // construct a scaling matrix and apply to position vector
+            matrix = new Matrix().scale(1 / parent.scale.x, 1 / parent.scale.y);
+            matrix.multiplyWithVector(positionVector);
+        }
+
+        return positionVector;
+    };
+
+    Transform.subPixel = true;
+
+    return Transform;
 });
 /**
  * A collection of useful functions
@@ -5630,6 +5830,26 @@ bento.define('bento/utils', [], function () {
             }
 
             return keys;
+        })(),
+        remoteMapping = (function () {
+            // the commented out keys are not used by the remote's micro gamepad
+            var buttons = {
+                "0": ["A", "a", "click"], // click on touch area
+                // "1": ["B"],
+                "2": ["X", "x", "play", "pause"], // pause/play button
+                // "3": ["Y"],
+                // "4": ["L1"],
+                // "5": ["R1"],
+                // "6": ["L2"],
+                // "7": ["R2"],
+                "12": ["up"], // upper half touch area
+                "13": ["down"], // lower half touch area
+                "14": ["left"], // left half touch area
+                "15": ["right"], // right half touch area
+                "16": ["menu"] // menu button
+            };
+
+            return buttons;
         })();
 
     utils = {
@@ -5720,6 +5940,7 @@ bento.define('bento/utils', [], function () {
         getKeyLength: getKeyLength,
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
+        remoteMapping: remoteMapping,
         /**
          * Returns a random integer [0...n)
          * @function
@@ -5834,7 +6055,7 @@ bento.define('bento/utils', [], function () {
         repeat: function (number, fn) {
             var i;
             for (i = 0; i < number; ++i) {
-                fn();
+                fn(i, number);
             }
         },
         /**
@@ -5859,6 +6080,70 @@ bento.define('bento/utils', [], function () {
                 hash = hash & hash; // Convert to 32bit integer
             }
             return hash;
+        },
+        /**
+         * Returns a clone of a JSON object
+         * @function
+         * @instance
+         * @param {Object} jsonObj - Object literal that adheres to JSON standards
+         * @name cloneJson
+         */
+        cloneJson: function (jsonObj) {
+            var out;
+            try {
+                out = JSON.parse(JSON.stringify(jsonObj));
+            } catch (e) {
+                out = {};
+                console.log('WARNING: object cloning failed');
+            }
+            return out;
+        },
+        /**
+         * Loops through an array
+         * @function
+         * @instance
+         * @param {Array} array - Array to loop through
+         * @param {Function} callback - Callback function
+         * @name forEach
+         */
+        forEach: function (array, callback) {
+            var i;
+            var l;
+            var stop = false;
+            var breakLoop = function () {
+                stop = true;
+            };
+            for (i = 0, l = array.length; i < l; ++i) {
+                callback(array[i], i, l, breakLoop);
+                if (stop) {
+                    return;
+                }
+            }
+        },
+        /**
+         * Checks whether a value is between two other values
+         * @function
+         * @instance
+         * @param {Number} min - lower limit
+         * @param {Number} value - value to check that's between min and max
+         * @param {Number} max - upper limit
+         * @param {Boolean} includeEdge - includes edge values
+         * @name isBetween
+         */
+        isBetween: function (min, value, max, includeEdge) {
+            if (includeEdge) {
+                return min <= value && value <= max;
+            }
+            return min < value && value < max;
+        },
+        /**
+         * Picks one of the parameters of this function and returns it
+         * @function
+         * @instance
+         * @name pickRandom
+         */
+        pickRandom: function () {
+            return arguments[this.getRandom(arguments.length)];
         },
         /**
          * Checks useragent if device is an apple device. Works on web only.
@@ -5903,6 +6188,601 @@ bento.define('bento/utils', [], function () {
         }
     };
     return utils;
+});
+/**
+ * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
+ * unless entity.updateWhenPaused is turned on.
+ * <br>Exports: Constructor
+ * @module bento/components/clickable
+ * @param {Object} settings - Settings
+ * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
+ * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
+ * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
+ * @param {Function} settings.onClick - Called when pointer taps on the parent entity
+ * @param {Function} settings.onClickUp - The pointer was released above the parent entity
+ * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
+ * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
+ * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
+ * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
+ * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
+ * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/clickable', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/math/transformmatrix',
+    'bento/eventsystem'
+], function (Bento, Utils, Vector2, Matrix, EventSystem) {
+    'use strict';
+
+    var clickables = [];
+
+    var Clickable = function (settings) {
+        var nothing = function () {};
+        this.entity = null;
+        /**
+         * Name of the component
+         * @instance
+         * @default 'clickable'
+         * @name name
+         */
+        this.name = 'clickable';
+        /**
+         * Whether the pointer is over the entity
+         * @instance
+         * @default false
+         * @name isHovering
+         */
+        this.isHovering = false;
+        this.hasTouched = false;
+        /**
+         * Id number of the pointer holding entity
+         * @instance
+         * @default null
+         * @name holdId
+         */
+        this.holdId = null;
+        this.isPointerDown = false;
+        this.initialized = false;
+
+        this.callbacks = {
+            pointerDown: settings.pointerDown || nothing,
+            pointerUp: settings.pointerUp || nothing,
+            pointerMove: settings.pointerMove || nothing,
+            // when clicking on the object
+            onClick: settings.onClick || nothing,
+            onClickUp: settings.onClickUp || nothing,
+            onClickMiss: settings.onClickMiss || nothing,
+            onHold: settings.onHold || nothing,
+            onHoldLeave: settings.onHoldLeave || nothing,
+            onHoldEnter: settings.onHoldEnter || nothing,
+            onHoldEnd: settings.onHoldEnd || nothing,
+            onHoverLeave: settings.onHoverLeave || nothing,
+            onHoverEnter: settings.onHoverEnter || nothing
+        };
+        /**
+         * Static array that holds a reference to all currently active Clickables
+         * @type {Array}
+         */
+        this.clickables = clickables;
+    };
+
+    Clickable.prototype.destroy = function () {
+        var index = clickables.indexOf(this),
+            i = 0,
+            len = 0;
+
+        if (index > -1)
+            clickables[index] = null;
+        // clear the array if it consists of only null's
+        for (i = 0, len = clickables.length; i < len; ++i) {
+            if (clickables[i])
+                break;
+            if (i === len - 1)
+                clickables.length = 0;
+        }
+
+        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
+        this.initialized = false;
+    };
+    Clickable.prototype.start = function () {
+        if (this.initialized) {
+            return;
+        }
+
+        clickables.push(this);
+
+        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
+        this.initialized = true;
+    };
+    Clickable.prototype.update = function () {
+        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
+            this.callbacks.onHold();
+        }
+    };
+    Clickable.prototype.cloneEvent = function (evt) {
+        return {
+            id: evt.id,
+            position: evt.position.clone(),
+            eventType: evt.eventType,
+            localPosition: evt.localPosition.clone(),
+            worldPosition: evt.worldPosition.clone(),
+            diffPosition: evt.diffPosition ? evt.diffPosition.clone() : undefined
+        };
+    };
+    Clickable.prototype.pointerDown = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+            return;
+        }
+        this.isPointerDown = true;
+        if (this.callbacks.pointerDown) {
+            this.callbacks.pointerDown.call(this, e);
+        }
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e, true);
+        }
+    };
+    Clickable.prototype.pointerUp = function (evt) {
+        var e = this.transformEvent(evt),
+            mousePosition;
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+            return;
+        }
+        mousePosition = e.localPosition;
+        this.isPointerDown = false;
+        if (this.callbacks.pointerUp) {
+            this.callbacks.pointerUp.call(this, e);
+        }
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            this.callbacks.onClickUp.call(this, [e]);
+            if (this.hasTouched && this.holdId === e.id) {
+                this.holdId = null;
+                this.callbacks.onHoldEnd.call(this, e);
+            }
+        }
+        this.hasTouched = false;
+    };
+    Clickable.prototype.pointerMove = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+            return;
+        }
+        if (this.callbacks.pointerMove) {
+            this.callbacks.pointerMove.call(this, e);
+        }
+        // hovering?
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e);
+        }
+    };
+    Clickable.prototype.checkHovering = function (evt, clicked) {
+        var mousePosition = evt.localPosition;
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldEnter.call(this, evt);
+            }
+            if (!this.isHovering) {
+                this.callbacks.onHoverEnter.call(this, evt);
+            }
+            this.isHovering = true;
+            if (clicked) {
+                this.hasTouched = true;
+                this.holdId = evt.id;
+                this.callbacks.onClick.call(this, evt);
+            }
+        } else {
+            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldLeave.call(this, evt);
+            }
+            if (this.isHovering) {
+                this.callbacks.onHoverLeave.call(this, evt);
+            }
+            this.isHovering = false;
+            if (clicked) {
+                this.callbacks.onClickMiss.call(this, evt);
+            }
+        }
+    };
+
+    Clickable.prototype.transformEvent = function (evt) {
+        evt.localPosition = this.entity.getLocalPosition(evt.worldPosition);
+        return evt;
+    };
+    Clickable.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Clickable.prototype.toString = function () {
+        return '[object Clickable]';
+    };
+
+    return Clickable;
+});
+/**
+ * Component that fills a square.
+ * <br>Exports: Constructor
+ * @module bento/components/fill
+ * @param {Object} settings - Settings
+ * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 
+ * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size) 
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/fill', [
+    'bento/utils',
+    'bento'
+], function (Utils, Bento) {
+    'use strict';
+    var Fill = function (settings) {
+        var viewport = Bento.getViewport();
+        settings = settings || {};
+        this.name = 'fill';
+        this.color = settings.color || [0, 0, 0, 1];
+        this.dimension = settings.dimension || viewport;
+    };
+    Fill.prototype.draw = function (data) {
+        var dimension = this.dimension;
+        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
+    };
+    Fill.prototype.setup = function (settings) {
+        this.color = settings.color;
+    };
+    Fill.prototype.toString = function () {
+        return '[object Fill]';
+    };
+
+    return Fill;
+});
+/**
+ * Animation component. Draws an animated sprite on screen at the entity position.
+ * <br>Exports: Constructor
+ * @module bento/components/sprite
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
+ * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between frames
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+// Defines a 3 x 3 spritesheet with several animations
+// Note: The default is automatically defined if no animations object is passed
+var sprite = new Sprite({
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3,
+        animations: {
+            "default": {
+                frames: [0]
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
+            }
+        }
+     }),
+    entity = new Entity({
+        components: [sprite] // attach sprite to entity
+                             // alternative to passing a components array is by calling entity.attach(sprite);
+    });
+
+// attach entity to game
+Bento.objects.attach(entity);
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/sprite', [
+    'bento',
+    'bento/utils',
+], function (Bento, Utils) {
+    'use strict';
+    var Animation = function (settings) {
+        this.entity = null;
+        this.name = 'sprite';
+        this.visible = true;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        this.spriteImage = null;
+
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.padding = 0;
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /**
+     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     */
+    Animation.prototype.setup = function (settings) {
+        var self = this,
+            padding = 0;
+
+        this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        this.padding = this.animationSettings.padding || 0;
+
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+    };
+
+    Animation.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
+
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
+        }
+    };
+    /**
+     * Set component to a different animation. The animation won't change if it's already playing.
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     */
+    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimation.frames.length;
+            }
+        }
+    };
+    /**
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
+     */
+    Animation.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+    /**
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     */
+    Animation.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Animation.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Animation.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Animation.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    Animation.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        reachedEnd = false;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+    Animation.prototype.draw = function (data) {
+        var frameIndex,
+            sourceFrame,
+            sourceX,
+            sourceY,
+            entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sourceFrame = this.currentAnimation.frames[frameIndex];
+        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+
+        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.drawImage(
+            this.spriteImage,
+            sourceX,
+            sourceY,
+            this.frameWidth,
+            this.frameHeight,
+            0,
+            0,
+            this.frameWidth,
+            this.frameHeight
+        );
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+    Animation.prototype.toString = function () {
+        return '[object Animation]';
+    };
+
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
+
+    return Animation;
 });
 /**
  * Animation component. Draws an animated sprite on screen at the entity position.
@@ -6084,9 +6964,10 @@ bento.define('bento/components/animation', [
                     highestFrame = animations[animation].frames[i];
                 }
             }
-            // TODO: entity.name is always an empty string
-            if (highestFrame > this.frameCountX * this.frameCountY - 1)
-                console.log("Warning: the frames in animation " + animation + " of " + this.entity.name + " are out of bounds. Can't use frame " + highestFrame + ".");
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
         }
     };
     /**
@@ -6239,330 +7120,15 @@ bento.define('bento/components/animation', [
         return '[object Animation]';
     };
 
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
+
     return Animation;
-});
-/**
- * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
- * unless entity.updateWhenPaused is turned on.
- * <br>Exports: Constructor
- * @module bento/components/clickable
- * @param {Object} settings - Settings
- * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
- * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
- * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
- * @param {Function} settings.onClick - Called when pointer taps on the parent entity
- * @param {Function} settings.onClickUp - The pointer was released above the parent entity
- * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
- * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
- * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
- * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
- * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
- * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/clickable', [
-    'bento',
-    'bento/utils',
-    'bento/math/vector2',
-    'bento/math/matrix',
-    'bento/eventsystem'
-], function (Bento, Utils, Vector2, Matrix, EventSystem) {
-    'use strict';
-
-    var clickables = [];
-
-    var Clickable = function (settings) {
-        var nothing = function () {};
-        this.entity = null;
-        /**
-         * Name of the component
-         * @instance
-         * @default 'clickable'
-         * @name name
-         */
-        this.name = 'clickable';
-        /**
-         * Whether the pointer is over the entity
-         * @instance
-         * @default false
-         * @name isHovering
-         */
-        this.isHovering = false;
-        this.hasTouched = false;
-        /**
-         * Id number of the pointer holding entity
-         * @instance
-         * @default null
-         * @name holdId
-         */
-        this.holdId = null;
-        this.isPointerDown = false;
-        this.initialized = false;
-
-        this.callbacks = {
-            pointerDown: settings.pointerDown || nothing,
-            pointerUp: settings.pointerUp || nothing,
-            pointerMove: settings.pointerMove || nothing,
-            // when clicking on the object
-            onClick: settings.onClick || nothing,
-            onClickUp: settings.onClickUp || nothing,
-            onClickMiss: settings.onClickMiss || nothing,
-            onHold: settings.onHold || nothing,
-            onHoldLeave: settings.onHoldLeave || nothing,
-            onHoldEnter: settings.onHoldEnter || nothing,
-            onHoldEnd: settings.onHoldEnd || nothing,
-            onHoverLeave: settings.onHoverLeave || nothing,
-            onHoverEnter: settings.onHoverEnter || nothing
-        };
-        /**
-         * Static array that holds a reference to all currently active Clickables
-         * @type {Array}
-         */
-        this.clickables = clickables;
-    };
-
-    Clickable.prototype.destroy = function () {
-        var index = clickables.indexOf(this),
-            i = 0,
-            len = 0;
-
-        if (index > -1)
-            clickables[index] = null;
-        // clear the array if it consists of only null's
-        for (i = 0, len = clickables.length; i < len; ++i) {
-            if (clickables[i])
-                break;
-            if (i === len - 1)
-                clickables.length = 0;
-        }
-
-        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
-        this.initialized = false;
-    };
-    Clickable.prototype.start = function () {
-        if (this.initialized) {
-            return;
-        }
-
-        clickables.push(this);
-
-        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
-        this.initialized = true;
-    };
-    Clickable.prototype.update = function () {
-        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
-            this.callbacks.onHold();
-        }
-    };
-    Clickable.prototype.cloneEvent = function (evt) {
-        return {
-            id: evt.id,
-            position: evt.position.clone(),
-            eventType: evt.eventType,
-            localPosition: evt.localPosition.clone(),
-            worldPosition: evt.worldPosition.clone()
-        };
-    };
-    Clickable.prototype.pointerDown = function (evt) {
-        var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-            return;
-        }
-        this.isPointerDown = true;
-        if (this.callbacks.pointerDown) {
-            this.callbacks.pointerDown.call(this, e);
-        }
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e, true);
-        }
-    };
-    Clickable.prototype.pointerUp = function (evt) {
-        var e = this.transformEvent(evt),
-            mousePosition;
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-            return;
-        }
-        mousePosition = e.localPosition;
-        this.isPointerDown = false;
-        if (this.callbacks.pointerUp) {
-            this.callbacks.pointerUp.call(this, e);
-        }
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            this.callbacks.onClickUp.call(this, [e]);
-            if (this.hasTouched && this.holdId === e.id) {
-                this.holdId = null;
-                this.callbacks.onHoldEnd.call(this, e);
-            }
-        }
-        this.hasTouched = false;
-    };
-    Clickable.prototype.pointerMove = function (evt) {
-        var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-            return;
-        }
-        if (this.callbacks.pointerMove) {
-            this.callbacks.pointerMove.call(this, e);
-        }
-        // hovering?
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e);
-        }
-    };
-    Clickable.prototype.checkHovering = function (evt, clicked) {
-        var mousePosition = evt.localPosition;
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldEnter.call(this, evt);
-            }
-            if (!this.isHovering) {
-                this.callbacks.onHoverEnter.call(this, evt);
-            }
-            this.isHovering = true;
-            if (clicked) {
-                this.hasTouched = true;
-                this.holdId = evt.id;
-                this.callbacks.onClick.call(this, evt);
-            }
-        } else {
-            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldLeave.call(this, evt);
-            }
-            if (this.isHovering) {
-                this.callbacks.onHoverLeave.call(this, evt);
-            }
-            this.isHovering = false;
-            if (clicked) {
-                this.callbacks.onClickMiss.call(this, evt);
-            }
-        }
-    };
-
-    Clickable.prototype.transformEvent = function (evt) {
-        var positionVector,
-            translateMatrix = new Matrix(3, 3),
-            scaleMatrix = new Matrix(3, 3),
-            rotateMatrix = new Matrix(3, 3),
-            sin,
-            cos,
-            type,
-            position,
-            parent,
-            parents = [],
-            i,
-            isFloating = false;
-
-        // no parents
-        if (!this.entity.parent) {
-            if (!this.entity.float) {
-                evt.localPosition = evt.worldPosition.clone();
-            } else {
-                evt.localPosition = evt.position.clone();
-            }
-            return evt;
-        }
-        // get all parents
-        parent = this.entity;
-        while (parent.parent) {
-            parent = parent.parent;
-            parents.unshift(parent);
-        }
-        // is top parent floating?
-        if (parents.length && parents[0].float) {
-            isFloating = true;
-        }
-
-
-        // make a copy
-        evt = this.cloneEvent(evt);
-        if (this.entity.float || isFloating) {
-            positionVector = evt.localPosition.toMatrix();
-        } else {
-            positionVector = evt.worldPosition.toMatrix();
-        }
-
-        /**
-         * reverse transform the event position vector
-         */
-        for (i = 0; i < parents.length; ++i) {
-            parent = parents[i];
-
-            // construct a translation matrix and apply to position vector
-            if (parent.position) {
-                position = parent.position;
-                translateMatrix.set(2, 0, -position.x);
-                translateMatrix.set(2, 1, -position.y);
-                positionVector.multiplyWith(translateMatrix);
-            }
-            // only scale/rotatable if there is a component
-            if (parent.rotation) {
-                // construct a rotation matrix and apply to position vector
-                sin = Math.sin(-parent.rotation);
-                cos = Math.cos(-parent.rotation);
-                rotateMatrix.set(0, 0, cos);
-                rotateMatrix.set(1, 0, -sin);
-                rotateMatrix.set(0, 1, sin);
-                rotateMatrix.set(1, 1, cos);
-                positionVector.multiplyWith(rotateMatrix);
-            }
-            if (parent.scale) {
-                // construct a scaling matrix and apply to position vector
-                scaleMatrix.set(0, 0, 1 / parent.scale.x);
-                scaleMatrix.set(1, 1, 1 / parent.scale.y);
-                positionVector.multiplyWith(scaleMatrix);
-            }
-        }
-        evt.localPosition.x = positionVector.get(0, 0);
-        evt.localPosition.y = positionVector.get(0, 1);
-
-        return evt;
-    };
-    Clickable.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Clickable.prototype.toString = function () {
-        return '[object Clickable]';
-    };
-
-    return Clickable;
-});
-/**
- * Component that fills a square.
- * <br>Exports: Constructor
- * @module bento/components/fill
- * @param {Object} settings - Settings
- * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 
- * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size) 
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/fill', [
-    'bento/utils',
-    'bento'
-], function (Utils, Bento) {
-    'use strict';
-    var Fill = function (settings) {
-        var viewport = Bento.getViewport();
-        settings = settings || {};
-        this.name = 'fill';
-        this.color = settings.color || [0, 0, 0, 1];
-        this.dimension = settings.dimension || viewport;
-    };
-    Fill.prototype.draw = function (data) {
-        var dimension = this.dimension;
-        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
-    };
-    Fill.prototype.setup = function (settings) {
-        this.color = settings.color;
-    };
-    Fill.prototype.toString = function () {
-        return '[object Fill]';
-    };
-
-    return Fill;
 });
 /**
  * Component that sets the opacity
@@ -6588,12 +7154,16 @@ bento.define('bento/components/opacity', [
             }
         };
     Opacity.prototype.draw = function (data) {
-        this.oldOpacity = data.renderer.getOpacity();
-        data.renderer.setOpacity(this.opacity * this.oldOpacity);
+        // this.oldOpacity = data.renderer.getOpacity();
+        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
     };
     Opacity.prototype.postDraw = function (data) {
-        data.renderer.setOpacity(this.oldOpacity);
+        // data.renderer.setOpacity(this.oldOpacity);
     };
+    Opacity.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+
     /**
      * Set entity opacity
      * @function
@@ -6602,7 +7172,8 @@ bento.define('bento/components/opacity', [
      * @name setOpacity
      */
     Opacity.prototype.setOpacity = function (value) {
-        this.opacity = value;
+        // this.opacity = value;
+        this.entity.alpha = value;
     };
     /**
      * Get entity opacity
@@ -6611,7 +7182,8 @@ bento.define('bento/components/opacity', [
      * @name getOpacity
      */
     Opacity.prototype.getOpacity = function () {
-        return this.opacity;
+        return this.entity.alpha;
+        // return this.opacity;
     };
     Opacity.prototype.toString = function () {
         return '[object Opacity]';
@@ -6637,11 +7209,11 @@ bento.define('bento/components/rotation', [
     };
 
     Rotation.prototype.draw = function (data) {
-        data.renderer.save();
-        data.renderer.rotate(data.entity.rotation);
+        // data.renderer.save();
+        // data.renderer.rotate(data.entity.rotation);
     };
     Rotation.prototype.postDraw = function (data) {
-        data.renderer.restore();
+        // data.renderer.restore();
     };
     Rotation.prototype.attached = function (data) {
         this.entity = data.entity;
@@ -6728,7 +7300,7 @@ bento.define('bento/components/scale', [
         this.name = 'scale';
     };
     Scale.prototype.draw = function (data) {
-        data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
+        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
     };
     Scale.prototype.attached = function (data) {
         this.entity = data.entity;
@@ -6770,7 +7342,7 @@ bento.define('bento/components/scale', [
  * @param {} settings.... - See other components
  * @returns Returns a component object.
  */
-bento.define('bento/components/sprite', [
+bento.define('bento/components/sprite_old', [
     'bento',
     'bento/utils',
     'bento/components/translation',
@@ -6917,7 +7489,9 @@ bento.define('bento/components/translation', [
             origin = entity.origin,
             scroll = data.viewport;
 
-        data.renderer.save();
+        entity.transform.x = this.x;
+        entity.transform.y = this.y;
+        /*data.renderer.save();
         if (this.subPixel || bentoSettings.subPixel) {
             data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
         } else {
@@ -6926,10 +7500,10 @@ bento.define('bento/components/translation', [
         // scroll (only applies to parent objects)
         if (!parent && !entity.float) {
             data.renderer.translate(-scroll.x, -scroll.y);
-        }
+        }*/
     };
     Translation.prototype.postDraw = function (data) {
-        data.renderer.restore();
+        // data.renderer.restore();
     };
     Translation.prototype.attached = function (data) {
         this.entity = data.entity;
@@ -9127,6 +9701,9 @@ bento.define('bento/managers/input', [
             keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
+            remote,
+            remoteButtonsPressed = [],
+            remoteButtonStates = {},
             pointerDown = function (evt) {
                 pointers.push({
                     id: evt.id,
@@ -9280,6 +9857,11 @@ bento.define('bento/managers/input', [
                 }
             },
             initTouch = function () {
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
+                }
                 canvas.addEventListener('touchstart', touchStart);
                 canvas.addEventListener('touchmove', touchMove);
                 canvas.addEventListener('touchend', touchEnd);
@@ -9381,6 +9963,153 @@ bento.define('bento/managers/input', [
                         e.preventDefault();
                     }
                 }, false);
+            },
+            /**
+             * Adds a check for input from the apple remote before every update. Only if on tvOS.
+             *
+             * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
+             * continually checking for input is the only way for now.
+             */
+            initRemote = function () {
+                var i = 0,
+                    gamepads;
+
+                if (window.ejecta) {
+                    // get all connected gamepads
+                    gamepads = navigator.getGamepads();
+                    // find apple remote gamepad
+                    for (i = 0; i < gamepads.length; ++i)
+                        if (gamepads[i] && gamepads[i].profile === 'microGamepad')
+                            remote = gamepads[i];
+
+                    for (i = 0; i < remote.buttons.length; ++i)
+                        remoteButtonsPressed.push(remote.buttons[i].pressed);
+
+                    // check for button input before the regular update
+                    EventSystem.on('preUpdate', checkRemote);
+                }
+            },
+            /**
+             * Checks if a remote button has been pressed. Runs before every frame, if added.
+             */
+            checkRemote = function () {
+                var i = 0,
+                    len = 0;
+
+                // uses an array to check against the state of the buttons from the previous frame
+                for (i = 0, len = remote.buttons.length; i < len; ++i) {
+                    if (remote.buttons[i].pressed !== remoteButtonsPressed[i]) {
+                        if (remote.buttons[i].pressed) {
+                            remoteButtonDown(i);
+                        } else {
+                            remoteButtonUp(i);
+                        }
+                    }
+                }
+            },
+            remoteButtonDown = function (id) {
+                var i = 0,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = true;
+
+                for (i = 0; i < names.length; ++i)
+                    remoteButtonStates[names[i]] = true;
+            },
+            remoteButtonUp = function (id) {
+                var i = 0,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = false;
+
+                for (i = 0; i < names.length; ++i)
+                    remoteButtonStates[names[i]] = false;
+            },
+            tvPointerDown = function (evt) {
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition,
+                    worldPosition: evt.worldPosition
+                });
+                EventSystem.fire('tvPointerDown', evt);
+            },
+            tvPointerMove = function (evt) {
+                EventSystem.fire('tvPointerMove', evt);
+                updatePointer(evt);
+            },
+            tvPointerUp = function (evt) {
+                EventSystem.fire('tvPointerUp', evt);
+                removePointer(evt);
+            },
+            tvTouchStart = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'start');
+                    tvPointerDown(evt);
+                }
+            },
+            tvTouchMove = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'move');
+                    tvPointerMove(evt);
+                }
+            },
+            tvTouchEnd = function (evt) {
+                var id, i;
+                evt.preventDefault();
+                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                    addTvTouchPosition(evt, i, 'end');
+                    tvPointerUp(evt);
+                }
+            },
+            addTvTouchPosition = function (evt, n, type) {
+                var touch = evt.changedTouches[n],
+                    x = (touch.pageX - offsetLeft) / canvasScale.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y,
+                    startPos = {};
+
+                evt.preventDefault();
+                evt.id = 0;
+                evt.eventType = 'tvtouch';
+                touch.position = new Vector2(x, y);
+                touch.worldPosition = touch.position.clone();
+                touch.worldPosition.x += viewport.x;
+                touch.worldPosition.y += viewport.y;
+                touch.localPosition = touch.position.clone();
+                // add 'normal' position
+                evt.position = touch.position.clone();
+                evt.worldPosition = touch.worldPosition.clone();
+                evt.localPosition = touch.localPosition.clone();
+                // id
+                evt.id = touch.identifier + 1;
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = touch.position.clone();
+                    startPos.startWorldPosition = touch.worldPosition.clone();
+                    startPos.startLocalPosition = touch.localPosition.clone();
+                    // save startPos
+                    startPositions[evt.id] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[evt.id];
+                    if (startPos && startPos.startPosition) {
+                        touch.diffPosition = touch.position.substract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        evt.diffPosition = touch.diffPosition.clone();
+                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
+                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
+                        delete startPositions[evt.id];
+                    } else {
+                        console.log('WARNING: touch startPosition was not defined');
+                    }
+                }
             };
 
         window.addEventListener('resize', onResize, false);
@@ -9405,6 +10134,8 @@ bento.define('bento/managers/input', [
         initKeyboard();
         // init clicks
         initMouseClicks();
+        // apple remote (only on tvOS)
+        initRemote();
 
         return {
             /**
@@ -9421,7 +10152,6 @@ bento.define('bento/managers/input', [
              * Removes all current pointers down
              * @function
              * @instance
-             * @returns {Array} pointers - Array with pointer positions
              * @name resetPointers
              */
             resetPointers: function () {
@@ -9432,10 +10162,42 @@ bento.define('bento/managers/input', [
              * @function
              * @instance
              * @param {String} name - name of the key
+             * @returns {Boolean} Returns true if the provided key is down.
              * @name isKeyDown
              */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
+            },
+            /**
+             * Checks if a remote button is down
+             * @function
+             * @instance
+             * @param {String} name - name of the button
+             * @returns {Boolean} Returns true if the provided button is down.
+             * @name isRemoteButtonDown
+             */
+            isRemoteButtonDown: function (name) {
+                return remoteButtonStates[name] || false;
+            },
+            /**
+             * Defines if pressing 'menu' button will go back to Apple TV home screen
+             * @function
+             * @instance
+             * @param {Boolean} Set to false if you want to assign custom behaviour for the 'menu' button
+             * @name setRemoteExitOnMenuPress
+             */
+            setRemoteExitOnMenuPress: function (bool) {
+                remote.exitOnMenuPress = bool;
+            },
+            /**
+             * Returns the current float values of the x and y axes of the touch area
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getRemoteAxes
+             */
+            getRemoteAxes: function () {
+                return new Vector2(remote.axes[0], remote.axes[1]);
             },
             /**
              * Stop all pointer input
@@ -9446,6 +10208,11 @@ bento.define('bento/managers/input', [
             stop: function () {
                 if (!isListening) {
                     return;
+                }
+                if (window.ejecta) {
+                    canvas.removeEventListener('tvtouchstart', tvTouchStart);
+                    canvas.removeEventListener('tvtouchmove', tvTouchMove);
+                    canvas.removeEventListener('tvtouchend', tvTouchEnd);
                 }
                 canvas.removeEventListener('touchstart', touchStart);
                 canvas.removeEventListener('touchmove', touchMove);
@@ -9465,6 +10232,11 @@ bento.define('bento/managers/input', [
                 if (isListening) {
                     return;
                 }
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
+                }
                 canvas.addEventListener('touchstart', touchStart);
                 canvas.addEventListener('touchmove', touchMove);
                 canvas.addEventListener('touchend', touchEnd);
@@ -9476,7 +10248,6 @@ bento.define('bento/managers/input', [
         };
     };
 });
-
 /**
  * Manager that controls mainloop and all objects. Attach entities to the object manager
  * to add them to the game. The object manager loops through every object's update and
@@ -10046,6 +10817,9 @@ bento.define('bento/managers/savestate', [
             // also store the keys
             if (this.saveKeys) {
                 keys = this.load('_keys', []);
+                if (keys.indexOf(elementKey) > 0) {
+                    return;
+                }
                 keys.push(elementKey);
                 storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
             }
@@ -11075,8 +11849,8 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
 });
 /**
  * 3x 3 Matrix specifically used for transformations
- * [ a b tx ]
- * [ c d ty ]
+ * [ a c tx ]
+ * [ b d ty ]
  * [ 0 0 1  ]
  * <br>Exports: Constructor
  * @module bento/math/transformmatrix
@@ -11097,27 +11871,25 @@ bento.define('bento/math/transformmatrix', [
         this.ty = 0;
     }
 
-    Matrix.prototype.multiplyWithVector = function (vector2) {
-        var result = new Vector2();
-        var x = vector2.x;
-        var y = vector2.y;
+    Matrix.prototype.multiplyWithVector = function (vector) {
+        var x = vector.x;
+        var y = vector.y;
 
-        result.x = this.a * x + this.c * y + this.tx;
-        result.y = this.b * x + this.d * y + this.ty;
+        vector.x = this.a * x + this.c * y + this.tx;
+        vector.y = this.b * x + this.d * y + this.ty;
 
-        return result;
+        return vector;
     };
 
-    Matrix.prototype.inverseMultiplyWithVector = function (vector2) {
-        var result = new Vector2();
-        var x = vector2.x;
-        var y = vector2.y;
-        var det = 1 / (this.a * this.d - this.c * this.b);
+    Matrix.prototype.inverseMultiplyWithVector = function (vector) {
+        var x = vector.x;
+        var y = vector.y;
+        var determinant = 1 / (this.a * this.d - this.c * this.b);
 
-        result.x = this.d * x * det + -this.c * y * det + (this.ty * this.c - this.tx * this.d) * det;
-        result.y = this.a * y * det + -this.b * x * det + (-this.ty * this.a + this.tx * this.b) * det;
+        vector.x = this.d * x * determinant + -this.c * y * determinant + (this.ty * this.c - this.tx * this.d) * determinant;
+        vector.y = this.a * y * determinant + -this.b * x * determinant + (-this.ty * this.a + this.tx * this.b) * determinant;
 
-        return result;
+        return vector;
     };
 
     Matrix.prototype.translate = function (x, y) {
@@ -11138,15 +11910,20 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
-    Matrix.prototype.rotate = function (angle) {
-        var cos = Math.cos(angle);
-        var sin = Math.sin(angle);
+    Matrix.prototype.rotate = function (angle, sin, cos) {
         var a = this.a;
         var b = this.b;
         var c = this.c;
         var d = this.d;
         var tx = this.tx;
         var ty = this.ty;
+
+        if (sin === undefined) {
+            sin = Math.sin(angle);
+        }
+        if (cos === undefined) {
+            cos = Math.cos(angle);
+        }
 
         this.a = a * cos - b * sin;
         this.b = a * sin + b * cos;
@@ -11187,6 +11964,15 @@ bento.define('bento/math/transformmatrix', [
         matrix.ty = this.ty;
 
         return matrix;
+    };
+
+    Matrix.prototype.reset = function () {
+        this.a = 1;
+        this.b = 0;
+        this.c = 0;
+        this.d = 1;
+        this.tx = 0;
+        this.ty = 0;        
     };
 
     return Matrix;
@@ -11665,11 +12451,10 @@ bento.define('bento/canvas', [
                 name: 'rendererSwapper',
                 draw: function (data) {
                     // draw once
-                    if (settings.drawOnce) { // TODO: not working yet
-                        if (drawn) {
-                            return;
-                        }
+                    if (drawn) {
+                        return;
                     }
+                    
                     // clear up canvas
                     if (!settings.preventAutoClear) {
                         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -11689,6 +12474,9 @@ bento.define('bento/canvas', [
                     data.renderer.translate(entity.origin.x, entity.origin.y);
                 },
                 postDraw: function (data) {
+                    if (drawn) {
+                        return;
+                    }
                     data.renderer.restore();
                     // swap back
                     data.renderer = originalRenderer;
@@ -12307,9 +13095,10 @@ bento.define('bento/tiled', [
  */
 bento.define('bento/tween', [
     'bento',
+    'bento/math/vector2',
     'bento/utils',
     'bento/entity'
-], function (Bento, Utils, Entity) {
+], function (Bento, Vector2, Utils, Entity) {
     'use strict';
     var robbertPenner = {
             // t: current time, b: begInnIng value, c: change In value, d: duration
@@ -12495,10 +13284,24 @@ bento.define('bento/tween', [
             // e = ending value
             // t = time variable (going from 0 to 1)
             var fn = interpolations[type];
-            if (fn) {
-                return fn(s, e, t, alpha, beta);
+            if (s.isVector2 && e.isVector2) {
+                if (fn) {
+                    return new Vector2(
+                        fn(s.x, e.x, t, alpha, beta),
+                        fn(s.y, e.y, t, alpha, beta)
+                    );
+                } else {
+                    return new Vector2(
+                        robbertPenner[type](t, s.x, e.x - s.x, 1),
+                        robbertPenner[type](t, s.y, e.y - s.y, 1)
+                    );
+                }
             } else {
-                return robbertPenner[type](t, s, e - s, 1);
+                if (fn) {
+                    return fn(s, e, t, alpha, beta);
+                } else {
+                    return robbertPenner[type](t, s, e - s, 1);
+                }
             }
         };
     return function (settings) {
@@ -12592,6 +13395,9 @@ bento.define('bento/renderers/canvas2d', [
                 },
                 restore: function () {
                     context.restore();
+                },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    context.setTransform(a, b, c, d, tx, ty);
                 },
                 translate: function (x, y) {
                     context.translate(x, y);
@@ -12773,6 +13579,14 @@ bento.define('bento/renderers/pixi', [
             restore: function () {
                 matrix = matrices.pop();
             },
+            setTransform: function (a, b, c, d, tx, ty) {
+                matrix.a = a;
+                matrix.b = b;
+                matrix.c = c;
+                matrix.d = d;
+                matrix.tx = tx;
+                matrix.ty = ty;
+            },
             translate: function (x, y) {
                 var transform = new TransformMatrix();
                 matrix.multiplyWith(transform.translate(x, y));
@@ -12805,6 +13619,12 @@ bento.define('bento/renderers/pixi', [
                 var rectangle;
                 var sprite;
                 var texture;
+                // If image and frame size don't correspond Pixi will throw an error and break the game.
+                // This check tries to prevent that.
+                if (sx + sw > image.width || sy + sh > image.height) {
+                    console.log("Warning: image and frame size do not correspond.", image);
+                    return;
+                }
                 if (!image.texture) {
                     // initialize pixi baseTexture
                     image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
@@ -12921,6 +13741,15 @@ bento.define('bento/renderers/webgl', [
                 restore: function () {
                     glRenderer.restore();
                 },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    // not sure, untested
+                    glRenderer.transform = glRenderer.transform.clone([
+                        a, b, 0, tx,
+                        c, d, 0, ty,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1
+                    ]);
+                },
                 translate: function (x, y) {
                     glRenderer.translate(x, y);
                 },
@@ -13017,7 +13846,7 @@ bento.define('bento/renderers/webgl', [
  * @module bento/gui/clickbutton
  * @returns Entity
  */
- bento.define('bento/gui/clickbutton', [
+bento.define('bento/gui/clickbutton', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
@@ -13069,7 +13898,7 @@ bento.define('bento/renderers/webgl', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('down');
+                    sprite.setAnimation('down');
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
@@ -13078,7 +13907,7 @@ bento.define('bento/renderers/webgl', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('down');
+                    sprite.setAnimation('down');
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
@@ -13087,7 +13916,7 @@ bento.define('bento/renderers/webgl', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('up');
+                    sprite.setAnimation('up');
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
@@ -13096,7 +13925,7 @@ bento.define('bento/renderers/webgl', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('up');
+                    sprite.setAnimation('up');
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
@@ -13114,7 +13943,7 @@ bento.define('bento/renderers/webgl', [
             }),
             entitySettings = Utils.extend({
                 z: 0,
-                name: '',
+                name: 'clickButton',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
                 components: [
@@ -13124,9 +13953,9 @@ bento.define('bento/renderers/webgl', [
                 family: ['buttons'],
                 init: function () {
                     if (!active && animations.inactive) {
-                        sprite.animation.setAnimation('inactive');
+                        sprite.setAnimation('inactive');
                     } else {
-                        sprite.animation.setAnimation('up');
+                        sprite.setAnimation('up');
                     }
                 }
             }, settings),
@@ -13134,19 +13963,33 @@ bento.define('bento/renderers/webgl', [
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
-                        sprite.animation.setAnimation('inactive');
+                        sprite.setAnimation('inactive');
                     } else {
-                        sprite.animation.setAnimation('up');
+                        sprite.setAnimation('up');
                     }
                 },
                 doCallback: function () {
                     settings.onClick.apply(entity);
+                },
+                isActive: function () {
+                    return active;
                 }
             });
 
         if (Utils.isDefined(settings.active)) {
             active = settings.active;
         }
+
+        // keep track of clickbuttons on tvOS
+        if (window.ejecta)
+            entity.attach({
+                start: function () {
+                    EventSystem.fire('clickbuttonAdded', entity);
+                },
+                destroy: function () {
+                    EventSystem.fire('clickbuttonRemoved', entity);
+                }
+            });
 
         return entity;
     };
@@ -13264,7 +14107,6 @@ bento.define('bento/gui/counter', [
                     }, settings.digit || {}),
                     entity = new Entity(digitSettings);
 
-                entity.sprite = sprite.animation;
                 return entity;
             },
             /*
@@ -13301,7 +14143,9 @@ bento.define('bento/gui/counter', [
                 for (i = 0; i < children.length; ++i) {
                     digit = children[i];
                     digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
-                    digit.sprite.setAnimation(valueStr.substr(i, 1));
+                    digit.getComponent('sprite', function (sprite) {
+                        sprite.setAnimation(valueStr.substr(i, 1));
+                    });
                 }
 
                 /* alignment */
@@ -13786,7 +14630,7 @@ bento.define('bento/gui/text', [
                 restoreContext(ctx);
                 canvas.texture = null;
                 packedImage = new PackedImage(canvas);
-                sprite.animation.setup({
+                sprite.setup({
                     image: packedImage
                 });
             },
@@ -14020,6 +14864,16 @@ bento.define('bento/gui/text', [
                     return text;
                 },
                 /**
+                 * Get array of the string setup settings
+                 * @function
+                 * @instance
+                 * @name getStrings
+                 * @returns Array
+                 */
+                getStrings: function () {
+                    return strings;
+                },
+                /**
                  * Sets and displays current text
                  * @param {String} text - The string you want to set
                  * @param {Object} settings (optional) - Apply new settings for text visuals
@@ -14059,8 +14913,6 @@ bento.define('bento/gui/text', [
             });
         init(settings);
 
-        sprite.translation.subPixel = true;
-
         return entity;
     };
 });
@@ -14097,8 +14949,10 @@ bento.define('bento/gui/togglebutton', [
             toggled = false,
             sprite = new Sprite({
                 image: settings.image,
-                frameWidth: settings.frameWidth || 32,
-                frameHeight: settings.frameHeight || 32,
+                frameWidth: settings.frameWidth,
+                frameHeight: settings.frameHeight,
+                frameCountX: settings.frameCountX,
+                frameCountY: settings.frameCountY,
                 animations: settings.animations || {
                     'up': {
                         speed: 0,
@@ -14119,16 +14973,16 @@ bento.define('bento/gui/togglebutton', [
                     sprite,
                     new Clickable({
                         onClick: function () {
-                            sprite.animation.setAnimation('down');
+                            sprite.setAnimation('down');
                         },
                         onHoldEnter: function () {
-                            sprite.animation.setAnimation('down');
+                            sprite.setAnimation('down');
                         },
                         onHoldLeave: function () {
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                            sprite.setAnimation(toggled ? 'down' : 'up');
                         },
                         pointerUp: function () {
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                            sprite.setAnimation(toggled ? 'down' : 'up');
                         },
                         onHoldEnd: function () {
                             if (!active) {
@@ -14146,7 +15000,7 @@ bento.define('bento/gui/togglebutton', [
                                     Bento.audio.playSound(settings.sfx);
                                 }
                             }
-                            sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                            sprite.setAnimation(toggled ? 'down' : 'up');
                         }
                     })
                 ],
@@ -14172,7 +15026,7 @@ bento.define('bento/gui/togglebutton', [
                             }
                         }
                     }
-                    sprite.animation.setAnimation(toggled ? 'down' : 'up');
+                    sprite.setAnimation(toggled ? 'down' : 'up');
                 }
             });
 
@@ -14183,7 +15037,7 @@ bento.define('bento/gui/togglebutton', [
         if (settings.toggled) {
             toggled = true;
         }
-        sprite.animation.setAnimation(toggled ? 'down' : 'up');
+        sprite.setAnimation(toggled ? 'down' : 'up');
         return entity;
     };
 });

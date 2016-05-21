@@ -178,9 +178,10 @@ bento.define('bento/components/animation', [
                     highestFrame = animations[animation].frames[i];
                 }
             }
-            // TODO: entity.name is always an empty string
-            if (highestFrame > this.frameCountX * this.frameCountY - 1)
-                console.log("Warning: the frames in animation " + animation + " of " + this.entity.name + " are out of bounds. Can't use frame " + highestFrame + ".");
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
         }
     };
     /**
@@ -332,6 +333,14 @@ bento.define('bento/components/animation', [
     Animation.prototype.toString = function () {
         return '[object Animation]';
     };
+
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
 
     return Animation;
 });

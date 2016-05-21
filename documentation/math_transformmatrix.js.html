@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>math/array2d.js - Documentation</title>
+    <title>math/transformmatrix.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,7 +28,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">math/array2d.js</h1>
+    <h1 class="page-title">math/transformmatrix.js</h1>
     
 
     
@@ -39,88 +39,122 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * A 2-dimensional array
+ * 3x 3 Matrix specifically used for transformations
+ * [ a b tx ]
+ * [ c d ty ]
+ * [ 0 0 1  ]
  * &lt;br>Exports: Constructor
- * @module bento/math/array2d
- * @param {Number} width - horizontal size of array
- * @param {Number} height - vertical size of array
- * @returns {Array} Returns 2d array.
+ * @module bento/math/transformmatrix
+ * @returns {Matrix} Returns a matrix object.
  */
-bento.define('bento/math/array2d', [], function () {
+bento.define('bento/math/transformmatrix', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
     'use strict';
-    return function (width, height) {
-        var array = [],
-            i,
-            j;
 
-        // init array
-        for (i = 0; i &lt; width; ++i) {
-            array[i] = [];
-            for (j = 0; j &lt; height; ++j) {
-                array[i][j] = null;
-            }
-        }
+    function Matrix() {
+        this.a = 1;
+        this.b = 0;
+        this.c = 0;
+        this.d = 1;
+        this.tx = 0;
+        this.ty = 0;
+    }
 
-        return {
-            /**
-             * Returns true
-             * @function
-             * @returns {Boolean} Is always true
-             * @instance
-             * @name isArray2d
-             */
-            isArray2d: function () {
-                return true;
-            },
-            /**
-             * Callback at every iteration.
-             *
-             * @callback IterationCallBack
-             * @param {Number} x - The current x index
-             * @param {Number} y - The current y index
-             * @param {Number} value - The value at the x,y index
-             */
-            /**
-             * Iterate through 2d array
-             * @function
-             * @param {IterationCallback} callback - Callback function to be called every iteration
-             * @instance
-             * @name iterate
-             */
-            iterate: function (callback) {
-                var i, j;
-                for (j = 0; j &lt; height; ++j) {
-                    for (i = 0; i &lt; width; ++i) {
-                        callback(i, j, array[i][j]);
-                    }
-                }
-            },
-            /**
-             * Get the value inside array
-             * @function
-             * @param {Number} x - x index
-             * @param {Number} y - y index
-             * @returns {Object} The value at the index
-             * @instance
-             * @name get
-             */
-            get: function (x, y) {
-                return array[x][y];
-            },
-            /**
-             * Set the value inside array
-             * @function
-             * @param {Number} x - x index
-             * @param {Number} y - y index
-             * @param {Number} value - new value
-             * @instance
-             * @name set
-             */
-            set: function (x, y, value) {
-                array[x][y] = value;
-            }
-        };
+    Matrix.prototype.multiplyWithVector = function (vector2) {
+        var result = new Vector2();
+        var x = vector2.x;
+        var y = vector2.y;
+
+        result.x = this.a * x + this.c * y + this.tx;
+        result.y = this.b * x + this.d * y + this.ty;
+
+        return result;
     };
+
+    Matrix.prototype.inverseMultiplyWithVector = function (vector2) {
+        var result = new Vector2();
+        var x = vector2.x;
+        var y = vector2.y;
+        var det = 1 / (this.a * this.d - this.c * this.b);
+
+        result.x = this.d * x * det + -this.c * y * det + (this.ty * this.c - this.tx * this.d) * det;
+        result.y = this.a * y * det + -this.b * x * det + (-this.ty * this.a + this.tx * this.b) * det;
+
+        return result;
+    };
+
+    Matrix.prototype.translate = function (x, y) {
+        this.tx += x;
+        this.ty += y;
+
+        return this;
+    };
+
+    Matrix.prototype.scale = function (x, y) {
+        this.a *= x;
+        this.b *= y;
+        this.c *= x;
+        this.d *= y;
+        this.tx *= x;
+        this.ty *= y;
+
+        return this;
+    };
+
+    Matrix.prototype.rotate = function (angle) {
+        var cos = Math.cos(angle);
+        var sin = Math.sin(angle);
+        var a = this.a;
+        var b = this.b;
+        var c = this.c;
+        var d = this.d;
+        var tx = this.tx;
+        var ty = this.ty;
+
+        this.a = a * cos - b * sin;
+        this.b = a * sin + b * cos;
+        this.c = c * cos - d * sin;
+        this.d = c * sin + d * cos;
+        this.tx = tx * cos - ty * sin;
+        this.ty = tx * sin + ty * cos;
+
+        return this;
+    };
+
+    Matrix.prototype.multiplyWith = function (matrix) {
+        var a = this.a;
+        var b = this.b;
+        var c = this.c;
+        var d = this.d;
+
+        this.a = matrix.a * a + matrix.b * c;
+        this.b = matrix.a * b + matrix.b * d;
+        this.c = matrix.c * a + matrix.d * c;
+        this.d = matrix.c * b + matrix.d * d;
+        this.tx = matrix.tx * a + matrix.ty * c + this.tx;
+        this.ty = matrix.tx * b + matrix.ty * d + this.ty;
+
+        return this;
+    };
+    Matrix.prototype.multiply = function (matrix) {
+        return this.clone().multiplyWith(matrix);
+    };
+
+    Matrix.prototype.clone = function () {
+        var matrix = new Matrix();
+        matrix.a = this.a;
+        matrix.b = this.b;
+        matrix.c = this.c;
+        matrix.d = this.d;
+        matrix.tx = this.tx;
+        matrix.ty = this.ty;
+
+        return matrix;
+    };
+
+    return Matrix;
 });</code></pre>
         </article>
     </section>

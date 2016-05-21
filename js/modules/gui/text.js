@@ -399,7 +399,7 @@ bento.define('bento/gui/text', [
                 restoreContext(ctx);
                 canvas.texture = null;
                 packedImage = new PackedImage(canvas);
-                sprite.animation.setup({
+                sprite.setup({
                     image: packedImage
                 });
             },
@@ -633,6 +633,16 @@ bento.define('bento/gui/text', [
                     return text;
                 },
                 /**
+                 * Get array of the string setup settings
+                 * @function
+                 * @instance
+                 * @name getStrings
+                 * @returns Array
+                 */
+                getStrings: function () {
+                    return strings;
+                },
+                /**
                  * Sets and displays current text
                  * @param {String} text - The string you want to set
                  * @param {Object} settings (optional) - Apply new settings for text visuals
@@ -671,8 +681,6 @@ bento.define('bento/gui/text', [
                 }
             });
         init(settings);
-
-        sprite.translation.subPixel = true;
 
         return entity;
     };

@@ -5,7 +5,7 @@
  * @module bento/gui/clickbutton
  * @returns Entity
  */
- bento.define('bento/gui/clickbutton', [
+bento.define('bento/gui/clickbutton', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
@@ -57,7 +57,7 @@
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('down');
+                    sprite.setAnimation('down');
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
@@ -66,7 +66,7 @@
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('down');
+                    sprite.setAnimation('down');
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
@@ -75,7 +75,7 @@
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('up');
+                    sprite.setAnimation('up');
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
@@ -84,7 +84,7 @@
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('up');
+                    sprite.setAnimation('up');
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
@@ -102,7 +102,7 @@
             }),
             entitySettings = Utils.extend({
                 z: 0,
-                name: '',
+                name: 'clickButton',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
                 components: [
@@ -112,9 +112,9 @@
                 family: ['buttons'],
                 init: function () {
                     if (!active && animations.inactive) {
-                        sprite.animation.setAnimation('inactive');
+                        sprite.setAnimation('inactive');
                     } else {
-                        sprite.animation.setAnimation('up');
+                        sprite.setAnimation('up');
                     }
                 }
             }, settings),
@@ -122,19 +122,33 @@
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
-                        sprite.animation.setAnimation('inactive');
+                        sprite.setAnimation('inactive');
                     } else {
-                        sprite.animation.setAnimation('up');
+                        sprite.setAnimation('up');
                     }
                 },
                 doCallback: function () {
                     settings.onClick.apply(entity);
+                },
+                isActive: function () {
+                    return active;
                 }
             });
 
         if (Utils.isDefined(settings.active)) {
             active = settings.active;
         }
+
+        // keep track of clickbuttons on tvOS
+        if (window.ejecta)
+            entity.attach({
+                start: function () {
+                    EventSystem.fire('clickbuttonAdded', entity);
+                },
+                destroy: function () {
+                    EventSystem.fire('clickbuttonRemoved', entity);
+                }
+            });
 
         return entity;
     };

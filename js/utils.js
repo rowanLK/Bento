@@ -299,6 +299,26 @@ bento.define('bento/utils', [], function () {
             }
 
             return keys;
+        })(),
+        remoteMapping = (function () {
+            // the commented out keys are not used by the remote's micro gamepad
+            var buttons = {
+                "0": ["A", "a", "click"], // click on touch area
+                // "1": ["B"],
+                "2": ["X", "x", "play", "pause"], // pause/play button
+                // "3": ["Y"],
+                // "4": ["L1"],
+                // "5": ["R1"],
+                // "6": ["L2"],
+                // "7": ["R2"],
+                "12": ["up"], // upper half touch area
+                "13": ["down"], // lower half touch area
+                "14": ["left"], // left half touch area
+                "15": ["right"], // right half touch area
+                "16": ["menu"] // menu button
+            };
+
+            return buttons;
         })();
 
     utils = {
@@ -389,6 +409,7 @@ bento.define('bento/utils', [], function () {
         getKeyLength: getKeyLength,
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
+        remoteMapping: remoteMapping,
         /**
          * Returns a random integer [0...n)
          * @function
@@ -503,7 +524,7 @@ bento.define('bento/utils', [], function () {
         repeat: function (number, fn) {
             var i;
             for (i = 0; i < number; ++i) {
-                fn();
+                fn(i, number);
             }
         },
         /**
@@ -528,6 +549,70 @@ bento.define('bento/utils', [], function () {
                 hash = hash & hash; // Convert to 32bit integer
             }
             return hash;
+        },
+        /**
+         * Returns a clone of a JSON object
+         * @function
+         * @instance
+         * @param {Object} jsonObj - Object literal that adheres to JSON standards
+         * @name cloneJson
+         */
+        cloneJson: function (jsonObj) {
+            var out;
+            try {
+                out = JSON.parse(JSON.stringify(jsonObj));
+            } catch (e) {
+                out = {};
+                console.log('WARNING: object cloning failed');
+            }
+            return out;
+        },
+        /**
+         * Loops through an array
+         * @function
+         * @instance
+         * @param {Array} array - Array to loop through
+         * @param {Function} callback - Callback function
+         * @name forEach
+         */
+        forEach: function (array, callback) {
+            var i;
+            var l;
+            var stop = false;
+            var breakLoop = function () {
+                stop = true;
+            };
+            for (i = 0, l = array.length; i < l; ++i) {
+                callback(array[i], i, l, breakLoop);
+                if (stop) {
+                    return;
+                }
+            }
+        },
+        /**
+         * Checks whether a value is between two other values
+         * @function
+         * @instance
+         * @param {Number} min - lower limit
+         * @param {Number} value - value to check that's between min and max
+         * @param {Number} max - upper limit
+         * @param {Boolean} includeEdge - includes edge values
+         * @name isBetween
+         */
+        isBetween: function (min, value, max, includeEdge) {
+            if (includeEdge) {
+                return min <= value && value <= max;
+            }
+            return min < value && value < max;
+        },
+        /**
+         * Picks one of the parameters of this function and returns it
+         * @function
+         * @instance
+         * @name pickRandom
+         */
+        pickRandom: function () {
+            return arguments[this.getRandom(arguments.length)];
         },
         /**
          * Checks useragent if device is an apple device. Works on web only.
