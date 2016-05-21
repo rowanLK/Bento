@@ -98,6 +98,7 @@ bento.require([
             // todo: make a nice pixi component one day?
             var drawPixiComponent = {
                 update: function (data) {
+                    // test with filter
                     blurFilter.blur = 20 * Math.cos(entity.timer / 50);
                 },
                 draw: function (data) {

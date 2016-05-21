@@ -24,6 +24,7 @@ bento.define('bento/renderers/pixi', [
         var color = 0xFFFFFF;
         var pixiRenderer;
         var spriteRenderer;
+        var meshRenderer;
         var graphicsRenderer;
         var particleRenderer;
         var test = false;
@@ -137,6 +138,7 @@ bento.define('bento/renderers/pixi', [
                 }
             },
             flush: function () {
+                // note: only spriterenderer has an implementation of flush
                 spriteRenderer.flush();
                 if (pixelSize !== 1 || Utils.isCocoonJs()) {
                     this.restore();
@@ -155,8 +157,16 @@ bento.define('bento/renderers/pixi', [
                 // trick the renderer by setting our own parent
                 transformObject.worldTransform = matrix;
                 transformObject.worldAlpha = alpha;
-                pixiRenderer._tempDisplayObjectParent = transformObject;
-                pixiRenderer.render(displayObject);
+
+                // method 1, replace the "parent" that the renderer swaps with 
+                // maybe not efficient because it calls flush all the time?
+                // pixiRenderer._tempDisplayObjectParent = transformObject;
+                // pixiRenderer.render(displayObject);
+
+                // method 2, set the object parent and update transform
+                displayObject.parent = transformObject;
+                displayObject.updateTransform();
+                displayObject.renderWebGL(pixiRenderer);
             }
         };
 
@@ -177,9 +187,11 @@ bento.define('bento/renderers/pixi', [
                 backgroundColor: 0x000000,
                 clearBeforeRender: false
             });
+            pixiRenderer.filterManager.setFilterStack(pixiRenderer.renderTarget.filterStack);
             tempDisplayObjectParent = pixiRenderer._tempDisplayObjectParent;
             spriteRenderer = pixiRenderer.plugins.sprite;
             graphicsRenderer = pixiRenderer.plugins.graphics;
+            meshRenderer = pixiRenderer.plugins.mesh;
 
             console.log('Init pixi as renderer');
             return renderer;
