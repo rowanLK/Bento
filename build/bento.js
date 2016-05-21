@@ -13518,7 +13518,6 @@ bento.define('bento/renderers/canvas2d', [
 });
 /**
  * Renderer using PIXI by GoodBoyDigital
- * Very unfinished, can only draw sprites for now.
  */
 bento.define('bento/renderers/pixi', [
     'bento',
@@ -13548,6 +13547,12 @@ bento.define('bento/renderers/pixi', [
         var test = false;
         var cocoonScale = 1;
         var pixelSize = settings.pixelSize || 1;
+        var tempDisplayObjectParent = null;
+        var transformObject = {
+            worldTransform: null,
+            worldAlpha: 1,
+            children: []
+        };
         var getPixiMatrix = function () {
             var pixiMatrix = new PIXI.Matrix();
             pixiMatrix.a = matrix.a;
@@ -13633,20 +13638,7 @@ bento.define('bento/renderers/pixi', [
                 texture = new PIXI.Texture(image.texture, rectangle);
                 texture._updateUvs();
 
-                // simulate a sprite for the pixi SpriteRenderer??
-                // sprite = {
-                //     _texture: texture,
-                //     anchor: {
-                //         x: 0,
-                //         y: 0
-                //     },
-                //     worldTransform: matrix,
-                //     worldAlpha: alpha,
-                //     shader: null,
-                //     blendMode: 0
-                // };
-
-                // can't get the above to work, spawn a normal pixi sprite
+                // should sprites be reused instead of spawning one all the time(?)
                 sprite = new PIXI.Sprite(texture);
                 sprite.worldTransform = matrix;
                 sprite.worldAlpha = alpha;
@@ -13674,9 +13666,15 @@ bento.define('bento/renderers/pixi', [
             setOpacity: function (value) {
                 alpha = value;
             },
-            // PIXI feature only
-            drawParticleContainer: function () {
-                // TODO
+            /* 
+             * Pixi only feature: draws any pixi displayObject
+             */
+            drawPixi: function (displayObject) {
+                // trick the renderer by setting our own parent
+                transformObject.worldTransform = matrix;
+                transformObject.worldAlpha = alpha;
+                pixiRenderer._tempDisplayObjectParent = transformObject;
+                pixiRenderer.render(displayObject);
             }
         };
 
@@ -13694,8 +13692,10 @@ bento.define('bento/renderers/pixi', [
             canvas.height *= pixelSize * cocoonScale;
             pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
                 view: canvas,
-                backgroundColor: 0x000000
+                backgroundColor: 0x000000,
+                clearBeforeRender: false
             });
+            tempDisplayObjectParent = pixiRenderer._tempDisplayObjectParent;
             spriteRenderer = pixiRenderer.plugins.sprite;
             graphicsRenderer = pixiRenderer.plugins.graphics;
 
