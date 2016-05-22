@@ -4,6 +4,7 @@ bento.require([
     'bento/math/rectangle',
     'bento/entity',
     'bento/components/sprite',
+    'bento/components/pixi/sprite',
     'bento/components/clickable',
     'bento/tween',
     'bento/utils'
@@ -13,6 +14,7 @@ bento.require([
     Rectangle,
     Entity,
     Sprite,
+    PixiSprite,
     Clickable,
     Tween,
     Utils
@@ -126,6 +128,35 @@ bento.require([
             pixiSprite.filters = [blurFilter];
             Bento.objects.add(entity);
         };
+        var makePixiSprite2 = function () {
+            var blurBehavior = {
+                update: function (data) {
+                    // test with filter
+                    blurFilter.blur = 20 * Math.cos(entity.timer / 50);
+                }
+            };
+            var rotateBehavior = {
+                update: function (data) {
+                    entity.rotation += 0.1;
+                }
+            };
+            var blurFilter = new PIXI.filters.BlurFilter();
+            var pixiSprite = new PixiSprite(bunnySprite);
+            var entity = new Entity({
+                name: 'bunny6',
+                position: new Vector2(viewport.width / 2, viewport.height / 2),
+                originRelative: new Vector2(0.5, 1),
+                components: [
+                    pixiSprite,
+                    blurBehavior,
+                    // rotateBehavior
+                ]
+            });
+
+            pixiSprite.sprite.filters = [blurFilter];
+            Bento.objects.add(entity);
+
+        };
 
         Bento.objects.add(bunny1);
         Bento.objects.add(bunny2);
@@ -140,7 +171,8 @@ bento.require([
         // });
 
         // test with renderer.drawPixi
-        makePixiSprite();
+        // makePixiSprite();
+        makePixiSprite2();
     };
     Bento.setup({
         canvasId: 'canvas',
