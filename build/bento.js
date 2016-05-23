@@ -3966,7 +3966,7 @@ bento.define('bento', [
              * @instance
              * @param {Object} settings - settings for the game
              * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.  
+             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
              * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
              * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
              * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
@@ -3977,6 +3977,7 @@ bento.define('bento', [
              * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
              * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
              * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
+             * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
              * @param {Function} callback - Called when game is loaded (not implemented yet)
              */
             setup: function (settings, callback) {
@@ -3997,6 +3998,7 @@ bento.define('bento', [
                     }
                     settings.sortMode = settings.sortMode || 0;
                     setupCanvas(settings, function () {
+                        Utils.setSuppressThrows(settings.dev ? false : true);
                         // window resize listeners
                         manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
@@ -4168,7 +4170,7 @@ bento.define('bento', [
             setGameSpeed: function (value) {
                 throttle = value;
             },
-            
+
             /**
              * Asset manager
              * @see module:bento/managers/asset
@@ -4476,6 +4478,8 @@ bento.define('bento/entity', [
                 Bento.objects.add(this);
             }
         }
+
+        Entity.suppressThrows = Utils.getSuppressThrows();
     };
     Entity.prototype.isEntity = function () {
         return true;
@@ -4735,7 +4739,10 @@ Bento.objects.attach(entity);
             parent = this;
 
         if (!force && (child.isAdded || child.parent)) {
-            console.log('Warning: Child ' + child.name + ' was already attached before.');
+            if (Entity.suppressThrows)
+                console.log('Warning: Child ' + child.name + ' was already attached.');
+            else
+                throw 'ERROR: Child was already attached.';
             return;
         }
 
@@ -5038,6 +5045,8 @@ Bento.objects.attach(entity);
     Entity.prototype.toString = function () {
         return '[object Entity]';
     };
+
+    Entity.suppressThrows = true;
 
     return Entity;
 });
@@ -5850,7 +5859,8 @@ bento.define('bento/utils', [], function () {
             };
 
             return buttons;
-        })();
+        })(),
+        suppressThrows = true;
 
     utils = {
         /**
@@ -6185,6 +6195,26 @@ bento.define('bento/utils', [], function () {
             ALWAYS: 0,
             NEVER: 1,
             SORT_ON_ADD: 2
+        },
+        /**
+         * Are throws being suppressed?
+         * @function
+         * @instance
+         * @returns {Object} Returns true if throws are suppressed, false if not
+         * @name getSuppressThrows
+         */
+        getSuppressThrows: function () {
+            return suppressThrows;
+        },
+        /**
+         * Turn the suppression of throws on or off
+         * @function
+         * @instance
+         * @param {Boolean} bool - true to suppress throws, false to not suppress throws
+         * @name setSuppressThrows
+         */
+        setSuppressThrows: function (bool) {
+            suppressThrows = bool;
         }
     };
     return utils;
@@ -10289,6 +10319,7 @@ bento.define('bento/managers/object', [
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
+            suppressThrows,
             sortDefault = function () {
                 // default array sorting method (unstable)
                 objects.sort(function (a, b) {
@@ -10385,7 +10416,7 @@ bento.define('bento/managers/object', [
                 var object,
                     i;
                 data = data || getGameData();
-                
+
                 EventSystem.fire('preDraw', data);
                 data.renderer.begin();
                 for (i = 0; i < objects.length; ++i) {
@@ -10401,13 +10432,16 @@ bento.define('bento/managers/object', [
                 EventSystem.fire('postDraw', data);
             },
             attach = function (object) {
-                var i, 
-                    type, 
+                var i,
+                    type,
                     family,
                     data = getGameData();
 
                 if (object.isAdded || object.parent) {
-                    console.log('Warning: Entity ' + object.name + ' was already added.');
+                    if (suppressThrows)
+                        console.log('Warning: Entity ' + object.name + ' was already added.');
+                    else
+                        throw 'ERROR: Entity was already added.';
                     return;
                 }
 
@@ -10462,11 +10496,11 @@ bento.define('bento/managers/object', [
                  * @name remove
                  */
                 remove: function (object) {
-                    var i, 
-                        type, 
-                        index, 
-                        family, 
-                        pool, 
+                    var i,
+                        type,
+                        index,
+                        family,
+                        pool,
                         data = getGameData();
                     if (!object) {
                         return;
@@ -10741,6 +10775,8 @@ bento.define('bento/managers/object', [
         if (settings.defaultSort) {
             sort = defaultSort;
         }
+
+        suppressThrows = Utils.getSuppressThrows();
 
         return module;
     };
@@ -12480,7 +12516,7 @@ bento.define('bento/canvas', [
 
                     // re-apply the origin translation
                     data.renderer.save();
-                    data.renderer.translate(entity.origin.x, entity.origin.y);
+                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
                 },
                 postDraw: function (data) {
                     if (drawn) {

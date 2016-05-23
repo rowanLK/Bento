@@ -259,6 +259,8 @@ bento.define('bento/entity', [
                 Bento.objects.add(this);
             }
         }
+
+        Entity.suppressThrows = Utils.getSuppressThrows();
     };
     Entity.prototype.isEntity = function () {
         return true;
@@ -518,7 +520,10 @@ Bento.objects.attach(entity);
             parent = this;
 
         if (!force && (child.isAdded || child.parent)) {
-            console.log('Warning: Child ' + child.name + ' was already attached before.');
+            if (Entity.suppressThrows)
+                console.log('Warning: Child ' + child.name + ' was already attached.');
+            else
+                throw 'ERROR: Child was already attached.';
             return;
         }
 
@@ -821,6 +826,8 @@ Bento.objects.attach(entity);
     Entity.prototype.toString = function () {
         return '[object Entity]';
     };
+
+    Entity.suppressThrows = true;
 
     return Entity;
 });

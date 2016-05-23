@@ -95,7 +95,7 @@ bento.define('bento/canvas', [
 
                     // re-apply the origin translation
                     data.renderer.save();
-                    data.renderer.translate(entity.origin.x, entity.origin.y);
+                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
                 },
                 postDraw: function (data) {
                     if (drawn) {
