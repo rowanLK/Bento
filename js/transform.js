@@ -103,7 +103,7 @@ bento.define('bento/transform', [
         parent = entity;
         while (parent.parent) {
             parent = parent.parent;
-            parents.unshift(parent);
+            parents.push(parent);
         }
         // is top parent floating?
         if (parents.length && parents[0].float) {
@@ -120,7 +120,7 @@ bento.define('bento/transform', [
         /**
          * transform the position vector with each component
          */
-        for (i = 0; i < parents.length; ++i) {
+        for (i = parents.length - 1; i >= 0; --i) {
             parent = parents[i];
 
             // construct a scaling matrix and apply to position vector
@@ -135,7 +135,7 @@ bento.define('bento/transform', [
         }
 
         return positionVector;
-    }
+    };
 
     Transform.prototype.getLocalPosition = function (worldPosition) {
         var positionVector,
@@ -160,7 +160,7 @@ bento.define('bento/transform', [
         parent = entity;
         while (parent.parent) {
             parent = parent.parent;
-            parents.unshift(parent);
+            parents.push(parent);
         }
         // is top parent floating?
         if (parents.length && parents[0].float) {
@@ -177,7 +177,7 @@ bento.define('bento/transform', [
         /**
          * Reverse transform the position vector with each component
          */
-        for (i = 0; i < parents.length; ++i) {
+        for (i = parents.length - 1; i >= 0; --i) {
             parent = parents[i];
 
             // construct a translation matrix and apply to position vector
@@ -185,7 +185,7 @@ bento.define('bento/transform', [
             matrix = new Matrix().translate(-position.x, -position.y);
             matrix.multiplyWithVector(positionVector);
             // construct a rotation matrix and apply to position vector
-            matrix = new Matrix().rotate(-parent.rotation)
+            matrix = new Matrix().rotate(-parent.rotation);
             matrix.multiplyWithVector(positionVector);
             // construct a scaling matrix and apply to position vector
             matrix = new Matrix().scale(1 / parent.scale.x, 1 / parent.scale.y);
