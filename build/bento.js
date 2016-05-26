@@ -5035,7 +5035,7 @@ Bento.objects.attach(entity);
             parents.unshift(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 
@@ -5123,7 +5123,7 @@ Bento.objects.attach(entity);
             parents.unshift(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 
@@ -5375,7 +5375,7 @@ bento.define('bento/renderer', [
  */
 bento.define('bento/utils', [], function () {
     'use strict';
-    var utils,
+    var Utils,
         isString = function (value) {
             return typeof value === 'string' || value instanceof String;
         },
@@ -5692,7 +5692,7 @@ bento.define('bento/utils', [], function () {
         })(),
         suppressThrows = true;
 
-    utils = {
+    Utils = {
         /**
          * @function
          * @instance
@@ -5942,7 +5942,7 @@ bento.define('bento/utils', [], function () {
          * Callback during foreach
          *
          * @callback IteratorCallback
-         * @param {???} value - The value in the array or object literal
+         * @param {Object} value - The value in the array or object literal
          * @param {Number} index - Index of the array or key in object literal
          * @param {Number} length - Length of the array or key count in object literal
          * @param {Fuction} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
@@ -6070,7 +6070,7 @@ bento.define('bento/utils', [], function () {
             suppressThrows = bool;
         }
     };
-    return utils;
+    return Utils;
 });
 /**
  * Animation component. Draws an animated sprite on screen at the entity position.

@@ -816,7 +816,7 @@ Bento.objects.attach(entity);
             parents.unshift(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 
@@ -904,7 +904,7 @@ Bento.objects.attach(entity);
             parents.unshift(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 

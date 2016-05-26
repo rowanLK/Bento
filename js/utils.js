@@ -5,7 +5,7 @@
  */
 bento.define('bento/utils', [], function () {
     'use strict';
-    var utils,
+    var Utils,
         isString = function (value) {
             return typeof value === 'string' || value instanceof String;
         },
@@ -322,7 +322,7 @@ bento.define('bento/utils', [], function () {
         })(),
         suppressThrows = true;
 
-    utils = {
+    Utils = {
         /**
          * @function
          * @instance
@@ -700,5 +700,5 @@ bento.define('bento/utils', [], function () {
             suppressThrows = bool;
         }
     };
-    return utils;
+    return Utils;
 });
