@@ -867,7 +867,7 @@ If the objects have the same property name, then the old one is pushed to a prop
             <td class="type">
             
                 
-<span class="param-type">Array</span>
+<span class="param-type">Array/Object</span>
 
 
             
@@ -877,7 +877,7 @@ If the objects have the same property name, then the old one is pushed to a prop
 
             
 
-            <td class="description last">Array to loop through</td>
+            <td class="description last">Array or Object literal to loop through</td>
         </tr>
 
     
@@ -890,7 +890,7 @@ If the objects have the same property name, then the old one is pushed to a prop
             <td class="type">
             
                 
-<span class="param-type">function</span>
+<span class="param-type">IteratorCallback</span>
 
 
             
@@ -941,7 +941,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line571">line 571</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line580">line 580</a>
     </li></ul></dd>
     
 
@@ -1834,7 +1834,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line659">line 659</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line682">line 682</a>
     </li></ul></dd>
     
 
@@ -1938,7 +1938,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line628">line 628</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line651">line 651</a>
     </li></ul></dd>
     
 
@@ -2020,7 +2020,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line618">line 618</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line641">line 641</a>
     </li></ul></dd>
     
 
@@ -2298,7 +2298,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line593">line 593</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line616">line 616</a>
     </li></ul></dd>
     
 
@@ -2458,7 +2458,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line637">line 637</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line660">line 660</a>
     </li></ul></dd>
     
 
@@ -3086,7 +3086,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line609">line 609</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line632">line 632</a>
     </li></ul></dd>
     
 
@@ -3547,7 +3547,7 @@ If the objects have the same property name, then the old one is pushed to a prop
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line669">line 669</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line692">line 692</a>
     </li></ul></dd>
     
 
@@ -4014,6 +4014,210 @@ If the objects have the same property name, then the old one is pushed to a prop
     
 
     
+        <h3 class="subsection-title">Type Definitions</h3>
+
+        
+                
+
+    
+
+    <h4 class="name" id="~IteratorCallback"><span class="type-signature"></span>IteratorCallback<span class="signature">(value, index, length, breakLoop)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Callback during foreach
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>value</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The value in the array or object literal</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>index</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Index of the array or key in object literal</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>length</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Length of the array or key count in object literal</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>breakLoop</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Fuction</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Calling this breaks the loop and stops iterating over the array or object literal</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line571">line 571</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+    
 
     
 </article>
@@ -4028,7 +4232,7 @@ If the objects have the same property name, then the old one is pushed to a prop
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.2</a> on Mon May 23 2016 17:42:40 GMT+0200 (CEST) using the Minami theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Thu May 26 2016 13:57:53 GMT+0200 (CEST) using the Minami theme.
 </footer>
 
 <script>prettyPrint();</script>
