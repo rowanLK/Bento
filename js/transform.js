@@ -106,7 +106,7 @@ bento.define('bento/transform', [
             parents.push(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 
@@ -163,7 +163,7 @@ bento.define('bento/transform', [
             parents.push(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 

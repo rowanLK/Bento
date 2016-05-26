@@ -5445,7 +5445,7 @@ bento.define('bento/transform', [
             parents.push(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 
@@ -5502,7 +5502,7 @@ bento.define('bento/transform', [
             parents.push(parent);
         }
         // is top parent floating?
-        if (parents.length && parents[0].float) {
+        if (parents.length && parents[parents.length - 1].float) {
             isFloating = true;
         }
 
@@ -5545,7 +5545,7 @@ bento.define('bento/transform', [
  */
 bento.define('bento/utils', [], function () {
     'use strict';
-    var utils,
+    var Utils,
         isString = function (value) {
             return typeof value === 'string' || value instanceof String;
         },
@@ -5862,7 +5862,7 @@ bento.define('bento/utils', [], function () {
         })(),
         suppressThrows = true;
 
-    utils = {
+    Utils = {
         /**
          * @function
          * @instance
@@ -6240,7 +6240,7 @@ bento.define('bento/utils', [], function () {
             suppressThrows = bool;
         }
     };
-    return utils;
+    return Utils;
 });
 /**
  * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
