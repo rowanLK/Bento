@@ -14026,10 +14026,6 @@ bento.define('bento/gui/clickbutton', [
                 'down': {
                     speed: 0,
                     frames: [1]
-                },
-                'inactive': {
-                    speed: 0,
-                    frames: [2]
                 }
             },
             sprite = new Sprite({
