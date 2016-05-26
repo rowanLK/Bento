@@ -572,7 +572,7 @@ bento.define('bento/utils', [], function () {
          * Callback during foreach
          *
          * @callback IteratorCallback
-         * @param {???} value - The value in the array or object literal
+         * @param {Object} value - The value in the array or object literal
          * @param {Number} index - Index of the array or key in object literal
          * @param {Number} length - Length of the array or key count in object literal
          * @param {Fuction} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
@@ -585,7 +585,7 @@ bento.define('bento/utils', [], function () {
          * @param {IteratorCallback} callback - Callback function
          * @name forEach
          */
-        foEach: function (array, callback) {
+        forEach: function (array, callback) {
             var obj;
             var i;
             var l;
