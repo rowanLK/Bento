@@ -10807,7 +10807,7 @@ bento.define('bento/managers/object', [
 /**
  * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
  * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.audio namespace. 
+ * <br>Exports: Object, can be accessed through Bento.audio namespace.
  * @module bento/managers/savestate
  * @returns SaveState
  */
@@ -10957,6 +10957,16 @@ bento.define('bento/managers/savestate', [
          */
         isEmpty: function () {
             return storage.length === 0;
+        },
+        /**
+         * Returns a copy of the uniqueID.
+         * @function
+         * @instance
+         * @returns {String} uniqueID of current game
+         * @name getId
+         */
+        getId: function () {
+            return uniqueID.slice(0);
         },
         /**
          * Sets an identifier that's prepended on every key.
