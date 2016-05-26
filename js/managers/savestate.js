@@ -79,7 +79,7 @@ bento.define('bento/managers/savestate', [
             // also store the keys
             if (this.saveKeys) {
                 keys = this.load('_keys', []);
-                if (keys.indexOf(elementKey) > 0) {
+                if (keys.indexOf(elementKey) > -1) {
                     return;
                 }
                 keys.push(elementKey);

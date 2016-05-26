@@ -5939,24 +5939,47 @@ bento.define('bento/utils', [], function () {
             return out;
         },
         /**
+         * Callback during foreach
+         *
+         * @callback IteratorCallback
+         * @param {???} value - The value in the array or object literal
+         * @param {Number} index - Index of the array or key in object literal
+         * @param {Number} length - Length of the array or key count in object literal
+         * @param {Fuction} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
+         */
+        /**
          * Loops through an array
          * @function
          * @instance
-         * @param {Array} array - Array to loop through
-         * @param {Function} callback - Callback function
+         * @param {Array/Object} array - Array or Object literal to loop through
+         * @param {IteratorCallback} callback - Callback function
          * @name forEach
          */
         forEach: function (array, callback) {
+            var obj;
             var i;
             var l;
             var stop = false;
             var breakLoop = function () {
                 stop = true;
             };
-            for (i = 0, l = array.length; i < l; ++i) {
-                callback(array[i], i, l, breakLoop);
-                if (stop) {
-                    return;
+            if (Utils.isArray(array)) {
+                for (i = 0, l = array.length; i < l; ++i) {
+                    callback(array[i], i, l, breakLoop, array[i + 1]);
+                    if (stop) {
+                        return;
+                    }
+                }
+            } else {
+                l = Utils.getKeyLength(array);
+                for (i in array) {
+                    if (!array.hasOwnProperty(i)) {
+                        continue;
+                    }
+                    callback(array[i], i, l, breakLoop);
+                    if (stop) {
+                        return;
+                    }
                 }
             }
         },
@@ -10404,7 +10427,7 @@ bento.define('bento/managers/savestate', [
             // also store the keys
             if (this.saveKeys) {
                 keys = this.load('_keys', []);
-                if (keys.indexOf(elementKey) > 0) {
+                if (keys.indexOf(elementKey) > -1) {
                     return;
                 }
                 keys.push(elementKey);
@@ -12047,7 +12070,7 @@ bento.define('bento/canvas', [
 
                     // re-apply the origin translation
                     data.renderer.save();
-                    data.renderer.translate(entity.origin.x, entity.origin.y);
+                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
                 },
                 postDraw: function (data) {
                     data.renderer.restore();
