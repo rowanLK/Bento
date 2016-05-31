@@ -60,6 +60,7 @@ bento.define('bento', [
             avg: 0,
             lastTime: 0
         },
+        dev = false,
         gameData = {},
         viewport = new Rectangle(0, 0, 640, 480),
         setupDebug = function () {
@@ -200,7 +201,8 @@ bento.define('bento', [
                     }
                     settings.sortMode = settings.sortMode || 0;
                     setupCanvas(settings, function () {
-                        Utils.setSuppressThrows(settings.dev ? false : true);
+                        dev = settings.dev || false;
+                        Utils.setSuppressThrows(dev ? false : true);
                         // window resize listeners
                         manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
@@ -372,7 +374,16 @@ bento.define('bento', [
             setGameSpeed: function (value) {
                 throttle = value;
             },
-
+            /**
+             * Is game in dev mode?
+             * @function
+             * @instance
+             * @returns Boolean
+             * @name isDev
+             */
+            isDev: function () {
+                return dev;
+            },
             /**
              * Asset manager
              * @see module:bento/managers/asset
