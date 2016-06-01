@@ -6,10 +6,15 @@
  * @returns SaveState
  */
 bento.define('bento/managers/savestate', [
+    'bento',
     'bento/utils'
-], function (Utils) {
+], function (
+    Bento,
+    Utils
+) {
     'use strict';
     var uniqueID = document.URL,
+        dev = false,
         storage,
         // an object that acts like a localStorageObject
         storageFallBack = {
@@ -74,6 +79,9 @@ bento.define('bento/managers/savestate', [
             if (typeof elementKey !== 'string') {
                 elementKey = JSON.stringify(elementKey);
             }
+            if (element === undefined) {
+                throw "ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.";
+            }
             storage.setItem(uniqueID + elementKey, JSON.stringify(element));
 
             // also store the keys
@@ -117,8 +125,12 @@ bento.define('bento/managers/savestate', [
             try {
                 return JSON.parse(element);
             } catch (e) {
-                console.log('WARNING: save file corrupted.', e);
-                return defaultValue;
+                if (dev) {
+                    throw 'ERROR: save file corrupted. ' + e;
+                } else {
+                    console.log('WARNING: save file corrupted.', e);
+                    return defaultValue;
+                }
             }
         },
         /**
@@ -192,6 +204,16 @@ bento.define('bento/managers/savestate', [
          */
         getStorage: function () {
             return storage;
+        },
+        /**
+         * Setting the dev mode to true will use throws instead of console.logs
+         * @function
+         * @instance
+         * @param {Boolean} bool - set to true to use throws instead of console.logs
+         * @name setDev
+         */
+        setDev: function (bool) {
+            dev = bool;
         }
     };
 });

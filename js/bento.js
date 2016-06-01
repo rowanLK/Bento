@@ -203,6 +203,7 @@ bento.define('bento', [
                     setupCanvas(settings, function () {
                         dev = settings.dev || false;
                         Utils.setSuppressThrows(dev ? false : true);
+                        SaveState.setDev(dev);
                         // window resize listeners
                         manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
