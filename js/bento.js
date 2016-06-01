@@ -126,6 +126,7 @@ bento.define('bento', [
             }
             // setup renderer
             Renderer(settings.renderer, canvas, settings, function (rend) {
+                console.log('Init ' + rend.name + ' as renderer');
                 renderer = rend;
                 gameData = module.getGameData();
                 callback();
