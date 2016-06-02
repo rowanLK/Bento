@@ -271,11 +271,11 @@ bento.define('bento/entity', [
             l,
             component;
         data = data || {};
+        data.entity = this;
         // update components
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
             if (component && component.start) {
-                data.entity = this;
                 component.start(data);
             }
         }
@@ -283,13 +283,14 @@ bento.define('bento/entity', [
     Entity.prototype.destroy = function (data) {
         var i,
             l,
-            component;
+            component,
+            components = this.components;
         data = data || {};
+        data.entity = this;
         // update components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
             if (component && component.destroy) {
-                data.entity = this;
                 component.destroy(data);
             }
         }
@@ -297,14 +298,15 @@ bento.define('bento/entity', [
     Entity.prototype.update = function (data) {
         var i,
             l,
-            component;
+            component,
+            components = this.components;
 
         data = data || {};
+        data.entity = this;
         // update components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
             if (component && component.update) {
-                data.entity = this;
                 component.update(data);
             }
         }
@@ -316,6 +318,7 @@ bento.define('bento/entity', [
     };
     Entity.prototype.draw = function (data) {
         var i, l, component;
+        var components = this.components;
         var matrix;
         if (!this.visible) {
             return;
@@ -324,22 +327,21 @@ bento.define('bento/entity', [
             viewport: Bento.getViewport(),
             renderer: Bento.getRenderer()
         };
+        data.entity = this;
 
         this.transform.draw(data);
 
         // call components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
             if (component && component.draw) {
-                data.entity = this;
                 component.draw(data);
             }
         }
         // post draw
-        for (i = this.components.length - 1; i >= 0; i--) {
-            component = this.components[i];
+        for (i = components.length - 1; i >= 0; i--) {
+            component = components[i];
             if (component && component.postDraw) {
-                data.entity = this;
                 component.postDraw(data);
             }
         }
@@ -444,7 +446,6 @@ entity.addX(10);
             component = this.components[i];
             if (component) {
                 if (component.onParentAttached) {
-                    data.entity = this;
                     component.onParentAttached(data);
                 }
             }
@@ -469,7 +470,6 @@ entity.addX(10);
             component = this.components[i];
             if (component) {
                 if (component.onParentCollided) {
-                    data.entity = this;
                     component.onParentCollided(data);
                 }
             }
