@@ -4002,6 +4002,7 @@ bento.define('bento', [
                     setupCanvas(settings, function () {
                         dev = settings.dev || false;
                         Utils.setSuppressThrows(dev ? false : true);
+                        SaveState.setDev(dev);
                         // window resize listeners
                         manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
@@ -10819,15 +10820,20 @@ bento.define('bento/managers/object', [
 /**
  * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
  * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.audio namespace. 
+ * <br>Exports: Object, can be accessed through Bento.audio namespace.
  * @module bento/managers/savestate
  * @returns SaveState
  */
 bento.define('bento/managers/savestate', [
+    'bento',
     'bento/utils'
-], function (Utils) {
+], function (
+    Bento,
+    Utils
+) {
     'use strict';
     var uniqueID = document.URL,
+        dev = false,
         storage,
         // an object that acts like a localStorageObject
         storageFallBack = {
@@ -10892,6 +10898,9 @@ bento.define('bento/managers/savestate', [
             if (typeof elementKey !== 'string') {
                 elementKey = JSON.stringify(elementKey);
             }
+            if (element === undefined) {
+                throw "ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.";
+            }
             storage.setItem(uniqueID + elementKey, JSON.stringify(element));
 
             // also store the keys
@@ -10935,8 +10944,12 @@ bento.define('bento/managers/savestate', [
             try {
                 return JSON.parse(element);
             } catch (e) {
-                console.log('WARNING: save file corrupted.', e);
-                return defaultValue;
+                if (dev) {
+                    throw 'ERROR: save file corrupted. ' + e;
+                } else {
+                    console.log('WARNING: save file corrupted.', e);
+                    return defaultValue;
+                }
             }
         },
         /**
@@ -10971,6 +10984,16 @@ bento.define('bento/managers/savestate', [
             return storage.length === 0;
         },
         /**
+         * Returns a copy of the uniqueID.
+         * @function
+         * @instance
+         * @returns {String} uniqueID of current game
+         * @name getId
+         */
+        getId: function () {
+            return uniqueID.slice(0);
+        },
+        /**
          * Sets an identifier that's prepended on every key.
          * By default this is the game's URL, to prevend savefile clashing.
          * @function
@@ -11000,6 +11023,16 @@ bento.define('bento/managers/savestate', [
          */
         getStorage: function () {
             return storage;
+        },
+        /**
+         * Setting the dev mode to true will use throws instead of console.logs
+         * @function
+         * @instance
+         * @param {Boolean} bool - set to true to use throws instead of console.logs
+         * @name setDev
+         */
+        setDev: function (bool) {
+            dev = bool;
         }
     };
 });
@@ -14035,10 +14068,6 @@ bento.define('bento/gui/clickbutton', [
                 'down': {
                     speed: 0,
                     frames: [1]
-                },
-                'inactive': {
-                    speed: 0,
-                    frames: [2]
                 }
             },
             sprite = new Sprite({
