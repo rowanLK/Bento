@@ -107,7 +107,6 @@ bento.define('bento/renderers/webgl', [
                     glRenderer = original;
                 }
             };
-        console.log('Init webgl as renderer');
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {

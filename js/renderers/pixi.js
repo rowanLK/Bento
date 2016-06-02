@@ -193,7 +193,6 @@ bento.define('bento/renderers/pixi', [
             graphicsRenderer = pixiRenderer.plugins.graphics;
             meshRenderer = pixiRenderer.plugins.mesh;
 
-            console.log('Init pixi as renderer');
             return renderer;
         } else {
             if (!window.PIXI) {

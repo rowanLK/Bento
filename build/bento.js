@@ -3924,6 +3924,7 @@ bento.define('bento', [
             }
             // setup renderer
             Renderer(settings.renderer, canvas, settings, function (rend) {
+                console.log('Init ' + rend.name + ' as renderer');
                 renderer = rend;
                 gameData = module.getGameData();
                 callback();
@@ -9059,7 +9060,7 @@ bento.define('bento/managers/asset', [
                 }, false);
                 img.addEventListener('error', function (evt) {
                     // TODO: Implement failure: should it retry to load the image?
-                    console.log('ERROR: loading image failed');
+                    console.log('ERROR: loading image failed - ' + name);
                 }, false);
             },
             /**
@@ -13608,7 +13609,6 @@ bento.define('bento/renderers/canvas2d', [
                 colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
                 return colorStr;
             };
-        console.log('Init canvas2d as renderer');
 
         // resize canvas according to pixelSize
         canvas.width *= pixelSize;
@@ -13823,7 +13823,6 @@ bento.define('bento/renderers/pixi', [
             graphicsRenderer = pixiRenderer.plugins.graphics;
             meshRenderer = pixiRenderer.plugins.mesh;
 
-            console.log('Init pixi as renderer');
             return renderer;
         } else {
             if (!window.PIXI) {
@@ -13944,7 +13943,6 @@ bento.define('bento/renderers/webgl', [
                     glRenderer = original;
                 }
             };
-        console.log('Init webgl as renderer');
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {
