@@ -130,6 +130,9 @@ bento.define('bento/renderers/canvas2d', [
             if (context.mozImageSmoothingEnabled) {
                 context.mozImageSmoothingEnabled = false;
             }
+            if (context.msImageSmoothingEnabled) {
+                context.msImageSmoothingEnabled = false;
+            }
         }
         return renderer;
     };
