@@ -55,7 +55,7 @@ bento.define('bento/managers/input', [
             touchStart = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTouchPosition(evt, i, 'start');
                     pointerDown(evt);
                 }
@@ -63,7 +63,7 @@ bento.define('bento/managers/input', [
             touchMove = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTouchPosition(evt, i, 'move');
                     pointerMove(evt);
                 }
@@ -71,7 +71,7 @@ bento.define('bento/managers/input', [
             touchEnd = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTouchPosition(evt, i, 'end');
                     pointerUp(evt);
                 }
@@ -168,7 +168,7 @@ bento.define('bento/managers/input', [
             },
             updatePointer = function (evt) {
                 var i = 0;
-                for (i = 0; i < pointers.length; i += 1) {
+                for (i = 0; i < pointers.length; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers[i].position = evt.position;
                         pointers[i].worldPosition = evt.worldPosition;
@@ -179,7 +179,7 @@ bento.define('bento/managers/input', [
             },
             removePointer = function (evt) {
                 var i = 0;
-                for (i = 0; i < pointers.length; i += 1) {
+                for (i = 0; i < pointers.length; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers.splice(i, 1);
                         return;
@@ -465,7 +465,7 @@ bento.define('bento/managers/input', [
             tvTouchStart = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTvTouchPosition(evt, i, 'start');
                     tvPointerDown(evt);
                 }
@@ -473,7 +473,7 @@ bento.define('bento/managers/input', [
             tvTouchMove = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTvTouchPosition(evt, i, 'move');
                     tvPointerMove(evt);
                 }
@@ -481,7 +481,7 @@ bento.define('bento/managers/input', [
             tvTouchEnd = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTvTouchPosition(evt, i, 'end');
                     tvPointerUp(evt);
                 }
