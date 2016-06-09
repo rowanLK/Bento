@@ -29,22 +29,23 @@ bento.define('bento/gui/togglebutton', [
         var viewport = Bento.getViewport(),
             active = true,
             toggled = false,
+            animations = settings.animations || {
+                'up': {
+                    speed: 0,
+                    frames: [0]
+                },
+                'down': {
+                    speed: 0,
+                    frames: [1]
+                }
+            },
             sprite = new Sprite({
                 image: settings.image,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
                 frameCountX: settings.frameCountX,
                 frameCountY: settings.frameCountY,
-                animations: settings.animations || {
-                    'up': {
-                        speed: 0,
-                        frames: [0]
-                    },
-                    'down': {
-                        speed: 0,
-                        frames: [1]
-                    }
-                }
+                animations: animations
             }),
             entitySettings = Utils.extend({
                 z: 0,
@@ -109,6 +110,20 @@ bento.define('bento/gui/togglebutton', [
                         }
                     }
                     sprite.setAnimation(toggled ? 'down' : 'up');
+                },
+                setActive: function (bool) {
+                    active = bool;
+                    if (!active && animations.inactive) {
+                        sprite.setAnimation('inactive');
+                    } else {
+                        sprite.setAnimation(toggled ? 'down' : 'up');
+                    }
+                },
+                doCallback: function () {
+                    settings.onToggle.apply(entity);
+                },
+                isActive: function () {
+                    return active;
                 }
             });
 
