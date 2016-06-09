@@ -13,7 +13,8 @@ bento.define('bento/gui/togglebutton', [
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
-    'bento/tween'
+    'bento/tween',
+    'bento/eventsystem'
 ], function (
     Bento,
     Vector2,
@@ -22,7 +23,8 @@ bento.define('bento/gui/togglebutton', [
     Clickable,
     Entity,
     Utils,
-    Tween
+    Tween,
+    EventSystem
 ) {
     'use strict';
     return function (settings) {
@@ -111,6 +113,9 @@ bento.define('bento/gui/togglebutton', [
                     }
                     sprite.setAnimation(toggled ? 'down' : 'up');
                 },
+                mimicClick: function () {
+                    entity.getComponent('clickable').callbacks.onHoldEnd();
+                },
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
@@ -135,6 +140,18 @@ bento.define('bento/gui/togglebutton', [
             toggled = true;
         }
         sprite.setAnimation(toggled ? 'down' : 'up');
+
+        // keep track of togglebuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
+            entity.attach({
+                start: function () {
+                    EventSystem.fire('clickbuttonAdded', entity);
+                },
+                destroy: function () {
+                    EventSystem.fire('clickbuttonRemoved', entity);
+                }
+            });
+
         return entity;
     };
 });

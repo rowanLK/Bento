@@ -27,9 +27,9 @@ gulp.task('webgl', function () {
         gulp.src([
             'build/bento-webgl.js'
         ])
-        .pipe(uglify())
-        .pipe(rename('bento-webgl.min.js'))
-        .pipe(gulp.dest('build'));
+            .pipe(uglify())
+            .pipe(rename('bento-webgl.min.js'))
+            .pipe(gulp.dest('build'));
     });
 });
 
@@ -89,7 +89,7 @@ gulp.task('watch', function () {
 
 gulp.task('doc', function () {
     gulp.src('./js/**/*.js')
-        .pipe(exec('jsdoc -r -c conf.json ./readme.md -d documentation -t ./node_modules/minami'))
+        .pipe(exec('jsdoc -r -c conf.json ./readme.md -d documentation -t ./node_modules/minami'));
 });
 
 gulp.task('docwatch', function () {

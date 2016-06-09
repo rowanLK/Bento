@@ -244,6 +244,33 @@ bento.define('bento/utils', [], function () {
                     "190": ["period", "."],
                     "191": ["slash", "forwardslash", "/"],
                     "192": ["graveaccent", "`"],
+
+                    "195": ["GamepadA"],
+                    "196": ["GamepadB"],
+                    "197": ["GamepadX"],
+                    "198": ["GamepadY"],
+                    "199": ["GamepadRightShoulder"], // R1
+                    "200": ["GamepadLeftShoulder"], // L1
+                    "201": ["GamepadLeftTrigger"], // L2
+                    "202": ["GamepadRightTrigger"], // R2
+                    "203": ["GamepadDPadUp"],
+                    "204": ["GamepadDPadDown"],
+                    "205": ["GamepadDPadLeft"],
+                    "206": ["GamepadDPadRight"],
+                    "207": ["GamepadMenu"], // 'start' button
+                    "208": ["GamepadView"], // 'select' button
+                    "209": ["GamepadLeftThumbstick"], // pressed left thumbstick
+                    "210": ["GamepadRightThumbstick"], // pressed right thumbstick
+                    "211": ["GamepadLeftThumbstickUp"],
+                    "212": ["GamepadLeftThumbstickDown"],
+                    "213": ["GamepadLeftThumbstickRight"],
+                    "214": ["GamepadLeftThumbstickLeft"],
+                    "215": ["GamepadRightThumbstickUp"],
+                    "216": ["GamepadRightThumbstickDown"],
+                    "217": ["GamepadRightThumbstickRight"],
+                    "218": ["GamepadRightThumbstickLeft"],
+                    "7": ["GamepadXboxButton"], // the middle xbox button
+
                     "219": ["openbracket", "["],
                     "220": ["backslash", "\\"],
                     "221": ["closebracket", "]"],
@@ -316,6 +343,33 @@ bento.define('bento/utils', [], function () {
                 "14": ["left"], // left half touch area
                 "15": ["right"], // right half touch area
                 "16": ["menu"] // menu button
+            };
+
+            return buttons;
+        })(),
+        /**
+         * Mapping for the Xbox controller
+         * @return {Object} mapping of all the buttons
+         */
+        gamepadMapping = (function () {
+            var buttons = {
+                "0": ["A", "a"],
+                "1": ["B", "b"],
+                "2": ["X", "x"],
+                "3": ["Y", "y"],
+                "4": ["L1", "l1"],
+                "5": ["R1", "r1"],
+                "6": ["L2", "l2"],
+                "7": ["R2", "r2"],
+                "8": ["back", "select"],
+                "9": ["start"],
+                "10": ["right-thumb", "right-stick"],
+                "11": ["left-thumb", "left-stick"],
+                "12": ["up"],
+                "13": ["down"],
+                "14": ["left"],
+                "15": ["right"],
+                "16": ["menu", "home"]
             };
 
             return buttons;
@@ -411,6 +465,7 @@ bento.define('bento/utils', [], function () {
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         remoteMapping: remoteMapping,
+        gamepadMapping: gamepadMapping,
         /**
          * Returns a random integer [0...n)
          * @function
