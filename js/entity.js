@@ -14,6 +14,9 @@
  * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
  * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
  * @param {Boolean} settings.z - z-index to set
+ * @param {Number} settings.alpha - Opacity of the entity (1 = fully visible)
+ * @param {Number} settings.rotation - Rotation of the entity in radians
+ * @param {Vector2} settings.scale - Scale of the entity
  * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused
  * @param {Boolean} settings.global - Should entity remain after hiding a screen
  * @param {Boolean} settings.float - Should entity move with the screen
@@ -209,10 +212,13 @@ bento.define('bento/entity', [
         // read settings
         if (settings) {
             if (settings.position) {
-                this.position = settings.position;
+                this.position = settings.position; // should this be cloned?
             }
             if (settings.origin) {
                 this.origin = settings.origin;
+            }
+            if (settings.scale) {
+                this.scale = settings.scale;
             }
             if (settings.name) {
                 this.name = settings.name;
@@ -224,6 +230,12 @@ bento.define('bento/entity', [
                 for (i = 0; i < settings.family.length; ++i) {
                     this.family.push(settings.family[i]);
                 }
+            }
+            if (Utils.isDefined(settings.alpha)) {
+                this.alpha = settings.alpha;
+            }
+            if (Utils.isDefined(settings.rotation)) {
+                this.rotation = settings.rotation;
             }
 
             this.z = settings.z || 0;
@@ -250,7 +262,7 @@ bento.define('bento/entity', [
                 this.setOriginRelative(settings.originRelative);
             }
 
-            // you might want to init with all components
+            // you might want to do things before the entity returns
             if (settings.init) {
                 settings.init.apply(this);
             }
