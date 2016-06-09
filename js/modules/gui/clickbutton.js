@@ -38,10 +38,6 @@ bento.define('bento/gui/clickbutton', [
                 'down': {
                     speed: 0,
                     frames: [1]
-                },
-                'inactive': {
-                    speed: 0,
-                    frames: [2]
                 }
             },
             sprite = new Sprite({
@@ -57,7 +53,7 @@ bento.define('bento/gui/clickbutton', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('down');
+                    sprite.setAnimation('down');
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
@@ -66,7 +62,7 @@ bento.define('bento/gui/clickbutton', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('down');
+                    sprite.setAnimation('down');
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
@@ -75,7 +71,7 @@ bento.define('bento/gui/clickbutton', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('up');
+                    sprite.setAnimation('up');
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
@@ -84,7 +80,7 @@ bento.define('bento/gui/clickbutton', [
                     if (!active) {
                         return;
                     }
-                    sprite.animation.setAnimation('up');
+                    sprite.setAnimation('up');
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
@@ -112,9 +108,9 @@ bento.define('bento/gui/clickbutton', [
                 family: ['buttons'],
                 init: function () {
                     if (!active && animations.inactive) {
-                        sprite.animation.setAnimation('inactive');
+                        sprite.setAnimation('inactive');
                     } else {
-                        sprite.animation.setAnimation('up');
+                        sprite.setAnimation('up');
                     }
                 }
             }, settings),
@@ -122,9 +118,9 @@ bento.define('bento/gui/clickbutton', [
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
-                        sprite.animation.setAnimation('inactive');
+                        sprite.setAnimation('inactive');
                     } else {
-                        sprite.animation.setAnimation('up');
+                        sprite.setAnimation('up');
                     }
                 },
                 doCallback: function () {
@@ -139,8 +135,8 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS
-        if (window.ejecta)
+        // keep track of clickbuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
             entity.attach({
                 start: function () {
                     EventSystem.fire('clickbuttonAdded', entity);

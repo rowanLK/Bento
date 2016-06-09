@@ -28,6 +28,15 @@ bento.define('bento/renderers/webgl', [
                 restore: function () {
                     glRenderer.restore();
                 },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    // not sure, untested
+                    glRenderer.transform = glRenderer.transform.clone([
+                        a, b, 0, tx,
+                        c, d, 0, ty,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1
+                    ]);
+                },
                 translate: function (x, y) {
                     glRenderer.translate(x, y);
                 },
@@ -98,7 +107,6 @@ bento.define('bento/renderers/webgl', [
                     glRenderer = original;
                 }
             };
-        console.log('Init webgl as renderer');
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {

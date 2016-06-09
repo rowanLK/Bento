@@ -1,7 +1,7 @@
 /**
  * 3x 3 Matrix specifically used for transformations
- * [ a b tx ]
- * [ c d ty ]
+ * [ a c tx ]
+ * [ b d ty ]
  * [ 0 0 1  ]
  * <br>Exports: Constructor
  * @module bento/math/transformmatrix
@@ -22,27 +22,25 @@ bento.define('bento/math/transformmatrix', [
         this.ty = 0;
     }
 
-    Matrix.prototype.multiplyWithVector = function (vector2) {
-        var result = new Vector2();
-        var x = vector2.x;
-        var y = vector2.y;
+    Matrix.prototype.multiplyWithVector = function (vector) {
+        var x = vector.x;
+        var y = vector.y;
 
-        result.x = this.a * x + this.c * y + this.tx;
-        result.y = this.b * x + this.d * y + this.ty;
+        vector.x = this.a * x + this.c * y + this.tx;
+        vector.y = this.b * x + this.d * y + this.ty;
 
-        return result;
+        return vector;
     };
 
-    Matrix.prototype.inverseMultiplyWithVector = function (vector2) {
-        var result = new Vector2();
-        var x = vector2.x;
-        var y = vector2.y;
-        var det = 1 / (this.a * this.d - this.c * this.b);
+    Matrix.prototype.inverseMultiplyWithVector = function (vector) {
+        var x = vector.x;
+        var y = vector.y;
+        var determinant = 1 / (this.a * this.d - this.c * this.b);
 
-        result.x = this.d * x * det + -this.c * y * det + (this.ty * this.c - this.tx * this.d) * det;
-        result.y = this.a * y * det + -this.b * x * det + (-this.ty * this.a + this.tx * this.b) * det;
+        vector.x = this.d * x * determinant + -this.c * y * determinant + (this.ty * this.c - this.tx * this.d) * determinant;
+        vector.y = this.a * y * determinant + -this.b * x * determinant + (-this.ty * this.a + this.tx * this.b) * determinant;
 
-        return result;
+        return vector;
     };
 
     Matrix.prototype.translate = function (x, y) {
@@ -63,15 +61,20 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
-    Matrix.prototype.rotate = function (angle) {
-        var cos = Math.cos(angle);
-        var sin = Math.sin(angle);
+    Matrix.prototype.rotate = function (angle, sin, cos) {
         var a = this.a;
         var b = this.b;
         var c = this.c;
         var d = this.d;
         var tx = this.tx;
         var ty = this.ty;
+
+        if (sin === undefined) {
+            sin = Math.sin(angle);
+        }
+        if (cos === undefined) {
+            cos = Math.cos(angle);
+        }
 
         this.a = a * cos - b * sin;
         this.b = a * sin + b * cos;
@@ -112,6 +115,15 @@ bento.define('bento/math/transformmatrix', [
         matrix.ty = this.ty;
 
         return matrix;
+    };
+
+    Matrix.prototype.reset = function () {
+        this.a = 1;
+        this.b = 0;
+        this.c = 0;
+        this.d = 1;
+        this.tx = 0;
+        this.ty = 0;        
     };
 
     return Matrix;

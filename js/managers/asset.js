@@ -113,7 +113,7 @@ bento.define('bento/managers/asset', [
                 }, false);
                 img.addEventListener('error', function (evt) {
                     // TODO: Implement failure: should it retry to load the image?
-                    console.log('ERROR: loading image failed');
+                    console.log('ERROR: loading image failed - ' + name);
                 }, false);
             },
             /**
