@@ -15,7 +15,7 @@ bento.define('bento/components/scale', [
         this.name = 'scale';
     };
     Scale.prototype.draw = function (data) {
-        data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
+        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
     };
     Scale.prototype.attached = function (data) {
         this.entity = data.entity;

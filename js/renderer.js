@@ -10,6 +10,7 @@ bento.define('bento/renderer', [
         var module = {
             save: function () {},
             restore: function () {},
+            setTransform: function (a, b, c, d, tx, ty) {},
             translate: function () {},
             scale: function (x, y) {},
             rotate: function (angle) {},

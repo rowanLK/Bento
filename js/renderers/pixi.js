@@ -1,6 +1,5 @@
 /**
  * Renderer using PIXI by GoodBoyDigital
- * Very unfinished, can only draw sprites for now.
  */
 bento.define('bento/renderers/pixi', [
     'bento',
@@ -25,9 +24,37 @@ bento.define('bento/renderers/pixi', [
         var color = 0xFFFFFF;
         var pixiRenderer;
         var spriteRenderer;
+        var meshRenderer;
+        var graphicsRenderer;
+        var particleRenderer;
         var test = false;
         var cocoonScale = 1;
         var pixelSize = settings.pixelSize || 1;
+        var tempDisplayObjectParent = null;
+        var transformObject = {
+            worldTransform: null,
+            worldAlpha: 1,
+            children: []
+        };
+        var getPixiMatrix = function () {
+            var pixiMatrix = new PIXI.Matrix();
+            pixiMatrix.a = matrix.a;
+            pixiMatrix.b = matrix.b;
+            pixiMatrix.c = matrix.c;
+            pixiMatrix.d = matrix.d;
+            pixiMatrix.tx = matrix.tx;
+            pixiMatrix.ty = matrix.ty;
+            return pixiMatrix;
+        };
+        var getGraphics = function (color) {
+            var graphics = new PIXI.Graphics();
+            var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+            var alpha = color[3];
+            graphics.beginFill(colorInt, alpha);
+            graphics.worldTransform = getPixiMatrix();
+            graphics.worldAlpha = alpha;
+            return graphics;
+        };
         var renderer = {
             name: 'pixi',
             init: function () {
@@ -39,6 +66,14 @@ bento.define('bento/renderers/pixi', [
             },
             restore: function () {
                 matrix = matrices.pop();
+            },
+            setTransform: function (a, b, c, d, tx, ty) {
+                matrix.a = a;
+                matrix.b = b;
+                matrix.c = c;
+                matrix.d = d;
+                matrix.tx = tx;
+                matrix.ty = ty;
             },
             translate: function (x, y) {
                 var transform = new TransformMatrix();
@@ -52,9 +87,21 @@ bento.define('bento/renderers/pixi', [
                 var transform = new TransformMatrix();
                 matrix.multiplyWith(transform.rotate(angle));
             },
-            // TODO
-            fillRect: function (color, x, y, w, h) {},
-            fillCircle: function (color, x, y, radius) {},
+            fillRect: function (color, x, y, w, h) {
+                var graphics = getGraphics(color);
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            fillCircle: function (color, x, y, radius) {
+                var graphics = getGraphics(color);
+                graphics.drawCircle(x, y, radius);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+
+            },
             drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                 var image = packedImage.image;
                 var rectangle;
@@ -74,25 +121,13 @@ bento.define('bento/renderers/pixi', [
                 texture = new PIXI.Texture(image.texture, rectangle);
                 texture._updateUvs();
 
-                // simulate a sprite for the pixi SpriteRenderer??
-                // sprite = {
-                //     _texture: texture,
-                //     anchor: {
-                //         x: 0,
-                //         y: 0
-                //     },
-                //     worldTransform: matrix,
-                //     worldAlpha: alpha,
-                //     shader: null,
-                //     blendMode: 0
-                // };
-
-                // can't get the above to work, spawn a normal pixi sprite
+                // should sprites be reused instead of spawning one all the time(?)
                 sprite = new PIXI.Sprite(texture);
                 sprite.worldTransform = matrix;
                 sprite.worldAlpha = alpha;
 
                 // push into batch
+                pixiRenderer.setObjectRenderer(spriteRenderer);
                 spriteRenderer.render(sprite);
             },
             begin: function () {
@@ -103,19 +138,35 @@ bento.define('bento/renderers/pixi', [
                 }
             },
             flush: function () {
+                // note: only spriterenderer has an implementation of flush
                 spriteRenderer.flush();
                 if (pixelSize !== 1 || Utils.isCocoonJs()) {
                     this.restore();
                 }
-            },
-            setColor: function (color) {
-                // TODO
             },
             getOpacity: function () {
                 return alpha;
             },
             setOpacity: function (value) {
                 alpha = value;
+            },
+            /* 
+             * Pixi only feature: draws any pixi displayObject
+             */
+            drawPixi: function (displayObject) {
+                // trick the renderer by setting our own parent
+                transformObject.worldTransform = matrix;
+                transformObject.worldAlpha = alpha;
+
+                // method 1, replace the "parent" that the renderer swaps with 
+                // maybe not efficient because it calls flush all the time?
+                // pixiRenderer._tempDisplayObjectParent = transformObject;
+                // pixiRenderer.render(displayObject);
+
+                // method 2, set the object parent and update transform
+                displayObject.parent = transformObject;
+                displayObject.updateTransform();
+                displayObject.renderWebGL(pixiRenderer);
             }
         };
 
@@ -133,12 +184,15 @@ bento.define('bento/renderers/pixi', [
             canvas.height *= pixelSize * cocoonScale;
             pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
                 view: canvas,
-                backgroundColor: 0x000000
+                backgroundColor: 0x000000,
+                clearBeforeRender: false
             });
+            pixiRenderer.filterManager.setFilterStack(pixiRenderer.renderTarget.filterStack);
+            tempDisplayObjectParent = pixiRenderer._tempDisplayObjectParent;
             spriteRenderer = pixiRenderer.plugins.sprite;
-            pixiRenderer.setObjectRenderer(spriteRenderer);
+            graphicsRenderer = pixiRenderer.plugins.graphics;
+            meshRenderer = pixiRenderer.plugins.mesh;
 
-            console.log('Init pixi as renderer');
             return renderer;
         } else {
             if (!window.PIXI) {

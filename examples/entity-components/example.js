@@ -31,7 +31,8 @@ bento.require([
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: 'auto'
+        renderer: 'webgl',
+        pixelSize: 2
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', function (err) {
@@ -44,7 +45,6 @@ bento.require([
                 }),
                 bunny1 = new Entity({
                     components: [
-                        new Translation(),
                         new Animation(Bento.assets.getJson('bunny')),
                         new Clickable({
                             pointerDown: function (evt) {
@@ -73,8 +73,6 @@ bento.require([
                 }),
                 bunny2 = new Entity({
                     components: [
-                        new Translation(),
-                        new Scale(),
                         new Animation({
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
@@ -97,8 +95,6 @@ bento.require([
                 }),
                 bunny3 = new Entity({
                     components: [
-                        new Translation(),
-                        new Rotation(),
                         new Animation({
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,
@@ -127,9 +123,6 @@ bento.require([
                 }),
                 bunny4 = new Entity({
                     components: [
-                        new Translation(),
-                        new Rotation(),
-                        new Scale(),
                         new Animation({
                             image: Bento.assets.getImage('bunnygirlsmall'),
                             frameWidth: 32,

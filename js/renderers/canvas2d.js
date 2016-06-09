@@ -17,6 +17,9 @@ bento.define('bento/renderers/canvas2d', [
                 restore: function () {
                     context.restore();
                 },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    context.setTransform(a, b, c, d, tx, ty);
+                },
                 translate: function (x, y) {
                     context.translate(x, y);
                 },
@@ -114,7 +117,6 @@ bento.define('bento/renderers/canvas2d', [
                 colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
                 return colorStr;
             };
-        console.log('Init canvas2d as renderer');
 
         // resize canvas according to pixelSize
         canvas.width *= pixelSize;

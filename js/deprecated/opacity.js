@@ -22,12 +22,16 @@ bento.define('bento/components/opacity', [
             }
         };
     Opacity.prototype.draw = function (data) {
-        this.oldOpacity = data.renderer.getOpacity();
-        data.renderer.setOpacity(this.opacity * this.oldOpacity);
+        // this.oldOpacity = data.renderer.getOpacity();
+        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
     };
     Opacity.prototype.postDraw = function (data) {
-        data.renderer.setOpacity(this.oldOpacity);
+        // data.renderer.setOpacity(this.oldOpacity);
     };
+    Opacity.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+
     /**
      * Set entity opacity
      * @function
@@ -36,7 +40,8 @@ bento.define('bento/components/opacity', [
      * @name setOpacity
      */
     Opacity.prototype.setOpacity = function (value) {
-        this.opacity = value;
+        // this.opacity = value;
+        this.entity.alpha = value;
     };
     /**
      * Get entity opacity
@@ -45,7 +50,8 @@ bento.define('bento/components/opacity', [
      * @name getOpacity
      */
     Opacity.prototype.getOpacity = function () {
-        return this.opacity;
+        return this.entity.alpha;
+        // return this.opacity;
     };
     Opacity.prototype.toString = function () {
         return '[object Opacity]';
