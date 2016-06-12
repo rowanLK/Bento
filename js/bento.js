@@ -221,7 +221,10 @@ bento.define('bento', [
                         if (settings.assetGroups) {
                             module.assets.loadAssetGroups(settings.assetGroups, runGame);
                         } else {
-                            runGame();
+                            // try loadings assets.json from the root folder
+                            module.assets.loadJson('assets.json', 'assets.json', function (error) {
+                                runGame();
+                            });
                         }
                         // start watching for new modules
                         bento.watch();
