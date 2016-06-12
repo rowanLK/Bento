@@ -3836,399 +3836,402 @@ bento.define('bento', [
     Renderer
 ) {
     'use strict';
-    var canvas,
-        context,
-        renderer,
-        bentoSettings,
-        styleScaling = true,
-        canvasRatio = 0,
-        windowRatio,
-        manualResize = false,
-        throttle = 1,
-        canvasScale = {
-            x: 1,
-            y: 1
-        },
-        debug = {
-            debugBar: null,
-            fps: 0,
-            fpsAccumulator: 0,
-            fpsTicks: 0,
-            fpsMaxAverage: 600,
-            avg: 0,
-            lastTime: 0
-        },
-        dev = false,
-        gameData = {},
-        viewport = new Rectangle(0, 0, 640, 480),
-        setupDebug = function () {
-            if (Utils.isCocoonJS()) {
-                return;
+    var canvas;
+    var context;
+    var renderer;
+    var bentoSettings;
+    var styleScaling = true;
+    var canvasRatio = 0;
+    var windowRatio;
+    var manualResize = false;
+    var throttle = 1;
+    var canvasScale = {
+        x: 1,
+        y: 1
+    };
+    var debug = {
+        debugBar: null,
+        fps: 0,
+        fpsAccumulator: 0,
+        fpsTicks: 0,
+        fpsMaxAverage: 600,
+        avg: 0,
+        lastTime: 0
+    };
+    var dev = false;
+    var gameData = {};
+    var viewport = new Rectangle(0, 0, 640, 480);
+    var setupDebug = function () {
+        if (Utils.isCocoonJS()) {
+            return;
+        }
+        // TODO: make a proper debug bar
+        debug.debugBar = document.createElement('div');
+        debug.debugBar.style['font-family'] = 'Arial';
+        debug.debugBar.style.padding = '8px';
+        debug.debugBar.style.position = 'absolute';
+        debug.debugBar.style.right = '0px';
+        debug.debugBar.style.top = '0px';
+        debug.debugBar.style.color = 'white';
+        debug.debugBar.innerHTML = 'fps: 0';
+        document.body.appendChild(debug.debugBar);
+
+        var button = document.createElement('button');
+        button.innerHTML = 'button';
+        debug.debugBar.appendChild(button);
+    };
+    var setupCanvas = function (settings, callback) {
+        var parent;
+        var pixelRatio = window.devicePixelRatio || 1;
+        var windowWidth = window.innerWidth * pixelRatio;
+        var windowHeight = window.innerHeight * pixelRatio;
+
+        canvas = document.getElementById(settings.canvasId);
+
+        if (!canvas) {
+            // no canvas, create it
+            parent = document.getElementById('wrapper');
+            if (!parent) {
+                // just append it to the document body
+                parent = document.body;
             }
-            // TODO: make a proper debug bar
-            debug.debugBar = document.createElement('div');
-            debug.debugBar.style['font-family'] = 'Arial';
-            debug.debugBar.style.padding = '8px';
-            debug.debugBar.style.position = 'absolute';
-            debug.debugBar.style.right = '0px';
-            debug.debugBar.style.top = '0px';
-            debug.debugBar.style.color = 'white';
-            debug.debugBar.innerHTML = 'fps: 0';
-            document.body.appendChild(debug.debugBar);
+            canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
+            canvas.id = settings.canvasId;
+            parent.appendChild(canvas);
+        }
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvasRatio = viewport.height / viewport.width;
 
-            var button = document.createElement('button');
-            button.innerHTML = 'button';
-            debug.debugBar.appendChild(button);
-        },
-        setupCanvas = function (settings, callback) {
-            var parent,
-                pixelRatio = window.devicePixelRatio || 1,
-                windowWidth = window.innerWidth * pixelRatio,
-                windowHeight = window.innerHeight * pixelRatio;
+        settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
 
-            canvas = document.getElementById(settings.canvasId);
-
-            if (!canvas) {
-                // no canvas, create it
-                parent = document.getElementById('wrapper');
-                if (!parent) {
-                    // just append it to the document body
-                    parent = document.body;
-                }
-                canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
-                canvas.id = settings.canvasId;
-                parent.appendChild(canvas);
-            }
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            canvasRatio = viewport.height / viewport.width;
-
-            settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'auto';
-
-            if (settings.renderer === 'auto') {
-                // automatically set/overwrite pixelSize
-                if (windowWidth > windowHeight) {
-                    settings.pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
-                } else {
-                    settings.pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
-                }
-                // max pixelSize 3 (?)
-                settings.pixelSize = Math.min(settings.pixelSize, 3);
-
-                settings.renderer = 'webgl';
-                // canvas is accelerated in cocoonJS
-                // should also use canvas for android?
-                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/ ) {
-                    settings.renderer = 'canvas2d';
-                }
-            }
-            // setup renderer
-            Renderer(settings.renderer, canvas, settings, function (rend) {
-                console.log('Init ' + rend.name + ' as renderer');
-                renderer = rend;
-                gameData = module.getGameData();
-                callback();
-            });
-
-        },
-        onResize = function () {
-            var width,
-                height,
-                innerWidth = window.innerWidth,
-                innerHeight = window.innerHeight;
-
-            if (manualResize) {
-                return;
-            }
-
-            windowRatio = innerHeight / innerWidth;
-            // resize to fill screen
-            if (windowRatio < canvasRatio) {
-                width = innerHeight / canvasRatio;
-                height = innerHeight;
+        // TODO: deprecate 'auto' and 'webgl' renderer
+        if (settings.renderer === 'auto') {
+            // automatically set/overwrite pixelSize
+            if (windowWidth > windowHeight) {
+                settings.pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
             } else {
-                width = innerWidth;
-                height = innerWidth * canvasRatio;
+                settings.pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
             }
-            if (styleScaling) {
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-            } else {
-                canvas.width = width;
-                canvas.height = height;
+            // max pixelSize 3 (?)
+            settings.pixelSize = Math.min(settings.pixelSize, 3);
+
+            settings.renderer = 'webgl';
+            // canvas is accelerated in cocoonJS
+            // should also use canvas for android?
+            if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/ ) {
+                settings.renderer = 'canvas2d';
             }
-            canvasScale.x = width / viewport.width;
-            canvasScale.y = height / viewport.height;
-        },
-        module = {
-            /**
-             * Setup game. Initializes all Bento managers.
-             * @name setup
-             * @function
-             * @instance
-             * @param {Object} settings - settings for the game
-             * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
-             * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
-             * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
-             * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
-             * @param {Boolean} settings.subPixel - Disable rounding of pixels
-             * @param {Number} settings.pixelSize - Defaults to 1. You may resize pixels by setting this value. A kind of cheating with pixelart games.
-             * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
-             * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
-             * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
-             * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
-             * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
-             * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
-             * @param {Function} callback - Called when game is loaded (not implemented yet)
-             */
-            setup: function (settings, callback) {
-                bentoSettings = settings;
-                DomReady(function () {
-                    var runGame = function () {
-                        module.objects.run();
-                        if (callback) {
-                            callback();
+        }
+        // setup renderer
+        Renderer(settings.renderer, canvas, settings, function (rend) {
+            console.log('Init ' + rend.name + ' as renderer');
+            renderer = rend;
+            gameData = Bento.getGameData();
+            callback();
+        });
+    };
+    var onResize = function () {
+        var width,
+            height,
+            innerWidth = window.innerWidth,
+            innerHeight = window.innerHeight;
+
+        if (manualResize) {
+            return;
+        }
+
+        windowRatio = innerHeight / innerWidth;
+        // resize to fill screen
+        if (windowRatio < canvasRatio) {
+            width = innerHeight / canvasRatio;
+            height = innerHeight;
+        } else {
+            width = innerWidth;
+            height = innerWidth * canvasRatio;
+        }
+        if (styleScaling) {
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+        } else {
+            canvas.width = width;
+            canvas.height = height;
+        }
+        canvasScale.x = width / viewport.width;
+        canvasScale.y = height / viewport.height;
+    };
+    var Bento = {
+        /**
+         * Setup game. Initializes all Bento managers.
+         * @name setup
+         * @function
+         * @instance
+         * @param {Object} settings - settings for the game
+         * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
+         * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
+         * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
+         * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
+         * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+         * @param {Boolean} settings.subPixel - Disable rounding of pixels
+         * @param {Number} settings.pixelSize - Defaults to 1. You may resize pixels by setting this value. A kind of cheating with pixelart games.
+         * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
+         * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
+         * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
+         * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
+         * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
+         * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
+         * @param {Function} callback - Called when game is loaded (not implemented yet)
+         */
+        setup: function (settings, callback) {
+            bentoSettings = settings;
+            DomReady(function () {
+                var runGame = function () {
+                    Bento.objects.run();
+                    if (callback) {
+                        callback();
+                    }
+                };
+                if (settings.canvasDimension) {
+                    if (settings.canvasDimension.isRectangle) {
+                        viewport = settings.canvasDimension || viewport;
+                    } else {
+                        throw 'settings.canvasDimension must be a rectangle';
+                    }
+                }
+                settings.sortMode = settings.sortMode || 0;
+                setupCanvas(settings, function () {
+                    dev = settings.dev || false;
+                    Utils.setSuppressThrows(dev ? false : true);
+                    SaveState.setDev(dev);
+                    // window resize listeners
+                    manualResize = settings.manualResize;
+                    window.addEventListener('resize', onResize, false);
+                    window.addEventListener('orientationchange', onResize, false);
+                    onResize();
+
+                    Bento.input = new InputManager(gameData, settings);
+                    Bento.objects = new ObjectManager(Bento.getGameData, settings);
+                    Bento.assets = new AssetManager();
+                    Bento.audio = new AudioManager(Bento);
+                    Bento.screens = new ScreenManager();
+
+                    // mix functions
+                    Utils.extend(Bento, Bento.objects);
+
+                    if (settings.assetGroups) {
+                        Bento.assets.loadAssetGroups(settings.assetGroups, runGame);
+                    } else {
+                        // try loadings assets.json from the root folder
+                        Bento.assets.loadAssetsJson(function (error) {
+                            runGame();
+                        });
+                    }
+                    // start watching for new modules
+                    bento.watch();
+                    // reload keys
+                    if (settings.reload) {
+                        if (settings.reload.simple) {
+                            EventSystem.on(settings.reload.simple, function () {
+                                Bento.reload();
+                            });
                         }
-                    };
-                    if (settings.canvasDimension) {
-                        if (settings.canvasDimension.isRectangle) {
-                            viewport = settings.canvasDimension || viewport;
-                        } else {
-                            throw 'settings.canvasDimension must be a rectangle';
+                        if (settings.reload.assets) {
+                            EventSystem.on(settings.reload.assets, function () {
+                                Bento.assets.reload(Bento.reload);
+                            });
+                        }
+                        if (settings.reload.jump) {
+                            EventSystem.on(settings.reload.jump, function () {
+                                var res = prompt('Show which screen?');
+                                Bento.screens.show(res);
+                            });
                         }
                     }
-                    settings.sortMode = settings.sortMode || 0;
-                    setupCanvas(settings, function () {
-                        dev = settings.dev || false;
-                        Utils.setSuppressThrows(dev ? false : true);
-                        SaveState.setDev(dev);
-                        // window resize listeners
-                        manualResize = settings.manualResize;
-                        window.addEventListener('resize', onResize, false);
-                        window.addEventListener('orientationchange', onResize, false);
-                        onResize();
-
-                        module.input = InputManager(gameData, settings);
-                        module.objects = ObjectManager(module.getGameData, settings);
-                        module.assets = AssetManager();
-                        module.audio = AudioManager(module);
-                        module.screens = ScreenManager();
-
-                        // mix functions
-                        Utils.extend(module, module.objects);
-
-                        if (settings.assetGroups) {
-                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
-                        } else {
-                            runGame();
-                        }
-                        // start watching for new modules
-                        bento.watch();
-                        // reload keys
-                        if (settings.reload) {
-                            if (settings.reload.simple) {
-                                EventSystem.on(settings.reload.simple, function () {
-                                    module.reload();
-                                });
-                            }
-                            if (settings.reload.assets) {
-                                EventSystem.on(settings.reload.assets, function () {
-                                    module.assets.reload(module.reload);
-                                });
-                            }
-                            if (settings.reload.jump) {
-                                EventSystem.on(settings.reload.jump, function () {
-                                    var res = prompt('Show which screen?');
-                                    module.screens.show(res);
-                                });
-                            }
-                        }
-                    });
                 });
-            },
-            /**
-             * Returns the settings object supplied to Bento.setup
-             * @function
-             * @instance
-             * @returns Object
-             * @name getSettings
-             */
-            getSettings: function () {
-                return bentoSettings;
-            },
-            /**
-             * Returns the current viewport (reference).
-             * The viewport is a Rectangle.
-             * viewport.x and viewport.y indicate its current position in the world (upper left corner)
-             * viewport.width and viewport.height can be used to determine the size of the canvas
-             * @function
-             * @instance
-             * @returns Rectangle
-             * @name getViewport
-             */
-            getViewport: function () {
-                return viewport;
-            },
-            /**
-             * Returns the canvas element
-             * @function
-             * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
-             */
-            getCanvas: function () {
-                return canvas;
-            },
-            /**
-             * Returns the current renderer engine
-             * @function
-             * @instance
-             * @returns Renderer
-             * @name getRenderer
-             */
-            getRenderer: function () {
-                return renderer;
-            },
-            /**
-             * Reloads modules and jumps to screen. If no screenName was passed,
-             * it reloads the current screen.
-             * @function
-             * @instance
-             * @param {String} screenName - screen to show
-             * @name reload
-             */
-            reload: function (screenName) {
-                var currentScreen,
-                    Bento = module;
-                if (!Bento.screens) {
-                    throw 'Bento has not beens started yet.';
-                }
-                currentScreen = Bento.screens.getCurrentScreen();
+            });
+        },
+        /**
+         * Returns the settings object supplied to Bento.setup
+         * @function
+         * @instance
+         * @returns Object
+         * @name getSettings
+         */
+        getSettings: function () {
+            return bentoSettings;
+        },
+        /**
+         * Returns the current viewport (reference).
+         * The viewport is a Rectangle.
+         * viewport.x and viewport.y indicate its current position in the world (upper left corner)
+         * viewport.width and viewport.height can be used to determine the size of the canvas
+         * @function
+         * @instance
+         * @returns Rectangle
+         * @name getViewport
+         */
+        getViewport: function () {
+            return viewport;
+        },
+        /**
+         * Returns the canvas element
+         * @function
+         * @instance
+         * @returns HTML Canvas Element
+         * @name getCanvas
+         */
+        getCanvas: function () {
+            return canvas;
+        },
+        /**
+         * Returns the current renderer engine
+         * @function
+         * @instance
+         * @returns Renderer
+         * @name getRenderer
+         */
+        getRenderer: function () {
+            return renderer;
+        },
+        /**
+         * Reloads modules and jumps to screen. If no screenName was passed,
+         * it reloads the current screen.
+         * @function
+         * @instance
+         * @param {String} screenName - screen to show
+         * @name reload
+         */
+        reload: function (screenName) {
+            var currentScreen,
+                Bento = Bento;
+            if (!Bento.screens) {
+                throw 'Bento has not beens started yet.';
+            }
+            currentScreen = Bento.screens.getCurrentScreen();
 
-                if (!currentScreen) {
-                    console.log('WARNING: No screen has been loaded.');
-                    return;
-                }
+            if (!currentScreen) {
+                console.log('WARNING: No screen has been loaded.');
+                return;
+            }
 
-                Bento.screens.reset();
-                Bento.objects.resume();
+            Bento.screens.reset();
+            Bento.objects.resume();
 
-                Bento.objects.stop();
-                bento.refresh();
+            Bento.objects.stop();
+            bento.refresh();
 
-                // reset game speed
-                throttle = 1;
+            // reset game speed
+            throttle = 1;
 
-                // reload current screen
-                Bento.screens.show(screenName || currentScreen.name);
-                // restart the mainloop
-                setTimeout(Bento.objects.run, 120);
-            },
-            /**
-             * Returns a gameData object
-             * A gameData object is passed through every object during the update and draw
-             * and contains all necessary information to render
-             * @function
-             * @instance
-             * @returns {Object} data
-             * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
-             * @returns {Renderer} data.renderer - Reference to current Renderer
-             * @returns {Vector2} data.canvasScale - Reference to current canvas scale
-             * @returns {Rectangle} data.viewport - Reference to viewport object
-             * @returns {Entity} data.entity - The current entity passing the data object
-             * @returns {Number} data.deltaT - Time passed since last tick
-             * @returns {Number} data.throttle - Game speed (1 is normal)
-             * @name getGameData
-             */
-            getGameData: function () {
-                return {
-                    canvas: canvas,
-                    renderer: renderer,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null,
-                    event: null,
-                    deltaT: 0,
-                    speed: throttle
-                };
-            },
-            /**
-             * Gets the current game speed
-             * @function
-             * @instance
-             * @returns Number
-             * @name getGameSpeed
-             */
-            getGameSpeed: function () {
-                return throttle;
-            },
-            /**
-             * Sets the current game speed. Defaults to 1.
-             * @function
-             * @instance
-             * @param {Number} speed - Game speed
-             * @returns Number
-             * @name setGameSpeed
-             */
-            setGameSpeed: function (value) {
-                throttle = value;
-            },
-            /**
-             * Is game in dev mode?
-             * @function
-             * @instance
-             * @returns Boolean
-             * @name isDev
-             */
-            isDev: function () {
-                return dev;
-            },
-            /**
-             * Asset manager
-             * @see module:bento/managers/asset
-             * @instance
-             * @name assets
-             */
-            assets: null,
-            /**
-             * Object manager
-             * @see module:bento/managers/object
-             * @instance
-             * @name objects
-             */
-            objects: null,
-            /**
-             * Input manager
-             * @see module:bento/managers/input
-             * @instance
-             * @name objects
-             */
-            input: null,
-            /**
-             * Audio manager
-             * @see module:bento/managers/audio
-             * @instance
-             * @name audio
-             */
-            audio: null,
-            /**
-             * Screen manager
-             * @see module:bento/managers/screen
-             * @instance
-             * @name screen
-             */
-            screens: null,
-            /**
-             * SaveState manager
-             * @see module:bento/managers/savestate
-             * @instance
-             * @name saveState
-             */
-            saveState: SaveState,
-            utils: Utils
-        };
-    return module;
+            // reload current screen
+            Bento.screens.show(screenName || currentScreen.name);
+            // restart the mainloop
+            setTimeout(Bento.objects.run, 120);
+        },
+        /**
+         * Returns a gameData object
+         * A gameData object is passed through every object during the update and draw
+         * and contains all necessary information to render
+         * @function
+         * @instance
+         * @returns {Object} data
+         * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
+         * @returns {Renderer} data.renderer - Reference to current Renderer
+         * @returns {Vector2} data.canvasScale - Reference to current canvas scale
+         * @returns {Rectangle} data.viewport - Reference to viewport object
+         * @returns {Entity} data.entity - The current entity passing the data object
+         * @returns {Number} data.deltaT - Time passed since last tick
+         * @returns {Number} data.throttle - Game speed (1 is normal)
+         * @name getGameData
+         */
+        getGameData: function () {
+            return {
+                canvas: canvas,
+                renderer: renderer,
+                canvasScale: canvasScale,
+                viewport: viewport,
+                entity: null,
+                event: null,
+                deltaT: 0,
+                speed: throttle
+            };
+        },
+        /**
+         * Gets the current game speed
+         * @function
+         * @instance
+         * @returns Number
+         * @name getGameSpeed
+         */
+        getGameSpeed: function () {
+            return throttle;
+        },
+        /**
+         * Sets the current game speed. Defaults to 1.
+         * @function
+         * @instance
+         * @param {Number} speed - Game speed
+         * @returns Number
+         * @name setGameSpeed
+         */
+        setGameSpeed: function (value) {
+            throttle = value;
+        },
+        /**
+         * Is game in dev mode?
+         * @function
+         * @instance
+         * @returns Boolean
+         * @name isDev
+         */
+        isDev: function () {
+            return dev;
+        },
+        /**
+         * Asset manager
+         * @see module:bento/managers/asset
+         * @instance
+         * @name assets
+         */
+        assets: null,
+        /**
+         * Object manager
+         * @see module:bento/managers/object
+         * @instance
+         * @name objects
+         */
+        objects: null,
+        /**
+         * Input manager
+         * @see module:bento/managers/input
+         * @instance
+         * @name objects
+         */
+        input: null,
+        /**
+         * Audio manager
+         * @see module:bento/managers/audio
+         * @instance
+         * @name audio
+         */
+        audio: null,
+        /**
+         * Screen manager
+         * @see module:bento/managers/screen
+         * @instance
+         * @name screen
+         */
+        screens: null,
+        /**
+         * SaveState manager
+         * @see module:bento/managers/savestate
+         * @instance
+         * @name saveState
+         */
+        saveState: SaveState,
+        utils: Utils
+    };
+    return Bento;
 });
 /**
  * A base object to hold components. Has dimension, position, scale and rotation properties (though these don't have much
@@ -9026,7 +9029,7 @@ bento.define('bento/lib/requestanimationframe', [], function () {
  * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
  * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
  * assets to load, and where to find them.
- * <br>Exports: Constructor, can be accessed through Bento.asset namespace
+ * <br>Exports: Constructor, can be accessed through Bento.assets namespace
  * @module bento/managers/asset
  * @returns AssetManager
  */
@@ -9037,499 +9040,594 @@ bento.define('bento/managers/asset', [
 ], function (PackedImage, Utils, Audia) {
     'use strict';
     return function () {
-        var assetGroups = {},
-            path = '',
-            assets = {
-                audio: {},
-                json: {},
-                images: {},
-                binary: {}
-            },
-            texturePacker = {},
-            packs = [],
-            loadAudio = function (name, source, callback) {
-                var i,
-                    failed = true,
-                    loadAudioFile = function (index, src) {
-                        var audio = new Audia(),
-                            canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
-                        if (!!canPlay || window.ejecta) {
-                            // success!
-                            audio.onload = function () {
-                                callback(null, name, audio);
-                            };
-                            audio.src = src;
-                            failed = false;
-                            return true;
-                        }
-                        return false;
+        var assetGroups = {};
+        var path = '';
+        var assets = {
+            audio: {},
+            json: {},
+            images: {},
+            binary: {}
+        };
+        var texturePacker = {};
+        var packs = [];
+        var loadAudio = function (name, source, callback) {
+            var i;
+            var failed = true;
+            var loadAudioFile = function (index, src) {
+                var audio = new Audia();
+                var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
+                if (!!canPlay || window.ejecta) {
+                    // success!
+                    audio.onload = function () {
+                        callback(null, name, audio);
                     };
-                if (!Utils.isArray(source)) {
-                    // source = [path + 'audio/' + source];
-                    source = [source];
+                    audio.src = src;
+                    failed = false;
+                    return true;
                 }
-                // try every type
-                for (i = 0; i < source.length; ++i) {
-                    if (loadAudioFile(i, path + 'audio/' + source[i])) {
-                        break;
-                    }
+                return false;
+            };
+            if (!Utils.isArray(source)) {
+                // source = [path + 'audio/' + source];
+                source = [source];
+            }
+            // try every type
+            for (i = 0; i < source.length; ++i) {
+                if (loadAudioFile(i, path + 'audio/' + source[i])) {
+                    break;
                 }
-                if (failed) {
-                    callback('This audio type is not supported:', name, source);
-                }
-            },
-            loadJSON = function (name, source, callback) {
-                var xhr = new XMLHttpRequest();
-                if (xhr.overrideMimeType) {
-                    xhr.overrideMimeType('application/json');
-                }
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + source);
-                };
-                xhr.ontimeout = function () {
-                    callback('Timeout' + source);
-                };
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4) {
-                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
-                            callback(null, name, JSON.parse(xhr.responseText));
-                        } else {
-                            callback('Error: State ' + xhr.readyState + ' ' + source);
-                        }
-                    }
-                };
-                xhr.send(null);
-            },
-            loadBinary = function (name, source, success, failure) {
-                var xhr = new XMLHttpRequest(),
-                    arrayBuffer,
-                    byteArray,
-                    buffer,
-                    i = 0;
+            }
+            if (failed) {
+                callback('This audio type is not supported:', name, source);
+            }
+        };
+        var loadJSON = function (name, source, callback) {
+            var xhr = new XMLHttpRequest();
+            if (xhr.overrideMimeType) {
+                xhr.overrideMimeType('application/json');
+            }
 
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + name);
-                };
-                xhr.responseType = 'arraybuffer';
-                xhr.onload = function (e) {
-                    var binary;
-                    arrayBuffer = xhr.response;
-                    if (arrayBuffer) {
-                        byteArray = new Uint8Array(arrayBuffer);
-                        buffer = [];
-                        for (i; i < byteArray.byteLength; ++i) {
-                            buffer[i] = String.fromCharCode(byteArray[i]);
-                        }
-                        // loadedAssets.binary[name] = buffer.join('');
-                        binary = buffer.join('');
-                        callback(null, name, binary);
+            xhr.open('GET', source, true);
+            xhr.onerror = function () {
+                callback('Error ' + source);
+            };
+            xhr.ontimeout = function () {
+                callback('Timeout' + source);
+            };
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                        callback(null, name, JSON.parse(xhr.responseText));
+                    } else {
+                        callback('Error: State ' + xhr.readyState + ' ' + source);
                     }
-                };
-                xhr.send();
-            },
-            loadImage = function (name, source, callback) {
-                var img = new Image();
-                img.src = source;
-                img.addEventListener('load', function () {
-                    callback(null, name, img);
-                }, false);
-                img.addEventListener('error', function (evt) {
-                    // TODO: Implement failure: should it retry to load the image?
-                    console.log('ERROR: loading image failed - ' + name);
-                }, false);
-            },
-            /**
-             * Loads asset groups (json files containing names and asset paths to load)
-             * If the assetGroup parameter is passed to Bento.setup, this function will be
-             * called automatically by Bento.
-             * This will not load the assets (merely the assetgroups). To load the assets,
-             * you must call Bento.assets.load()
-             * @function
-             * @instance
-             * @param {Object} jsonFiles - Name with json path
-             * @param {Function} onReady - Callback when ready
-             * @param {Function} onLoaded - Callback when json file is loaded
-             * @name loadAssetGroups
-             */
-            loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
-                var jsonName,
-                    keyCount = Utils.getKeyLength(jsonFiles),
-                    loaded = 0,
-                    callback = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assetGroups[name] = json;
-                        loaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(loaded, keyCount);
-                        }
-                        if (keyCount === loaded && Utils.isDefined(onReady)) {
-                            onReady(null);
-                        }
-                    };
-                for (jsonName in jsonFiles) {
-                    if (jsonFiles.hasOwnProperty(jsonName)) {
-                        loadJSON(jsonName, jsonFiles[jsonName], callback);
-                    }
-                }
-            },
-            /**
-             * Loads assets from asset group.
-             * @function
-             * @instance
-             * @param {String} groupName - Name of asset group
-             * @param {Function} onReady - Callback when ready
-             * @param {Function} onLoaded - Callback when asset file is loaded
-             * @name load
-             */
-            load = function (groupName, onReady, onLoaded) {
-                var group = assetGroups[groupName],
-                    asset,
-                    assetsLoaded = 0,
-                    assetCount = 0,
-                    toLoad = [],
-                    checkLoaded = function () {
-                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
-                            initPackedImages();
-                            onReady(null);
-                        }
-                    },
-                    onLoadImage = function (err, name, image) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.images[name] = image;
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadPack = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.json[name] = json;
-                        packs.push(name);
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadJson = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.json[name] = json;
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadAudio = function (err, name, audio) {
-                        if (err) {
-                            console.log(err);
-                        } else {
-                            assets.audio[name] = audio;
-                        }
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    readyForLoading = function (fn, asset, path, callback) {
-                        toLoad.push({
-                            fn: fn,
-                            asset: asset,
-                            path: path,
-                            callback: callback
-                        });
-                    },
-                    loadAllAssets = function () {
-                        var i = 0,
-                            data;
-                        for (i = 0; i < toLoad.length; ++i) {
-                            data = toLoad[i];
-                            data.fn(data.asset, data.path, data.callback);
-                        }
-                    };
-
-                if (!Utils.isDefined(group)) {
-                    onReady('Could not find asset group ' + groupName);
-                    return;
-                }
-                // set path
-                if (Utils.isDefined(group.path)) {
-                    path = group.path;
-                }
-                // count the number of assets first
-                // get images
-                if (Utils.isDefined(group.images)) {
-                    assetCount += Utils.getKeyLength(group.images);
-                    for (asset in group.images) {
-                        if (!group.images.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
-                    }
-                }
-                // get packed images
-                if (Utils.isDefined(group.texturePacker)) {
-                    assetCount += Utils.getKeyLength(group.texturePacker);
-                    for (asset in group.texturePacker) {
-                        if (!group.texturePacker.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
-                    }
-                }
-                // get audio
-                if (Utils.isDefined(group.audio)) {
-                    assetCount += Utils.getKeyLength(group.audio);
-                    for (asset in group.audio) {
-                        if (!group.audio.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
-                    }
-                }
-                // get json
-                if (Utils.isDefined(group.json)) {
-                    assetCount += Utils.getKeyLength(group.json);
-                    for (asset in group.json) {
-                        if (!group.json.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
-                    }
-                }
-                // load all assets
-                loadAllAssets();
-            },
-            /**
-             * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadImageFromUrl
-             */
-            loadImageFromUrl = function (name, url, callback) {
-                var onLoadImage = function (err, name, image) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.images[name] = image;
-                    if (callback) {
-                        callback(null, image);
-                    }
-                };
-                loadImage(name, url, onLoadImage);
-            },
-            /**
-             * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadJsonFromUrl
-             */
-            loadJsonFromUrl = function (name, url, callback) {
-                var onLoadJson = function (err, name, json) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.json[name] = json;
-                    if (callback) {
-                        callback(null, json);
-                    }
-                };
-                loadJSON(name, url, onLoadJson);
-            },
-            /**
-             * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadAudioFromUrl
-             */
-            loadAudioFromUrl = function (name, url, callback) {
-                var onLoadAudio = function (err, name, audio) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.audio[name] = audio;
-                    if (callback) {
-                        callback(audio);
-                    }
-                };
-                loadAudio(name, url, onLoadAudio);
-            },
-            /**
-             * Unloads assets (not implemented yet)
-             * @function
-             * @instance
-             * @param {String} groupName - Name of asset group
-             * @name unload
-             */
-            unload = function (groupName) {},
-            /**
-             * Returns a previously loaded image
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {PackedImage} Image
-             * @name getImage
-             */
-            getImage = function (name) {
-                var image, packedImage = texturePacker[name];
-                if (!packedImage) {
-                    image = getImageElement(name);
-                    if (!image) {
-                        throw 'Can not find ' + name;
-                    }
-                    packedImage = PackedImage(image);
-                    texturePacker[name] = packedImage;
-                }
-                return packedImage;
-            },
-            /**
-             * Returns a previously loaded image element
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {HTMLImage} Html Image element
-             * @name getImageElement
-             */
-            getImageElement = function (name) {
-                var asset = assets.images[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns a previously loaded json object
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Object} Json object
-             * @name getJson
-             */
-            getJson = function (name) {
-                var asset = assets.json[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns a previously loaded audio element (currently by howler)
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Audia} Audia object
-             * @name getAudio
-             */
-            getAudio = function (name) {
-                var asset = assets.audio[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns all assets
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Object} assets - Object with reference to all loaded assets
-             * @name getAssets
-             */
-            getAssets = function () {
-                return assets;
-            },
-            initPackedImages = function () {
-                var frame, pack, i, image, json, name;
-                while (packs.length) {
-                    pack = packs.pop();
-                    image = getImageElement(pack);
-                    json = getJson(pack);
-
-                    // parse json
-                    for (i = 0; i < json.frames.length; ++i) {
-                        name = json.frames[i].filename;
-                        name = name.substring(0, name.length - 4);
-                        frame = json.frames[i].frame;
-                        texturePacker[name] = PackedImage(image, frame);
-                    }
-                }
-            },
-            /**
-             * Returns asset group
-             * @function
-             * @instance
-             * @returns {Object} assetGroups - reference to loaded JSON file
-             * @name getAssetGroups
-             */
-            getAssetGroups = function () {
-                return assetGroups;
-            },
-             /**
-             * Reloads all assets
-             * @function
-             * @instance
-             * @param {Function} callback - called when all assets are loaded
-             * @name reload
-             */
-            reload  = function (callback) {
-                var group,
-                    count = 0,
-                    loaded = 0,
-                    end = function () {
-                        loaded += 1;
-                        if (loaded === count && callback) {
-                            callback();
-                        }
-                    };
-                for (group in assetGroups) {
-                    if (!assetGroups.hasOwnProperty(group)) {
-                        continue;
-                    }
-                    load(group, end, function (current, total) {});
-                    count += 1;
                 }
             };
+            xhr.send(null);
+        };
+        var loadBinary = function (name, source, success, failure) {
+            var xhr = new XMLHttpRequest();
+            var arrayBuffer;
+            var byteArray;
+            var buffer;
+            var i = 0;
+
+            xhr.open('GET', source, true);
+            xhr.onerror = function () {
+                callback('Error ' + name);
+            };
+            xhr.responseType = 'arraybuffer';
+            xhr.onload = function (e) {
+                var binary;
+                arrayBuffer = xhr.response;
+                if (arrayBuffer) {
+                    byteArray = new Uint8Array(arrayBuffer);
+                    buffer = [];
+                    for (i; i < byteArray.byteLength; ++i) {
+                        buffer[i] = String.fromCharCode(byteArray[i]);
+                    }
+                    // loadedAssets.binary[name] = buffer.join('');
+                    binary = buffer.join('');
+                    callback(null, name, binary);
+                }
+            };
+            xhr.send();
+        };
+        var loadImage = function (name, source, callback) {
+            var img = new Image();
+            img.src = source;
+            img.addEventListener('load', function () {
+                callback(null, name, img);
+            }, false);
+            img.addEventListener('error', function (evt) {
+                // TODO: Implement failure: should it retry to load the image?
+                console.log('ERROR: loading image failed');
+            }, false);
+        };
+        /**
+         * Loads asset groups (json files containing names and asset paths to load)
+         * If the assetGroup parameter is passed to Bento.setup, this function will be
+         * called automatically by Bento.
+         * This will not load the assets (merely the assetgroups). To load the assets,
+         * you must call Bento.assets.load()
+         * @function
+         * @instance
+         * @param {Object} jsonFiles - Name with json path
+         * @param {Function} onReady - Callback when ready
+         * @param {Function} onLoaded - Callback when json file is loaded
+         * @name loadAssetGroups
+         */
+        var loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
+            var jsonName;
+            var keyCount = Utils.getKeyLength(jsonFiles);
+            var loaded = 0;
+            var callback = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assetGroups[name] = json;
+                loaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(loaded, keyCount);
+                }
+                if (keyCount === loaded && Utils.isDefined(onReady)) {
+                    onReady(null);
+                }
+            };
+            for (jsonName in jsonFiles) {
+                if (jsonFiles.hasOwnProperty(jsonName)) {
+                    loadJSON(jsonName, jsonFiles[jsonName], callback);
+                }
+            }
+        };
+        /**
+         * Loads assets from asset group.
+         * @function
+         * @instance
+         * @param {String} groupName - Name of asset group
+         * @param {Function} onReady - Callback when ready
+         * @param {Function} onLoaded - Callback when asset file is loaded
+         * @name load
+         */
+        var load = function (groupName, onReady, onLoaded) {
+            var group = assetGroups[groupName];
+            var asset;
+            var assetsLoaded = 0;
+            var assetCount = 0;
+            var toLoad = [];
+            var checkLoaded = function () {
+                if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
+                    initPackedImages();
+                    onReady(null);
+                }
+            };
+            var onLoadImage = function (err, name, image) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets.images[name] = image;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var onLoadPack = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets.json[name] = json;
+                packs.push(name);
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var onLoadJson = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets.json[name] = json;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var onLoadAudio = function (err, name, audio) {
+                if (err) {
+                    console.log(err);
+                } else {
+                    assets.audio[name] = audio;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var readyForLoading = function (fn, asset, path, callback) {
+                toLoad.push({
+                    fn: fn,
+                    asset: asset,
+                    path: path,
+                    callback: callback
+                });
+            };
+            var loadAllAssets = function () {
+                var i = 0;
+                var data;
+                for (i = 0; i < toLoad.length; ++i) {
+                    data = toLoad[i];
+                    data.fn(data.asset, data.path, data.callback);
+                }
+            };
+
+            if (!Utils.isDefined(group)) {
+                onReady('Could not find asset group ' + groupName);
+                return;
+            }
+            // set path
+            if (Utils.isDefined(group.path)) {
+                path = group.path;
+            }
+            // count the number of assets first
+            // get images
+            if (Utils.isDefined(group.images)) {
+                assetCount += Utils.getKeyLength(group.images);
+                for (asset in group.images) {
+                    if (!group.images.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
+                }
+            }
+            // get packed images
+            if (Utils.isDefined(group.texturePacker)) {
+                assetCount += Utils.getKeyLength(group.texturePacker);
+                for (asset in group.texturePacker) {
+                    if (!group.texturePacker.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                }
+            }
+            // get audio
+            if (Utils.isDefined(group.audio)) {
+                assetCount += Utils.getKeyLength(group.audio);
+                for (asset in group.audio) {
+                    if (!group.audio.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
+                }
+            }
+            // get json
+            if (Utils.isDefined(group.json)) {
+                assetCount += Utils.getKeyLength(group.json);
+                for (asset in group.json) {
+                    if (!group.json.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
+                }
+            }
+            // load all assets
+            loadAllAssets();
+
+            return assetCount;
+        };
+        /**
+         * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadImageFromUrl
+         */
+        var loadImageFromUrl = function (name, url, callback) {
+            var onLoadImage = function (err, name, image) {
+                if (err) {
+                    console.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.images[name] = image;
+                if (callback) {
+                    callback(null, image);
+                }
+            };
+            loadImage(name, url, onLoadImage);
+        };
+        /**
+         * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadJsonFromUrl
+         */
+        var loadJsonFromUrl = function (name, url, callback) {
+            var onLoadJson = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.json[name] = json;
+                if (callback) {
+                    callback(null, json);
+                }
+            };
+            loadJSON(name, url, onLoadJson);
+        };
+        /**
+         * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadAudioFromUrl
+         */
+        var loadAudioFromUrl = function (name, url, callback) {
+            var onLoadAudio = function (err, name, audio) {
+                if (err) {
+                    console.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.audio[name] = audio;
+                if (callback) {
+                    callback(audio);
+                }
+            };
+            loadAudio(name, url, onLoadAudio);
+        };
+        /**
+         * Unloads assets (not implemented yet)
+         * @function
+         * @instance
+         * @param {String} groupName - Name of asset group
+         * @name unload
+         */
+        var unload = function (groupName) {};
+        /**
+         * Returns a previously loaded image
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {PackedImage} Image
+         * @name getImage
+         */
+        var getImage = function (name) {
+            var image, packedImage = texturePacker[name];
+            if (!packedImage) {
+                image = getImageElement(name);
+                if (!image) {
+                    throw 'Can not find ' + name;
+                }
+                packedImage = PackedImage(image);
+                texturePacker[name] = packedImage;
+            }
+            return packedImage;
+        };
+        /**
+         * Returns a previously loaded image element
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {HTMLImage} Html Image element
+         * @name getImageElement
+         */
+        var getImageElement = function (name) {
+            var asset = assets.images[name];
+            if (!Utils.isDefined(asset)) {
+                throw ('Asset ' + name + ' could not be found');
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded json object
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Object} Json object
+         * @name getJson
+         */
+        var getJson = function (name) {
+            var asset = assets.json[name];
+            if (!Utils.isDefined(asset)) {
+                throw ('Asset ' + name + ' could not be found');
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded audio element (currently by howler)
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Audia} Audia object
+         * @name getAudio
+         */
+        var getAudio = function (name) {
+            var asset = assets.audio[name];
+            if (!Utils.isDefined(asset)) {
+                throw ('Asset ' + name + ' could not be found');
+            }
+            return asset;
+        };
+        /**
+         * Returns all assets
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Object} assets - Object with reference to all loaded assets
+         * @name getAssets
+         */
+        var getAssets = function () {
+            return assets;
+        };
+        var initPackedImages = function () {
+            var frame, pack, i, image, json, name;
+            while (packs.length) {
+                pack = packs.pop();
+                image = getImageElement(pack);
+                json = getJson(pack);
+
+                // parse json
+                for (i = 0; i < json.frames.length; ++i) {
+                    name = json.frames[i].filename;
+                    name = name.substring(0, name.length - 4);
+                    frame = json.frames[i].frame;
+                    texturePacker[name] = PackedImage(image, frame);
+                }
+            }
+        };
+        /**
+         * Returns asset group
+         * @function
+         * @instance
+         * @returns {Object} assetGroups - reference to loaded JSON file
+         * @name getAssetGroups
+         */
+        var getAssetGroups = function () {
+            return assetGroups;
+        };
+        /**
+         * Reloads all assets
+         * @function
+         * @instance
+         * @param {Function} callback - called when all assets are loaded
+         * @name reload
+         */
+        var reload = function (callback) {
+            var group,
+                count = 0,
+                loaded = 0,
+                end = function () {
+                    loaded += 1;
+                    if (loaded === count && callback) {
+                        callback();
+                    }
+                };
+            for (group in assetGroups) {
+                if (!assetGroups.hasOwnProperty(group)) {
+                    continue;
+                }
+                load(group, end, function (current, total) {});
+                count += 1;
+            }
+        };
+        /**
+         * Attempts to load ./assets.json and interpret it as assetgroups
+         * @function
+         * @instance
+         * @param {Function} onRead - Called with an error string or null if successful
+         * @name loadAssetsJson
+         */
+        var loadAssetsJson = function (onReady) {
+            loadJSON('assets.json', 'assets.json', function (error, name, assetsJson) {
+                var isLoading = false;
+                var groupsToLoad = {};
+                if (error) {
+                    onReady(error);
+                    return;
+                }
+                // check the contents of json
+                Utils.forEach(assetsJson, function (group, groupName, l, breakLoop) {
+                    if (Utils.isString(group)) {
+                        // assume assets.json consists of strings to load json files with
+                        isLoading = true;
+                        groupsToLoad[groupName] = group;
+                    } else {
+                        // the asset group is present
+                        assetGroups[groupName] = group;
+                    }
+                });
+
+                if (isLoading) {
+                    // load jsons
+                    loadAssetGroups(groupsToLoad, onReady);
+                } else {
+                    // done
+                    onReady(null);
+                }
+            });
+        };
+        /**
+         * Loads all assets
+         * @function
+         * @instance
+         * @param {Object} settings
+         * @param {Array} settings.exceptions - array of strings, which asset groups not to load
+         * @param {Function} settings.callback - called when all assets are loaded
+         * @param {Function} settings.onLoad - called on every asset loaded
+         * @name reload
+         */
+        var loadAllAssets = function (settings) {
+            var exceptions = settings.exceptions;
+            var onReady = settings.onReady;
+            var onLoaded = settings.onLoaded;
+            var group;
+            var groupName;
+            var groupCount = 0;
+            var assetCount = 0;
+            var groupsLoaded = 0;
+            var current = 0;
+            // check if all groups loaded
+            var end = function () {
+                groupsLoaded += 1;
+                if (groupsLoaded === groupCount && onReady) {
+                    onReady();
+                }
+            };
+            // called on every asset
+            var loadAsset = function () {
+                current += 1;
+                if (onLoaded) {
+                    onLoaded(current, assetCount);
+                }
+            };
+
+            // check every assetgroup and load its assets
+            for (groupName in assetGroups) {
+                if (!assetGroups.hasOwnProperty(groupName)) {
+                    continue;
+                }
+                if (exceptions.indexOf(group) >= 0) {
+                    continue;
+                }
+                group = assetGroups[groupName];
+                assetCount += load(groupName, end, loadAsset);
+                groupCount += 1;
+            }
+
+            // nothing to load
+            if (groupCount === 0 && onReady) {
+                onReady();
+            }
+        };
         return {
             reload: reload,
+            loadAllAssets: loadAllAssets,
             loadAssetGroups: loadAssetGroups,
+            loadAssetsJson: loadAssetsJson,
             load: load,
+            loadJson: loadJSON,
             loadImageFromUrl: loadImageFromUrl,
             loadJsonFromUrl: loadJsonFromUrl,
             loadAudioFromUrl: loadAudioFromUrl,

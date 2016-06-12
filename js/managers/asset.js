@@ -292,6 +292,8 @@ bento.define('bento/managers/asset', [
             }
             // load all assets
             loadAllAssets();
+
+            return assetCount;
         };
         /**
          * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
@@ -538,12 +540,65 @@ bento.define('bento/managers/asset', [
                     onReady(null);
                 }
             });
-
         };
+        /**
+         * Loads all assets
+         * @function
+         * @instance
+         * @param {Object} settings
+         * @param {Array} settings.exceptions - array of strings, which asset groups not to load
+         * @param {Function} settings.callback - called when all assets are loaded
+         * @param {Function} settings.onLoad - called on every asset loaded
+         * @name reload
+         */
+        var loadAllAssets = function (settings) {
+            var exceptions = settings.exceptions;
+            var onReady = settings.onReady;
+            var onLoaded = settings.onLoaded;
+            var group;
+            var groupName;
+            var groupCount = 0;
+            var assetCount = 0;
+            var groupsLoaded = 0;
+            var current = 0;
+            // check if all groups loaded
+            var end = function () {
+                groupsLoaded += 1;
+                if (groupsLoaded === groupCount && onReady) {
+                    onReady();
+                }
+            };
+            // called on every asset
+            var loadAsset = function () {
+                current += 1;
+                if (onLoaded) {
+                    onLoaded(current, assetCount);
+                }
+            };
 
+            // check every assetgroup and load its assets
+            for (groupName in assetGroups) {
+                if (!assetGroups.hasOwnProperty(groupName)) {
+                    continue;
+                }
+                if (exceptions.indexOf(group) >= 0) {
+                    continue;
+                }
+                group = assetGroups[groupName];
+                assetCount += load(groupName, end, loadAsset);
+                groupCount += 1;
+            }
+
+            // nothing to load
+            if (groupCount === 0 && onReady) {
+                onReady();
+            }
+        };
         return {
             reload: reload,
+            loadAllAssets: loadAllAssets,
             loadAssetGroups: loadAssetGroups,
+            loadAssetsJson: loadAssetsJson,
             load: load,
             loadJson: loadJSON,
             loadImageFromUrl: loadImageFromUrl,
