@@ -6,16 +6,16 @@
  * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
  * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
  * @param {Function} settings.onLoad - Called when image is loaded through URL
- * @param {Number} settings.frameCountX - Number of Sprite frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of Sprite frames vertically (defaults to 1)
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
  * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
  * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
  * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the Sprite names
- * @param {Boolean} settings.animations[...].loop - Whether the Sprite should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the Sprite to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the Sprite is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the Sprite. The frames are counted starting from 0 (the top left)
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  * @example
 // Defines a 3 x 3 spritesheet with several animations
 // Note: The default is automatically defined if no animations object is passed
@@ -79,6 +79,7 @@ bento.define('bento/components/sprite', [
         // set to default
         this.animations = {};
         this.currentAnimation = null;
+        this.currentAnimationLength = 0;
 
         this.onCompleteCallback = function () {};
         this.setup(settings);
@@ -97,7 +98,7 @@ bento.define('bento/components/sprite', [
         this.animationSettings = settings || this.animationSettings;
         padding = this.animationSettings.padding || 0;
 
-        // add default Sprite
+        // add default animation
         if (!this.animations['default']) {
             if (!this.animationSettings.animations) {
                 this.animationSettings.animations = {};
@@ -167,7 +168,7 @@ bento.define('bento/components/sprite', [
     };
 
     Sprite.prototype.attached = function (data) {
-        var Sprite,
+        var animation,
             animations = this.animationSettings.animations,
             i = 0,
             len = 0,
@@ -178,32 +179,32 @@ bento.define('bento/components/sprite', [
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
 
-        // check if the frames of Sprite go out of bounds
-        for (Sprite in animations) {
-            for (i = 0, len = animations[Sprite].frames.length; i < len; ++i) {
-                if (animations[Sprite].frames[i] > highestFrame) {
-                    highestFrame = animations[Sprite].frames[i];
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
                 }
             }
-            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in Sprite " + Sprite + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            if (!animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
             }
 
         }
     };
     /**
-     * Set component to a different Sprite. The Sprite won't change if it's already playing.
+     * Set component to a different animation. The animation won't change if it's already playing.
      * @function
      * @instance
-     * @param {String} name - Name of the Sprite.
-     * @param {Function} callback - Called when Sprite ends.
-     * @param {Boolean} keepCurrentFrame - Prevents Sprite to jump back to frame 0
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
      * @name setAnimation
      */
     Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
         if (!anim) {
-            console.log('Warning: Sprite ' + name + ' does not exist.');
+            console.log('Warning: animation ' + name + ' does not exist.');
             return;
         }
         if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
@@ -217,27 +218,28 @@ bento.define('bento/components/sprite', [
             this.onCompleteCallback = callback;
             this.currentAnimation = anim;
             this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
             if (!keepCurrentFrame) {
                 this.currentFrame = 0;
             }
-            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
-                console.log('Warning: Sprite ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimation.frames.length;
+            if (this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
             }
         }
     };
     /**
-     * Returns the name of current Sprite playing
+     * Returns the name of current animation playing
      * @function
      * @instance
-     * @returns {String} Name of the Sprite playing, null if not playing anything
+     * @returns {String} Name of the animation playing, null if not playing anything
      * @name getAnimationName
      */
     Sprite.prototype.getAnimationName = function () {
         return this.currentAnimation.name;
     };
     /**
-     * Set current Sprite to a certain frame
+     * Set current animation to a certain frame
      * @function
      * @instance
      * @param {Number} frameNumber - Frame number.
@@ -247,20 +249,20 @@ bento.define('bento/components/sprite', [
         this.currentFrame = frameNumber;
     };
     /**
-     * Get speed of the current Sprite.
+     * Get speed of the current animation.
      * @function
      * @instance
-     * @returns {Number} Speed of the current Sprite
+     * @returns {Number} Speed of the current animation
      * @name getCurrentSpeed
      */
     Sprite.prototype.getCurrentSpeed = function () {
         return this.currentAnimation.speed;
     };
     /**
-     * Set speed of the current Sprite.
+     * Set speed of the current animation.
      * @function
      * @instance
-     * @param {Number} speed - Speed at which the Sprite plays.
+     * @param {Number} speed - Speed at which the animation plays.
      * @name setCurrentSpeed
      */
     Sprite.prototype.setCurrentSpeed = function (value) {
@@ -291,6 +293,11 @@ bento.define('bento/components/sprite', [
         if (!this.currentAnimation) {
             return;
         }
+        // no need for update
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+        
         reachedEnd = false;
         this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
         if (this.currentAnimation.loop) {
@@ -344,7 +351,7 @@ bento.define('bento/components/sprite', [
     };
 
     /**
-     * Ignore warnings about invalid Sprite frames
+     * Ignore warnings about invalid animation frames
      * @instance
      * @static
      * @name suppressWarnings

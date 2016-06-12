@@ -131,23 +131,23 @@ bento.define('bento/managers/asset', [
          * @name loadAssetGroups
          */
         var loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
-            var jsonName,
-                keyCount = Utils.getKeyLength(jsonFiles),
-                loaded = 0,
-                callback = function (err, name, json) {
-                    if (err) {
-                        console.log(err);
-                        return;
-                    }
-                    assetGroups[name] = json;
-                    loaded += 1;
-                    if (Utils.isDefined(onLoaded)) {
-                        onLoaded(loaded, keyCount);
-                    }
-                    if (keyCount === loaded && Utils.isDefined(onReady)) {
-                        onReady(null);
-                    }
-                };
+            var jsonName;
+            var keyCount = Utils.getKeyLength(jsonFiles);
+            var loaded = 0;
+            var callback = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assetGroups[name] = json;
+                loaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(loaded, keyCount);
+                }
+                if (keyCount === loaded && Utils.isDefined(onReady)) {
+                    onReady(null);
+                }
+            };
             for (jsonName in jsonFiles) {
                 if (jsonFiles.hasOwnProperty(jsonName)) {
                     loadJSON(jsonName, jsonFiles[jsonName], callback);

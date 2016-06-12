@@ -38,10 +38,6 @@ bento.define('bento/gui/clickbutton', [
                 'down': {
                     speed: 0,
                     frames: [1]
-                },
-                'inactive': {
-                    speed: 0,
-                    frames: [2]
                 }
             },
             sprite = new Sprite({
@@ -139,8 +135,8 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS
-        if (window.ejecta)
+        // keep track of clickbuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
             entity.attach({
                 start: function () {
                     EventSystem.fire('clickbuttonAdded', entity);

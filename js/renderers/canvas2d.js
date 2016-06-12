@@ -117,7 +117,6 @@ bento.define('bento/renderers/canvas2d', [
                 colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
                 return colorStr;
             };
-        console.log('Init canvas2d as renderer');
 
         // resize canvas according to pixelSize
         canvas.width *= pixelSize;
@@ -132,6 +131,9 @@ bento.define('bento/renderers/canvas2d', [
             }
             if (context.mozImageSmoothingEnabled) {
                 context.mozImageSmoothingEnabled = false;
+            }
+            if (context.msImageSmoothingEnabled) {
+                context.msImageSmoothingEnabled = false;
             }
         }
         return renderer;

@@ -3924,6 +3924,7 @@ bento.define('bento', [
             }
             // setup renderer
             Renderer(settings.renderer, canvas, settings, function (rend) {
+                console.log('Init ' + rend.name + ' as renderer');
                 renderer = rend;
                 gameData = module.getGameData();
                 callback();
@@ -4001,6 +4002,7 @@ bento.define('bento', [
                     setupCanvas(settings, function () {
                         dev = settings.dev || false;
                         Utils.setSuppressThrows(dev ? false : true);
+                        SaveState.setDev(dev);
                         // window resize listeners
                         manualResize = settings.manualResize;
                         window.addEventListener('resize', onResize, false);
@@ -4244,6 +4246,9 @@ bento.define('bento', [
  * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
  * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
  * @param {Boolean} settings.z - z-index to set
+ * @param {Number} settings.alpha - Opacity of the entity (1 = fully visible)
+ * @param {Number} settings.rotation - Rotation of the entity in radians
+ * @param {Vector2} settings.scale - Scale of the entity
  * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused
  * @param {Boolean} settings.global - Should entity remain after hiding a screen
  * @param {Boolean} settings.float - Should entity move with the screen
@@ -4439,10 +4444,13 @@ bento.define('bento/entity', [
         // read settings
         if (settings) {
             if (settings.position) {
-                this.position = settings.position;
+                this.position = settings.position; // should this be cloned?
             }
             if (settings.origin) {
                 this.origin = settings.origin;
+            }
+            if (settings.scale) {
+                this.scale = settings.scale;
             }
             if (settings.name) {
                 this.name = settings.name;
@@ -4454,6 +4462,12 @@ bento.define('bento/entity', [
                 for (i = 0; i < settings.family.length; ++i) {
                     this.family.push(settings.family[i]);
                 }
+            }
+            if (Utils.isDefined(settings.alpha)) {
+                this.alpha = settings.alpha;
+            }
+            if (Utils.isDefined(settings.rotation)) {
+                this.rotation = settings.rotation;
             }
 
             this.z = settings.z || 0;
@@ -4480,7 +4494,7 @@ bento.define('bento/entity', [
                 this.setOriginRelative(settings.originRelative);
             }
 
-            // you might want to init with all components
+            // you might want to do things before the entity returns
             if (settings.init) {
                 settings.init.apply(this);
             }
@@ -4513,11 +4527,12 @@ bento.define('bento/entity', [
     Entity.prototype.destroy = function (data) {
         var i,
             l,
-            component;
+            component,
+            components = this.components;
         data = data || {};
         // update components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
             if (component && component.destroy) {
                 data.entity = this;
                 component.destroy(data);
@@ -4527,12 +4542,13 @@ bento.define('bento/entity', [
     Entity.prototype.update = function (data) {
         var i,
             l,
-            component;
+            component,
+            components = this.components;
 
         data = data || {};
         // update components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
             if (component && component.update) {
                 data.entity = this;
                 component.update(data);
@@ -4546,6 +4562,7 @@ bento.define('bento/entity', [
     };
     Entity.prototype.draw = function (data) {
         var i, l, component;
+        var components = this.components;
         var matrix;
         if (!this.visible) {
             return;
@@ -4558,16 +4575,16 @@ bento.define('bento/entity', [
         this.transform.draw(data);
 
         // call components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
             if (component && component.draw) {
                 data.entity = this;
                 component.draw(data);
             }
         }
         // post draw
-        for (i = this.components.length - 1; i >= 0; i--) {
-            component = this.components[i];
+        for (i = components.length - 1; i >= 0; i--) {
+            component = components[i];
             if (component && component.postDraw) {
                 data.entity = this;
                 component.postDraw(data);
@@ -5795,6 +5812,33 @@ bento.define('bento/utils', [], function () {
                     "190": ["period", "."],
                     "191": ["slash", "forwardslash", "/"],
                     "192": ["graveaccent", "`"],
+
+                    "195": ["GamepadA"],
+                    "196": ["GamepadB"],
+                    "197": ["GamepadX"],
+                    "198": ["GamepadY"],
+                    "199": ["GamepadRightShoulder"], // R1
+                    "200": ["GamepadLeftShoulder"], // L1
+                    "201": ["GamepadLeftTrigger"], // L2
+                    "202": ["GamepadRightTrigger"], // R2
+                    "203": ["GamepadDPadUp"],
+                    "204": ["GamepadDPadDown"],
+                    "205": ["GamepadDPadLeft"],
+                    "206": ["GamepadDPadRight"],
+                    "207": ["GamepadMenu"], // 'start' button
+                    "208": ["GamepadView"], // 'select' button
+                    "209": ["GamepadLeftThumbstick"], // pressed left thumbstick
+                    "210": ["GamepadRightThumbstick"], // pressed right thumbstick
+                    "211": ["GamepadLeftThumbstickUp"],
+                    "212": ["GamepadLeftThumbstickDown"],
+                    "213": ["GamepadLeftThumbstickRight"],
+                    "214": ["GamepadLeftThumbstickLeft"],
+                    "215": ["GamepadRightThumbstickUp"],
+                    "216": ["GamepadRightThumbstickDown"],
+                    "217": ["GamepadRightThumbstickRight"],
+                    "218": ["GamepadRightThumbstickLeft"],
+                    "7": ["GamepadXboxButton"], // the middle xbox button
+
                     "219": ["openbracket", "["],
                     "220": ["backslash", "\\"],
                     "221": ["closebracket", "]"],
@@ -5867,6 +5911,33 @@ bento.define('bento/utils', [], function () {
                 "14": ["left"], // left half touch area
                 "15": ["right"], // right half touch area
                 "16": ["menu"] // menu button
+            };
+
+            return buttons;
+        })(),
+        /**
+         * Mapping for the Xbox controller
+         * @return {Object} mapping of all the buttons
+         */
+        gamepadMapping = (function () {
+            var buttons = {
+                "0": ["A", "a"],
+                "1": ["B", "b"],
+                "2": ["X", "x"],
+                "3": ["Y", "y"],
+                "4": ["L1", "l1"],
+                "5": ["R1", "r1"],
+                "6": ["L2", "l2"],
+                "7": ["R2", "r2"],
+                "8": ["back", "select"],
+                "9": ["start"],
+                "10": ["right-thumb", "right-stick"],
+                "11": ["left-thumb", "left-stick"],
+                "12": ["up"],
+                "13": ["down"],
+                "14": ["left"],
+                "15": ["right"],
+                "16": ["menu", "home"]
             };
 
             return buttons;
@@ -5962,6 +6033,7 @@ bento.define('bento/utils', [], function () {
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         remoteMapping: remoteMapping,
+        gamepadMapping: gamepadMapping,
         /**
          * Returns a random integer [0...n)
          * @function
@@ -6396,9 +6468,9 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-            return;
-        }
+        // if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+        //     return;
+        // }
         mousePosition = e.localPosition;
         this.isPointerDown = false;
         if (this.callbacks.pointerUp) {
@@ -6510,16 +6582,16 @@ bento.define('bento/components/fill', [
  * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
  * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
  * @param {Function} settings.onLoad - Called when image is loaded through URL
- * @param {Number} settings.frameCountX - Number of Sprite frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of Sprite frames vertically (defaults to 1)
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
  * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
  * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
  * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the Sprite names
- * @param {Boolean} settings.animations[...].loop - Whether the Sprite should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the Sprite to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the Sprite is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the Sprite. The frames are counted starting from 0 (the top left)
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  * @example
 // Defines a 3 x 3 spritesheet with several animations
 // Note: The default is automatically defined if no animations object is passed
@@ -6583,6 +6655,7 @@ bento.define('bento/components/sprite', [
         // set to default
         this.animations = {};
         this.currentAnimation = null;
+        this.currentAnimationLength = 0;
 
         this.onCompleteCallback = function () {};
         this.setup(settings);
@@ -6601,7 +6674,7 @@ bento.define('bento/components/sprite', [
         this.animationSettings = settings || this.animationSettings;
         padding = this.animationSettings.padding || 0;
 
-        // add default Sprite
+        // add default animation
         if (!this.animations['default']) {
             if (!this.animationSettings.animations) {
                 this.animationSettings.animations = {};
@@ -6671,7 +6744,7 @@ bento.define('bento/components/sprite', [
     };
 
     Sprite.prototype.attached = function (data) {
-        var Sprite,
+        var animation,
             animations = this.animationSettings.animations,
             i = 0,
             len = 0,
@@ -6682,32 +6755,32 @@ bento.define('bento/components/sprite', [
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
 
-        // check if the frames of Sprite go out of bounds
-        for (Sprite in animations) {
-            for (i = 0, len = animations[Sprite].frames.length; i < len; ++i) {
-                if (animations[Sprite].frames[i] > highestFrame) {
-                    highestFrame = animations[Sprite].frames[i];
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
                 }
             }
-            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in Sprite " + Sprite + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            if (!animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
             }
 
         }
     };
     /**
-     * Set component to a different Sprite. The Sprite won't change if it's already playing.
+     * Set component to a different animation. The animation won't change if it's already playing.
      * @function
      * @instance
-     * @param {String} name - Name of the Sprite.
-     * @param {Function} callback - Called when Sprite ends.
-     * @param {Boolean} keepCurrentFrame - Prevents Sprite to jump back to frame 0
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
      * @name setAnimation
      */
     Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
         if (!anim) {
-            console.log('Warning: Sprite ' + name + ' does not exist.');
+            console.log('Warning: animation ' + name + ' does not exist.');
             return;
         }
         if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
@@ -6721,27 +6794,28 @@ bento.define('bento/components/sprite', [
             this.onCompleteCallback = callback;
             this.currentAnimation = anim;
             this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
             if (!keepCurrentFrame) {
                 this.currentFrame = 0;
             }
-            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
-                console.log('Warning: Sprite ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimation.frames.length;
+            if (this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
             }
         }
     };
     /**
-     * Returns the name of current Sprite playing
+     * Returns the name of current animation playing
      * @function
      * @instance
-     * @returns {String} Name of the Sprite playing, null if not playing anything
+     * @returns {String} Name of the animation playing, null if not playing anything
      * @name getAnimationName
      */
     Sprite.prototype.getAnimationName = function () {
         return this.currentAnimation.name;
     };
     /**
-     * Set current Sprite to a certain frame
+     * Set current animation to a certain frame
      * @function
      * @instance
      * @param {Number} frameNumber - Frame number.
@@ -6751,20 +6825,20 @@ bento.define('bento/components/sprite', [
         this.currentFrame = frameNumber;
     };
     /**
-     * Get speed of the current Sprite.
+     * Get speed of the current animation.
      * @function
      * @instance
-     * @returns {Number} Speed of the current Sprite
+     * @returns {Number} Speed of the current animation
      * @name getCurrentSpeed
      */
     Sprite.prototype.getCurrentSpeed = function () {
         return this.currentAnimation.speed;
     };
     /**
-     * Set speed of the current Sprite.
+     * Set speed of the current animation.
      * @function
      * @instance
-     * @param {Number} speed - Speed at which the Sprite plays.
+     * @param {Number} speed - Speed at which the animation plays.
      * @name setCurrentSpeed
      */
     Sprite.prototype.setCurrentSpeed = function (value) {
@@ -6795,6 +6869,11 @@ bento.define('bento/components/sprite', [
         if (!this.currentAnimation) {
             return;
         }
+        // no need for update
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+        
         reachedEnd = false;
         this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
         if (this.currentAnimation.loop) {
@@ -6848,7 +6927,7 @@ bento.define('bento/components/sprite', [
     };
 
     /**
-     * Ignore warnings about invalid Sprite frames
+     * Ignore warnings about invalid animation frames
      * @instance
      * @static
      * @name suppressWarnings
@@ -9058,7 +9137,7 @@ bento.define('bento/managers/asset', [
                 }, false);
                 img.addEventListener('error', function (evt) {
                     // TODO: Implement failure: should it retry to load the image?
-                    console.log('ERROR: loading image failed');
+                    console.log('ERROR: loading image failed - ' + name);
                 }, false);
             },
             /**
@@ -9774,6 +9853,10 @@ bento.define('bento/managers/input', [
             keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
+            gamepad,
+            gamepads,
+            gamepadButtonsPressed = [],
+            gamepadButtonStates = {},
             remote,
             remoteButtonsPressed = [],
             remoteButtonStates = {},
@@ -9798,7 +9881,7 @@ bento.define('bento/managers/input', [
             touchStart = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTouchPosition(evt, i, 'start');
                     pointerDown(evt);
                 }
@@ -9806,7 +9889,7 @@ bento.define('bento/managers/input', [
             touchMove = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTouchPosition(evt, i, 'move');
                     pointerMove(evt);
                 }
@@ -9814,7 +9897,7 @@ bento.define('bento/managers/input', [
             touchEnd = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTouchPosition(evt, i, 'end');
                     pointerUp(evt);
                 }
@@ -9911,7 +9994,7 @@ bento.define('bento/managers/input', [
             },
             updatePointer = function (evt) {
                 var i = 0;
-                for (i = 0; i < pointers.length; i += 1) {
+                for (i = 0; i < pointers.length; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers[i].position = evt.position;
                         pointers[i].worldPosition = evt.worldPosition;
@@ -9922,7 +10005,7 @@ bento.define('bento/managers/input', [
             },
             removePointer = function (evt) {
                 var i = 0;
-                for (i = 0; i < pointers.length; i += 1) {
+                for (i = 0; i < pointers.length; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers.splice(i, 1);
                         return;
@@ -10038,6 +10121,95 @@ bento.define('bento/managers/input', [
                 }, false);
             },
             /**
+             * Adds event listeners for connecting/disconnecting a gamepad
+             */
+            initGamepad = function () {
+                window.addEventListener('gamepadconnected', gamepadConnected);
+                window.addEventListener('gamepaddisconnected', gamepadDisconnected);
+            },
+            /**
+             * Fired when the browser detects that a gamepad has been connected or the first time a button/axis of the gamepad is used.
+             * Adds a pre-update loop check for gamepads and gamepad input
+             * @param {GamepadEvent} evt
+             */
+            gamepadConnected = function (evt) {
+                // check for button input before the regular update
+                EventSystem.on('preUpdate', checkGamepad);
+
+                console.log('Gamepad connected:', evt.gamepad);
+            },
+            /**
+             * Fired when the browser detects that a gamepad has been disconnected.
+             * Removes the reference to the gamepad
+             * @param {GamepadEvent} evt
+             */
+            gamepadDisconnected = function (evt) {
+                gamepad = undefined;
+
+                // stop checking for button input
+                EventSystem.off('preUpdate', checkGamepad);
+            },
+            /**
+             * Gets a list of all gamepads and checks if any buttons are pressed.
+             */
+            checkGamepad = function () {
+                var i = 0,
+                    len = 0;
+
+                // get gamepad every frame because Chrome doesn't store a reference to the gamepad's state
+                gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+                for (i = 0, len = gamepads.length; i < len; ++i) {
+                    if (gamepads[i]) {
+                        gamepad = gamepads[i];
+                    }
+                }
+
+                if (!gamepad)
+                    return;
+
+                // uses an array to check against the state of the buttons from the previous frame
+                for (i = 0, len = gamepad.buttons.length; i < len; ++i) {
+                    if (gamepad.buttons[i].pressed !== gamepadButtonsPressed[i]) {
+                        if (gamepad.buttons[i].pressed) {
+                            gamepadButtonDown(i);
+                        } else {
+                            gamepadButtonUp(i);
+                        }
+                    }
+                }
+            },
+            gamepadButtonDown = function (id) {
+                var i = 0,
+                    names = Utils.gamepadMapping[id],
+                    len = 0;
+
+                // confusing name is used to keep the terminology similar to keyDown/keyUp
+                EventSystem.fire('gamepadKeyDown', id);
+                // save value in array
+                gamepadButtonsPressed[id] = true;
+
+                for (i = 0, len = names.length; i < len; ++i) {
+                    gamepadButtonStates[names[i]] = true;
+                    EventSystem.fire('gamepadButtonDown', names[i]);
+                    EventSystem.fire('gamepadButtonDown-' + names[i]);
+                }
+            },
+            gamepadButtonUp = function (id) {
+                var i = 0,
+                    names = Utils.gamepadMapping[id],
+                    len = 0;
+
+                // confusing name is used to keep the terminology similar to keyDown/keyUp
+                EventSystem.fire('gamepadKeyUp', id);
+                // save value in array
+                gamepadButtonsPressed[id] = false;
+
+                for (i = 0, len = names.length; i < len; ++i) {
+                    gamepadButtonStates[names[i]] = false;
+                    EventSystem.fire('gamepadButtonUp', names[i]);
+                }
+            },
+            /**
              * Adds a check for input from the apple remote before every update. Only if on tvOS.
              *
              * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
@@ -10045,15 +10217,15 @@ bento.define('bento/managers/input', [
              */
             initRemote = function () {
                 var i = 0,
-                    gamepads;
+                    tvOSGamepads;
 
                 if (window.ejecta) {
                     // get all connected gamepads
-                    gamepads = navigator.getGamepads();
+                    tvOSGamepads = navigator.getGamepads();
                     // find apple remote gamepad
-                    for (i = 0; i < gamepads.length; ++i)
-                        if (gamepads[i] && gamepads[i].profile === 'microGamepad')
-                            remote = gamepads[i];
+                    for (i = 0; i < tvOSGamepads.length; ++i)
+                        if (tvOSGamepads[i] && tvOSGamepads[i].profile === 'microGamepad')
+                            remote = tvOSGamepads[i];
 
                     for (i = 0; i < remote.buttons.length; ++i)
                         remoteButtonsPressed.push(remote.buttons[i].pressed);
@@ -10119,7 +10291,7 @@ bento.define('bento/managers/input', [
             tvTouchStart = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTvTouchPosition(evt, i, 'start');
                     tvPointerDown(evt);
                 }
@@ -10127,7 +10299,7 @@ bento.define('bento/managers/input', [
             tvTouchMove = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTvTouchPosition(evt, i, 'move');
                     tvPointerMove(evt);
                 }
@@ -10135,7 +10307,7 @@ bento.define('bento/managers/input', [
             tvTouchEnd = function (evt) {
                 var id, i;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; i += 1) {
+                for (i = 0; i < evt.changedTouches.length; ++i) {
                     addTvTouchPosition(evt, i, 'end');
                     tvPointerUp(evt);
                 }
@@ -10209,6 +10381,8 @@ bento.define('bento/managers/input', [
         initMouseClicks();
         // apple remote (only on tvOS)
         initRemote();
+        // start listening for gamepads
+        initGamepad();
 
         return {
             /**
@@ -10240,6 +10414,82 @@ bento.define('bento/managers/input', [
              */
             isKeyDown: function (name) {
                 return keyStates[name] || false;
+            },
+            /**
+             * Checks if any keyboard key is pressed
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if any provided key is down.
+             * @name isAnyKeyDown
+             */
+            isAnyKeyDown: function () {
+                var state;
+
+                for (state in keyStates)
+                    if (keyStates[state])
+                        return true;
+
+                return false;
+            },
+            /**
+             * Is the gamepad connected?
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if gamepad is connected, false otherwise.
+             * @name isGamepadButtonDown
+             */
+            isGamepadConnected: function () {
+                if (gamepad)
+                    return true;
+                else
+                    return false;
+            },
+            /**
+             * Checks if a gamepad button is down
+             * @function
+             * @instance
+             * @param {String} name - name of the button
+             * @returns {Boolean} Returns true if the provided button is down.
+             * @name isGamepadButtonDown
+             */
+            isGamepadButtonDown: function (name) {
+                return gamepadButtonStates[name] || false;
+            },
+            /**
+             * Checks if any gamepad button is pressed
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if any button is down.
+             * @name isAnyGamepadButtonDown
+             */
+            isAnyGamepadButtonDown: function () {
+                var state;
+
+                for (state in gamepadButtonStates)
+                    if (gamepadButtonStates[state])
+                        return true;
+
+                return false;
+            },
+            /**
+             * Returns the current float values of the x and y axes of left thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesLeft
+             */
+            getGamepadAxesLeft: function () {
+                return new Vector2(gamepad.axes[0], gamepad.axes[1]);
+            },
+            /**
+             * Returns the current float values of the x and y axes of right thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesRight
+             */
+            getGamepadAxesRight: function () {
+                return new Vector2(gamepad.axes[2], gamepad.axes[3]);
             },
             /**
              * Checks if a remote button is down
@@ -10818,15 +11068,20 @@ bento.define('bento/managers/object', [
 /**
  * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
  * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.audio namespace. 
+ * <br>Exports: Object, can be accessed through Bento.audio namespace.
  * @module bento/managers/savestate
  * @returns SaveState
  */
 bento.define('bento/managers/savestate', [
+    'bento',
     'bento/utils'
-], function (Utils) {
+], function (
+    Bento,
+    Utils
+) {
     'use strict';
     var uniqueID = document.URL,
+        dev = false,
         storage,
         // an object that acts like a localStorageObject
         storageFallBack = {
@@ -10891,6 +11146,9 @@ bento.define('bento/managers/savestate', [
             if (typeof elementKey !== 'string') {
                 elementKey = JSON.stringify(elementKey);
             }
+            if (element === undefined) {
+                throw "ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.";
+            }
             storage.setItem(uniqueID + elementKey, JSON.stringify(element));
 
             // also store the keys
@@ -10934,8 +11192,12 @@ bento.define('bento/managers/savestate', [
             try {
                 return JSON.parse(element);
             } catch (e) {
-                console.log('WARNING: save file corrupted.', e);
-                return defaultValue;
+                if (dev) {
+                    throw 'ERROR: save file corrupted. ' + e;
+                } else {
+                    console.log('WARNING: save file corrupted.', e);
+                    return defaultValue;
+                }
             }
         },
         /**
@@ -10970,6 +11232,16 @@ bento.define('bento/managers/savestate', [
             return storage.length === 0;
         },
         /**
+         * Returns a copy of the uniqueID.
+         * @function
+         * @instance
+         * @returns {String} uniqueID of current game
+         * @name getId
+         */
+        getId: function () {
+            return uniqueID.slice(0);
+        },
+        /**
          * Sets an identifier that's prepended on every key.
          * By default this is the game's URL, to prevend savefile clashing.
          * @function
@@ -10999,6 +11271,16 @@ bento.define('bento/managers/savestate', [
          */
         getStorage: function () {
             return storage;
+        },
+        /**
+         * Setting the dev mode to true will use throws instead of console.logs
+         * @function
+         * @instance
+         * @param {Boolean} bool - set to true to use throws instead of console.logs
+         * @name setDev
+         */
+        setDev: function (bool) {
+            dev = bool;
         }
     };
 });
@@ -13575,7 +13857,6 @@ bento.define('bento/renderers/canvas2d', [
                 colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
                 return colorStr;
             };
-        console.log('Init canvas2d as renderer');
 
         // resize canvas according to pixelSize
         canvas.width *= pixelSize;
@@ -13590,6 +13871,9 @@ bento.define('bento/renderers/canvas2d', [
             }
             if (context.mozImageSmoothingEnabled) {
                 context.mozImageSmoothingEnabled = false;
+            }
+            if (context.msImageSmoothingEnabled) {
+                context.msImageSmoothingEnabled = false;
             }
         }
         return renderer;
@@ -13790,7 +14074,6 @@ bento.define('bento/renderers/pixi', [
             graphicsRenderer = pixiRenderer.plugins.graphics;
             meshRenderer = pixiRenderer.plugins.mesh;
 
-            console.log('Init pixi as renderer');
             return renderer;
         } else {
             if (!window.PIXI) {
@@ -13911,7 +14194,6 @@ bento.define('bento/renderers/webgl', [
                     glRenderer = original;
                 }
             };
-        console.log('Init webgl as renderer');
 
         // fallback
         if (canWebGl && Utils.isDefined(window.GlSprites)) {
@@ -14037,10 +14319,6 @@ bento.define('bento/gui/clickbutton', [
                 'down': {
                     speed: 0,
                     frames: [1]
-                },
-                'inactive': {
-                    speed: 0,
-                    frames: [2]
                 }
             },
             sprite = new Sprite({
@@ -14138,8 +14416,8 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS
-        if (window.ejecta)
+        // keep track of clickbuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
             entity.attach({
                 start: function () {
                     EventSystem.fire('clickbuttonAdded', entity);
@@ -15089,7 +15367,8 @@ bento.define('bento/gui/togglebutton', [
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
-    'bento/tween'
+    'bento/tween',
+    'bento/eventsystem'
 ], function (
     Bento,
     Vector2,
@@ -15098,29 +15377,31 @@ bento.define('bento/gui/togglebutton', [
     Clickable,
     Entity,
     Utils,
-    Tween
+    Tween,
+    EventSystem
 ) {
     'use strict';
     return function (settings) {
         var viewport = Bento.getViewport(),
             active = true,
             toggled = false,
+            animations = settings.animations || {
+                'up': {
+                    speed: 0,
+                    frames: [0]
+                },
+                'down': {
+                    speed: 0,
+                    frames: [1]
+                }
+            },
             sprite = new Sprite({
                 image: settings.image,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
                 frameCountX: settings.frameCountX,
                 frameCountY: settings.frameCountY,
-                animations: settings.animations || {
-                    'up': {
-                        speed: 0,
-                        frames: [0]
-                    },
-                    'down': {
-                        speed: 0,
-                        frames: [1]
-                    }
-                }
+                animations: animations
             }),
             entitySettings = Utils.extend({
                 z: 0,
@@ -15185,6 +15466,23 @@ bento.define('bento/gui/togglebutton', [
                         }
                     }
                     sprite.setAnimation(toggled ? 'down' : 'up');
+                },
+                mimicClick: function () {
+                    entity.getComponent('clickable').callbacks.onHoldEnd();
+                },
+                setActive: function (bool) {
+                    active = bool;
+                    if (!active && animations.inactive) {
+                        sprite.setAnimation('inactive');
+                    } else {
+                        sprite.setAnimation(toggled ? 'down' : 'up');
+                    }
+                },
+                doCallback: function () {
+                    settings.onToggle.apply(entity);
+                },
+                isActive: function () {
+                    return active;
                 }
             });
 
@@ -15196,6 +15494,18 @@ bento.define('bento/gui/togglebutton', [
             toggled = true;
         }
         sprite.setAnimation(toggled ? 'down' : 'up');
+
+        // keep track of togglebuttons on tvOS and Windows
+        if (window.ejecta || window.Windows)
+            entity.attach({
+                start: function () {
+                    EventSystem.fire('clickbuttonAdded', entity);
+                },
+                destroy: function () {
+                    EventSystem.fire('clickbuttonRemoved', entity);
+                }
+            });
+
         return entity;
     };
 });

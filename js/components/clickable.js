@@ -141,9 +141,9 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-            return;
-        }
+        // if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+        //     return;
+        // }
         mousePosition = e.localPosition;
         this.isPointerDown = false;
         if (this.callbacks.pointerUp) {
