@@ -3836,399 +3836,401 @@ bento.define('bento', [
     Renderer
 ) {
     'use strict';
-    var canvas,
-        context,
-        renderer,
-        bentoSettings,
-        styleScaling = true,
-        canvasRatio = 0,
-        windowRatio,
-        manualResize = false,
-        throttle = 1,
-        canvasScale = {
-            x: 1,
-            y: 1
-        },
-        debug = {
-            debugBar: null,
-            fps: 0,
-            fpsAccumulator: 0,
-            fpsTicks: 0,
-            fpsMaxAverage: 600,
-            avg: 0,
-            lastTime: 0
-        },
-        dev = false,
-        gameData = {},
-        viewport = new Rectangle(0, 0, 640, 480),
-        setupDebug = function () {
-            if (Utils.isCocoonJS()) {
-                return;
+    var canvas;
+    var context;
+    var renderer;
+    var bentoSettings;
+    var styleScaling = true;
+    var canvasRatio = 0;
+    var windowRatio;
+    var manualResize = false;
+    var throttle = 1;
+    var canvasScale = {
+        x: 1,
+        y: 1
+    };
+    var debug = {
+        debugBar: null,
+        fps: 0,
+        fpsAccumulator: 0,
+        fpsTicks: 0,
+        fpsMaxAverage: 600,
+        avg: 0,
+        lastTime: 0
+    };
+    var dev = false;
+    var gameData = {};
+    var viewport = new Rectangle(0, 0, 640, 480);
+    var setupDebug = function () {
+        if (Utils.isCocoonJS()) {
+            return;
+        }
+        // TODO: make a proper debug bar
+        debug.debugBar = document.createElement('div');
+        debug.debugBar.style['font-family'] = 'Arial';
+        debug.debugBar.style.padding = '8px';
+        debug.debugBar.style.position = 'absolute';
+        debug.debugBar.style.right = '0px';
+        debug.debugBar.style.top = '0px';
+        debug.debugBar.style.color = 'white';
+        debug.debugBar.innerHTML = 'fps: 0';
+        document.body.appendChild(debug.debugBar);
+
+        var button = document.createElement('button');
+        button.innerHTML = 'button';
+        debug.debugBar.appendChild(button);
+    };
+    var setupCanvas = function (settings, callback) {
+        var parent;
+        var pixelRatio = window.devicePixelRatio || 1;
+        var windowWidth = window.innerWidth * pixelRatio;
+        var windowHeight = window.innerHeight * pixelRatio;
+
+        canvas = document.getElementById(settings.canvasId);
+
+        if (!canvas) {
+            // no canvas, create it
+            parent = document.getElementById('wrapper');
+            if (!parent) {
+                // just append it to the document body
+                parent = document.body;
             }
-            // TODO: make a proper debug bar
-            debug.debugBar = document.createElement('div');
-            debug.debugBar.style['font-family'] = 'Arial';
-            debug.debugBar.style.padding = '8px';
-            debug.debugBar.style.position = 'absolute';
-            debug.debugBar.style.right = '0px';
-            debug.debugBar.style.top = '0px';
-            debug.debugBar.style.color = 'white';
-            debug.debugBar.innerHTML = 'fps: 0';
-            document.body.appendChild(debug.debugBar);
+            canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
+            canvas.id = settings.canvasId;
+            parent.appendChild(canvas);
+        }
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvasRatio = viewport.height / viewport.width;
 
-            var button = document.createElement('button');
-            button.innerHTML = 'button';
-            debug.debugBar.appendChild(button);
-        },
-        setupCanvas = function (settings, callback) {
-            var parent,
-                pixelRatio = window.devicePixelRatio || 1,
-                windowWidth = window.innerWidth * pixelRatio,
-                windowHeight = window.innerHeight * pixelRatio;
+        settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
 
-            canvas = document.getElementById(settings.canvasId);
-
-            if (!canvas) {
-                // no canvas, create it
-                parent = document.getElementById('wrapper');
-                if (!parent) {
-                    // just append it to the document body
-                    parent = document.body;
-                }
-                canvas = document.createElement(Utils.isCocoonJS() ? 'screencanvas' : 'canvas');
-                canvas.id = settings.canvasId;
-                parent.appendChild(canvas);
-            }
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            canvasRatio = viewport.height / viewport.width;
-
-            settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'auto';
-
-            if (settings.renderer === 'auto') {
-                // automatically set/overwrite pixelSize
-                if (windowWidth > windowHeight) {
-                    settings.pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
-                } else {
-                    settings.pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
-                }
-                // max pixelSize 3 (?)
-                settings.pixelSize = Math.min(settings.pixelSize, 3);
-
-                settings.renderer = 'webgl';
-                // canvas is accelerated in cocoonJS
-                // should also use canvas for android?
-                if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/ ) {
-                    settings.renderer = 'canvas2d';
-                }
-            }
-            // setup renderer
-            Renderer(settings.renderer, canvas, settings, function (rend) {
-                console.log('Init ' + rend.name + ' as renderer');
-                renderer = rend;
-                gameData = module.getGameData();
-                callback();
-            });
-
-        },
-        onResize = function () {
-            var width,
-                height,
-                innerWidth = window.innerWidth,
-                innerHeight = window.innerHeight;
-
-            if (manualResize) {
-                return;
-            }
-
-            windowRatio = innerHeight / innerWidth;
-            // resize to fill screen
-            if (windowRatio < canvasRatio) {
-                width = innerHeight / canvasRatio;
-                height = innerHeight;
+        // TODO: deprecate 'auto' and 'webgl' renderer
+        if (settings.renderer === 'auto') {
+            // automatically set/overwrite pixelSize
+            if (windowWidth > windowHeight) {
+                settings.pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
             } else {
-                width = innerWidth;
-                height = innerWidth * canvasRatio;
+                settings.pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
             }
-            if (styleScaling) {
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-            } else {
-                canvas.width = width;
-                canvas.height = height;
+            // max pixelSize 3 (?)
+            settings.pixelSize = Math.min(settings.pixelSize, 3);
+
+            settings.renderer = 'webgl';
+            // canvas is accelerated in cocoonJS
+            // should also use canvas for android?
+            if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/ ) {
+                settings.renderer = 'canvas2d';
             }
-            canvasScale.x = width / viewport.width;
-            canvasScale.y = height / viewport.height;
-        },
-        module = {
-            /**
-             * Setup game. Initializes all Bento managers.
-             * @name setup
-             * @function
-             * @instance
-             * @param {Object} settings - settings for the game
-             * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-             * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
-             * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
-             * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
-             * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
-             * @param {Boolean} settings.subPixel - Disable rounding of pixels
-             * @param {Number} settings.pixelSize - Defaults to 1. You may resize pixels by setting this value. A kind of cheating with pixelart games.
-             * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
-             * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
-             * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
-             * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
-             * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
-             * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
-             * @param {Function} callback - Called when game is loaded (not implemented yet)
-             */
-            setup: function (settings, callback) {
-                bentoSettings = settings;
-                DomReady(function () {
-                    var runGame = function () {
-                        module.objects.run();
-                        if (callback) {
-                            callback();
+        }
+        // setup renderer
+        Renderer(settings.renderer, canvas, settings, function (rend) {
+            console.log('Init ' + rend.name + ' as renderer');
+            renderer = rend;
+            gameData = Bento.getGameData();
+            callback();
+        });
+    };
+    var onResize = function () {
+        var width,
+            height,
+            innerWidth = window.innerWidth,
+            innerHeight = window.innerHeight;
+
+        if (manualResize) {
+            return;
+        }
+
+        windowRatio = innerHeight / innerWidth;
+        // resize to fill screen
+        if (windowRatio < canvasRatio) {
+            width = innerHeight / canvasRatio;
+            height = innerHeight;
+        } else {
+            width = innerWidth;
+            height = innerWidth * canvasRatio;
+        }
+        if (styleScaling) {
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+        } else {
+            canvas.width = width;
+            canvas.height = height;
+        }
+        canvasScale.x = width / viewport.width;
+        canvasScale.y = height / viewport.height;
+    };
+    var Bento = {
+        /**
+         * Setup game. Initializes all Bento managers.
+         * @name setup
+         * @function
+         * @instance
+         * @param {Object} settings - settings for the game
+         * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
+         * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
+         * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
+         * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
+         * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
+         * @param {Boolean} settings.subPixel - Disable rounding of pixels
+         * @param {Number} settings.pixelSize - Defaults to 1. You may resize pixels by setting this value. A kind of cheating with pixelart games.
+         * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
+         * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
+         * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
+         * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
+         * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
+         * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
+         * @param {Function} callback - Called when game is loaded (not implemented yet)
+         */
+        setup: function (settings, callback) {
+            bentoSettings = settings;
+            DomReady(function () {
+                var runGame = function () {
+                    Bento.objects.run();
+                    if (callback) {
+                        callback();
+                    }
+                };
+                if (settings.canvasDimension) {
+                    if (settings.canvasDimension.isRectangle) {
+                        viewport = settings.canvasDimension || viewport;
+                    } else {
+                        throw 'settings.canvasDimension must be a rectangle';
+                    }
+                }
+                settings.sortMode = settings.sortMode || 0;
+                setupCanvas(settings, function () {
+                    dev = settings.dev || false;
+                    Utils.setSuppressThrows(dev ? false : true);
+                    SaveState.setDev(dev);
+                    // window resize listeners
+                    manualResize = settings.manualResize;
+                    window.addEventListener('resize', onResize, false);
+                    window.addEventListener('orientationchange', onResize, false);
+                    onResize();
+
+                    Bento.input = new InputManager(gameData, settings);
+                    Bento.objects = new ObjectManager(Bento.getGameData, settings);
+                    Bento.assets = new AssetManager();
+                    Bento.audio = new AudioManager(Bento);
+                    Bento.screens = new ScreenManager();
+
+                    // mix functions
+                    Utils.extend(Bento, Bento.objects);
+
+                    if (settings.assetGroups) {
+                        Bento.assets.loadAssetGroups(settings.assetGroups, runGame);
+                    } else {
+                        // try loadings assets.json from the root folder
+                        Bento.assets.loadAssetsJson(function (error) {
+                            runGame();
+                        });
+                    }
+                    // start watching for new modules
+                    bento.watch();
+                    // reload keys
+                    if (settings.reload) {
+                        if (settings.reload.simple) {
+                            EventSystem.on(settings.reload.simple, function () {
+                                Bento.reload();
+                            });
                         }
-                    };
-                    if (settings.canvasDimension) {
-                        if (settings.canvasDimension.isRectangle) {
-                            viewport = settings.canvasDimension || viewport;
-                        } else {
-                            throw 'settings.canvasDimension must be a rectangle';
+                        if (settings.reload.assets) {
+                            EventSystem.on(settings.reload.assets, function () {
+                                Bento.assets.reload(Bento.reload);
+                            });
+                        }
+                        if (settings.reload.jump) {
+                            EventSystem.on(settings.reload.jump, function () {
+                                var res = prompt('Show which screen?');
+                                Bento.screens.show(res);
+                            });
                         }
                     }
-                    settings.sortMode = settings.sortMode || 0;
-                    setupCanvas(settings, function () {
-                        dev = settings.dev || false;
-                        Utils.setSuppressThrows(dev ? false : true);
-                        SaveState.setDev(dev);
-                        // window resize listeners
-                        manualResize = settings.manualResize;
-                        window.addEventListener('resize', onResize, false);
-                        window.addEventListener('orientationchange', onResize, false);
-                        onResize();
-
-                        module.input = InputManager(gameData, settings);
-                        module.objects = ObjectManager(module.getGameData, settings);
-                        module.assets = AssetManager();
-                        module.audio = AudioManager(module);
-                        module.screens = ScreenManager();
-
-                        // mix functions
-                        Utils.extend(module, module.objects);
-
-                        if (settings.assetGroups) {
-                            module.assets.loadAssetGroups(settings.assetGroups, runGame);
-                        } else {
-                            runGame();
-                        }
-                        // start watching for new modules
-                        bento.watch();
-                        // reload keys
-                        if (settings.reload) {
-                            if (settings.reload.simple) {
-                                EventSystem.on(settings.reload.simple, function () {
-                                    module.reload();
-                                });
-                            }
-                            if (settings.reload.assets) {
-                                EventSystem.on(settings.reload.assets, function () {
-                                    module.assets.reload(module.reload);
-                                });
-                            }
-                            if (settings.reload.jump) {
-                                EventSystem.on(settings.reload.jump, function () {
-                                    var res = prompt('Show which screen?');
-                                    module.screens.show(res);
-                                });
-                            }
-                        }
-                    });
                 });
-            },
-            /**
-             * Returns the settings object supplied to Bento.setup
-             * @function
-             * @instance
-             * @returns Object
-             * @name getSettings
-             */
-            getSettings: function () {
-                return bentoSettings;
-            },
-            /**
-             * Returns the current viewport (reference).
-             * The viewport is a Rectangle.
-             * viewport.x and viewport.y indicate its current position in the world (upper left corner)
-             * viewport.width and viewport.height can be used to determine the size of the canvas
-             * @function
-             * @instance
-             * @returns Rectangle
-             * @name getViewport
-             */
-            getViewport: function () {
-                return viewport;
-            },
-            /**
-             * Returns the canvas element
-             * @function
-             * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
-             */
-            getCanvas: function () {
-                return canvas;
-            },
-            /**
-             * Returns the current renderer engine
-             * @function
-             * @instance
-             * @returns Renderer
-             * @name getRenderer
-             */
-            getRenderer: function () {
-                return renderer;
-            },
-            /**
-             * Reloads modules and jumps to screen. If no screenName was passed,
-             * it reloads the current screen.
-             * @function
-             * @instance
-             * @param {String} screenName - screen to show
-             * @name reload
-             */
-            reload: function (screenName) {
-                var currentScreen,
-                    Bento = module;
-                if (!Bento.screens) {
-                    throw 'Bento has not beens started yet.';
-                }
-                currentScreen = Bento.screens.getCurrentScreen();
+            });
+        },
+        /**
+         * Returns the settings object supplied to Bento.setup
+         * @function
+         * @instance
+         * @returns Object
+         * @name getSettings
+         */
+        getSettings: function () {
+            return bentoSettings;
+        },
+        /**
+         * Returns the current viewport (reference).
+         * The viewport is a Rectangle.
+         * viewport.x and viewport.y indicate its current position in the world (upper left corner)
+         * viewport.width and viewport.height can be used to determine the size of the canvas
+         * @function
+         * @instance
+         * @returns Rectangle
+         * @name getViewport
+         */
+        getViewport: function () {
+            return viewport;
+        },
+        /**
+         * Returns the canvas element
+         * @function
+         * @instance
+         * @returns HTML Canvas Element
+         * @name getCanvas
+         */
+        getCanvas: function () {
+            return canvas;
+        },
+        /**
+         * Returns the current renderer engine
+         * @function
+         * @instance
+         * @returns Renderer
+         * @name getRenderer
+         */
+        getRenderer: function () {
+            return renderer;
+        },
+        /**
+         * Reloads modules and jumps to screen. If no screenName was passed,
+         * it reloads the current screen.
+         * @function
+         * @instance
+         * @param {String} screenName - screen to show
+         * @name reload
+         */
+        reload: function (screenName) {
+            var currentScreen;
+            if (!Bento.screens) {
+                throw 'Bento has not beens started yet.';
+            }
+            currentScreen = Bento.screens.getCurrentScreen();
 
-                if (!currentScreen) {
-                    console.log('WARNING: No screen has been loaded.');
-                    return;
-                }
+            if (!currentScreen) {
+                console.log('WARNING: No screen has been loaded.');
+                return;
+            }
 
-                Bento.screens.reset();
-                Bento.objects.resume();
+            Bento.screens.reset();
+            Bento.objects.resume();
 
-                Bento.objects.stop();
-                bento.refresh();
+            Bento.objects.stop();
+            bento.refresh();
 
-                // reset game speed
-                throttle = 1;
+            // reset game speed
+            throttle = 1;
 
-                // reload current screen
-                Bento.screens.show(screenName || currentScreen.name);
-                // restart the mainloop
-                setTimeout(Bento.objects.run, 120);
-            },
-            /**
-             * Returns a gameData object
-             * A gameData object is passed through every object during the update and draw
-             * and contains all necessary information to render
-             * @function
-             * @instance
-             * @returns {Object} data
-             * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
-             * @returns {Renderer} data.renderer - Reference to current Renderer
-             * @returns {Vector2} data.canvasScale - Reference to current canvas scale
-             * @returns {Rectangle} data.viewport - Reference to viewport object
-             * @returns {Entity} data.entity - The current entity passing the data object
-             * @returns {Number} data.deltaT - Time passed since last tick
-             * @returns {Number} data.throttle - Game speed (1 is normal)
-             * @name getGameData
-             */
-            getGameData: function () {
-                return {
-                    canvas: canvas,
-                    renderer: renderer,
-                    canvasScale: canvasScale,
-                    viewport: viewport,
-                    entity: null,
-                    event: null,
-                    deltaT: 0,
-                    speed: throttle
-                };
-            },
-            /**
-             * Gets the current game speed
-             * @function
-             * @instance
-             * @returns Number
-             * @name getGameSpeed
-             */
-            getGameSpeed: function () {
-                return throttle;
-            },
-            /**
-             * Sets the current game speed. Defaults to 1.
-             * @function
-             * @instance
-             * @param {Number} speed - Game speed
-             * @returns Number
-             * @name setGameSpeed
-             */
-            setGameSpeed: function (value) {
-                throttle = value;
-            },
-            /**
-             * Is game in dev mode?
-             * @function
-             * @instance
-             * @returns Boolean
-             * @name isDev
-             */
-            isDev: function () {
-                return dev;
-            },
-            /**
-             * Asset manager
-             * @see module:bento/managers/asset
-             * @instance
-             * @name assets
-             */
-            assets: null,
-            /**
-             * Object manager
-             * @see module:bento/managers/object
-             * @instance
-             * @name objects
-             */
-            objects: null,
-            /**
-             * Input manager
-             * @see module:bento/managers/input
-             * @instance
-             * @name objects
-             */
-            input: null,
-            /**
-             * Audio manager
-             * @see module:bento/managers/audio
-             * @instance
-             * @name audio
-             */
-            audio: null,
-            /**
-             * Screen manager
-             * @see module:bento/managers/screen
-             * @instance
-             * @name screen
-             */
-            screens: null,
-            /**
-             * SaveState manager
-             * @see module:bento/managers/savestate
-             * @instance
-             * @name saveState
-             */
-            saveState: SaveState,
-            utils: Utils
-        };
-    return module;
+            // reload current screen
+            Bento.screens.show(screenName || currentScreen.name);
+            // restart the mainloop
+            setTimeout(Bento.objects.run, 120);
+        },
+        /**
+         * Returns a gameData object
+         * A gameData object is passed through every object during the update and draw
+         * and contains all necessary information to render
+         * @function
+         * @instance
+         * @returns {Object} data
+         * @returns {HTMLCanvas} data.canvas - Reference to the current canvas element
+         * @returns {Renderer} data.renderer - Reference to current Renderer
+         * @returns {Vector2} data.canvasScale - Reference to current canvas scale
+         * @returns {Rectangle} data.viewport - Reference to viewport object
+         * @returns {Entity} data.entity - The current entity passing the data object
+         * @returns {Number} data.deltaT - Time passed since last tick
+         * @returns {Number} data.throttle - Game speed (1 is normal)
+         * @name getGameData
+         */
+        getGameData: function () {
+            return {
+                canvas: canvas,
+                renderer: renderer,
+                canvasScale: canvasScale,
+                viewport: viewport,
+                entity: null,
+                event: null,
+                deltaT: 0,
+                speed: throttle
+            };
+        },
+        /**
+         * Gets the current game speed
+         * @function
+         * @instance
+         * @returns Number
+         * @name getGameSpeed
+         */
+        getGameSpeed: function () {
+            return throttle;
+        },
+        /**
+         * Sets the current game speed. Defaults to 1.
+         * @function
+         * @instance
+         * @param {Number} speed - Game speed
+         * @returns Number
+         * @name setGameSpeed
+         */
+        setGameSpeed: function (value) {
+            throttle = value;
+        },
+        /**
+         * Is game in dev mode?
+         * @function
+         * @instance
+         * @returns Boolean
+         * @name isDev
+         */
+        isDev: function () {
+            return dev;
+        },
+        /**
+         * Asset manager
+         * @see module:bento/managers/asset
+         * @instance
+         * @name assets
+         */
+        assets: null,
+        /**
+         * Object manager
+         * @see module:bento/managers/object
+         * @instance
+         * @name objects
+         */
+        objects: null,
+        /**
+         * Input manager
+         * @see module:bento/managers/input
+         * @instance
+         * @name objects
+         */
+        input: null,
+        /**
+         * Audio manager
+         * @see module:bento/managers/audio
+         * @instance
+         * @name audio
+         */
+        audio: null,
+        /**
+         * Screen manager
+         * @see module:bento/managers/screen
+         * @instance
+         * @name screen
+         */
+        screens: null,
+        /**
+         * SaveState manager
+         * @see module:bento/managers/savestate
+         * @instance
+         * @name saveState
+         */
+        saveState: SaveState,
+        utils: Utils
+    };
+    return Bento;
 });
 /**
  * A base object to hold components. Has dimension, position, scale and rotation properties (though these don't have much
@@ -6937,736 +6939,6 @@ bento.define('bento/components/sprite', [
     return Sprite;
 });
 /**
- * Animation component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Constructor
- * @module bento/components/animation
- * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
- * @param {Function} settings.onLoad - Called when image is loaded through URL
- * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
- * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
- * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
- * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
- * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
- * @example
-// Defines a 3 x 3 spritesheet with several animations
-// Note: The default is automatically defined if no animations object is passed
-var sprite = new Sprite({
-        imageName: "mySpriteSheet",
-        frameCountX: 3,
-        frameCountY: 3,
-        animations: {
-            "default": {
-                frames: [0]
-            },
-            "walk": {
-                speed: 0.2,
-                frames: [1, 2, 3, 4, 5, 6]
-            },
-            "jump": {
-                speed: 0.2,
-                frames: [7, 8]
-            }
-        }
-     }),
-    entity = new Entity({
-        components: [sprite] // attach sprite to entity
-                             // alternative to passing a components array is by calling entity.attach(sprite);
-    });
-
-// attach entity to game
-Bento.objects.attach(entity);
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/animation', [
-    'bento',
-    'bento/utils',
-], function (Bento, Utils) {
-    'use strict';
-    var Animation = function (settings) {
-        this.entity = null;
-        this.name = 'animation';
-        this.visible = true;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        this.spriteImage = null;
-
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-        this.padding = 0;
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
-    };
-    /**
-     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     */
-    Animation.prototype.setup = function (settings) {
-        var self = this,
-            padding = 0;
-
-        this.animationSettings = settings || this.animationSettings;
-        padding = this.animationSettings.padding || 0;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        this.padding = this.animationSettings.padding || 0;
-
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
-        }
-    };
-
-    Animation.prototype.attached = function (data) {
-        var animation,
-            animations = this.animationSettings.animations,
-            i = 0,
-            len = 0,
-            highestFrame = 0;
-
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-
-        // check if the frames of animation go out of bounds
-        for (animation in animations) {
-            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
-                if (animations[animation].frames[i] > highestFrame) {
-                    highestFrame = animations[animation].frames[i];
-                }
-            }
-            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
-            }
-
-        }
-    };
-    /**
-     * Set component to a different animation. The animation won't change if it's already playing.
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     */
-    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimation.frames.length;
-            }
-        }
-    };
-    /**
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     */
-    Animation.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /**
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     */
-    Animation.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /**
-     * Get speed of the current animation.
-     * @function
-     * @instance
-     * @returns {Number} Speed of the current animation
-     * @name getCurrentSpeed
-     */
-    Animation.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-    /**
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     */
-    Animation.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /**
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     */
-    Animation.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /**
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     */
-    Animation.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    Animation.prototype.update = function (data) {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-        reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-        }
-    };
-    Animation.prototype.draw = function (data) {
-        var frameIndex,
-            sourceFrame,
-            sourceX,
-            sourceY,
-            entity = data.entity,
-            origin = entity.origin;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        sourceFrame = this.currentAnimation.frames[frameIndex];
-        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
-
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
-        data.renderer.drawImage(
-            this.spriteImage,
-            sourceX,
-            sourceY,
-            this.frameWidth,
-            this.frameHeight,
-            0,
-            0,
-            this.frameWidth,
-            this.frameHeight
-        );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-    Animation.prototype.toString = function () {
-        return '[object Animation]';
-    };
-
-    /**
-     * Ignore warnings about invalid animation frames
-     * @instance
-     * @static
-     * @name suppressWarnings
-     */
-    Animation.suppressWarnings = false;
-
-    return Animation;
-});
-/**
- * Component that sets the opacity
- * <br>Exports: Constructor
- * @module bento/components/opacity
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @param {Number} settings.opacity - Opacity value (1 is opaque)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/opacity', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Opacity = function (settings) {
-            settings = settings || {};
-            this.name = 'opacity';
-            this.oldOpacity = 1;
-            this.opacity = 1;
-            if (Utils.isDefined(settings.opacity)) {
-                this.opacity = settings.opacity;
-            }
-        };
-    Opacity.prototype.draw = function (data) {
-        // this.oldOpacity = data.renderer.getOpacity();
-        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
-    };
-    Opacity.prototype.postDraw = function (data) {
-        // data.renderer.setOpacity(this.oldOpacity);
-    };
-    Opacity.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-
-    /**
-     * Set entity opacity
-     * @function
-     * @instance
-     * @param {Number} opacity - Opacity value
-     * @name setOpacity
-     */
-    Opacity.prototype.setOpacity = function (value) {
-        // this.opacity = value;
-        this.entity.alpha = value;
-    };
-    /**
-     * Get entity opacity
-     * @function
-     * @instance
-     * @name getOpacity
-     */
-    Opacity.prototype.getOpacity = function () {
-        return this.entity.alpha;
-        // return this.opacity;
-    };
-    Opacity.prototype.toString = function () {
-        return '[object Opacity]';
-    };
-
-    return Opacity;
-});
-/**
- * Component that sets the context rotation for drawing.
- * <br>Exports: Constructor
- * @module bento/components/rotation
- * @param {Object} settings - Settings (unused)
- * @returns Returns a component object.
- */
-bento.define('bento/components/rotation', [
-    'bento/utils',
-], function (Utils) {
-    'use strict';
-    var Rotation = function (settings) {
-        settings = settings || {};
-        this.name = 'rotation';
-        this.entity = null;
-    };
-
-    Rotation.prototype.draw = function (data) {
-        // data.renderer.save();
-        // data.renderer.rotate(data.entity.rotation);
-    };
-    Rotation.prototype.postDraw = function (data) {
-        // data.renderer.restore();
-    };
-    Rotation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-
-    /**
-     * Rotates the parent entity in degrees
-     * @function
-     * @param {Number} degrees - Angle in degrees
-     * @instance
-     * @name addAngleDegree
-     */
-    Rotation.prototype.addAngleDegree = function (value) {
-        this.entity.rotation += value * Math.PI / 180;
-    };
-    /**
-     * Rotates the parent entity in radians
-     * @function
-     * @param {Number} radians - Angle in radians
-     * @instance
-     * @name addAngleRadian
-     */
-    Rotation.prototype.addAngleRadian = function (value) {
-        this.entity.rotation += value;
-    };
-    /**
-     * Rotates the parent entity in degrees
-     * @function
-     * @param {Number} degrees - Angle in degrees
-     * @instance
-     * @name setAngleDegree
-     */
-    Rotation.prototype.setAngleDegree = function (value) {
-        this.entity.rotation = value * Math.PI / 180;
-    };
-    /**
-     * Rotates the parent entity in radians
-     * @function
-     * @param {Number} radians - Angle in radians
-     * @instance
-     * @name setAngleRadian
-     */
-    Rotation.prototype.setAngleRadian = function (value) {
-        this.entity.rotation = value;
-    };
-    /**
-     * Returns the parent entity rotation in degrees
-     * @function
-     * @instance
-     * @name getAngleDegree
-     */
-    Rotation.prototype.getAngleDegree = function () {
-        return this.entity.rotation * 180 / Math.PI;
-    };
-    /**
-     * Returns the parent entity rotation in radians
-     * @function
-     * @instance
-     * @name getAngleRadian
-     */
-    Rotation.prototype.getAngleRadian = function () {
-        return this.entity.rotation;
-    };
-    Rotation.prototype.toString = function () {
-        return '[object Rotation]';
-    };
-
-    return Rotation;
-});
-/**
- * Component that sets the context scale for drawing.
- * <br>Exports: Constructor
- * @module bento/components/scale
- * @param {Object} settings - Settings (unused)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/scale', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Scale = function (settings) {
-        this.entity = null;
-        this.name = 'scale';
-    };
-    Scale.prototype.draw = function (data) {
-        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
-    };
-    Scale.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    /**
-     * Scales the parent entity in x direction
-     * @function
-     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
-     * @instance
-     * @name setScaleX
-     */
-    Scale.prototype.setScaleX = function (value) {
-        this.entity.scale.x = value;
-    };
-    /**
-     * Scales the parent entity in y direction
-     * @function
-     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
-     * @instance
-     * @name setScaleY
-     */
-    Scale.prototype.setScaleY = function (value) {
-        this.entity.scale.y = value;
-    };
-    Scale.prototype.toString = function () {
-        return '[object Scale]';
-    };
-
-    return Scale;
-});
-/**
- * Helper component that attaches the Translation, Scale, Rotation, Opacity
- * and Animation (or Pixi) components. Automatically detects the renderer.
- * <br>Exports: Constructor
- * @module bento/components/sprite
- * @param {Object} settings - Settings object, this object is passed to all other components
- * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
- * the Animation component is attached. Same as Sprite.insertBefore.
- * @param {} settings.... - See other components
- * @returns Returns a component object.
- */
-bento.define('bento/components/sprite_old', [
-    'bento',
-    'bento/utils',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/components/opacity',
-    'bento/components/animation'
-], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation) {
-    'use strict';
-    var renderer,
-        component = function (settings) {
-            this.entity = null;
-            this.settings = settings;
-
-            /**
-             * Reference to the Translation component
-             * @instance
-             * @name translation
-             */
-            this.translation = new Translation(settings);
-            /**
-             * Reference to the Rotation component
-             * @instance
-             * @name rotation
-             */
-            this.rotation = new Rotation(settings);
-            /**
-             * Reference to the Scale component
-             * @instance
-             * @name scale
-             */
-            this.scale = new Scale(settings);
-            /**
-             * Reference to the Opacity component
-             * @instance
-             * @name rotation
-             */
-            this.opacity = new Opacity(settings);
-            /**
-             * If renderer is set to pixi, this property is the Pixi component.
-             * Otherwise it's the Animation component
-             * @instance
-             * @name animation
-             */
-            this.animation = new Animation(settings);
-
-
-            this.components = settings.components || [];
-        };
-
-    component.prototype.attached = function (data) {
-        var i = 0;
-        this.entity = data.entity;
-        // attach all components!
-        if (this.translation) {
-            this.entity.attach(this.translation);
-        }
-        if (this.rotation) {
-            this.entity.attach(this.rotation);
-        }
-        if (this.scale) {
-            this.entity.attach(this.scale);
-        }
-        this.entity.attach(this.opacity);
-
-        // wedge in extra components in before the animation component
-        for (i = 0; i < this.components.length; ++i) {
-            this.entity.attach(this.components[i]);
-        }
-        this.entity.attach(this.animation);
-
-        // remove self?
-        this.entity.remove(this);
-    };
-    /**
-     * Allows you to insert components/children entities BEFORE the animation component.
-     * This way you can draw objects behind the sprite.
-     * This function should be called before you attach the Sprite to the Entity.
-     * @function
-     * @param {Array} array - Array of entities to attach
-     * @instance
-     * @name insertBefore
-     */
-    component.prototype.insertBefore = function (array) {
-        if (!Utils.isArray(array)) {
-            array = [array];
-        }
-        this.components = array;
-        return this;
-    };
-
-    component.prototype.toString = function () {
-        return '[object Sprite]';
-    };
-
-    component.prototype.getSettings = function () {
-        return this.settings;
-    };
-
-    return component;
-});
-/**
- * Component that sets the context translation for drawing.
- * <br>Exports: Constructor
- * @module bento/components/translation
- * @param {Object} settings - Settings
- * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
- * @returns Returns a component object.
- */
-bento.define('bento/components/translation', [
-    'bento',
-    'bento/utils',
-    'bento/math/vector2'
-], function (Bento, Utils, Vector2) {
-    'use strict';
-    var bentoSettings;
-    var Translation = function (settings) {
-        if (!bentoSettings) {
-            bentoSettings = Bento.getSettings();
-        }
-        settings = settings || {};
-        this.name = 'translation';
-        this.subPixel = settings.subPixel || false;
-        this.entity = null;
-        /**
-         * Additional x translation (superposed on the entity position)
-         * @instance
-         * @default 0
-         * @name x
-         */
-        this.x = 0;
-        /**
-         * Additional y translation (superposed on the entity position)
-         * @instance
-         * @default 0
-         * @name y
-         */
-        this.y = 0;
-    };
-    Translation.prototype.draw = function (data) {
-        var entity = data.entity,
-            parent = entity.parent,
-            position = entity.position,
-            origin = entity.origin,
-            scroll = data.viewport;
-
-        entity.transform.x = this.x;
-        entity.transform.y = this.y;
-        /*data.renderer.save();
-        if (this.subPixel || bentoSettings.subPixel) {
-            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
-        } else {
-            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
-        }
-        // scroll (only applies to parent objects)
-        if (!parent && !entity.float) {
-            data.renderer.translate(-scroll.x, -scroll.y);
-        }*/
-    };
-    Translation.prototype.postDraw = function (data) {
-        // data.renderer.restore();
-    };
-    Translation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Translation.prototype.toString = function () {
-        return '[object Translation]';
-    };
-
-    return Translation;
-});
-/**
  * A very simple require system
  */
 (function () {
@@ -9026,7 +8298,7 @@ bento.define('bento/lib/requestanimationframe', [], function () {
  * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
  * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
  * assets to load, and where to find them.
- * <br>Exports: Constructor, can be accessed through Bento.asset namespace
+ * <br>Exports: Constructor, can be accessed through Bento.assets namespace
  * @module bento/managers/asset
  * @returns AssetManager
  */
@@ -9037,499 +8309,594 @@ bento.define('bento/managers/asset', [
 ], function (PackedImage, Utils, Audia) {
     'use strict';
     return function () {
-        var assetGroups = {},
-            path = '',
-            assets = {
-                audio: {},
-                json: {},
-                images: {},
-                binary: {}
-            },
-            texturePacker = {},
-            packs = [],
-            loadAudio = function (name, source, callback) {
-                var i,
-                    failed = true,
-                    loadAudioFile = function (index, src) {
-                        var audio = new Audia(),
-                            canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
-                        if (!!canPlay || window.ejecta) {
-                            // success!
-                            audio.onload = function () {
-                                callback(null, name, audio);
-                            };
-                            audio.src = src;
-                            failed = false;
-                            return true;
-                        }
-                        return false;
+        var assetGroups = {};
+        var path = '';
+        var assets = {
+            audio: {},
+            json: {},
+            images: {},
+            binary: {}
+        };
+        var texturePacker = {};
+        var packs = [];
+        var loadAudio = function (name, source, callback) {
+            var i;
+            var failed = true;
+            var loadAudioFile = function (index, src) {
+                var audio = new Audia();
+                var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
+                if (!!canPlay || window.ejecta) {
+                    // success!
+                    audio.onload = function () {
+                        callback(null, name, audio);
                     };
-                if (!Utils.isArray(source)) {
-                    // source = [path + 'audio/' + source];
-                    source = [source];
+                    audio.src = src;
+                    failed = false;
+                    return true;
                 }
-                // try every type
-                for (i = 0; i < source.length; ++i) {
-                    if (loadAudioFile(i, path + 'audio/' + source[i])) {
-                        break;
-                    }
+                return false;
+            };
+            if (!Utils.isArray(source)) {
+                // source = [path + 'audio/' + source];
+                source = [source];
+            }
+            // try every type
+            for (i = 0; i < source.length; ++i) {
+                if (loadAudioFile(i, path + 'audio/' + source[i])) {
+                    break;
                 }
-                if (failed) {
-                    callback('This audio type is not supported:', name, source);
-                }
-            },
-            loadJSON = function (name, source, callback) {
-                var xhr = new XMLHttpRequest();
-                if (xhr.overrideMimeType) {
-                    xhr.overrideMimeType('application/json');
-                }
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + source);
-                };
-                xhr.ontimeout = function () {
-                    callback('Timeout' + source);
-                };
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4) {
-                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
-                            callback(null, name, JSON.parse(xhr.responseText));
-                        } else {
-                            callback('Error: State ' + xhr.readyState + ' ' + source);
-                        }
-                    }
-                };
-                xhr.send(null);
-            },
-            loadBinary = function (name, source, success, failure) {
-                var xhr = new XMLHttpRequest(),
-                    arrayBuffer,
-                    byteArray,
-                    buffer,
-                    i = 0;
+            }
+            if (failed) {
+                callback('This audio type is not supported:', name, source);
+            }
+        };
+        var loadJSON = function (name, source, callback) {
+            var xhr = new XMLHttpRequest();
+            if (xhr.overrideMimeType) {
+                xhr.overrideMimeType('application/json');
+            }
 
-                xhr.open('GET', source, true);
-                xhr.onerror = function () {
-                    callback('Error ' + name);
-                };
-                xhr.responseType = 'arraybuffer';
-                xhr.onload = function (e) {
-                    var binary;
-                    arrayBuffer = xhr.response;
-                    if (arrayBuffer) {
-                        byteArray = new Uint8Array(arrayBuffer);
-                        buffer = [];
-                        for (i; i < byteArray.byteLength; ++i) {
-                            buffer[i] = String.fromCharCode(byteArray[i]);
-                        }
-                        // loadedAssets.binary[name] = buffer.join('');
-                        binary = buffer.join('');
-                        callback(null, name, binary);
+            xhr.open('GET', source, true);
+            xhr.onerror = function () {
+                callback('Error ' + source);
+            };
+            xhr.ontimeout = function () {
+                callback('Timeout' + source);
+            };
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                        callback(null, name, JSON.parse(xhr.responseText));
+                    } else {
+                        callback('Error: State ' + xhr.readyState + ' ' + source);
                     }
-                };
-                xhr.send();
-            },
-            loadImage = function (name, source, callback) {
-                var img = new Image();
-                img.src = source;
-                img.addEventListener('load', function () {
-                    callback(null, name, img);
-                }, false);
-                img.addEventListener('error', function (evt) {
-                    // TODO: Implement failure: should it retry to load the image?
-                    console.log('ERROR: loading image failed - ' + name);
-                }, false);
-            },
-            /**
-             * Loads asset groups (json files containing names and asset paths to load)
-             * If the assetGroup parameter is passed to Bento.setup, this function will be
-             * called automatically by Bento.
-             * This will not load the assets (merely the assetgroups). To load the assets,
-             * you must call Bento.assets.load()
-             * @function
-             * @instance
-             * @param {Object} jsonFiles - Name with json path
-             * @param {Function} onReady - Callback when ready
-             * @param {Function} onLoaded - Callback when json file is loaded
-             * @name loadAssetGroups
-             */
-            loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
-                var jsonName,
-                    keyCount = Utils.getKeyLength(jsonFiles),
-                    loaded = 0,
-                    callback = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assetGroups[name] = json;
-                        loaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(loaded, keyCount);
-                        }
-                        if (keyCount === loaded && Utils.isDefined(onReady)) {
-                            onReady(null);
-                        }
-                    };
-                for (jsonName in jsonFiles) {
-                    if (jsonFiles.hasOwnProperty(jsonName)) {
-                        loadJSON(jsonName, jsonFiles[jsonName], callback);
-                    }
-                }
-            },
-            /**
-             * Loads assets from asset group.
-             * @function
-             * @instance
-             * @param {String} groupName - Name of asset group
-             * @param {Function} onReady - Callback when ready
-             * @param {Function} onLoaded - Callback when asset file is loaded
-             * @name load
-             */
-            load = function (groupName, onReady, onLoaded) {
-                var group = assetGroups[groupName],
-                    asset,
-                    assetsLoaded = 0,
-                    assetCount = 0,
-                    toLoad = [],
-                    checkLoaded = function () {
-                        if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
-                            initPackedImages();
-                            onReady(null);
-                        }
-                    },
-                    onLoadImage = function (err, name, image) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.images[name] = image;
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadPack = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.json[name] = json;
-                        packs.push(name);
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadJson = function (err, name, json) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-                        assets.json[name] = json;
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    onLoadAudio = function (err, name, audio) {
-                        if (err) {
-                            console.log(err);
-                        } else {
-                            assets.audio[name] = audio;
-                        }
-                        assetsLoaded += 1;
-                        if (Utils.isDefined(onLoaded)) {
-                            onLoaded(assetsLoaded, assetCount);
-                        }
-                        checkLoaded();
-                    },
-                    readyForLoading = function (fn, asset, path, callback) {
-                        toLoad.push({
-                            fn: fn,
-                            asset: asset,
-                            path: path,
-                            callback: callback
-                        });
-                    },
-                    loadAllAssets = function () {
-                        var i = 0,
-                            data;
-                        for (i = 0; i < toLoad.length; ++i) {
-                            data = toLoad[i];
-                            data.fn(data.asset, data.path, data.callback);
-                        }
-                    };
-
-                if (!Utils.isDefined(group)) {
-                    onReady('Could not find asset group ' + groupName);
-                    return;
-                }
-                // set path
-                if (Utils.isDefined(group.path)) {
-                    path = group.path;
-                }
-                // count the number of assets first
-                // get images
-                if (Utils.isDefined(group.images)) {
-                    assetCount += Utils.getKeyLength(group.images);
-                    for (asset in group.images) {
-                        if (!group.images.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
-                    }
-                }
-                // get packed images
-                if (Utils.isDefined(group.texturePacker)) {
-                    assetCount += Utils.getKeyLength(group.texturePacker);
-                    for (asset in group.texturePacker) {
-                        if (!group.texturePacker.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
-                    }
-                }
-                // get audio
-                if (Utils.isDefined(group.audio)) {
-                    assetCount += Utils.getKeyLength(group.audio);
-                    for (asset in group.audio) {
-                        if (!group.audio.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
-                    }
-                }
-                // get json
-                if (Utils.isDefined(group.json)) {
-                    assetCount += Utils.getKeyLength(group.json);
-                    for (asset in group.json) {
-                        if (!group.json.hasOwnProperty(asset)) {
-                            continue;
-                        }
-                        readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
-                    }
-                }
-                // load all assets
-                loadAllAssets();
-            },
-            /**
-             * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadImageFromUrl
-             */
-            loadImageFromUrl = function (name, url, callback) {
-                var onLoadImage = function (err, name, image) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.images[name] = image;
-                    if (callback) {
-                        callback(null, image);
-                    }
-                };
-                loadImage(name, url, onLoadImage);
-            },
-            /**
-             * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadJsonFromUrl
-             */
-            loadJsonFromUrl = function (name, url, callback) {
-                var onLoadJson = function (err, name, json) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.json[name] = json;
-                    if (callback) {
-                        callback(null, json);
-                    }
-                };
-                loadJSON(name, url, onLoadJson);
-            },
-            /**
-             * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
-             * @function
-             * @instance
-             * @param {String} name - Name of asset
-             * @param {String} url - Url path (relative to your index.html)
-             * @param {Function} callback - Callback function
-             * @name loadAudioFromUrl
-             */
-            loadAudioFromUrl = function (name, url, callback) {
-                var onLoadAudio = function (err, name, audio) {
-                    if (err) {
-                        console.log(err);
-                        if (callback) {
-                            callback(err);
-                        }
-                        return;
-                    }
-                    assets.audio[name] = audio;
-                    if (callback) {
-                        callback(audio);
-                    }
-                };
-                loadAudio(name, url, onLoadAudio);
-            },
-            /**
-             * Unloads assets (not implemented yet)
-             * @function
-             * @instance
-             * @param {String} groupName - Name of asset group
-             * @name unload
-             */
-            unload = function (groupName) {},
-            /**
-             * Returns a previously loaded image
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {PackedImage} Image
-             * @name getImage
-             */
-            getImage = function (name) {
-                var image, packedImage = texturePacker[name];
-                if (!packedImage) {
-                    image = getImageElement(name);
-                    if (!image) {
-                        throw 'Can not find ' + name;
-                    }
-                    packedImage = PackedImage(image);
-                    texturePacker[name] = packedImage;
-                }
-                return packedImage;
-            },
-            /**
-             * Returns a previously loaded image element
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {HTMLImage} Html Image element
-             * @name getImageElement
-             */
-            getImageElement = function (name) {
-                var asset = assets.images[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns a previously loaded json object
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Object} Json object
-             * @name getJson
-             */
-            getJson = function (name) {
-                var asset = assets.json[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns a previously loaded audio element (currently by howler)
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Audia} Audia object
-             * @name getAudio
-             */
-            getAudio = function (name) {
-                var asset = assets.audio[name];
-                if (!Utils.isDefined(asset)) {
-                    throw ('Asset ' + name + ' could not be found');
-                }
-                return asset;
-            },
-            /**
-             * Returns all assets
-             * @function
-             * @instance
-             * @param {String} name - Name of image
-             * @returns {Object} assets - Object with reference to all loaded assets
-             * @name getAssets
-             */
-            getAssets = function () {
-                return assets;
-            },
-            initPackedImages = function () {
-                var frame, pack, i, image, json, name;
-                while (packs.length) {
-                    pack = packs.pop();
-                    image = getImageElement(pack);
-                    json = getJson(pack);
-
-                    // parse json
-                    for (i = 0; i < json.frames.length; ++i) {
-                        name = json.frames[i].filename;
-                        name = name.substring(0, name.length - 4);
-                        frame = json.frames[i].frame;
-                        texturePacker[name] = PackedImage(image, frame);
-                    }
-                }
-            },
-            /**
-             * Returns asset group
-             * @function
-             * @instance
-             * @returns {Object} assetGroups - reference to loaded JSON file
-             * @name getAssetGroups
-             */
-            getAssetGroups = function () {
-                return assetGroups;
-            },
-             /**
-             * Reloads all assets
-             * @function
-             * @instance
-             * @param {Function} callback - called when all assets are loaded
-             * @name reload
-             */
-            reload  = function (callback) {
-                var group,
-                    count = 0,
-                    loaded = 0,
-                    end = function () {
-                        loaded += 1;
-                        if (loaded === count && callback) {
-                            callback();
-                        }
-                    };
-                for (group in assetGroups) {
-                    if (!assetGroups.hasOwnProperty(group)) {
-                        continue;
-                    }
-                    load(group, end, function (current, total) {});
-                    count += 1;
                 }
             };
+            xhr.send(null);
+        };
+        var loadBinary = function (name, source, success, failure) {
+            var xhr = new XMLHttpRequest();
+            var arrayBuffer;
+            var byteArray;
+            var buffer;
+            var i = 0;
+
+            xhr.open('GET', source, true);
+            xhr.onerror = function () {
+                callback('Error ' + name);
+            };
+            xhr.responseType = 'arraybuffer';
+            xhr.onload = function (e) {
+                var binary;
+                arrayBuffer = xhr.response;
+                if (arrayBuffer) {
+                    byteArray = new Uint8Array(arrayBuffer);
+                    buffer = [];
+                    for (i; i < byteArray.byteLength; ++i) {
+                        buffer[i] = String.fromCharCode(byteArray[i]);
+                    }
+                    // loadedAssets.binary[name] = buffer.join('');
+                    binary = buffer.join('');
+                    callback(null, name, binary);
+                }
+            };
+            xhr.send();
+        };
+        var loadImage = function (name, source, callback) {
+            var img = new Image();
+            img.src = source;
+            img.addEventListener('load', function () {
+                callback(null, name, img);
+            }, false);
+            img.addEventListener('error', function (evt) {
+                // TODO: Implement failure: should it retry to load the image?
+                console.log('ERROR: loading image failed');
+            }, false);
+        };
+        /**
+         * Loads asset groups (json files containing names and asset paths to load)
+         * If the assetGroup parameter is passed to Bento.setup, this function will be
+         * called automatically by Bento.
+         * This will not load the assets (merely the assetgroups). To load the assets,
+         * you must call Bento.assets.load()
+         * @function
+         * @instance
+         * @param {Object} jsonFiles - Name with json path
+         * @param {Function} onReady - Callback when ready
+         * @param {Function} onLoaded - Callback when json file is loaded
+         * @name loadAssetGroups
+         */
+        var loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
+            var jsonName;
+            var keyCount = Utils.getKeyLength(jsonFiles);
+            var loaded = 0;
+            var callback = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assetGroups[name] = json;
+                loaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(loaded, keyCount);
+                }
+                if (keyCount === loaded && Utils.isDefined(onReady)) {
+                    onReady(null);
+                }
+            };
+            for (jsonName in jsonFiles) {
+                if (jsonFiles.hasOwnProperty(jsonName)) {
+                    loadJSON(jsonName, jsonFiles[jsonName], callback);
+                }
+            }
+        };
+        /**
+         * Loads assets from asset group.
+         * @function
+         * @instance
+         * @param {String} groupName - Name of asset group
+         * @param {Function} onReady - Callback when ready
+         * @param {Function} onLoaded - Callback when asset file is loaded
+         * @name load
+         */
+        var load = function (groupName, onReady, onLoaded) {
+            var group = assetGroups[groupName];
+            var asset;
+            var assetsLoaded = 0;
+            var assetCount = 0;
+            var toLoad = [];
+            var checkLoaded = function () {
+                if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
+                    initPackedImages();
+                    onReady(null);
+                }
+            };
+            var onLoadImage = function (err, name, image) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets.images[name] = image;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var onLoadPack = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets.json[name] = json;
+                packs.push(name);
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var onLoadJson = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets.json[name] = json;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var onLoadAudio = function (err, name, audio) {
+                if (err) {
+                    console.log(err);
+                } else {
+                    assets.audio[name] = audio;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount);
+                }
+                checkLoaded();
+            };
+            var readyForLoading = function (fn, asset, path, callback) {
+                toLoad.push({
+                    fn: fn,
+                    asset: asset,
+                    path: path,
+                    callback: callback
+                });
+            };
+            var loadAllAssets = function () {
+                var i = 0;
+                var data;
+                for (i = 0; i < toLoad.length; ++i) {
+                    data = toLoad[i];
+                    data.fn(data.asset, data.path, data.callback);
+                }
+            };
+
+            if (!Utils.isDefined(group)) {
+                onReady('Could not find asset group ' + groupName);
+                return;
+            }
+            // set path
+            if (Utils.isDefined(group.path)) {
+                path = group.path;
+            }
+            // count the number of assets first
+            // get images
+            if (Utils.isDefined(group.images)) {
+                assetCount += Utils.getKeyLength(group.images);
+                for (asset in group.images) {
+                    if (!group.images.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
+                }
+            }
+            // get packed images
+            if (Utils.isDefined(group.texturePacker)) {
+                assetCount += Utils.getKeyLength(group.texturePacker);
+                for (asset in group.texturePacker) {
+                    if (!group.texturePacker.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                }
+            }
+            // get audio
+            if (Utils.isDefined(group.audio)) {
+                assetCount += Utils.getKeyLength(group.audio);
+                for (asset in group.audio) {
+                    if (!group.audio.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
+                }
+            }
+            // get json
+            if (Utils.isDefined(group.json)) {
+                assetCount += Utils.getKeyLength(group.json);
+                for (asset in group.json) {
+                    if (!group.json.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
+                }
+            }
+            // load all assets
+            loadAllAssets();
+
+            return assetCount;
+        };
+        /**
+         * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadImageFromUrl
+         */
+        var loadImageFromUrl = function (name, url, callback) {
+            var onLoadImage = function (err, name, image) {
+                if (err) {
+                    console.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.images[name] = image;
+                if (callback) {
+                    callback(null, image);
+                }
+            };
+            loadImage(name, url, onLoadImage);
+        };
+        /**
+         * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadJsonFromUrl
+         */
+        var loadJsonFromUrl = function (name, url, callback) {
+            var onLoadJson = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.json[name] = json;
+                if (callback) {
+                    callback(null, json);
+                }
+            };
+            loadJSON(name, url, onLoadJson);
+        };
+        /**
+         * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadAudioFromUrl
+         */
+        var loadAudioFromUrl = function (name, url, callback) {
+            var onLoadAudio = function (err, name, audio) {
+                if (err) {
+                    console.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.audio[name] = audio;
+                if (callback) {
+                    callback(audio);
+                }
+            };
+            loadAudio(name, url, onLoadAudio);
+        };
+        /**
+         * Unloads assets (not implemented yet)
+         * @function
+         * @instance
+         * @param {String} groupName - Name of asset group
+         * @name unload
+         */
+        var unload = function (groupName) {};
+        /**
+         * Returns a previously loaded image
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {PackedImage} Image
+         * @name getImage
+         */
+        var getImage = function (name) {
+            var image, packedImage = texturePacker[name];
+            if (!packedImage) {
+                image = getImageElement(name);
+                if (!image) {
+                    throw 'Can not find ' + name;
+                }
+                packedImage = PackedImage(image);
+                texturePacker[name] = packedImage;
+            }
+            return packedImage;
+        };
+        /**
+         * Returns a previously loaded image element
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {HTMLImage} Html Image element
+         * @name getImageElement
+         */
+        var getImageElement = function (name) {
+            var asset = assets.images[name];
+            if (!Utils.isDefined(asset)) {
+                throw ('Asset ' + name + ' could not be found');
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded json object
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Object} Json object
+         * @name getJson
+         */
+        var getJson = function (name) {
+            var asset = assets.json[name];
+            if (!Utils.isDefined(asset)) {
+                throw ('Asset ' + name + ' could not be found');
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded audio element (currently by howler)
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Audia} Audia object
+         * @name getAudio
+         */
+        var getAudio = function (name) {
+            var asset = assets.audio[name];
+            if (!Utils.isDefined(asset)) {
+                throw ('Asset ' + name + ' could not be found');
+            }
+            return asset;
+        };
+        /**
+         * Returns all assets
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Object} assets - Object with reference to all loaded assets
+         * @name getAssets
+         */
+        var getAssets = function () {
+            return assets;
+        };
+        var initPackedImages = function () {
+            var frame, pack, i, image, json, name;
+            while (packs.length) {
+                pack = packs.pop();
+                image = getImageElement(pack);
+                json = getJson(pack);
+
+                // parse json
+                for (i = 0; i < json.frames.length; ++i) {
+                    name = json.frames[i].filename;
+                    name = name.substring(0, name.length - 4);
+                    frame = json.frames[i].frame;
+                    texturePacker[name] = PackedImage(image, frame);
+                }
+            }
+        };
+        /**
+         * Returns asset group
+         * @function
+         * @instance
+         * @returns {Object} assetGroups - reference to loaded JSON file
+         * @name getAssetGroups
+         */
+        var getAssetGroups = function () {
+            return assetGroups;
+        };
+        /**
+         * Reloads all assets
+         * @function
+         * @instance
+         * @param {Function} callback - called when all assets are loaded
+         * @name reload
+         */
+        var reload = function (callback) {
+            var group,
+                count = 0,
+                loaded = 0,
+                end = function () {
+                    loaded += 1;
+                    if (loaded === count && callback) {
+                        callback();
+                    }
+                };
+            for (group in assetGroups) {
+                if (!assetGroups.hasOwnProperty(group)) {
+                    continue;
+                }
+                load(group, end, function (current, total) {});
+                count += 1;
+            }
+        };
+        /**
+         * Attempts to load ./assets.json and interpret it as assetgroups
+         * @function
+         * @instance
+         * @param {Function} onRead - Called with an error string or null if successful
+         * @name loadAssetsJson
+         */
+        var loadAssetsJson = function (onReady) {
+            loadJSON('assets.json', 'assets.json', function (error, name, assetsJson) {
+                var isLoading = false;
+                var groupsToLoad = {};
+                if (error) {
+                    onReady(error);
+                    return;
+                }
+                // check the contents of json
+                Utils.forEach(assetsJson, function (group, groupName, l, breakLoop) {
+                    if (Utils.isString(group)) {
+                        // assume assets.json consists of strings to load json files with
+                        isLoading = true;
+                        groupsToLoad[groupName] = group;
+                    } else {
+                        // the asset group is present
+                        assetGroups[groupName] = group;
+                    }
+                });
+
+                if (isLoading) {
+                    // load jsons
+                    loadAssetGroups(groupsToLoad, onReady);
+                } else {
+                    // done
+                    onReady(null);
+                }
+            });
+        };
+        /**
+         * Loads all assets
+         * @function
+         * @instance
+         * @param {Object} settings
+         * @param {Array} settings.exceptions - array of strings, which asset groups not to load
+         * @param {Function} settings.callback - called when all assets are loaded
+         * @param {Function} settings.onLoad - called on every asset loaded
+         * @name reload
+         */
+        var loadAllAssets = function (settings) {
+            var exceptions = settings.exceptions;
+            var onReady = settings.onReady;
+            var onLoaded = settings.onLoaded;
+            var group;
+            var groupName;
+            var groupCount = 0;
+            var assetCount = 0;
+            var groupsLoaded = 0;
+            var current = 0;
+            // check if all groups loaded
+            var end = function () {
+                groupsLoaded += 1;
+                if (groupsLoaded === groupCount && onReady) {
+                    onReady();
+                }
+            };
+            // called on every asset
+            var loadAsset = function () {
+                current += 1;
+                if (onLoaded) {
+                    onLoaded(current, assetCount);
+                }
+            };
+
+            // check every assetgroup and load its assets
+            for (groupName in assetGroups) {
+                if (!assetGroups.hasOwnProperty(groupName)) {
+                    continue;
+                }
+                if (exceptions.indexOf(groupName) >= 0) {
+                    continue;
+                }
+                group = assetGroups[groupName];
+                assetCount += load(groupName, end, loadAsset);
+                groupCount += 1;
+            }
+
+            // nothing to load
+            if (groupCount === 0 && onReady) {
+                onReady();
+            }
+        };
         return {
             reload: reload,
+            loadAllAssets: loadAllAssets,
             loadAssetGroups: loadAssetGroups,
+            loadAssetsJson: loadAssetsJson,
             load: load,
+            loadJson: loadJSON,
             loadImageFromUrl: loadImageFromUrl,
             loadJsonFromUrl: loadJsonFromUrl,
             loadAudioFromUrl: loadAudioFromUrl,
@@ -13739,6 +13106,803 @@ bento.define('bento/tween', [
     };
 });
 /**
+ * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.
+ * Useful if you want to use pixi features.
+ * <br>Exports: Constructor
+ * @module bento/components/pixi/sprite
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/pixi/sprite', [
+    'bento',
+    'bento/utils',
+    'bento/components/sprite'
+], function (Bento, Utils, Sprite) {
+    'use strict';
+    var PixiSprite = function (settings) {
+        Sprite.call(this, settings);
+        this.sprite = new PIXI.Sprite();
+    };
+    PixiSprite.prototype = Object.create(Sprite.prototype);
+    PixiSprite.prototype.constructor = PixiSprite;
+    PixiSprite.prototype.draw = function (data) {
+        var entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+        this.updateFrame();
+        this.updateSprite(
+            this.spriteImage, 
+            this.sourceX, 
+            this.sourceY,
+            this.frameWidth,
+            this.frameHeight
+        );
+
+        // draw with pixi
+        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.drawPixi(this.sprite);
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+    PixiSprite.prototype.updateSprite = function (packedImage, sx, sy, sw, sh) {
+        var rectangle;
+        var sprite;
+        var texture;
+        var image;
+
+        if (!packedImage) {
+            return;
+        }
+        image = packedImage.image;
+        if (!image.texture) {
+            // initialize pixi baseTexture
+            image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+        }
+        rectangle = new PIXI.Rectangle(sx, sy, sw, sh);
+        texture = new PIXI.Texture(image.texture, rectangle);
+        texture._updateUvs();
+
+        this.sprite.texture = texture;
+    };
+
+    PixiSprite.prototype.toString = function () {
+        return '[object PixiSprite]';
+    };
+
+    return PixiSprite;
+});
+/**
+ * Animation component. Draws an animated sprite on screen at the entity position.
+ * <br>Exports: Constructor
+ * @module bento/components/animation
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
+ * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between frames
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+// Defines a 3 x 3 spritesheet with several animations
+// Note: The default is automatically defined if no animations object is passed
+var sprite = new Sprite({
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3,
+        animations: {
+            "default": {
+                frames: [0]
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
+            }
+        }
+     }),
+    entity = new Entity({
+        components: [sprite] // attach sprite to entity
+                             // alternative to passing a components array is by calling entity.attach(sprite);
+    });
+
+// attach entity to game
+Bento.objects.attach(entity);
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/animation', [
+    'bento',
+    'bento/utils',
+], function (Bento, Utils) {
+    'use strict';
+    var Animation = function (settings) {
+        this.entity = null;
+        this.name = 'animation';
+        this.visible = true;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        this.spriteImage = null;
+
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.padding = 0;
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /**
+     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     */
+    Animation.prototype.setup = function (settings) {
+        var self = this,
+            padding = 0;
+
+        this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        this.padding = this.animationSettings.padding || 0;
+
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+    };
+
+    Animation.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
+
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
+        }
+    };
+    /**
+     * Set component to a different animation. The animation won't change if it's already playing.
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     */
+    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimation.frames.length;
+            }
+        }
+    };
+    /**
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
+     */
+    Animation.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+    /**
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     */
+    Animation.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Animation.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Animation.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Animation.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    Animation.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        reachedEnd = false;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+    Animation.prototype.draw = function (data) {
+        var frameIndex,
+            sourceFrame,
+            sourceX,
+            sourceY,
+            entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sourceFrame = this.currentAnimation.frames[frameIndex];
+        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+
+        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.drawImage(
+            this.spriteImage,
+            sourceX,
+            sourceY,
+            this.frameWidth,
+            this.frameHeight,
+            0,
+            0,
+            this.frameWidth,
+            this.frameHeight
+        );
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+    Animation.prototype.toString = function () {
+        return '[object Animation]';
+    };
+
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
+
+    return Animation;
+});
+/**
+ * Component that sets the opacity
+ * <br>Exports: Constructor
+ * @module bento/components/opacity
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @param {Number} settings.opacity - Opacity value (1 is opaque)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/opacity', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var Opacity = function (settings) {
+            settings = settings || {};
+            this.name = 'opacity';
+            this.oldOpacity = 1;
+            this.opacity = 1;
+            if (Utils.isDefined(settings.opacity)) {
+                this.opacity = settings.opacity;
+            }
+        };
+    Opacity.prototype.draw = function (data) {
+        // this.oldOpacity = data.renderer.getOpacity();
+        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
+    };
+    Opacity.prototype.postDraw = function (data) {
+        // data.renderer.setOpacity(this.oldOpacity);
+    };
+    Opacity.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+
+    /**
+     * Set entity opacity
+     * @function
+     * @instance
+     * @param {Number} opacity - Opacity value
+     * @name setOpacity
+     */
+    Opacity.prototype.setOpacity = function (value) {
+        // this.opacity = value;
+        this.entity.alpha = value;
+    };
+    /**
+     * Get entity opacity
+     * @function
+     * @instance
+     * @name getOpacity
+     */
+    Opacity.prototype.getOpacity = function () {
+        return this.entity.alpha;
+        // return this.opacity;
+    };
+    Opacity.prototype.toString = function () {
+        return '[object Opacity]';
+    };
+
+    return Opacity;
+});
+/**
+ * Component that sets the context rotation for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/rotation
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/rotation', [
+    'bento/utils',
+], function (Utils) {
+    'use strict';
+    var Rotation = function (settings) {
+        settings = settings || {};
+        this.name = 'rotation';
+        this.entity = null;
+    };
+
+    Rotation.prototype.draw = function (data) {
+        // data.renderer.save();
+        // data.renderer.rotate(data.entity.rotation);
+    };
+    Rotation.prototype.postDraw = function (data) {
+        // data.renderer.restore();
+    };
+    Rotation.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+
+    /**
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name addAngleDegree
+     */
+    Rotation.prototype.addAngleDegree = function (value) {
+        this.entity.rotation += value * Math.PI / 180;
+    };
+    /**
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name addAngleRadian
+     */
+    Rotation.prototype.addAngleRadian = function (value) {
+        this.entity.rotation += value;
+    };
+    /**
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name setAngleDegree
+     */
+    Rotation.prototype.setAngleDegree = function (value) {
+        this.entity.rotation = value * Math.PI / 180;
+    };
+    /**
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name setAngleRadian
+     */
+    Rotation.prototype.setAngleRadian = function (value) {
+        this.entity.rotation = value;
+    };
+    /**
+     * Returns the parent entity rotation in degrees
+     * @function
+     * @instance
+     * @name getAngleDegree
+     */
+    Rotation.prototype.getAngleDegree = function () {
+        return this.entity.rotation * 180 / Math.PI;
+    };
+    /**
+     * Returns the parent entity rotation in radians
+     * @function
+     * @instance
+     * @name getAngleRadian
+     */
+    Rotation.prototype.getAngleRadian = function () {
+        return this.entity.rotation;
+    };
+    Rotation.prototype.toString = function () {
+        return '[object Rotation]';
+    };
+
+    return Rotation;
+});
+/**
+ * Component that sets the context scale for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/scale
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/scale', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var Scale = function (settings) {
+        this.entity = null;
+        this.name = 'scale';
+    };
+    Scale.prototype.draw = function (data) {
+        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
+    };
+    Scale.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    /**
+     * Scales the parent entity in x direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleX
+     */
+    Scale.prototype.setScaleX = function (value) {
+        this.entity.scale.x = value;
+    };
+    /**
+     * Scales the parent entity in y direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleY
+     */
+    Scale.prototype.setScaleY = function (value) {
+        this.entity.scale.y = value;
+    };
+    Scale.prototype.toString = function () {
+        return '[object Scale]';
+    };
+
+    return Scale;
+});
+/**
+ * Helper component that attaches the Translation, Scale, Rotation, Opacity
+ * and Animation (or Pixi) components. Automatically detects the renderer.
+ * <br>Exports: Constructor
+ * @module bento/components/sprite
+ * @param {Object} settings - Settings object, this object is passed to all other components
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
+ * the Animation component is attached. Same as Sprite.insertBefore.
+ * @param {} settings.... - See other components
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/sprite_old', [
+    'bento',
+    'bento/utils',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/components/opacity',
+    'bento/components/animation'
+], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation) {
+    'use strict';
+    var renderer,
+        component = function (settings) {
+            this.entity = null;
+            this.settings = settings;
+
+            /**
+             * Reference to the Translation component
+             * @instance
+             * @name translation
+             */
+            this.translation = new Translation(settings);
+            /**
+             * Reference to the Rotation component
+             * @instance
+             * @name rotation
+             */
+            this.rotation = new Rotation(settings);
+            /**
+             * Reference to the Scale component
+             * @instance
+             * @name scale
+             */
+            this.scale = new Scale(settings);
+            /**
+             * Reference to the Opacity component
+             * @instance
+             * @name rotation
+             */
+            this.opacity = new Opacity(settings);
+            /**
+             * If renderer is set to pixi, this property is the Pixi component.
+             * Otherwise it's the Animation component
+             * @instance
+             * @name animation
+             */
+            this.animation = new Animation(settings);
+
+
+            this.components = settings.components || [];
+        };
+
+    component.prototype.attached = function (data) {
+        var i = 0;
+        this.entity = data.entity;
+        // attach all components!
+        if (this.translation) {
+            this.entity.attach(this.translation);
+        }
+        if (this.rotation) {
+            this.entity.attach(this.rotation);
+        }
+        if (this.scale) {
+            this.entity.attach(this.scale);
+        }
+        this.entity.attach(this.opacity);
+
+        // wedge in extra components in before the animation component
+        for (i = 0; i < this.components.length; ++i) {
+            this.entity.attach(this.components[i]);
+        }
+        this.entity.attach(this.animation);
+
+        // remove self?
+        this.entity.remove(this);
+    };
+    /**
+     * Allows you to insert components/children entities BEFORE the animation component.
+     * This way you can draw objects behind the sprite.
+     * This function should be called before you attach the Sprite to the Entity.
+     * @function
+     * @param {Array} array - Array of entities to attach
+     * @instance
+     * @name insertBefore
+     */
+    component.prototype.insertBefore = function (array) {
+        if (!Utils.isArray(array)) {
+            array = [array];
+        }
+        this.components = array;
+        return this;
+    };
+
+    component.prototype.toString = function () {
+        return '[object Sprite]';
+    };
+
+    component.prototype.getSettings = function () {
+        return this.settings;
+    };
+
+    return component;
+});
+/**
+ * Component that sets the context translation for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/translation
+ * @param {Object} settings - Settings
+ * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/translation', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2'
+], function (Bento, Utils, Vector2) {
+    'use strict';
+    var bentoSettings;
+    var Translation = function (settings) {
+        if (!bentoSettings) {
+            bentoSettings = Bento.getSettings();
+        }
+        settings = settings || {};
+        this.name = 'translation';
+        this.subPixel = settings.subPixel || false;
+        this.entity = null;
+        /**
+         * Additional x translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name x
+         */
+        this.x = 0;
+        /**
+         * Additional y translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name y
+         */
+        this.y = 0;
+    };
+    Translation.prototype.draw = function (data) {
+        var entity = data.entity,
+            parent = entity.parent,
+            position = entity.position,
+            origin = entity.origin,
+            scroll = data.viewport;
+
+        entity.transform.x = this.x;
+        entity.transform.y = this.y;
+        /*data.renderer.save();
+        if (this.subPixel || bentoSettings.subPixel) {
+            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
+        } else {
+            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
+        }
+        // scroll (only applies to parent objects)
+        if (!parent && !entity.float) {
+            data.renderer.translate(-scroll.x, -scroll.y);
+        }*/
+    };
+    Translation.prototype.postDraw = function (data) {
+        // data.renderer.restore();
+    };
+    Translation.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Translation.prototype.toString = function () {
+        return '[object Translation]';
+    };
+
+    return Translation;
+});
+/**
  * Canvas 2d renderer
  * @copyright (C) 2015 LuckyKat
  */
@@ -14211,73 +14375,6 @@ bento.define('bento/renderers/webgl', [
             return Canvas2d(canvas, settings);
         }
     };
-});
-/**
- * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.
- * Useful if you want to use pixi features.
- * <br>Exports: Constructor
- * @module bento/components/pixi/sprite
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/pixi/sprite', [
-    'bento',
-    'bento/utils',
-    'bento/components/sprite'
-], function (Bento, Utils, Sprite) {
-    'use strict';
-    var PixiSprite = function (settings) {
-        Sprite.call(this, settings);
-        this.sprite = new PIXI.Sprite();
-    };
-    PixiSprite.prototype = Object.create(Sprite.prototype);
-    PixiSprite.prototype.constructor = PixiSprite;
-    PixiSprite.prototype.draw = function (data) {
-        var entity = data.entity,
-            origin = entity.origin;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-        this.updateFrame();
-        this.updateSprite(
-            this.spriteImage, 
-            this.sourceX, 
-            this.sourceY,
-            this.frameWidth,
-            this.frameHeight
-        );
-
-        // draw with pixi
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
-        data.renderer.drawPixi(this.sprite);
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-    PixiSprite.prototype.updateSprite = function (packedImage, sx, sy, sw, sh) {
-        var rectangle;
-        var sprite;
-        var texture;
-        var image;
-
-        if (!packedImage) {
-            return;
-        }
-        image = packedImage.image;
-        if (!image.texture) {
-            // initialize pixi baseTexture
-            image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
-        }
-        rectangle = new PIXI.Rectangle(sx, sy, sw, sh);
-        texture = new PIXI.Texture(image.texture, rectangle);
-        texture._updateUvs();
-
-        this.sprite.texture = texture;
-    };
-
-    PixiSprite.prototype.toString = function () {
-        return '[object PixiSprite]';
-    };
-
-    return PixiSprite;
 });
 /**
  * An entity that behaves like a click button.
