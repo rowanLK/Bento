@@ -581,7 +581,7 @@ bento.define('bento/managers/asset', [
                 if (!assetGroups.hasOwnProperty(groupName)) {
                     continue;
                 }
-                if (exceptions.indexOf(group) >= 0) {
+                if (exceptions.indexOf(groupName) >= 0) {
                     continue;
                 }
                 group = assetGroups[groupName];
