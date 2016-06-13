@@ -304,8 +304,7 @@ bento.define('bento', [
          * @name reload
          */
         reload: function (screenName) {
-            var currentScreen,
-                Bento = Bento;
+            var currentScreen;
             if (!Bento.screens) {
                 throw 'Bento has not beens started yet.';
             }
