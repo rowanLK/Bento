@@ -12190,7 +12190,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
             return new Vector2(this.x + this.width, this.y + this.height);
         }
         //
-        return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
+        return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
     };
     /**
      * Returns the center position of the rectangle
@@ -12200,7 +12200,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
      * @name getCenter
      */
     Rectangle.prototype.getCenter = function () {
-        return new Vector2(this.x + this.width / 2, this.y, this.height / 2);
+        return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
     };
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
