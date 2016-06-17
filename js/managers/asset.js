@@ -547,14 +547,14 @@ bento.define('bento/managers/asset', [
          * @instance
          * @param {Object} settings
          * @param {Array} settings.exceptions - array of strings, which asset groups not to load
-         * @param {Function} settings.callback - called when all assets are loaded
+         * @param {Function} settings.onComplete - called when all assets are loaded
          * @param {Function} settings.onLoad - called on every asset loaded
          * @name reload
          */
         var loadAllAssets = function (settings) {
-            var exceptions = settings.exceptions;
-            var onReady = settings.onReady;
-            var onLoaded = settings.onLoaded;
+            var exceptions = settings.exceptions || [];
+            var onReady = settings.onReady || settings.onComplete || function () {};
+            var onLoaded = settings.onLoaded || settings.onLoad || function () {};
             var group;
             var groupName;
             var groupCount = 0;
