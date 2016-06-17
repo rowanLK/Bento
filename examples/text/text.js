@@ -24,26 +24,26 @@ bento.define('text', [
 ) {
     'use strict';
     var isEmpty = function (obj) {
-            var temp;
-            if (obj === "" || obj === 0 || obj === "0" || obj === null ||
-                obj === false || !Utils.isDefined(obj)) {
-                return true;
-            }
-            //  Check if the array is empty
-            if (Utils.isArray(obj) && obj.length === 0) {
-                return true;
-            }
-            //  Check if the object is empty
-            if (Utils.isObject(obj)) {
-                for (temp in obj) {
-                    if (Utils.has(obj, temp)) {
-                        return false;
-                    }
+        var temp;
+        if (obj === "" || obj === 0 || obj === "0" || obj === null ||
+            obj === false || !Utils.isDefined(obj)) {
+            return true;
+        }
+        //  Check if the array is empty
+        if (Utils.isArray(obj) && obj.length === 0) {
+            return true;
+        }
+        //  Check if the object is empty
+        if (Utils.isObject(obj)) {
+            for (temp in obj) {
+                if (Utils.has(obj, temp)) {
+                    return false;
                 }
-                return true;
             }
-            return false;
-        };
+            return true;
+        }
+        return false;
+    };
     return function (settings) {
         /*
         setting = {
@@ -91,7 +91,7 @@ bento.define('text', [
             canvasHeight = 1,
             compositeOperation = 'source-over',
             packedImage = new PackedImage(canvas),
-            extraWidthMult = 1,
+            sharpness = 1, // extra scaling to counter blurriness in chrome
             fontSizeCache = {},
             /*
              * Prepare font settings, gradients, max width/height etc.
@@ -107,15 +107,13 @@ bento.define('text', [
                 }
 
                 // patch for blurry text in chrome
-                if (true) {
-                    extraWidthMult = 4;
-                    // entity.scale = new Vector2(1 / extraWidthMult, 1 / extraWidthMult);
-                    if (textSettings.fontSize) {
-                        textSettings.fontSize *= extraWidthMult;
-                    }
-                    if (textSettings.maxWidth) {
-                        textSettings.maxWidth *= extraWidthMult;
-                    }
+                sharpness = textSettings.sharpness || 4;
+                // entity.scale = new Vector2(1 / sharpness, 1 / sharpness);
+                if (textSettings.fontSize) {
+                    textSettings.fontSize *= sharpness;
+                }
+                if (textSettings.maxWidth) {
+                    textSettings.maxWidth *= sharpness;
                 }
 
                 /*
@@ -145,7 +143,7 @@ bento.define('text', [
                     align = textSettings.align;
                 }
                 if (Utils.isDefined(textSettings.ySpacing)) {
-                    ySpacing = textSettings.ySpacing * extraWidthMult;
+                    ySpacing = textSettings.ySpacing * sharpness;
                 }
                 /*
                  * Font settings
@@ -183,9 +181,9 @@ bento.define('text', [
                  */
                 if (Utils.isDefined(textSettings.lineWidth)) {
                     if (!Utils.isArray(textSettings.lineWidth)) {
-                        lineWidth = [textSettings.lineWidth * extraWidthMult];
+                        lineWidth = [textSettings.lineWidth * sharpness];
                     } else {
-                        lineWidth = textSettings.lineWidth * extraWidthMult;
+                        lineWidth = textSettings.lineWidth * sharpness;
                     }
                 }
                 if (textSettings.strokeStyle) {
@@ -235,7 +233,7 @@ bento.define('text', [
                     maxWidth = null;
                 }
                 if (Utils.isDefined(textSettings.maxHeight)) {
-                    maxHeight = textSettings.maxHeight * extraWidthMult;
+                    maxHeight = textSettings.maxHeight * sharpness;
                 } else {
                     maxHeight = null;
                 }
@@ -608,6 +606,11 @@ bento.define('text', [
 
                 return grd;
             },
+            scaler = {
+                draw: function (data) {
+                    data.renderer.scale(1 / sharpness, 1 / sharpness);
+                }
+            },
             sprite = new Sprite({
                 image: packedImage
             }),
@@ -620,7 +623,10 @@ bento.define('text', [
                 addNow: settings.addNow,
                 updateWhenPaused: settings.updateWhenPaused,
                 float: settings.float,
-                components: [sprite]
+                components: [
+                    scaler,
+                    sprite
+                ]
             }).extend({
                 /**
                  * Retrieve current text

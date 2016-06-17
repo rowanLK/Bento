@@ -45,21 +45,9 @@ bento.require([
                     textBaseline: 'bottom',
                     ySpacing: 0
                 });
-                var text2 = new Text2({
-                    z: 0,
-                    position: new Vector2(32, 48),
-                    text: 'Hello',
-                    font: 'font',
-                    fontSize: 16,
-                    fontColor: '#000000',
-                    align: 'left',
-                    textBaseline: 'bottom',
-                    ySpacing: 0
-                });
 
                 Bento.objects.attach(background);
                 Bento.objects.attach(text);
-                Bento.objects.attach(text2);
             }
         });
     });
