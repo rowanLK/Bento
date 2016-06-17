@@ -1,6 +1,19 @@
 /**
- * An entity that displays text.
- * TODO: document settings parameter
+ * An entity that displays text. Custom fonts can be loaded through CSS.
+ * @param {Object} settings - Required, can include Entity settings
+ * @param {String} settings.text - String to set as text
+ * @param {String} settings.font - Name of the font
+ * @param {Number} [settings.fontSize] - Font size in pixels
+ * @param {String} [settings.fontColor] - Color of the text (CSS color specification)
+ * @param {String} [settings.align] - Alignment: left, center, right (also sets the origin)
+ * @param {String} [settings.textBaseline] - Text baseline: bottom, middle, top (also sets the origin)
+ * @param {Vector2} [settings.margin] - Expands the canvas (only useful for fonts that have letters that are too large to draw)
+ * @param {Number} [settings.ySpacing] - Additional vertical spacing between line breaks
+ * @param {Number} [settings.sharpness] - In Chrome the text can become blurry when centered. As a workaround, sharpness acts as extra scale (1 for normal, defaults to 4)
+ * @param {Number/Array} [settings.lineWidth] - Line widths (must be set when using strokes), can stroke multiple times
+ * @param {String/Array} [settings.strokeStyle] - CSS stroke style
+ * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
+ * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times. 
  * <br>Exports: Constructor
  * @module bento/gui/text
  * @returns Entity
@@ -90,7 +103,7 @@ bento.define('bento/gui/text', [
         var canvasHeight = 1;
         var compositeOperation = 'source-over';
         var packedImage = new PackedImage(canvas);
-        var sharpness = 1; // extra scaling to counter blurriness in chrome
+        var sharpness = 4; // extra scaling to counter blurriness in chrome
         var fontSizeCache = {};
         /*
          * Prepare font settings, gradients, max width/height etc.
@@ -106,8 +119,9 @@ bento.define('bento/gui/text', [
             }
 
             // patch for blurry text in chrome
-            sharpness = textSettings.sharpness || 4;
-            // entity.scale = new Vector2(1 / sharpness, 1 / sharpness);
+            if (textSettings.sharpness) {
+                sharpness = textSettings.sharpness;
+            }
             if (textSettings.fontSize) {
                 textSettings.fontSize *= sharpness;
             }
