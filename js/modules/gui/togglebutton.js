@@ -1,6 +1,11 @@
 /**
  * An entity that behaves like a toggle button.
- * TODO: document settings parameter
+ * @param {Object} settings - Required, can include Entity settings
+ * @param {Sprite} settings.sprite - Same as clickbutton! See @link module:bento/gui/clickbutton}
+ * @param {Bool} settings.active - Whether the button starts in the active state (default: true)
+ * @param {Bool} settings.toggled - Initial toggle state (default: false)
+ * @param {String} settings.onToggle - Callback when user clicks on the toggle ("this" refers to the clickbutton entity).
+ * @param {String} [settings.sfx] - Plays sound when pressed
  * <br>Exports: Constructor
  * @module bento/gui/togglebutton
  * @returns Entity
@@ -41,7 +46,7 @@ bento.define('bento/gui/togglebutton', [
                     frames: [1]
                 }
             },
-            sprite = new Sprite({
+            sprite = settings.sprite || new Sprite({
                 image: settings.image,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
@@ -89,13 +94,27 @@ bento.define('bento/gui/togglebutton', [
                         }
                     })
                 ],
-                family: ['buttons'],
-                init: function () {}
+                family: ['buttons']
             }, settings),
             entity = new Entity(entitySettings).extend({
+                /**
+                 * Check if the button is toggled
+                 * @function
+                 * @instance
+                 * @name isToggled
+                 * @returns {Bool} Whether the button is toggled
+                 */
                 isToggled: function () {
                     return toggled;
                 },
+                /**
+                 * Toggles the button programatically
+                 * @function
+                 * @param {Bool} state - Toggled or not
+                 * @param {Bool} doCallback - Perform the onToggle callback or not
+                 * @instance
+                 * @name toggle
+                 */
                 toggle: function (state, doCallback) {
                     if (Utils.isDefined(state)) {
                         toggled = state;
@@ -116,6 +135,13 @@ bento.define('bento/gui/togglebutton', [
                 mimicClick: function () {
                     entity.getComponent('clickable').callbacks.onHoldEnd();
                 },
+                /**
+                 * Activates or deactives the button. Deactivated buttons cannot be pressed.
+                 * @function
+                 * @param {Bool} active - Should be active or not
+                 * @instance
+                 * @name setActive
+                 */
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
@@ -124,9 +150,22 @@ bento.define('bento/gui/togglebutton', [
                         sprite.setAnimation(toggled ? 'down' : 'up');
                     }
                 },
+                /**
+                 * Performs the callback as if the button was clicked
+                 * @function
+                 * @instance
+                 * @name doCallback
+                 */
                 doCallback: function () {
                     settings.onToggle.apply(entity);
                 },
+                /**
+                 * Check if the button is active
+                 * @function
+                 * @instance
+                 * @name isActive
+                 * @returns {Bool} Whether the button is active
+                 */
                 isActive: function () {
                     return active;
                 }
@@ -139,7 +178,13 @@ bento.define('bento/gui/togglebutton', [
         if (settings.toggled) {
             toggled = true;
         }
-        sprite.setAnimation(toggled ? 'down' : 'up');
+
+        animations = sprite.animations || animations;
+        if (!active && animations.inactive) {
+            sprite.setAnimation('inactive');
+        } else {
+            sprite.setAnimation(toggled ? 'down' : 'up');
+        }
 
         // keep track of togglebuttons on tvOS and Windows
         if (window.ejecta || window.Windows)

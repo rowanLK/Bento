@@ -14378,7 +14378,13 @@ bento.define('bento/components/pixi/sprite', [
 });
 /**
  * An entity that behaves like a click button.
- * TODO: document settings parameter
+ * @param {Object} settings - Required, can include Entity settings
+ * @param {Sprite} settings.sprite - Sprite component. The sprite should have an "up", "down" and an "inactive" animation. Alternatively, you can pass all Sprite settings. Then, by default "up" and "down" are assumed to be frames 0 and 1 respectively. Frame 3 is assumed to be "inactive", if it exists
+ * @param {Function} settings.onClick - Callback when user clicks on the button ("this" refers to the clickbutton entity). Alternatively, you can listen to a "clickButton" event, the entity is passed as parameter.
+ * @param {Bool} settings.active - Whether the button starts in the active state (default: true)
+ * @param {String} [settings.sfx] - Plays sound when pressed
+ * @param {Function} [settings.onButtonDown] - When the user holds the mouse or touches the button
+ * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
  * <br>Exports: Constructor
  * @module bento/gui/clickbutton
  * @returns Entity
@@ -14418,8 +14424,9 @@ bento.define('bento/gui/clickbutton', [
                     frames: [1]
                 }
             },
-            sprite = new Sprite({
+            sprite = settings.sprite || new Sprite({
                 image: settings.image,
+                imageName: settings.imageName,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
                 frameCountX: settings.frameCountX,
@@ -14485,6 +14492,7 @@ bento.define('bento/gui/clickbutton', [
                 ],
                 family: ['buttons'],
                 init: function () {
+                    animations = sprite.animations || animations;
                     if (!active && animations.inactive) {
                         sprite.setAnimation('inactive');
                     } else {
@@ -14493,6 +14501,13 @@ bento.define('bento/gui/clickbutton', [
                 }
             }, settings),
             entity = new Entity(entitySettings).extend({
+                /**
+                 * Activates or deactives the button. Deactivated buttons cannot be pressed.
+                 * @function
+                 * @param {Bool} active - Should be active or not
+                 * @instance
+                 * @name setActive
+                 */
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
@@ -14501,9 +14516,22 @@ bento.define('bento/gui/clickbutton', [
                         sprite.setAnimation('up');
                     }
                 },
+                /**
+                 * Performs the callback as if the button was clicked
+                 * @function
+                 * @instance
+                 * @name doCallback
+                 */
                 doCallback: function () {
                     settings.onClick.apply(entity);
                 },
+                /**
+                 * Check if the button is active
+                 * @function
+                 * @instance
+                 * @name isActive
+                 * @returns {Bool} Whether the button is active
+                 */
                 isActive: function () {
                     return active;
                 }
@@ -14763,8 +14791,21 @@ bento.define('bento/gui/counter', [
     };
 });
 /**
- * An entity that displays text.
- * TODO: document settings parameter
+ * An entity that displays text. Custom fonts can be loaded through CSS.
+ * @param {Object} settings - Required, can include Entity settings
+ * @param {String} settings.text - String to set as text
+ * @param {String} settings.font - Name of the font
+ * @param {Number} [settings.fontSize] - Font size in pixels
+ * @param {String} [settings.fontColor] - Color of the text (CSS color specification)
+ * @param {String} [settings.align] - Alignment: left, center, right (also sets the origin)
+ * @param {String} [settings.textBaseline] - Text baseline: bottom, middle, top (also sets the origin)
+ * @param {Vector2} [settings.margin] - Expands the canvas (only useful for fonts that have letters that are too large to draw)
+ * @param {Number} [settings.ySpacing] - Additional vertical spacing between line breaks
+ * @param {Number} [settings.sharpness] - In Chrome the text can become blurry when centered. As a workaround, sharpness acts as extra scale (1 for normal, defaults to 4)
+ * @param {Number/Array} [settings.lineWidth] - Line widths (must be set when using strokes), can stroke multiple times
+ * @param {String/Array} [settings.strokeStyle] - CSS stroke style
+ * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
+ * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times. 
  * <br>Exports: Constructor
  * @module bento/gui/text
  * @returns Entity
@@ -14854,7 +14895,7 @@ bento.define('bento/gui/text', [
         var canvasHeight = 1;
         var compositeOperation = 'source-over';
         var packedImage = new PackedImage(canvas);
-        var sharpness = 1; // extra scaling to counter blurriness in chrome
+        var sharpness = 4; // extra scaling to counter blurriness in chrome
         var fontSizeCache = {};
         /*
          * Prepare font settings, gradients, max width/height etc.
@@ -14870,8 +14911,9 @@ bento.define('bento/gui/text', [
             }
 
             // patch for blurry text in chrome
-            sharpness = textSettings.sharpness || 4;
-            // entity.scale = new Vector2(1 / sharpness, 1 / sharpness);
+            if (textSettings.sharpness) {
+                sharpness = textSettings.sharpness;
+            }
             if (textSettings.fontSize) {
                 textSettings.fontSize *= sharpness;
             }
@@ -15441,7 +15483,12 @@ bento.define('bento/gui/text', [
 });
 /**
  * An entity that behaves like a toggle button.
- * TODO: document settings parameter
+ * @param {Object} settings - Required, can include Entity settings
+ * @param {Sprite} settings.sprite - Same as clickbutton! See @link module:bento/gui/clickbutton}
+ * @param {Bool} settings.active - Whether the button starts in the active state (default: true)
+ * @param {Bool} settings.toggled - Initial toggle state (default: false)
+ * @param {String} settings.onToggle - Callback when user clicks on the toggle ("this" refers to the clickbutton entity).
+ * @param {String} [settings.sfx] - Plays sound when pressed
  * <br>Exports: Constructor
  * @module bento/gui/togglebutton
  * @returns Entity
@@ -15482,7 +15529,7 @@ bento.define('bento/gui/togglebutton', [
                     frames: [1]
                 }
             },
-            sprite = new Sprite({
+            sprite = settings.sprite || new Sprite({
                 image: settings.image,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
@@ -15530,13 +15577,27 @@ bento.define('bento/gui/togglebutton', [
                         }
                     })
                 ],
-                family: ['buttons'],
-                init: function () {}
+                family: ['buttons']
             }, settings),
             entity = new Entity(entitySettings).extend({
+                /**
+                 * Check if the button is toggled
+                 * @function
+                 * @instance
+                 * @name isToggled
+                 * @returns {Bool} Whether the button is toggled
+                 */
                 isToggled: function () {
                     return toggled;
                 },
+                /**
+                 * Toggles the button programatically
+                 * @function
+                 * @param {Bool} state - Toggled or not
+                 * @param {Bool} doCallback - Perform the onToggle callback or not
+                 * @instance
+                 * @name toggle
+                 */
                 toggle: function (state, doCallback) {
                     if (Utils.isDefined(state)) {
                         toggled = state;
@@ -15557,6 +15618,13 @@ bento.define('bento/gui/togglebutton', [
                 mimicClick: function () {
                     entity.getComponent('clickable').callbacks.onHoldEnd();
                 },
+                /**
+                 * Activates or deactives the button. Deactivated buttons cannot be pressed.
+                 * @function
+                 * @param {Bool} active - Should be active or not
+                 * @instance
+                 * @name setActive
+                 */
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
@@ -15565,9 +15633,22 @@ bento.define('bento/gui/togglebutton', [
                         sprite.setAnimation(toggled ? 'down' : 'up');
                     }
                 },
+                /**
+                 * Performs the callback as if the button was clicked
+                 * @function
+                 * @instance
+                 * @name doCallback
+                 */
                 doCallback: function () {
                     settings.onToggle.apply(entity);
                 },
+                /**
+                 * Check if the button is active
+                 * @function
+                 * @instance
+                 * @name isActive
+                 * @returns {Bool} Whether the button is active
+                 */
                 isActive: function () {
                     return active;
                 }
@@ -15580,7 +15661,13 @@ bento.define('bento/gui/togglebutton', [
         if (settings.toggled) {
             toggled = true;
         }
-        sprite.setAnimation(toggled ? 'down' : 'up');
+
+        animations = sprite.animations || animations;
+        if (!active && animations.inactive) {
+            sprite.setAnimation('inactive');
+        } else {
+            sprite.setAnimation(toggled ? 'down' : 'up');
+        }
 
         // keep track of togglebuttons on tvOS and Windows
         if (window.ejecta || window.Windows)
