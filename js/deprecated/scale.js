@@ -1,4 +1,4 @@
-/**
+/*
  * Component that sets the context scale for drawing.
  * <br>Exports: Constructor
  * @module bento/components/scale

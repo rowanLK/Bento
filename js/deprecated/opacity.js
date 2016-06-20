@@ -1,4 +1,4 @@
-/**
+/*
  * Component that sets the opacity
  * <br>Exports: Constructor
  * @module bento/components/opacity

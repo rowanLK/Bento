@@ -1,4 +1,4 @@
-/**
+/*
  * Helper component that attaches the Translation, Scale, Rotation, Opacity
  * and Animation (or Pixi) components. Automatically detects the renderer.
  * <br>Exports: Constructor

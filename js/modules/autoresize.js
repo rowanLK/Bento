@@ -49,10 +49,9 @@ bento.define('bento/autoresize', [
                 if (isLandscape) {
                     swap();
                 }
-                console.log('Resolution:', canvasDimension);
-                // round up
-                canvasDimension.width = Math.ceil(canvasDimension.width);
-                canvasDimension.height = Math.ceil(canvasDimension.height);
+                
+                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
+                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
                 return canvasDimension;
             },
             scrollAndResize = function () {
