@@ -13858,6 +13858,14 @@ bento.define('bento/tween', [
             }
         });
 
+        if (!Utils.isDefined(settings.ease)) {
+            if (Bento.isDev()) {
+                throw 'WARNING: settings.ease is undefined.';
+            } else {
+                console.log('WARNING: settings.ease is undefined.');
+            }
+        }
+
         // tween automatically starts
         tween.begin();
 
