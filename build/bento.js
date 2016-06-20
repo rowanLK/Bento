@@ -14938,6 +14938,7 @@ bento.define('bento/gui/text', [
         var compositeOperation = 'source-over';
         var packedImage = new PackedImage(canvas);
         var sharpness = 4; // extra scaling to counter blurriness in chrome
+        var invSharpness = 1 / sharpness;
         var fontSizeCache = {};
         /*
          * Prepare font settings, gradients, max width/height etc.
@@ -14955,6 +14956,7 @@ bento.define('bento/gui/text', [
             // patch for blurry text in chrome
             if (textSettings.sharpness) {
                 sharpness = textSettings.sharpness;
+                invSharpness = 1 / sharpness;
             }
             if (textSettings.fontSize) {
                 textSettings.fontSize *= sharpness;
@@ -15439,7 +15441,7 @@ bento.define('bento/gui/text', [
         };
         var scaler = {
             draw: function (data) {
-                data.renderer.scale(1 / sharpness, 1 / sharpness);
+                data.renderer.scale(invSharpness, invSharpness);
             }
         };
         var sprite = new Sprite({
