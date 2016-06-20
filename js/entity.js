@@ -313,7 +313,7 @@ bento.define('bento/entity', [
             component,
             components = this.components;
 
-        data = data || Bento.getGamedata();
+        data = data || Bento.getGameData();
         // update components
         for (i = 0, l = components.length; i < l; ++i) {
             component = components[i];
@@ -335,7 +335,7 @@ bento.define('bento/entity', [
         if (!this.visible) {
             return;
         }
-        data = data || Bento.getGamedata();
+        data = data || Bento.getGameData();
 
         this.transform.draw(data);
 
