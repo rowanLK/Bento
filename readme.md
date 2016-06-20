@@ -8,7 +8,8 @@ Install Node.js and use `npm install`. To build the engine, use the `gulp` comma
 
 ## How to use
 
-Please refer to [this tutorial](http://www.lucky-kat.com/bento).
+(Not written yet...)
+Easiest way to get started for now is to copy the Empty Bento project: https://bitbucket.org/luckykat/empty-bento-project
 
 Remembering parameters and module names is a drag. These Sublime Text snippets will make your life easier: [snippets](https://bitbucket.org/snippets/luckykat/xREop)
 

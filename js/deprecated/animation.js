@@ -1,4 +1,4 @@
-/**
+/*
  * Animation component. Draws an animated sprite on screen at the entity position.
  * <br>Exports: Constructor
  * @module bento/components/animation

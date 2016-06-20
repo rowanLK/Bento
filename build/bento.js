@@ -6915,7 +6915,7 @@ bento.define('bento/components/sprite', [
 
     return Sprite;
 });
-/**
+/*
  * Animation component. Draws an animated sprite on screen at the entity position.
  * <br>Exports: Constructor
  * @module bento/components/animation
@@ -7261,7 +7261,7 @@ bento.define('bento/components/animation', [
 
     return Animation;
 });
-/**
+/*
  * Component that sets the opacity
  * <br>Exports: Constructor
  * @module bento/components/opacity
@@ -7322,7 +7322,7 @@ bento.define('bento/components/opacity', [
 
     return Opacity;
 });
-/**
+/*
  * Component that sets the context rotation for drawing.
  * <br>Exports: Constructor
  * @module bento/components/rotation
@@ -7414,7 +7414,7 @@ bento.define('bento/components/rotation', [
 
     return Rotation;
 });
-/**
+/*
  * Component that sets the context scale for drawing.
  * <br>Exports: Constructor
  * @module bento/components/scale
@@ -7462,7 +7462,7 @@ bento.define('bento/components/scale', [
 
     return Scale;
 });
-/**
+/*
  * Helper component that attaches the Translation, Scale, Rotation, Opacity
  * and Animation (or Pixi) components. Automatically detects the renderer.
  * <br>Exports: Constructor
@@ -7575,7 +7575,7 @@ bento.define('bento/components/sprite_old', [
 
     return component;
 });
-/**
+/*
  * Component that sets the context translation for drawing.
  * <br>Exports: Constructor
  * @module bento/components/translation
@@ -12789,10 +12789,9 @@ bento.define('bento/autoresize', [
                 if (isLandscape) {
                     swap();
                 }
-                console.log('Resolution:', canvasDimension);
-                // round up
-                canvasDimension.width = Math.ceil(canvasDimension.width);
-                canvasDimension.height = Math.ceil(canvasDimension.height);
+                
+                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
+                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
                 return canvasDimension;
             },
             scrollAndResize = function () {
