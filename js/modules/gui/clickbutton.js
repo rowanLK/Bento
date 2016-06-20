@@ -1,6 +1,12 @@
 /**
  * An entity that behaves like a click button.
- * TODO: document settings parameter
+ * @param {Object} settings - Required, can include Entity settings
+ * @param {Sprite} settings.sprite - Sprite component. The sprite should have an "up", "down" and an "inactive" animation. Alternatively, you can pass all Sprite settings. Then, by default "up" and "down" are assumed to be frames 0 and 1 respectively. Frame 3 is assumed to be "inactive", if it exists
+ * @param {Function} settings.onClick - Callback when user clicks on the button ("this" refers to the clickbutton entity). Alternatively, you can listen to a "clickButton" event, the entity is passed as parameter.
+ * @param {Bool} settings.active - Whether the button starts in the active state (default: true)
+ * @param {String} [settings.sfx] - Plays sound when pressed
+ * @param {Function} [settings.onButtonDown] - When the user holds the mouse or touches the button
+ * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
  * <br>Exports: Constructor
  * @module bento/gui/clickbutton
  * @returns Entity
@@ -40,8 +46,9 @@ bento.define('bento/gui/clickbutton', [
                     frames: [1]
                 }
             },
-            sprite = new Sprite({
+            sprite = settings.sprite || new Sprite({
                 image: settings.image,
+                imageName: settings.imageName,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
                 frameCountX: settings.frameCountX,
@@ -107,6 +114,7 @@ bento.define('bento/gui/clickbutton', [
                 ],
                 family: ['buttons'],
                 init: function () {
+                    animations = sprite.animations || animations;
                     if (!active && animations.inactive) {
                         sprite.setAnimation('inactive');
                     } else {
@@ -115,6 +123,13 @@ bento.define('bento/gui/clickbutton', [
                 }
             }, settings),
             entity = new Entity(entitySettings).extend({
+                /**
+                 * Activates or deactives the button. Deactivated buttons cannot be pressed.
+                 * @function
+                 * @param {Bool} active - Should be active or not
+                 * @instance
+                 * @name setActive
+                 */
                 setActive: function (bool) {
                     active = bool;
                     if (!active && animations.inactive) {
@@ -123,9 +138,22 @@ bento.define('bento/gui/clickbutton', [
                         sprite.setAnimation('up');
                     }
                 },
+                /**
+                 * Performs the callback as if the button was clicked
+                 * @function
+                 * @instance
+                 * @name doCallback
+                 */
                 doCallback: function () {
                     settings.onClick.apply(entity);
                 },
+                /**
+                 * Check if the button is active
+                 * @function
+                 * @instance
+                 * @name isActive
+                 * @returns {Bool} Whether the button is active
+                 */
                 isActive: function () {
                     return active;
                 }

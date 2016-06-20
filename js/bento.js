@@ -239,7 +239,9 @@ bento.define('bento', [
                         }
                         if (settings.reload.assets) {
                             EventSystem.on(settings.reload.assets, function () {
-                                Bento.assets.reload(Bento.reload);
+                                Bento.assets.loadAssetsJson(function (error) {
+                                    Bento.assets.reload(Bento.reload);
+                                });
                             });
                         }
                         if (settings.reload.jump) {
