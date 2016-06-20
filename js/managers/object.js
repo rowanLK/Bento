@@ -487,7 +487,7 @@ bento.define('bento/managers/object', [
             sort = defaultSort;
         }
 
-        suppressThrows = Utils.getSuppressThrows();
+        suppressThrows = settings.dev ? false : true;
 
         return module;
     };

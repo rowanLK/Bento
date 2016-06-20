@@ -4001,7 +4001,6 @@ bento.define('bento', [
                 settings.sortMode = settings.sortMode || 0;
                 setupCanvas(settings, function () {
                     dev = settings.dev || false;
-                    Utils.setSuppressThrows(dev ? false : true);
                     SaveState.setDev(dev);
                     // window resize listeners
                     manualResize = settings.manualResize;
@@ -4508,7 +4507,7 @@ bento.define('bento/entity', [
             }
         }
 
-        Entity.suppressThrows = Utils.getSuppressThrows();
+        Entity.suppressThrows = !Bento.isDev();
     };
     Entity.prototype.isEntity = function () {
         return true;
@@ -5075,7 +5074,7 @@ Bento.objects.attach(entity);
         return '[object Entity]';
     };
 
-    Entity.suppressThrows = true;
+    Entity.suppressThrows = !Bento.isDev();
 
     return Entity;
 });
@@ -5942,8 +5941,7 @@ bento.define('bento/utils', [], function () {
             };
 
             return buttons;
-        })(),
-        suppressThrows = true;
+        })();
 
     Utils = {
         /**
@@ -6302,26 +6300,6 @@ bento.define('bento/utils', [], function () {
             ALWAYS: 0,
             NEVER: 1,
             SORT_ON_ADD: 2
-        },
-        /**
-         * Are throws being suppressed?
-         * @function
-         * @instance
-         * @returns {Object} Returns true if throws are suppressed, false if not
-         * @name getSuppressThrows
-         */
-        getSuppressThrows: function () {
-            return suppressThrows;
-        },
-        /**
-         * Turn the suppression of throws on or off
-         * @function
-         * @instance
-         * @param {Boolean} bool - true to suppress throws, false to not suppress throws
-         * @name setSuppressThrows
-         */
-        setSuppressThrows: function (bool) {
-            suppressThrows = bool;
         }
     };
     return Utils;
@@ -11156,7 +11134,7 @@ bento.define('bento/managers/object', [
             sort = defaultSort;
         }
 
-        suppressThrows = Utils.getSuppressThrows();
+        suppressThrows = settings.dev ? false : true;
 
         return module;
     };

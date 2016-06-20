@@ -272,7 +272,7 @@ bento.define('bento/entity', [
             }
         }
 
-        Entity.suppressThrows = Utils.getSuppressThrows();
+        Entity.suppressThrows = !Bento.isDev();
     };
     Entity.prototype.isEntity = function () {
         return true;
@@ -839,7 +839,7 @@ Bento.objects.attach(entity);
         return '[object Entity]';
     };
 
-    Entity.suppressThrows = true;
+    Entity.suppressThrows = !Bento.isDev();
 
     return Entity;
 });
