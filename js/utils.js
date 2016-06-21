@@ -319,7 +319,11 @@ bento.define('bento/utils', [], function () {
                     "120": ["f9"],
                     "121": ["f10"],
                     "122": ["f11"],
-                    "123": ["f12"]
+                    "123": ["f12"],
+
+                    // volume keys Microsoft Surface
+                    "174": ["volDown"],
+                    "175": ["volUp"]
                 };
             for (aI = 65; aI <= 90; aI += 1) {
                 keys[aI] = String.fromCharCode(aI + 32);

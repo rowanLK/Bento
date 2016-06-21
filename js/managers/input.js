@@ -34,6 +34,7 @@ bento.define('bento/managers/input', [
             remote,
             remoteButtonsPressed = [],
             remoteButtonStates = {},
+            dev = settings.dev,
             pointerDown = function (evt) {
                 pointers.push({
                     id: evt.id,
@@ -243,6 +244,15 @@ bento.define('bento/managers/input', [
                 EventSystem.fire('keyDown', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
+                // catch unknown keys
+                if (!names) {
+                    if (dev) {
+                        throw 'ERROR: Key with keyCode ' + evt.keyCode + ' is undefined.';
+                    } else {
+                        console.log('WARNING: Key with keyCode ' + evt.keyCode + ' is undefined.');
+                        return;
+                    }
+                }
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
                     EventSystem.fire('buttonDown', names[i]);
@@ -255,6 +265,15 @@ bento.define('bento/managers/input', [
                 EventSystem.fire('keyUp', evt);
                 // get names
                 names = Utils.keyboardMapping[evt.keyCode];
+                // catch unknown keys
+                if (!names) {
+                    if (dev) {
+                        throw 'ERROR: Key with keyCode ' + evt.keyCode + ' is undefined.';
+                    } else {
+                        console.log('WARNING: Key with keyCode ' + evt.keyCode + ' is undefined.');
+                        return;
+                    }
+                }
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = false;
                     EventSystem.fire('buttonUp', names[i]);
