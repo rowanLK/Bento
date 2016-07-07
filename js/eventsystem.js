@@ -1,5 +1,5 @@
 /**
- * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn 
+ * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn
  off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
@@ -90,7 +90,7 @@ bento.define('bento/eventsystem', [
                         listener.callback(eventData);
                     }
                 } else if (!this.suppressWarnings) {
-                    // TODO: this warning appears when event listeners are removed 
+                    // TODO: this warning appears when event listeners are removed
                     // during another listener being triggered. For example, removing an entity
                     // while that entity was listening to the same event.
                     // In a lot of cases, this is normal... Consider removing this warning?

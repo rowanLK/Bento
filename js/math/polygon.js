@@ -131,7 +131,7 @@ bento.define('bento/math/polygon', [
                 i = 0,
                 j = points.length - 1,
                 bounds = this.getBoundingBox();
-                
+
             if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
                 return false;
             }

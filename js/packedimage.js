@@ -1,6 +1,6 @@
 /**
  * A wrapper for HTML images, holds data for image atlas. Bento renderers only work with PackedImage and not plain
- * HTML Image elements. This allows for easy transitions to using, for example, TexturePacker. 
+ * HTML Image elements. This allows for easy transitions to using, for example, TexturePacker.
  * (That's why it's called PackedImage, for a lack of better naming).
  * If you plan to use a HTML Canvas as image source, always remember to wrap it in a PackedImage.
  * <br>Exports: Constructor

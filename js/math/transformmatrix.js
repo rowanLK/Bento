@@ -123,7 +123,7 @@ bento.define('bento/math/transformmatrix', [
         this.c = 0;
         this.d = 1;
         this.tx = 0;
-        this.ty = 0;        
+        this.ty = 0;
     };
 
     return Matrix;

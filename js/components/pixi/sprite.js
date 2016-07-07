@@ -26,8 +26,8 @@ bento.define('bento/components/pixi/sprite', [
         }
         this.updateFrame();
         this.updateSprite(
-            this.spriteImage, 
-            this.sourceX, 
+            this.spriteImage,
+            this.sourceX,
             this.sourceY,
             this.frameWidth,
             this.frameHeight

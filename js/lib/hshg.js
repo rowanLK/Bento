@@ -371,7 +371,7 @@ bento.define('hshg', [], function () {
                 topOffset = isOnTopEdge === true ? -gridLength + wh : wh;
                 bottomOffset = isOnBottomEdge === true ? gridLength - wh : -wh;
 
-                // diagonals are composites of the cardinals            
+                // diagonals are composites of the cardinals
                 uniqueOffsets = [
                     // y+ down offset
                     //leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset,

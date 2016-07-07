@@ -55,8 +55,8 @@ bento.define('bento/profiler', [
             }
 
             console.log(
-                key, 
-                '\n  ' + totals[key].toFixed(2) + 'ms', 
+                key,
+                '\n  ' + totals[key].toFixed(2) + 'ms',
                 '\n  ' + (totals[key] / totalTime * 100).toFixed(0) + '%',
                 '\n  ' + measures[key] + ' tics'
             );

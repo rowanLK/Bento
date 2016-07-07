@@ -48,7 +48,7 @@ bento.define('bento/renderers/webgl', [
                 },
                 fillRect: function (color, x, y, w, h) {
                     var oldColor = glRenderer.color;
-                    // 
+                    //
                     renderer.setColor(color);
                     glRenderer.fillRect(x, y, w, h);
                     glRenderer.color = oldColor;
@@ -56,7 +56,7 @@ bento.define('bento/renderers/webgl', [
                 fillCircle: function (color, x, y, radius) {},
                 strokeRect: function (color, x, y, w, h) {
                     var oldColor = glRenderer.color;
-                    // 
+                    //
                     renderer.setColor(color);
                     glRenderer.strokeRect(x, y, w, h);
                     glRenderer.color = oldColor;
