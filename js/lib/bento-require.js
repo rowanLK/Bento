@@ -20,7 +20,7 @@
             var i,
                 callbacksWaiting = waiting[name],
                 onSuccess;
-            
+
             // add to modules
             modules[name] = module;
 

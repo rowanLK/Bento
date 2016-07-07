@@ -7671,7 +7671,7 @@ bento.define('bento/components/translation', [
             var i,
                 callbacksWaiting = waiting[name],
                 onSuccess;
-            
+
             // add to modules
             modules[name] = module;
 
