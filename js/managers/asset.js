@@ -409,7 +409,7 @@ bento.define('bento/managers/asset', [
         var getImageElement = function (name) {
             var asset = assets.images[name];
             if (!Utils.isDefined(asset)) {
-                throw ('Asset ' + name + ' could not be found');
+                throw ('Image asset ' + name + ' could not be found');
             }
             return asset;
         };
@@ -424,7 +424,7 @@ bento.define('bento/managers/asset', [
         var getJson = function (name) {
             var asset = assets.json[name];
             if (!Utils.isDefined(asset)) {
-                throw ('Asset ' + name + ' could not be found');
+                throw ('JSON asset ' + name + ' could not be found');
             }
             return asset;
         };
@@ -439,7 +439,7 @@ bento.define('bento/managers/asset', [
         var getAudio = function (name) {
             var asset = assets.audio[name];
             if (!Utils.isDefined(asset)) {
-                throw ('Asset ' + name + ' could not be found');
+                throw ('Audio asset ' + name + ' could not be found');
             }
             return asset;
         };
