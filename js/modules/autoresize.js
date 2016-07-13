@@ -49,7 +49,7 @@ bento.define('bento/autoresize', [
                 if (isLandscape) {
                     swap();
                 }
-                
+
                 console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
                 console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
                 return canvasDimension;

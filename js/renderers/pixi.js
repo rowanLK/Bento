@@ -150,7 +150,7 @@ bento.define('bento/renderers/pixi', [
             setOpacity: function (value) {
                 alpha = value;
             },
-            /* 
+            /*
              * Pixi only feature: draws any pixi displayObject
              */
             drawPixi: function (displayObject) {
@@ -158,7 +158,7 @@ bento.define('bento/renderers/pixi', [
                 transformObject.worldTransform = matrix;
                 transformObject.worldAlpha = alpha;
 
-                // method 1, replace the "parent" that the renderer swaps with 
+                // method 1, replace the "parent" that the renderer swaps with
                 // maybe not efficient because it calls flush all the time?
                 // pixiRenderer._tempDisplayObjectParent = transformObject;
                 // pixiRenderer.render(displayObject);

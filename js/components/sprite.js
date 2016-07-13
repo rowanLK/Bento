@@ -297,7 +297,7 @@ bento.define('bento/components/sprite', [
         if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
             return;
         }
-        
+
         reachedEnd = false;
         this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
         if (this.currentAnimation.loop) {

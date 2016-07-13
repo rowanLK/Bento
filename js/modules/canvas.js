@@ -78,7 +78,7 @@ bento.define('bento/canvas', [
                     if (drawn) {
                         return;
                     }
-                    
+
                     // clear up canvas
                     if (!settings.preventAutoClear) {
                         context.clearRect(0, 0, canvas.width, canvas.height);

@@ -2985,7 +2985,7 @@ var requirejs, require, define;
              */
             refresh: function () {
                 var i = 0;
-                // undefines every module loaded since watch started 
+                // undefines every module loaded since watch started
                 for (i = 0; i < modules.length; ++i) {
                     rjs.undef(modules[i]);
                 }
@@ -3000,10 +3000,10 @@ var requirejs, require, define;
                 startWatching = true;
             }
         };
-    
+
     // add global name
     window.bento = window.bento || bento;
-    
+
     // undefine global define and require, in case it clashes with other require systems
     window.require = undefined;
     window.define = undefined;
@@ -5079,7 +5079,7 @@ Bento.objects.attach(entity);
     return Entity;
 });
 /**
- * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn 
+ * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn
  off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
@@ -5170,7 +5170,7 @@ bento.define('bento/eventsystem', [
                         listener.callback(eventData);
                     }
                 } else if (!this.suppressWarnings) {
-                    // TODO: this warning appears when event listeners are removed 
+                    // TODO: this warning appears when event listeners are removed
                     // during another listener being triggered. For example, removing an entity
                     // while that entity was listening to the same event.
                     // In a lot of cases, this is normal... Consider removing this warning?
@@ -5210,7 +5210,7 @@ bento.define('bento/eventsystem', [
 });
 /**
  * A wrapper for HTML images, holds data for image atlas. Bento renderers only work with PackedImage and not plain
- * HTML Image elements. This allows for easy transitions to using, for example, TexturePacker. 
+ * HTML Image elements. This allows for easy transitions to using, for example, TexturePacker.
  * (That's why it's called PackedImage, for a lack of better naming).
  * If you plan to use a HTML Canvas as image source, always remember to wrap it in a PackedImage.
  * <br>Exports: Constructor
@@ -5287,8 +5287,8 @@ bento.define('bento/profiler', [
             }
 
             console.log(
-                key, 
-                '\n  ' + totals[key].toFixed(2) + 'ms', 
+                key,
+                '\n  ' + totals[key].toFixed(2) + 'ms',
                 '\n  ' + (totals[key] / totalTime * 100).toFixed(0) + '%',
                 '\n  ' + measures[key] + ' tics'
             );
@@ -6528,8 +6528,8 @@ bento.define('bento/components/clickable', [
  * <br>Exports: Constructor
  * @module bento/components/fill
  * @param {Object} settings - Settings
- * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 
- * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size) 
+ * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
+ * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/fill', [
@@ -6856,7 +6856,7 @@ bento.define('bento/components/sprite', [
         if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
             return;
         }
-        
+
         reachedEnd = false;
         this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
         if (this.currentAnimation.loop) {
@@ -7671,7 +7671,7 @@ bento.define('bento/components/translation', [
             var i,
                 callbacksWaiting = waiting[name],
                 onSuccess;
-            
+
             // add to modules
             modules[name] = module;
 
@@ -8259,7 +8259,7 @@ bento.define('hshg', [], function () {
                 topOffset = isOnTopEdge === true ? -gridLength + wh : wh;
                 bottomOffset = isOnBottomEdge === true ? gridLength - wh : -wh;
 
-                // diagonals are composites of the cardinals            
+                // diagonals are composites of the cardinals
                 uniqueOffsets = [
                     // y+ down offset
                     //leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset,
@@ -8453,7 +8453,7 @@ bento.define('hshg', [], function () {
     return HSHG;
 });
 // https://github.com/pieroxy/lz-string/
-// Modifications: wrapped in Bento define 
+// Modifications: wrapped in Bento define
 
 
 // Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
@@ -11384,7 +11384,7 @@ bento.define('bento/managers/savestate', [
 /**
  * Manager that controls screens. Screens are defined as separate modules. See {@link module:bento/screen}. To show
  * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
- * <br>Exports: Constructor, can be accessed through Bento.screens namespace. 
+ * <br>Exports: Constructor, can be accessed through Bento.screens namespace.
  * @module bento/managers/screen
  * @returns ScreenManager
  */
@@ -11994,7 +11994,7 @@ bento.define('bento/math/polygon', [
                 i = 0,
                 j = points.length - 1,
                 bounds = this.getBoundingBox();
-                
+
             if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
                 return false;
             }
@@ -12430,7 +12430,7 @@ bento.define('bento/math/transformmatrix', [
         this.c = 0;
         this.d = 1;
         this.tx = 0;
-        this.ty = 0;        
+        this.ty = 0;
     };
 
     return Matrix;
@@ -12812,7 +12812,7 @@ bento.define('bento/autoresize', [
                 if (isLandscape) {
                     swap();
                 }
-                
+
                 console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
                 console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
                 return canvasDimension;
@@ -12911,7 +12911,7 @@ bento.define('bento/canvas', [
                     if (drawn) {
                         return;
                     }
-                    
+
                     // clear up canvas
                     if (!settings.preventAutoClear) {
                         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -14208,7 +14208,7 @@ bento.define('bento/renderers/pixi', [
             setOpacity: function (value) {
                 alpha = value;
             },
-            /* 
+            /*
              * Pixi only feature: draws any pixi displayObject
              */
             drawPixi: function (displayObject) {
@@ -14216,7 +14216,7 @@ bento.define('bento/renderers/pixi', [
                 transformObject.worldTransform = matrix;
                 transformObject.worldAlpha = alpha;
 
-                // method 1, replace the "parent" that the renderer swaps with 
+                // method 1, replace the "parent" that the renderer swaps with
                 // maybe not efficient because it calls flush all the time?
                 // pixiRenderer._tempDisplayObjectParent = transformObject;
                 // pixiRenderer.render(displayObject);
@@ -14312,7 +14312,7 @@ bento.define('bento/renderers/webgl', [
                 },
                 fillRect: function (color, x, y, w, h) {
                     var oldColor = glRenderer.color;
-                    // 
+                    //
                     renderer.setColor(color);
                     glRenderer.fillRect(x, y, w, h);
                     glRenderer.color = oldColor;
@@ -14320,7 +14320,7 @@ bento.define('bento/renderers/webgl', [
                 fillCircle: function (color, x, y, radius) {},
                 strokeRect: function (color, x, y, w, h) {
                     var oldColor = glRenderer.color;
-                    // 
+                    //
                     renderer.setColor(color);
                     glRenderer.strokeRect(x, y, w, h);
                     glRenderer.color = oldColor;
@@ -14417,8 +14417,8 @@ bento.define('bento/components/pixi/sprite', [
         }
         this.updateFrame();
         this.updateSprite(
-            this.spriteImage, 
-            this.sourceX, 
+            this.spriteImage,
+            this.sourceX,
             this.sourceY,
             this.frameWidth,
             this.frameHeight
@@ -14885,7 +14885,7 @@ bento.define('bento/gui/counter', [
  * @param {Number/Array} [settings.lineWidth] - Line widths (must be set when using strokes), can stroke multiple times
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
- * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times. 
+ * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
  * <br>Exports: Constructor
  * @module bento/gui/text
  * @returns Entity

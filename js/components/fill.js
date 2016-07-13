@@ -3,8 +3,8 @@
  * <br>Exports: Constructor
  * @module bento/components/fill
  * @param {Object} settings - Settings
- * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module. 
- * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size) 
+ * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
+ * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/fill', [

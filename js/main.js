@@ -48,7 +48,7 @@
              */
             refresh: function () {
                 var i = 0;
-                // undefines every module loaded since watch started 
+                // undefines every module loaded since watch started
                 for (i = 0; i < modules.length; ++i) {
                     rjs.undef(modules[i]);
                 }
@@ -63,10 +63,10 @@
                 startWatching = true;
             }
         };
-    
+
     // add global name
     window.bento = window.bento || bento;
-    
+
     // undefine global define and require, in case it clashes with other require systems
     window.require = undefined;
     window.define = undefined;

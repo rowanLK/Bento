@@ -13,7 +13,7 @@
  * @param {Number/Array} [settings.lineWidth] - Line widths (must be set when using strokes), can stroke multiple times
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
- * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times. 
+ * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
  * <br>Exports: Constructor
  * @module bento/gui/text
  * @returns Entity

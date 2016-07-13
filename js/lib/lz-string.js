@@ -1,5 +1,5 @@
 // https://github.com/pieroxy/lz-string/
-// Modifications: wrapped in Bento define 
+// Modifications: wrapped in Bento define
 
 
 // Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
