@@ -6,10 +6,8 @@
  * @returns SaveState
  */
 bento.define('bento/managers/savestate', [
-    'bento',
     'bento/utils'
 ], function (
-    Bento,
     Utils
 ) {
     'use strict';
