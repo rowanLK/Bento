@@ -40,7 +40,8 @@ gulp.task('default', [], function () {
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
-            'js/**/*.js'
+            'js/**/*.js',
+            '!js/lib/bento-require.js'
         ])
         // check for mistakes
         /*.pipe(jshint({
@@ -65,7 +66,8 @@ gulp.task('amdless', [], function () {
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
-            'js/**/*.js'
+            'js/**/*.js',
+            '!js/lib/bento-require.js'
         ])
         // add require
         .pipe(addsrc.prepend('js/lib/bento-require.js'))
