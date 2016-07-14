@@ -600,7 +600,7 @@ bento.define('bento/managers/asset', [
                     continue;
                 }
                 group = assetGroups[groupName];
-                assetCount += load(groupName, end, loadAsset, true);
+                assetCount += load(groupName, end, loadAsset);
                 groupCount += 1;
             }
 
