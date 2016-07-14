@@ -62,10 +62,10 @@ bento.define('bento/managers/asset', [
 
             xhr.open('GET', source, true);
             xhr.onerror = function () {
-                callback('Error ' + source);
+                callback('Error: loading JSON ' + source);
             };
             xhr.ontimeout = function () {
-                callback('Timeout' + source);
+                callback('Timeout: loading JSON ' + source);
             };
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
@@ -87,7 +87,7 @@ bento.define('bento/managers/asset', [
 
             xhr.open('GET', source, true);
             xhr.onerror = function () {
-                callback('Error ' + name);
+                callback('ERROR: loading binary ' + source);
             };
             xhr.responseType = 'arraybuffer';
             xhr.onload = function (e) {
@@ -114,7 +114,7 @@ bento.define('bento/managers/asset', [
             }, false);
             img.addEventListener('error', function (evt) {
                 // TODO: Implement failure: should it retry to load the image?
-                console.log('ERROR: loading image failed');
+                console.log('ERROR: loading image ' + source);
             }, false);
         };
         /**
@@ -142,7 +142,7 @@ bento.define('bento/managers/asset', [
                 assetGroups[name] = json;
                 loaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(loaded, keyCount);
+                    onLoaded(loaded, keyCount, name);
                 }
                 if (keyCount === loaded && Utils.isDefined(onReady)) {
                     onReady(null);
@@ -161,6 +161,7 @@ bento.define('bento/managers/asset', [
          * @param {String} groupName - Name of asset group
          * @param {Function} onReady - Callback when ready
          * @param {Function} onLoaded - Callback when asset file is loaded
+         * @param {Bool} skipPackedImages - do not initialize texture packed images
          * @name load
          */
         var load = function (groupName, onReady, onLoaded) {
@@ -183,7 +184,7 @@ bento.define('bento/managers/asset', [
                 assets.images[name] = image;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount);
+                    onLoaded(assetsLoaded, assetCount, name);
                 }
                 checkLoaded();
             };
@@ -196,7 +197,7 @@ bento.define('bento/managers/asset', [
                 packs.push(name);
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount);
+                    onLoaded(assetsLoaded, assetCount, name);
                 }
                 checkLoaded();
             };
@@ -208,7 +209,7 @@ bento.define('bento/managers/asset', [
                 assets.json[name] = json;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount);
+                    onLoaded(assetsLoaded, assetCount, name);
                 }
                 checkLoaded();
             };
@@ -220,7 +221,7 @@ bento.define('bento/managers/asset', [
                 }
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount);
+                    onLoaded(assetsLoaded, assetCount, name);
                 }
                 checkLoaded();
             };
@@ -383,15 +384,19 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
+         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {PackedImage} Image
          * @name getImage
          */
-        var getImage = function (name) {
+        var getImage = function (name, suppressThrow) {
             var image, packedImage = texturePacker[name];
             if (!packedImage) {
                 image = getImageElement(name);
                 if (!image) {
-                    throw 'Can not find ' + name;
+                    if (!supressThrow) {
+                        throw 'Can not find ' + name;
+                    }
+                    return null;
                 }
                 packedImage = PackedImage(image);
                 texturePacker[name] = packedImage;
@@ -403,12 +408,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
+         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {HTMLImage} Html Image element
          * @name getImageElement
          */
-        var getImageElement = function (name) {
+        var getImageElement = function (name, suppressThrow) {
             var asset = assets.images[name];
-            if (!Utils.isDefined(asset)) {
+            if (!Utils.isDefined(asset) && !suppressThrow) {
                 throw ('Image asset ' + name + ' could not be found');
             }
             return asset;
@@ -418,12 +424,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
+         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {Object} Json object
          * @name getJson
          */
-        var getJson = function (name) {
+        var getJson = function (name, suppressThrow) {
             var asset = assets.json[name];
-            if (!Utils.isDefined(asset)) {
+            if (!Utils.isDefined(asset) && !suppressThrow) {
                 throw ('JSON asset ' + name + ' could not be found');
             }
             return asset;
@@ -433,12 +440,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
+         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {Audia} Audia object
          * @name getAudio
          */
-        var getAudio = function (name) {
+        var getAudio = function (name, suppressThrow) {
             var asset = assets.audio[name];
-            if (!Utils.isDefined(asset)) {
+            if (!Utils.isDefined(asset) && !suppressThrow) {
                 throw ('Audio asset ' + name + ' could not be found');
             }
             return asset;
@@ -458,15 +466,22 @@ bento.define('bento/managers/asset', [
             var frame, pack, i, image, json, name;
             while (packs.length) {
                 pack = packs.pop();
-                image = getImageElement(pack);
-                json = getJson(pack);
+                image = getImageElement(pack, true);
+                json = getJson(pack, true);
+
+                if (!image || !json) {
+                    // TODO: should have a cleaner method to check if packs are not loaded yet
+                    // return the pack until the image/json is loaded
+                    packs.push(pack);
+                    return;
+                }
 
                 // parse json
                 for (i = 0; i < json.frames.length; ++i) {
                     name = json.frames[i].filename;
                     name = name.substring(0, name.length - 4);
                     frame = json.frames[i].frame;
-                    texturePacker[name] = PackedImage(image, frame);
+                    texturePacker[name] = new PackedImage(image, frame);
                 }
             }
         };
@@ -569,10 +584,10 @@ bento.define('bento/managers/asset', [
                 }
             };
             // called on every asset
-            var loadAsset = function () {
+            var loadAsset = function (c, a, name) {
                 current += 1;
                 if (onLoaded) {
-                    onLoaded(current, assetCount);
+                    onLoaded(current, assetCount, name);
                 }
             };
 
