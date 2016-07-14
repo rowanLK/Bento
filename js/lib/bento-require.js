@@ -5,16 +5,42 @@
     'use strict';
     var modules = {},
         waiting = {},
-        getModule = function (name, onSuccess) {
+        searchCircular = function (name, parent) {
+            var i;
+            var module;
+            var moduleName;
+            var array;
+            
+            // check for circular dependency
+            for (moduleName in waiting) {
+                if (!waiting.hasOwnProperty(moduleName)) {
+                    continue;
+                }
+                array = waiting[moduleName];
+                for (i = 0; i < array.length; ++i) {
+                    module = array[i];
+                    if (module.parentName === name && parent === moduleName) {
+                        throw 'Circular dependency for "' + name + '", found in "' + parent + '"';
+                    }
+                }
+            }
+
+        },
+        getModule = function (name, onSuccess, parent) {
             if (modules[name]) {
                 // module exists! return immediately
                 onSuccess(modules[name]);
                 return;
             }
 
+            searchCircular(name, parent);
+
             // does not exist yet, put on waiting list
             waiting[name] = waiting[name] || [];
-            waiting[name].push(onSuccess);
+            waiting[name].push({
+                parent: parent,
+                onSuccess: onSuccess
+            });
         },
         defineAndFlush = function (name, module) {
             var i,
@@ -29,10 +55,10 @@
                 return;
             }
             for (i = 0; i < callbacksWaiting.length; ++i) {
-                onSuccess = callbacksWaiting[i];
+                onSuccess = callbacksWaiting[i].onSuccess;
                 onSuccess(module);
             }
-            callbacksWaiting = [];
+            waiting[name] = [];
         },
         require = function (dep, fn) {
             var i,
@@ -97,7 +123,7 @@
                         // all modules are loaded
                         end();
                     }
-                });
+                }, name);
             }
         };
 
