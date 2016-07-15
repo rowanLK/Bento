@@ -58,8 +58,11 @@ bento.define('bento/tiled', [
         var tiledReader = new TiledReader({
             tiled: json,
             onLayer: function (layer) {},
-            onTile: function (tileSet, tileIndex, flipX, flipY) {
-                
+            onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY) {
+                // draw tile
+                var x = tileX * tileWidth;
+                var y = tileY * tileHeight;
+                var imageUrl = tileSet.image;
             },
             onObject: function (object, tileSet, tileIndex) {},
             onComplete: function () {}
