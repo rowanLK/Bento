@@ -6,7 +6,7 @@
  * @param {String} settings.tiled - Tiled map JSON asset
  * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset)
  * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: layer JSON
- * @param {Function} [settings.onTile] - Called when passing a tile, parameters: tileset JSON, tileIndex, flipX, flipY
+ * @param {Function} [settings.onTile] - Called when passing a tile, parameters: tile x, tile y, tileset JSON, tileIndex, flipX, flipY
  * @param {Function} [settings.onObject] - Called when passing an object, parameters: object JSON, tileset JSON, tileIndex (if a gid is present)
  * @param {Function} [settings.onComplete] - Called when the reader is done
  * @param {Boolean} [settings.spawn] - Spawns entities
@@ -114,7 +114,7 @@ bento.define('bento/tiledreader', [], function () {
                 tileIndex = gid - tilesetData.firstGid;
 
                 // callback
-                onTile(tilesetData.tileset, tileIndex);
+                onTile(x, y, tilesetData.tileset, tileIndex);
             };
             var objectCallback = function (object) {
                 var tileIndex;
