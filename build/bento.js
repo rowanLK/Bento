@@ -9500,7 +9500,7 @@ bento.define('bento/managers/asset', [
                     continue;
                 }
                 group = assetGroups[groupName];
-                assetCount += load(groupName, end, loadAsset, true);
+                assetCount += load(groupName, end, loadAsset);
                 groupCount += 1;
             }
 
@@ -13058,9 +13058,11 @@ bento.define('bento/screen', [
                  * @name loadTiled
                  */
                 loadTiled: function (name) {
-                    tiled = Tiled({
-                        name: name,
-                        spawn: true // TEMP
+                    // TODO: deprecate this, the way Tiled spawns entities is not very clean
+                    tiled = new Tiled({
+                        assetName: name,
+                        spawnBackground: true,
+                        spawnEntities: true
                     });
                     this.dimension = tiled.dimension;
                 },
@@ -13108,13 +13110,17 @@ bento.define('bento/screen', [
     };
 });
 /**
- * Reads Tiled JSON file and spawns entities accordingly.
- * Backgrounds are merged into a canvas image (TODO: split canvas, split layers?)
+ * Reads Tiled JSON file and draws layers.
+ * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
+ * the layer is split into multiple sprites.
  * <br>Exports: Constructor
  * @module bento/tiled
  * @param {Object} settings - Settings object
- * @param {String} settings.name - Asset name of the json file
- * @param {Boolean} [settings.spawn] - Spawns entities
+ * @param {String} settings.tiled - Tiled map JSON asset
+ * @param {Boolean} settings.merge - Merge tile layers into a single sprite layer, default: false
+ * @param {Number} settings.maxCanvasSize - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
+ * @param {Number} settings.onObject - callback for tiled objects
+ * @param {Boolean} [settings.spawn] - Spawns background entities (drawn tile layers)
  * @returns Object
  */
 bento.define('bento/tiled', [
@@ -13125,316 +13131,527 @@ bento.define('bento/tiled', [
     'bento/math/rectangle',
     'bento/math/polygon',
     'bento/packedimage',
-    'bento/utils'
-], function (Bento, Entity, Sprite, Vector2, Rectangle, Polygon, PackedImage, Utils) {
+    'bento/utils',
+    'bento/tiledreader'
+], function (
+    Bento,
+    Entity,
+    Sprite,
+    Vector2,
+    Rectangle,
+    Polygon,
+    PackedImage,
+    Utils,
+    TiledReader
+) {
     'use strict';
-    return function (settings, onReady) {
-        /*settings = {
-            name: String, // name of JSON file
-            background: Boolean // TODO false: splits tileLayer tile entities,
-            spawn: Boolean // adds objects into game immediately
-        }*/
-        var json = Bento.assets.getJson(settings.name),
-            i,
-            j,
-            k,
-            width = json.width,
-            height = json.height,
-            layers = json.layers.length,
-            tileWidth = json.tilewidth,
-            tileHeight = json.tileheight,
-            canvas = document.createElement('canvas'),
-            context = canvas.getContext('2d'),
-            image,
-            layer,
-            firstgid,
-            object,
-            points,
-            objects = [],
-            shapes = [],
-            viewport = Bento.getViewport(),
-            // background = Entity().extend({
-            //     z: 0,
-            //     draw: function (gameData) {
-            //         var w = Math.max(Math.min(canvas.width - viewport.x, viewport.width), 0),
-            //             h = Math.max(Math.min(canvas.height - viewport.y, viewport.height), 0),
-            //             img = PackedImage(canvas);
+    // a collection of sprites/canvases that represent the drawn tiled layers
+    var LayerSprites = function (canvasSize, mapSize) {
+        // number of sprites horizontally
+        var spritesCountX = Math.ceil(mapSize.x / canvasSize.x);
+        var spritesCountY = Math.ceil(mapSize.y / canvasSize.y);
+        // combined width of canvases
+        var width = spritesCountX * canvasSize.x;
+        var height = spritesCountY * canvasSize.y;
+        // collection of canvases
+        var layers = {
+            // "0": [canvas, canvas, ...]
+            length: 0
+        };
+        var initLayer = function (layerId) {
+            var i;
+            var layer = [];
+            var canvas;
+            var context;
 
-            //         if (w === 0 || h === 0) {
-            //             return;
-            //         }
-            //         // TODO: make pixi compatible
-            //         // only draw the part in the viewport
-            //         gameData.renderer.drawImage(
-            //             img, ~~ (Math.max(Math.min(viewport.x, canvas.width), 0)), ~~ (Math.max(Math.min(viewport.y, canvas.height), 0)), ~~w, ~~h,
-            //             0,
-            //             0, ~~w, ~~h
-            //         );
-            //     }
-            // }),
-            getTileset = function (gid) {
-                var l,
-                    tileset,
-                    current = null;
-                // loop through tilesets and find the highest firstgid that's
-                // still lower or equal to the gid
-                for (l = 0; l < json.tilesets.length; ++l) {
-                    tileset = json.tilesets[l];
-                    if (tileset.firstgid <= gid) {
-                        current = tileset;
-                    }
-                }
-                return current;
-            },
-            getTile = function (tileset, gid) {
-                var index,
-                    tilesetWidth,
-                    tilesetHeight;
-                if (tileset === null) {
-                    return null;
-                }
-                index = gid - tileset.firstgid;
-                tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
-                tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
-                return {
-                    // convention: the tileset name must be equal to the asset name!
-                    subimage: Bento.assets.getImage(tileset.name),
-                    x: (index % tilesetWidth) * tileset.tilewidth,
-                    y: Math.floor(index / tilesetWidth) * tileset.tileheight,
-                    width: tileset.tilewidth,
-                    height: tileset.tileheight
-                };
-            },
-            drawTileLayer = function (x, y) {
-                var gid = layer.data[y * width + x],
-                    // get correct tileset and image
-                    tileset = getTileset(gid),
-                    tile = getTile(tileset, gid);
-                // draw background to offscreen canvas
-                if (tile) {
-                    context.drawImage(
-                        tile.subimage.image,
-                        tile.subimage.x + tile.x,
-                        tile.subimage.y + tile.y,
-                        tile.width,
-                        tile.height,
-                        x * tileWidth,
-                        y * tileHeight,
-                        tileWidth,
-                        tileHeight
-                    );
-                }
-            },
-            spawn = function (name, obj, tilesetProperties) {
-                var x = obj.x,
-                    y = obj.y,
-                    params = {};
-
-                // collect parameters
-                Utils.extend(params, tilesetProperties);
-                Utils.extend(params, obj.properties);
-
-                bento.require([name], function (Instance) {
-                    var instance = Instance.apply(this, [params]),
-                        origin = instance.origin,
-                        dimension = instance.dimension,
-                        prop,
-                        addProperties = function (properties) {
-                            var prop;
-                            for (prop in properties) {
-                                if (prop === 'module' || prop.match(/param\d+/)) {
-                                    continue;
-                                }
-                                if (properties.hasOwnProperty(prop)) {
-                                    // number or string?
-                                    if (isNaN(properties[prop])) {
-                                        instance[prop] = properties[prop];
-                                    } else {
-                                        instance[prop] = (+properties[prop]);
-                                    }
-                                }
-                            }
-                        };
-
-                    instance.position = new Vector2(x + origin.x, y + (origin.y - dimension.height));
-
-                    // add in tileset properties
-                    //addProperties(tilesetProperties);
-                    // add tile properties
-                    //addProperties(obj.properties);
-
-                    // add to game
-                    if (settings.spawn) {
-                        Bento.objects.add(instance);
-                    }
-                    objects.push(instance);
-                });
-            },
-            spawnObject = function (obj) {
-                var gid = obj.gid,
-                    // get tileset: should contain module name
-                    tileset = getTileset(gid),
-                    id = gid - tileset.firstgid,
-                    properties,
-                    moduleName;
-                if (tileset.tileproperties) {
-                    properties = tileset.tileproperties[id.toString()];
-                    if (properties) {
-                        moduleName = properties.module;
-                    }
-                }
-                if (moduleName) {
-                    spawn(moduleName, obj, properties);
-                }
-            },
-            spawnShape = function (shape, type) {
-                var obj;
-                if (settings.spawn) {
-                    obj = new Entity({
-                        z: 0,
-                        name: type,
-                        family: [type],
-                        useHshg: true,
-                        staticHshg: true
-                    });
-                    // remove update and draw functions to save processing power
-                    obj.update = null;
-                    obj.draw = null;
-                    obj.boundingBox = shape;
-                    Bento.objects.add(obj);
-                }
-                shape.type = type;
-                shapes.push(obj);
-            };
-
-        // setup canvas
-        // to do: split up in multiple canvas elements due to max
-        // size
-        canvas.width = width * tileWidth;
-        canvas.height = height * tileHeight;
-
-        // loop through layers
-        for (k = 0; k < layers; ++k) {
-            layer = json.layers[k];
-            if (layer.type === 'tilelayer') {
-                // loop through tiles
-                for (j = 0; j < layer.height; ++j) {
-                    for (i = 0; i < layer.width; ++i) {
-                        drawTileLayer(i, j);
-                    }
-                }
-            } else if (layer.type === 'objectgroup') {
-                for (i = 0; i < layer.objects.length; ++i) {
-                    object = layer.objects[i];
-
-                    // default type is solid
-                    if (object.type === '') {
-                        object.type = 'solid';
-                    }
-
-                    if (object.gid) {
-                        // normal object
-                        spawnObject(object);
-                    } else if (object.polygon) {
-                        // polygon
-                        points = [];
-                        for (j = 0; j < object.polygon.length; ++j) {
-                            points.push({
-                                x: object.polygon[j].x + object.x,
-                                y: object.polygon[j].y + object.y + 1
-                            });
-                            // shift polygons 1 pixel down?
-                            // something might be wrong with polygon definition
-                        }
-                        spawnShape(Polygon(points), object.type);
-                    } else {
-                        // rectangle
-                        spawnShape(new Rectangle(object.x, object.y, object.width, object.height), object.type);
-                    }
-                }
+            for (i = 0; i < spritesCountX * spritesCountY; ++i) {
+                canvas = document.createElement('canvas');
+                canvas.width = canvasSize.x;
+                canvas.height = canvasSize.y;
+                context = canvas.getContext('2d');
+                canvas.context = context;
+                layer.push(canvas);
             }
-        }
-        // TODO: turn this quickfix, into a permanent fix. DEV-95 on JIRA
-        var packedImage = PackedImage(canvas),
-            background = new Entity({
-                z: 0,
-                name: '',
-                useHshg: false,
-                position: new Vector2(0, 0),
-                originRelative: new Vector2(0, 0),
-                components: [new Sprite({
-                    image: packedImage
-                })],
-                family: ['']
-            });
+            layers[layerId] = layer;
+            layers.length += 1;
+        };
+        var getCanvas = function (layerId, destination) {
+            // convert destination position to sprite index
+            var x = Math.floor(destination.x / canvasSize.x) % spritesCountX;
+            var y = Math.floor(Math.floor(destination.y / canvasSize.y) / spritesCountX);
+            var index = x + y * spritesCountX;
 
-        // add background to game
-        if (settings.spawn) {
-            Bento.objects.add(background);
-        }
+            // init collection if needed
+            if (!layers[layerId]) {
+                initLayer(layerId);
+            }
 
-
+            return layers[layerId][index];
+        };
 
         return {
-            /**
-             * All tilelayers merged into one entity
-             * @instance
-             * @name tileLayer
-             */
-            tileLayer: background,
-            /**
-             * Array of entities
-             * @instance
-             * @name objects
-             */
-            objects: objects,
-            /**
-             * Array of Rectangles and Polygons
-             * @instance
-             * @name shapes
-             */
-            shapes: shapes,
-            /**
-             * Size of the screen
-             * @instance
-             * @name dimension
-             */
-            dimension: new Rectangle(0, 0, tileWidth * width, tileHeight * height),
-            /**
-             * Moves the entire object and its parts to the specified position.
-             * @function
-             * @instance
-             * @name moveTo
-             */
-            moveTo: function (position) {
-                this.tileLayer.position = position;
-                for (var i = 0, len = shapes.length; i < len; i++) {
-                    shapes[i].x += position.x;
-                    shapes[i].y += position.y;
-                }
-                for (i = 0, len = objects.length; i < len; i++) {
-                    objects[i].offset(position);
-                }
+            spritesCountX: spritesCountX,
+            spritesCountY: spritesCountY,
+            canvasSize: canvasSize,
+            layers: layers,
+            getSpritesFromLayer: function (layerId) {
+                return layers[layerId];
             },
-            /**
-             * Removes the tileLayer, objects, and shapes
-             * @function
-             * @instance
-             * @name remove
-             */
-            remove: function () {
-                Bento.objects.remove(this.tileLayer);
-                for (var i = 0, len = shapes.length; i < len; i++) {
-                    Bento.objects.remove(shapes[i]);
+            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD) {
+                // get the corresponding canvas
+                var canvas = getCanvas(layerId, destination);
+                var context = canvas.context;
+                var doFlipX = false;
+                var doFlipY = false;
+                var rotation = 0;
+
+                // convert to rotation and flipping
+                if (!flipD) {
+                    if (flipX && flipY) {
+                        rotation = Math.PI;
+                    } else {
+                        doFlipX = flipX;
+                        doFlipY = flipY;
+                    }
+                } else {
+                    if (!flipX && !flipY) {
+                        rotation = Math.PI / 2;
+                        doFlipY = true;
+                    } else if (flipX && !flipY) {
+                        rotation = Math.PI / 2;
+                    } else if (!flipX && flipY) {
+                        rotation = Math.PI * 3 / 2;
+                    } else if (flipX && flipY) {
+                        rotation = Math.PI / 2;
+                        doFlipX = true;
+                    }
                 }
-                shapes.length = 0;
-                for (i = 0, len = objects.length; i < len; i++) {
-                    Bento.objects.remove(objects[i]);
-                }
-                objects.length = 0;
+
+                context.save();
+                // move to destination
+                context.translate(destination.x, destination.y);
+                // offset origin for rotation
+                context.translate(source.width / 2, source.height / 2);
+                // apply rotation
+                context.rotate(rotation);
+                context.scale(doFlipX ? -1 : 1, doFlipY ? -1 : 1);
+                // offset origin
+                context.translate(-source.width / 2, -source.height / 2);
+                // draw the tile!
+                context.drawImage(
+                    packedImage.image,
+                    packedImage.x + source.x,
+                    packedImage.y + source.y,
+                    source.width,
+                    source.height,
+                    0,
+                    0,
+                    destination.width,
+                    destination.height
+                );
+                context.restore();
             }
         };
     };
+
+    var Tiled = function (settings) {
+        var assetName = settings.assetName;
+        var json = settings.tiled || Bento.assets.getJson(assetName);
+        var width = json.width || 0;
+        var height = json.height || 0;
+        var tileWidth = json.tilewidth || 0;
+        var tileHeight = json.tileheight || 0;
+        var mergeLayers = json.merge || false;
+        var onObject = settings.onObject;
+        var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
+        var mapSize = new Vector2(width * tileWidth, height * tileHeight);
+        var currentSpriteLayer = -1;
+        var layerSprites = new LayerSprites(maxCanvasSize, mapSize);
+        var entities = [];
+        var tiledReader = new TiledReader({
+            tiled: json,
+            onLayer: function (layer) {
+                if (layer.type === "tilelayer") {
+                    if (!mergeLayers) {
+                        currentSpriteLayer += 1;
+                    } else {
+                        currentSpriteLayer = 0;
+                    }
+                }
+            },
+            onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
+                // get destination position
+                var x = tileX * tileWidth;
+                var y = tileY * tileHeight;
+                var destination = new Rectangle(x, y, tileWidth, tileHeight);
+
+                // get source position
+                var source = getSourceTile(tileSet, tileIndex);
+
+                // retrieve the corresponding image asset
+                // assuming the asset name is the same the image url!
+                var imageUrl = tileSet.image;
+                var assetName;
+                var imageAsset;
+                assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
+                assetName = assetName.replace('.png', '');
+                imageAsset = Bento.assets.getImage(assetName);
+
+                // draw on the layer
+                layerSprites.drawTile(
+                    currentSpriteLayer,
+                    destination,
+                    source,
+                    imageAsset,
+                    flipX,
+                    flipY,
+                    flipD
+                );
+            },
+            onObject: function (object, tileSet, tileIndex) {
+                if (onObject) {
+                    onObject(object, tileSet, tileIndex);
+                }
+                if (settings.spawnEntities) {
+                    spawnEntity(object, tileSet, tileIndex);
+                }
+            },
+            onComplete: function () {
+                // spawn background entities?
+                if (!settings.spawnBackground) {
+                    return;
+                }
+                var layers = layerSprites.layers;
+                var layer;
+                var l = layers.length;
+                var i;
+                var canvasSize = layerSprites.canvasSize;
+                var spritesCountX = layerSprites.spritesCountX;
+                var spritesCountY = layerSprites.spritesCountY;
+                var makeEntity = function () {
+                    var j = 0;
+                    var canvas;
+                    var sprite;
+                    var entity;
+                    for (j = 0; j < layer.length; ++j) {
+                        canvas = layer[j];
+                        sprite = new Sprite({
+                            image: new PackedImage(canvas)
+                        });
+                        entity = new Entity({
+                            z: 0,
+                            name: 'background',
+                            family: ['backgrounds'],
+                            position: new Vector2(
+                                canvasSize.x * (j % spritesCountX),
+                                canvasSize.y * Math.floor(j / spritesCountX)
+                            ),
+                            components: [sprite]
+                        });
+                        Bento.objects.attach(entity);
+                        entities.push(entity);
+                    }
+                };
+
+                for (i = 0; i < l; ++i) {
+                    layer = layers[i];
+                    makeEntity();
+                }
+            }
+        });
+        // helper function to get the source in the image
+        var getSourceTile = function (tileset, index) {
+            var tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
+            var tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
+
+            return new Rectangle(
+                (index % tilesetWidth) * tileset.tilewidth,
+                Math.floor(index / tilesetWidth) * tileset.tileheight,
+                tileset.tilewidth,
+                tileset.tileheight
+            );
+        };
+        // attempt to spawn object by tileproperty "module"
+        // this is mainly for backwards compatibility of the old Tiled module
+        var spawnEntity = function (object, tileSet, tileIndex) {
+            var tileproperties;
+            var properties;
+            var moduleName;
+            var x = object.x;
+            var y = object.y;
+            var params;
+            if (!object.gid) {
+                // not an entity (it's a rectangle or other shape)
+                return;
+            }
+            tileproperties = tileSet.tileproperties;
+            if (!tileproperties) {
+                return;
+            }
+            properties = tileproperties[tileIndex];
+            if (!properties) {
+                return;
+            }
+            moduleName = properties.module;
+            if (!moduleName) {
+                return;
+            }
+            params = {
+                tiled: {
+                    position: new Vector2(x, y),
+                    tile: properties,
+                    object: Utils.extend(object, object.properties), // extend properties with tiled info
+                    json: settings.name // reference to current json name
+                }
+            };
+            bento.require([moduleName], function (Instance) {
+                var instance = new Instance(params),
+                    origin = instance.origin,
+                    dimension = instance.dimension;
+
+                instance.position = new Vector2(x + origin.x, y + (origin.y - dimension.height));
+
+                // add to game
+                Bento.objects.attach(instance);
+                entities.push(instance);
+            });
+        };
+
+        tiledReader.read();
+
+        return {
+            name: settings.name || 'tiled',
+            dimension: new Rectangle(0, 0, mapSize.x, mapSize.y),
+            entities: entities
+        };
+    };
+
+    return Tiled;
+});
+/**
+ * A generic interpreter for Tiled map JSON files.
+ * <br>Exports: Constructor
+ * @module bento/tiledreader
+ * @param {Object} settings - Settings object
+ * @param {String} settings.tiled - Tiled map JSON asset
+ * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset)
+ * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: layer JSON
+ * @param {Function} [settings.onTile] - Called when passing a tile, parameters: tile x, tile y, tileset JSON, tileIndex, flipX, flipY
+ * @param {Function} [settings.onObject] - Called when passing an object, parameters: object JSON, tileset JSON, tileIndex (if a gid is present)
+ * @param {Function} [settings.onComplete] - Called when the reader is done
+ * @param {Boolean} [settings.spawn] - Spawns entities
+ * @returns Object
+ */
+bento.define('bento/tiledreader', [], function () {
+    'use strict';
+    var FLIPX = 0x80000000;
+    var FLIPY = 0x40000000;
+    var FLIPDIAGONAL = 0x20000000;
+
+    var TiledReader = function (settings) {
+        // cache callbacks
+        var onExternalTileset = settings.onExternalTileset;
+        var onLayer = settings.onLayer;
+        var onTile = settings.onTile;
+        var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+
+        // the tiled json
+        var json = settings.tiled || {};
+
+        // width and height in tiles
+        var width = json.width || 0;
+        var height = json.height || 0;
+
+        // width and height of a single tile
+        var tileWidth = json.tilewidth || 0;
+        var tileHeight = json.tileheight || 0;
+
+        // tilesets
+        var tilesets = json.tilesets || [];
+        var tilesetsCount = tilesets.length;
+        var externalTilesets = {
+            // "source": tileset JSON
+        };
+        var cachedFirstGids = [];
+
+        // layers
+        var layers = json.layers || [];
+        var layersCount = layers.length;
+
+        // load external tilesets
+        var importTilesets = function () {
+            var i;
+            var l;
+            var tileset;
+            var source;
+
+            // loop through all tilesets, look for external tilesets
+            for (i = 0, l = tilesets.length; i < l; ++i) {
+                tileset = tilesets[i];
+                source = tileset.source;
+                if (source) {
+                    // to stay independent of any asset loader, this is loaded through a callback
+                    externalTilesets[source] = onExternalTileset(source);
+                }
+
+                // meanwhile, cache all firstGids for faster lookups
+                cachedFirstGids.push(tileset.firstgid);
+            }
+        };
+        var decompress = function (layer) {
+            var base64ToUint32array = function (base64) {
+                var raw = window.atob(base64);
+                var i;
+                var len = raw.length;
+                var bytes = new Uint8Array(len);
+                for (i = 0; i < len; i++) {
+                    bytes[i] = raw.charCodeAt(i);
+                }
+                var data = new Uint32Array(bytes.buffer, 0, len / 4);
+                return data;
+            };
+            var encoding = layer.encoding;
+            if (encoding === 'base64') {
+                layer.data = base64ToUint32array(layer.data);
+                layer.encoding = null;
+            } else if (encoding) {
+                // TODO: compression formats
+                throw "ERROR: compression not supported. Please set Tile Layer Format to CSV in Tiled.";
+            }
+            return layer;
+        };
+        var loopLayers = function () {
+            var i, il;
+            var j, jl;
+            var k, kl;
+            var layers = json.layers;
+            var layer;
+            var layerData;
+            var lh;
+            var lw;
+            var objects;
+            var object;
+            var properties;
+            var layerId = 0;
+            var type;
+            var getTileset = function (gid) {
+                var l,
+                    tileset,
+                    count = tilesetsCount,
+                    current = null,
+                    firstGid,
+                    currentFirstGid;
+
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l < count; ++l) {
+                    firstGid = cachedFirstGids[l];
+                    if (firstGid <= gid) {
+                        current = tilesets[l];
+                        currentFirstGid = firstGid;
+                    }
+                }
+                return {
+                    tileSet: current,
+                    firstGid: currentFirstGid
+                };
+            };
+            var tileCallback = function (data, x, y) {
+                // callback for every tile (stored layer.data)
+                var gid = data[y * width + x];
+                var tilesetData;
+                var tileIndex;
+                var flipX;
+                var flipY;
+                var flipDiagonal;
+
+                // no tile
+                if (gid === 0) {
+                    return;
+                }
+
+                // read out the flags
+                flipX = (gid & FLIPX);
+                flipY = (gid & FLIPY);
+                flipDiagonal = (gid & FLIPDIAGONAL);
+
+                // clear flags
+                gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
+
+                // get the corresponding tileset and tile index
+                tilesetData = getTileset(gid);
+                tileIndex = gid - tilesetData.firstGid;
+
+                // callback
+                onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
+            };
+            var objectCallback = function (object) {
+                var tileIndex;
+                var tilesetData;
+                var gid = object.gid;
+                if (gid) {
+                    // get the corresponding tileset and tile index
+                    tilesetData = getTileset(gid);
+                    tileIndex = gid - tilesetData.firstGid;
+                    onObject(object, tilesetData.tileSet, tileIndex);
+                } else {
+                    // gid may not be present, in that case it's a rectangle or other shape
+                    onObject(object);
+                }
+            };
+
+            // loop through layers
+            for (k = 0, kl = layers.length; k < kl; ++k) {
+                layer = layers[k];
+                type = layer.type;
+
+                if (onLayer) {
+                    onLayer(layer);
+                }
+                if (type === 'tilelayer') {
+                    // skip layer if invisible???
+                    if (!layer.visible) {
+                        continue;
+                    }
+
+                    // decompress data?
+                    decompress(layer);
+
+                    layerData = layer.data;
+
+                    // loop through layer.data, which should be width * height in size
+                    for (j = 0; j < height; ++j) {
+                        for (i = 0; i < width; ++i) {
+                            tileCallback(layerData, i, j);
+                        }
+                    }
+
+                } else if (type === 'objectgroup') {
+                    objects = layer.objects || [];
+                    il = objects.length;
+                    for (i = 0; i < il; ++i) {
+                        object = objects[i];
+
+                        objectCallback(object);
+                    }
+                }
+            }
+            if (onComplete) {
+                onComplete();
+            }
+        };
+
+        importTilesets();
+
+        // loopLayers();
+
+        return {
+            read: loopLayers
+        };
+    };
+
+    return TiledReader;
 });
 /**
  * The Tween is an entity that performs an interpolation within a timeframe. The entity

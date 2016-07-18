@@ -5,6 +5,7 @@ bento.define('screen2', [
     'bento/utils',
     'bento/entity',
     'bento/components/sprite',
+    'bento/components/fill',
     'bento/tween',
     'bento/screen'
 ], function (
@@ -14,6 +15,7 @@ bento.define('screen2', [
     Utils,
     Entity,
     Sprite,
+    Fill,
     Tween,
     Screen
 ) {
@@ -21,6 +23,14 @@ bento.define('screen2', [
     var object = Screen({
         tiled: 'level2',
         onShow: function () {
+            var fill = new Entity({
+                z: -1,
+                name: 'fill',
+                components: [new Fill({
+                    color: [0.8, 0.8, 1, 1]
+                })]
+            });
+            Bento.objects.attach(fill);
             console.log('screen 2 loaded');
         }
     });

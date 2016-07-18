@@ -49,9 +49,11 @@ bento.define('bento/screen', [
                  * @name loadTiled
                  */
                 loadTiled: function (name) {
-                    tiled = Tiled({
-                        name: name,
-                        spawn: true // TEMP
+                    // TODO: deprecate this, the way Tiled spawns entities is not very clean
+                    tiled = new Tiled({
+                        assetName: name,
+                        spawnBackground: true,
+                        spawnEntities: true
                     });
                     this.dimension = tiled.dimension;
                 },

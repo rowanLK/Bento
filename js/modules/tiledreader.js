@@ -14,12 +14,17 @@
  */
 bento.define('bento/tiledreader', [], function () {
     'use strict';
+    var FLIPX = 0x80000000;
+    var FLIPY = 0x40000000;
+    var FLIPDIAGONAL = 0x20000000;
+
     var TiledReader = function (settings) {
         // cache callbacks
         var onExternalTileset = settings.onExternalTileset;
         var onLayer = settings.onLayer;
         var onTile = settings.onTile;
         var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
 
         // the tiled json
         var json = settings.tiled || {};
@@ -61,8 +66,30 @@ bento.define('bento/tiledreader', [], function () {
                 }
 
                 // meanwhile, cache all firstGids for faster lookups
-                firstGids.push(tileset.firstgid);
+                cachedFirstGids.push(tileset.firstgid);
             }
+        };
+        var decompress = function (layer) {
+            var base64ToUint32array = function (base64) {
+                var raw = window.atob(base64);
+                var i;
+                var len = raw.length;
+                var bytes = new Uint8Array(len);
+                for (i = 0; i < len; i++) {
+                    bytes[i] = raw.charCodeAt(i);
+                }
+                var data = new Uint32Array(bytes.buffer, 0, len / 4);
+                return data;
+            };
+            var encoding = layer.encoding;
+            if (encoding === 'base64') {
+                layer.data = base64ToUint32array(layer.data);
+                layer.encoding = null;
+            } else if (encoding) {
+                // TODO: compression formats
+                throw "ERROR: compression not supported. Please set Tile Layer Format to CSV in Tiled.";
+            }
+            return layer;
         };
         var loopLayers = function () {
             var i, il;
@@ -89,7 +116,7 @@ bento.define('bento/tiledreader', [], function () {
                 // loop through tilesets and find the highest firstgid that's
                 // still lower or equal to the gid
                 for (l = 0; l < count; ++l) {
-                    firstGid = firstGids[l];
+                    firstGid = cachedFirstGids[l];
                     if (firstGid <= gid) {
                         current = tilesets[l];
                         currentFirstGid = firstGid;
@@ -105,19 +132,33 @@ bento.define('bento/tiledreader', [], function () {
                 var gid = data[y * width + x];
                 var tilesetData;
                 var tileIndex;
+                var flipX;
+                var flipY;
+                var flipDiagonal;
 
+                // no tile
                 if (gid === 0) {
                     return;
                 }
+
+                // read out the flags
+                flipX = (gid & FLIPX);
+                flipY = (gid & FLIPY);
+                flipDiagonal = (gid & FLIPDIAGONAL);
+
+                // clear flags
+                gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
+
                 // get the corresponding tileset and tile index
                 tilesetData = getTileset(gid);
                 tileIndex = gid - tilesetData.firstGid;
 
                 // callback
-                onTile(x, y, tilesetData.tileset, tileIndex);
+                onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
             };
             var objectCallback = function (object) {
                 var tileIndex;
+                var tilesetData;
                 var gid = object.gid;
                 if (gid) {
                     // get the corresponding tileset and tile index
@@ -143,7 +184,10 @@ bento.define('bento/tiledreader', [], function () {
                     if (!layer.visible) {
                         continue;
                     }
-                    
+
+                    // decompress data?
+                    decompress(layer);
+
                     layerData = layer.data;
 
                     // loop through layer.data, which should be width * height in size
@@ -162,6 +206,9 @@ bento.define('bento/tiledreader', [], function () {
                         objectCallback(object);
                     }
                 }
+            }
+            if (onComplete) {
+                onComplete();
             }
         };
 
