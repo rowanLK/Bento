@@ -6,7 +6,7 @@
 bento.define('bento/renderer', [
     'bento/utils'
 ], function (Utils) {
-    return function (type, canvas, settings, callback) {
+    return function (rendererName, canvas, settings, callback) {
         var module = {
             save: function () {},
             restore: function () {},
@@ -27,7 +27,7 @@ bento.define('bento/renderer', [
             setContext: function () {},
             restoreContext: function () {}
         };
-        bento.require(['bento/renderers/' + type], function (renderer) {
+        bento.require([rendererName], function (renderer) {
             Utils.extend(module, renderer(canvas, settings), true);
             callback(module);
         });

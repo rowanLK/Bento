@@ -79,10 +79,9 @@ bento.require([
                                 color = [1, 0, 0, 1];
                             },
                             onHold: function (evt) {
-                                rotationComponent.addAngleDegree(1);
+                                button.rotation += 0.02;
                             }
-                        }),
-                        rotationComponent = button.getComponent('rotation');
+                        });
                     button.attach({
                         draw: function (data) {
                             var box = button.getBoundingBox(),

@@ -11,18 +11,13 @@ bento.require([
     'bento/autoresize'
 ], function (Bento, Vector2, Rectangle, Entity, Sprite, Translation, Fill, Clickable, Utils, AutoResize) {
     var hash = window.location ? window.location.hash : '',
-        renderer = 'auto',
+        renderer = 'canvas2d',
         getRandom = function (val) {
             return Math.floor(Math.random() * val);
         },
         BunnyBehavior = function () {
             this.speed = new Vector2(getRandom(50) / 10, getRandom(30) / 10);
         };
-    if (hash && hash === '#canvas2d') {
-        renderer = 'canvas2d';
-    } else if (hash && hash === '#webgl') {
-        renderer = 'webgl';
-    }
     BunnyBehavior.prototype.update = function (data) {
         var position = data.entity.position;
         var viewport = Bento.getViewport();

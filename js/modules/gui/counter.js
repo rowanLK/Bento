@@ -184,8 +184,7 @@ bento.define('bento/gui/counter', [
         spriteSettings.frameCountX = settings.frameCountX;
         spriteSettings.frameCountY = settings.frameCountY;
         if (settings.sprite) {
-            // replace with settings
-            settings.sprite = settings.sprite.getSettings();
+            settings.sprite = settings.sprite.animationSettings;
             spriteSettings.image = settings.sprite.image;
             spriteSettings.imageName = settings.sprite.imageName;
             spriteSettings.frameWidth = settings.sprite.frameWidth;

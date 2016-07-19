@@ -1,4 +1,5 @@
-/**
+/*
+ * DEPRECATED: performance is sub par, recommended to use Canvas2d or Pixi renderer
  * WebGL renderer using gl-sprites by Matt DesLauriers
  * @copyright (C) 2015 LuckyKat
  */
