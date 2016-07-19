@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento/objectpool - Documentation</title>
+    <title>bento/tiledreader - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,7 +28,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento/objectpool</h1>
+    <h1 class="page-title">bento/tiledreader</h1>
     
 
     
@@ -50,7 +50,7 @@
     <div class="container-overview">
     
         
-            <div class="description">General object pool
+            <div class="description">A generic interpreter for Tiled map JSON files.
 <br>Exports: Constructor</div>
         
 
@@ -108,7 +108,7 @@
 
             
 
-            <td class="description last">Settings object is required
+            <td class="description last">Settings object
                 <h6>Properties</h6>
                 
 
@@ -122,6 +122,8 @@
         <th>Type</th>
 
         
+        <th>Attributes</th>
+        
 
         
 
@@ -134,7 +136,38 @@
 
         <tr>
             
-                <td class="name"><code>constructor</code></td>
+                <td class="name"><code>tiled</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Tiled map JSON asset</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onExternalTileset</code></td>
             
 
             <td class="type">
@@ -147,17 +180,25 @@
             </td>
 
             
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
 
             
 
-            <td class="description last">function that returns the object for pooling</td>
+            <td class="description last">Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset)</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>destructor</code></td>
+                <td class="name"><code>onLayer</code></td>
             
 
             <td class="type">
@@ -170,33 +211,152 @@
             </td>
 
             
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
 
             
 
-            <td class="description last">function that resets object for reuse</td>
+            <td class="description last">Called when passing a layer, parameters: (layerJSON)</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>poolSize</code></td>
+                <td class="name"><code>onTile</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Number</span>
+<span class="param-type">function</span>
 
 
             
             </td>
 
             
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
 
             
 
-            <td class="description last">amount to pre-initialize</td>
+            <td class="description last">Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onObject</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onComplete</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Called when the reader is done</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>spawn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Spawns entities</td>
         </tr>
 
     
@@ -244,7 +404,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line1">line 1</a>
+        <a href="modules_tiledreader.js.html">modules/tiledreader.js</a>, <a href="modules_tiledreader.js.html#line1">line 1</a>
     </li></ul></dd>
     
 
@@ -271,7 +431,7 @@
 
         
 <div class="param-desc">
-    ObjectPool
+    Object
 </div>
 
 
@@ -304,14 +464,14 @@
 
     
 
-    <h4 class="name" id="~discard"><span class="type-signature">(inner) </span>discard<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="read"><span class="type-signature"></span>read<span class="signature">()</span><span class="type-signature"></span></h4>
 
     
 
 
 
 <div class="description">
-    Puts object back in the pool
+    Read tiled JSON and loop through all layers, tiles and objects
 </div>
 
 
@@ -355,89 +515,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line51">line 51</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="~get"><span class="type-signature">(inner) </span>get<span class="signature">()</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Returns a new object from the pool, the pool is populated automatically if empty
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line40">line 40</a>
+        <a href="modules_tiledreader.js.html">modules/tiledreader.js</a>, <a href="modules_tiledreader.js.html#line220">line 220</a>
     </li></ul></dd>
     
 

@@ -47,38 +47,15 @@
          "imageheight":256,
          "imagewidth":256,
          "margin":0,
-         "name":"tiles",
+         "name":"background tiles",
          "spacing":0,
          "tilecount":256,
          "tileheight":16,
          "tilewidth":16
         }, 
         {
-         "columns":4,
          "firstgid":257,
-         "image":"..\/images\/bunnygirlsmall.png",
-         "imageheight":128,
-         "imagewidth":128,
-         "margin":0,
-         "name":"bunnygirlsmall",
-         "spacing":0,
-         "tilecount":16,
-         "tileheight":32,
-         "tileproperties":
-            {
-             "0":
-                {
-                 "module":"bunny"
-                }
-            },
-         "tilepropertytypes":
-            {
-             "0":
-                {
-                 "module":"string"
-                }
-            },
-         "tilewidth":32
+         "source":"bunnygirltileset.json"
         }],
  "tilewidth":16,
  "version":1,

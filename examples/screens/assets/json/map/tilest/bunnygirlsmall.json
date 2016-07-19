@@ -1,0 +1,25 @@
+{ "columns":4,
+ "image":"..\/..\/..\/images\/bunnygirlsmall.png",
+ "imageheight":128,
+ "imagewidth":128,
+ "margin":0,
+ "name":"bunnygirlsmall",
+ "spacing":0,
+ "tilecount":16,
+ "tileheight":32,
+ "tileproperties":
+    {
+     "0":
+        {
+         "module":"bunny"
+        }
+    },
+ "tilepropertytypes":
+    {
+     "0":
+        {
+         "module":"string"
+        }
+    },
+ "tilewidth":32
+}

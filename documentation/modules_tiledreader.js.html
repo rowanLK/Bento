@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento/objectpool - Documentation</title>
+    <title>modules/tiledreader.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,450 +28,249 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento/objectpool</h1>
-    
-
-    
-
-
-
-
-<section>
-
-<header>
-    
-        
-            
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description">General object pool
-<br>Exports: Constructor</div>
-        
-
-        
-            
-
-
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>settings</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Settings object is required
-                <h6>Properties</h6>
-                
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>constructor</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">function that returns the object for pooling</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>destructor</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">function</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">function that resets object for reuse</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>poolSize</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">amount to pre-initialize</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-            </td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    ObjectPool
-</div>
-
-
-
-    
-
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-     
-
-    
-
-    
-
-    
-        <h3 class="subsection-title">Methods</h3>
-
-        
-            
-
-    
-
-    <h4 class="name" id="~discard"><span class="type-signature">(inner) </span>discard<span class="signature">()</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Puts object back in the pool
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line51">line 51</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="~get"><span class="type-signature">(inner) </span>get<span class="signature">()</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-<div class="description">
-    Returns a new object from the pool, the pool is populated automatically if empty
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="modules_objectpool.js.html">modules/objectpool.js</a>, <a href="modules_objectpool.js.html#line40">line 40</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-    
-
-    
-
-    
-</article>
-
-</section>
+    <h1 class="page-title">modules/tiledreader.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * A generic interpreter for Tiled map JSON files.
+ * &lt;br>Exports: Constructor
+ * @module bento/tiledreader
+ * @param {Object} settings - Settings object
+ * @param {String} settings.tiled - Tiled map JSON asset
+ * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset)
+ * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
+ * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
+ * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) &lt;br>Latter two if a gid is present in the objectJSON
+ * @param {Function} [settings.onComplete] - Called when the reader is done
+ * @param {Boolean} [settings.spawn] - Spawns entities
+ * @returns Object
+ */
+bento.define('bento/tiledreader', [], function () {
+    'use strict';
+    var FLIPX = 0x80000000;
+    var FLIPY = 0x40000000;
+    var FLIPDIAGONAL = 0x20000000;
+
+    var TiledReader = function (settings) {
+        // cache callbacks
+        var onExternalTileset = settings.onExternalTileset;
+        var onLayer = settings.onLayer;
+        var onTile = settings.onTile;
+        var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+
+        // the tiled json
+        var json = settings.tiled || {};
+
+        // width and height in tiles
+        var width = json.width || 0;
+        var height = json.height || 0;
+
+        // width and height of a single tile
+        var tileWidth = json.tilewidth || 0;
+        var tileHeight = json.tileheight || 0;
+
+        // tilesets
+        var tilesets = json.tilesets || [];
+        var tilesetsCount = tilesets.length;
+        var externalTilesets = {
+            // "source": tileset JSON
+        };
+        var cachedFirstGids = [];
+
+        // layers
+        var layers = json.layers || [];
+        var layersCount = layers.length;
+
+        // load external tilesets
+        var importTilesets = function () {
+            var i;
+            var l;
+            var tileset;
+            var source;
+
+            // loop through all tilesets, look for external tilesets
+            for (i = 0, l = tilesets.length; i &lt; l; ++i) {
+                tileset = tilesets[i];
+                source = tileset.source;
+                if (source) {
+                    // to stay independent of any asset loader, this is loaded through a callback
+                    externalTilesets[source] = onExternalTileset(source);
+                }
+
+                // meanwhile, cache all firstGids for faster lookups
+                cachedFirstGids.push(tileset.firstgid);
+            }
+        };
+        var decompress = function (layer) {
+            var base64ToUint32array = function (base64) {
+                var raw = window.atob(base64);
+                var i;
+                var len = raw.length;
+                var bytes = new Uint8Array(len);
+                for (i = 0; i &lt; len; i++) {
+                    bytes[i] = raw.charCodeAt(i);
+                }
+                var data = new Uint32Array(bytes.buffer, 0, len / 4);
+                return data;
+            };
+            var encoding = layer.encoding;
+            if (encoding === 'base64') {
+                layer.data = base64ToUint32array(layer.data);
+                layer.encoding = null;
+            } else if (encoding) {
+                // TODO: compression formats
+                throw "ERROR: compression not supported. Please set Tile Layer Format to CSV in Tiled.";
+            }
+            return layer;
+        };
+        var loopLayers = function () {
+            var i, il;
+            var j, jl;
+            var k, kl;
+            var layers = json.layers;
+            var layer;
+            var layerData;
+            var lh;
+            var lw;
+            var objects;
+            var object;
+            var properties;
+            var layerId = 0;
+            var type;
+            var getTileset = function (gid) {
+                var l,
+                    tileset,
+                    count = tilesetsCount,
+                    current = null,
+                    firstGid,
+                    currentFirstGid;
+
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l &lt; count; ++l) {
+                    firstGid = cachedFirstGids[l];
+                    if (firstGid &lt;= gid) {
+                        current = tilesets[l];
+                        currentFirstGid = firstGid;
+                    }
+                }
+                return {
+                    tileSet: current,
+                    firstGid: currentFirstGid
+                };
+            };
+            var tileCallback = function (data, x, y) {
+                // callback for every tile (stored layer.data)
+                var gid = data[y * width + x];
+                var tilesetData;
+                var tileIndex;
+                var flipX;
+                var flipY;
+                var flipDiagonal;
+
+                // no tile
+                if (gid === 0) {
+                    return;
+                }
+
+                // read out the flags
+                flipX = (gid &amp; FLIPX);
+                flipY = (gid &amp; FLIPY);
+                flipDiagonal = (gid &amp; FLIPDIAGONAL);
+
+                // clear flags
+                gid &amp;= ~(FLIPX | FLIPY | FLIPDIAGONAL);
+
+                // get the corresponding tileset and tile index
+                tilesetData = getTileset(gid);
+                tileIndex = gid - tilesetData.firstGid;
+
+                // callback
+                onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
+            };
+            var objectCallback = function (object) {
+                var tileIndex;
+                var tilesetData;
+                var gid = object.gid;
+                if (gid) {
+                    // get the corresponding tileset and tile index
+                    tilesetData = getTileset(gid);
+                    tileIndex = gid - tilesetData.firstGid;
+                    onObject(object, tilesetData.tileSet, tileIndex);
+                } else {
+                    // gid may not be present, in that case it's a rectangle or other shape
+                    onObject(object);
+                }
+            };
+
+            // loop through layers
+            for (k = 0, kl = layers.length; k &lt; kl; ++k) {
+                layer = layers[k];
+                type = layer.type;
+
+                if (onLayer) {
+                    onLayer(layer);
+                }
+                if (type === 'tilelayer') {
+                    // skip layer if invisible???
+                    if (!layer.visible) {
+                        continue;
+                    }
+
+                    // decompress data?
+                    decompress(layer);
+
+                    layerData = layer.data;
+
+                    // loop through layer.data, which should be width * height in size
+                    for (j = 0; j &lt; height; ++j) {
+                        for (i = 0; i &lt; width; ++i) {
+                            tileCallback(layerData, i, j);
+                        }
+                    }
+
+                } else if (type === 'objectgroup') {
+                    objects = layer.objects || [];
+                    il = objects.length;
+                    for (i = 0; i &lt; il; ++i) {
+                        object = objects[i];
+
+                        objectCallback(object);
+                    }
+                }
+            }
+            if (onComplete) {
+                onComplete();
+            }
+        };
+
+        importTilesets();
+
+        // loopLayers();
+
+        return {
+            /**
+             * Read tiled JSON and loop through all layers, tiles and objects
+             * @function
+             * @instance
+             * @name read
+             */
+            read: loopLayers
+        };
+    };
+
+    return TiledReader;
+});</code></pre>
+        </article>
+    </section>
 
 
 

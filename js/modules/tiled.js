@@ -1,15 +1,19 @@
 /**
  * Reads Tiled JSON file and draws layers.
  * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
- * the layer is split into multiple sprites.
+ * the layer is split into multiple canvases.
  * <br>Exports: Constructor
  * @module bento/tiled
  * @param {Object} settings - Settings object
- * @param {String} settings.tiled - Tiled map JSON asset
- * @param {Boolean} settings.merge - Merge tile layers into a single sprite layer, default: false
- * @param {Number} settings.maxCanvasSize - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
- * @param {Number} settings.onObject - callback for tiled objects
- * @param {Boolean} [settings.spawn] - Spawns background entities (drawn tile layers)
+ * @param {String} settings.assetName - Name of the Tiled JSON asset to load
+ * @param {Boolean} [settings.merge] - Merge tile layers into a single sprite layer, default: false
+ * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
+ * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
+ * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)
+ * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
+ * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
+ * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
+ * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
  * @returns Object
  */
 bento.define('bento/tiled', [
@@ -65,9 +69,9 @@ bento.define('bento/tiled', [
             layers.length += 1;
         };
         var getCanvas = function (layerId, destination) {
-            // convert destination position to sprite index
+            // convert destination position to array index
             var x = Math.floor(destination.x / canvasSize.x) % spritesCountX;
-            var y = Math.floor(Math.floor(destination.y / canvasSize.y) / spritesCountX);
+            var y = Math.floor(destination.y / canvasSize.y) % spritesCountY;
             var index = x + y * spritesCountX;
 
             // init collection if needed
@@ -75,7 +79,10 @@ bento.define('bento/tiled', [
                 initLayer(layerId);
             }
 
-            return layers[layerId][index];
+            return {
+                index: index,
+                canvas: layers[layerId][index]
+            };
         };
 
         return {
@@ -88,11 +95,18 @@ bento.define('bento/tiled', [
             },
             drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD) {
                 // get the corresponding canvas
-                var canvas = getCanvas(layerId, destination);
+                var canvasData = getCanvas(layerId, destination);
+                var canvas = canvasData.canvas;
+                var index = canvasData.index;
                 var context = canvas.context;
                 var doFlipX = false;
                 var doFlipY = false;
                 var rotation = 0;
+                // canvas offset
+                var offset = new Vector2(
+                    canvasSize.x * (index % spritesCountX),
+                    canvasSize.y * Math.floor(index / spritesCountX)
+                );
 
                 // convert to rotation and flipping
                 if (!flipD) {
@@ -118,7 +132,7 @@ bento.define('bento/tiled', [
 
                 context.save();
                 // move to destination
-                context.translate(destination.x, destination.y);
+                context.translate(destination.x - offset.x, destination.y - offset.y);
                 // offset origin for rotation
                 context.translate(source.width / 2, source.height / 2);
                 // apply rotation
@@ -151,14 +165,61 @@ bento.define('bento/tiled', [
         var tileWidth = json.tilewidth || 0;
         var tileHeight = json.tileheight || 0;
         var mergeLayers = json.merge || false;
+        var onLayer = settings.onLayer;
+        var onTile = settings.onTile;
         var onObject = settings.onObject;
+        var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
         var mapSize = new Vector2(width * tileWidth, height * tileHeight);
         var currentSpriteLayer = -1;
         var layerSprites = new LayerSprites(maxCanvasSize, mapSize);
         var entities = [];
+        var backgrounds = [];
         var tiledReader = new TiledReader({
             tiled: json,
+            onExternalTileset: function (source) {
+                // unfortunately, external tileset paths are relative to the tile json path
+                // making it difficult to load (would need to do path parsing etc...)
+                // instead we try to make an educated guess what the asset name is
+                var json;
+                var jsonPath = source.indexOf('json/');
+                var relativePath = source.indexOf('../');
+                var path = source;
+                var split;
+                if (jsonPath >= 0) {
+                    // if the name "json/" is there, we can guess the path is after the json/ part
+                    path = source.substring(jsonPath + ('json/').length);
+                } else if (relativePath >= 0) {
+                    // no json/ is there and the path has relative indicators
+                    path = source;
+
+                    if (assetName) {
+                        // path parsing, urgh
+                        split = assetName.split('/');
+                        split.pop(); // remove filename
+                        while (path.indexOf('../') >= 0) {
+                            if (split.length === 0) {
+                                throw "ERROR: Impossible path to external tileset";
+                            }
+                            // move up one folder
+                            split.pop();
+                            path = path.replace('../', '');
+                        }
+                        // final path, may need an extra slash
+                        path = split.join('/') + (split.length ? '/' : '') + path;
+                    } else {
+                        // more dangerous method: try removing all relative indicators
+                        while (path.indexOf('../') >= 0) {
+                            path = path.replace('../', '');
+                        }
+                    }
+                }
+                path = path.replace('.json', '');
+
+                json = Bento.assets.getJson(path);
+
+                return json;
+            },
             onLayer: function (layer) {
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
@@ -166,6 +227,9 @@ bento.define('bento/tiled', [
                     } else {
                         currentSpriteLayer = 0;
                     }
+                }
+                if (onLayer) {
+                    onLayer(layer);
                 }
             },
             onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
@@ -178,7 +242,8 @@ bento.define('bento/tiled', [
                 var source = getSourceTile(tileSet, tileIndex);
 
                 // retrieve the corresponding image asset
-                // assuming the asset name is the same the image url!
+                // there is a very high chance the url contains "images/" since the json files
+                // should be stored in the "json/" folder and images in "images/"
                 var imageUrl = tileSet.image;
                 var assetName;
                 var imageAsset;
@@ -187,6 +252,7 @@ bento.define('bento/tiled', [
                 imageAsset = Bento.assets.getImage(assetName);
 
                 // draw on the layer
+                // TODO: cache the drawn layers? Would load faster if a player returns to a screen, on the other hand it could lead to memory hogging
                 layerSprites.drawTile(
                     currentSpriteLayer,
                     destination,
@@ -196,20 +262,21 @@ bento.define('bento/tiled', [
                     flipY,
                     flipD
                 );
+
+                if (onTile) {
+                    onTile(tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
+                }
             },
             onObject: function (object, tileSet, tileIndex) {
                 if (onObject) {
                     onObject(object, tileSet, tileIndex);
                 }
                 if (settings.spawnEntities) {
+
                     spawnEntity(object, tileSet, tileIndex);
                 }
             },
             onComplete: function () {
-                // spawn background entities?
-                if (!settings.spawnBackground) {
-                    return;
-                }
                 var layers = layerSprites.layers;
                 var layer;
                 var l = layers.length;
@@ -232,13 +299,16 @@ bento.define('bento/tiled', [
                             name: 'background',
                             family: ['backgrounds'],
                             position: new Vector2(
-                                canvasSize.x * (j % spritesCountX),
-                                canvasSize.y * Math.floor(j / spritesCountX)
+                                offset.x + canvasSize.x * (j % spritesCountX),
+                                offset.y + canvasSize.y * Math.floor(j / spritesCountX)
                             ),
                             components: [sprite]
                         });
-                        Bento.objects.attach(entity);
-                        entities.push(entity);
+                        // spawn background entities now?
+                        if (settings.spawnBackground) {
+                            Bento.objects.attach(entity);
+                        }
+                        backgrounds.push(entity);
                     }
                 };
 
@@ -288,9 +358,12 @@ bento.define('bento/tiled', [
             params = {
                 tiled: {
                     position: new Vector2(x, y),
-                    tile: properties,
-                    object: Utils.extend(object, object.properties), // extend properties with tiled info
-                    json: settings.name // reference to current json name
+                    tileSet: tileSet,
+                    tileIndex: tileIndex,
+                    tileProperties: properties,
+                    object: object,
+                    objectProperties: object.properties,
+                    jsonName: assetName // reference to current json name
                 }
             };
             bento.require([moduleName], function (Instance) {
@@ -298,11 +371,16 @@ bento.define('bento/tiled', [
                     origin = instance.origin,
                     dimension = instance.dimension;
 
-                instance.position = new Vector2(x + origin.x, y + (origin.y - dimension.height));
+                instance.position = new Vector2(
+                    offset.x + x + origin.x,
+                    offset.y + y + (origin.y - dimension.height)
+                );
 
                 // add to game
                 Bento.objects.attach(instance);
                 entities.push(instance);
+
+                // TODO: async callback after all entities are loaded
             });
         };
 
@@ -310,8 +388,36 @@ bento.define('bento/tiled', [
 
         return {
             name: settings.name || 'tiled',
+            /**
+             * Name of the Tiled JSON asset
+             * @instance
+             * @name assetName
+             */
+            assetName: assetName,
+            /**
+             * Rectangle with width and height of the Tiled map in pixels
+             * @instance
+             * @name dimension
+             */
             dimension: new Rectangle(0, 0, mapSize.x, mapSize.y),
-            entities: entities
+            /**
+             * Array of all entities spawned
+             * @instance
+             * @name entities
+             */
+            entities: entities,
+            /**
+             * Array of all background entities spawned
+             * @instance
+             * @name backgrounds
+             */
+            backgrounds: backgrounds,
+            /**
+             * Object containing all drawn layers
+             * @instance
+             * @name layerImages
+             */
+            layerImages: layerSprites
         };
     };
 

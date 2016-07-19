@@ -4,10 +4,10 @@
  * @module bento/tiledreader
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Tiled map JSON asset
- * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset)
- * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: layer JSON
- * @param {Function} [settings.onTile] - Called when passing a tile, parameters: tile x, tile y, tileset JSON, tileIndex, flipX, flipY
- * @param {Function} [settings.onObject] - Called when passing an object, parameters: object JSON, tileset JSON, tileIndex (if a gid is present)
+ * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
+ * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
+ * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
+ * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON
  * @param {Function} [settings.onComplete] - Called when the reader is done
  * @param {Boolean} [settings.spawn] - Spawns entities
  * @returns Object
@@ -122,6 +122,12 @@ bento.define('bento/tiledreader', [], function () {
                         currentFirstGid = firstGid;
                     }
                 }
+
+                // tileset is external?
+                if (current.source) {
+                    current = externalTilesets[current.source];
+                }
+
                 return {
                     tileSet: current,
                     firstGid: currentFirstGid
@@ -217,6 +223,12 @@ bento.define('bento/tiledreader', [], function () {
         // loopLayers();
 
         return {
+            /**
+             * Read tiled JSON and loop through all layers, tiles and objects
+             * @function
+             * @instance
+             * @name read
+             */
             read: loopLayers
         };
     };

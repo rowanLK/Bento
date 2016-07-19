@@ -43,7 +43,7 @@
         {
          "columns":16,
          "firstgid":1,
-         "image":"..\/images\/tiles.png",
+         "image":"..\/..\/..\/images\/tiles.png",
          "imageheight":256,
          "imagewidth":256,
          "margin":0,
@@ -55,7 +55,7 @@
         }, 
         {
          "firstgid":257,
-         "source":"bunnygirltileset.json"
+         "source":"..\/tilest\/bunnygirlsmall.json"
         }],
  "tilewidth":16,
  "version":1,

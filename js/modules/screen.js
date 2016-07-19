@@ -15,8 +15,9 @@ bento.define('bento/screen', [
     'bento/utils',
     'bento',
     'bento/math/rectangle',
+    'bento/math/vector2',
     'bento/tiled'
-], function (Utils, Bento, Rectangle, Tiled) {
+], function (Utils, Bento, Rectangle, Vector2, Tiled) {
     'use strict';
     return function (settings) {
         /*settings = {
@@ -24,7 +25,6 @@ bento.define('bento/screen', [
             tiled: String
         }*/
         var viewport = Bento.getViewport(),
-            tiled,
             module = {
                 /**
                  * Name of the screen
@@ -32,6 +32,13 @@ bento.define('bento/screen', [
                  * @name name
                  */
                 name: null,
+                /**
+                 * Reference to Tiled object (if tiled was used)
+                 * @instance
+                 * @see module:bento/tiled
+                 * @name tiled
+                 */
+                tiled: null,
                 /**
                  * Dimension of the screen
                  * @instance
@@ -49,13 +56,12 @@ bento.define('bento/screen', [
                  * @name loadTiled
                  */
                 loadTiled: function (name) {
-                    // TODO: deprecate this, the way Tiled spawns entities is not very clean
-                    tiled = new Tiled({
+                    this.tiled = new Tiled({
                         assetName: name,
                         spawnBackground: true,
                         spawnEntities: true
                     });
-                    this.dimension = tiled.dimension;
+                    this.dimension = this.tiled.dimension;
                 },
                 /**
                  * Callback when the screen is shown (called by screen manager)
