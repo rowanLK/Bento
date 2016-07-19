@@ -115,7 +115,7 @@ bento.define('bento', [
             rendererName = 'bento/renderers/pixi';
         } else if (settings.renderer === 'auto') {
             // auto renderer is deprecated! use canvas2d or pixi
-            console.log('WARNING: auto renderer is deprecated. Please use canvas2d or pixi as renderers.')
+            console.log('WARNING: auto renderer is deprecated. Please use canvas2d or pixi as renderers.');
             rendererName = 'bento/renderers/canvas2d';
         }
         // setup renderer
@@ -163,7 +163,7 @@ bento.define('bento', [
          * @instance
          * @param {Object} settings - settings for the game
          * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-         * @param {String} settings.renderer - Renderer to use. Defaults to "canvas2d". To use "pixi", include the pixi.js file manually. Make sure to download v3!. 
+         * @param {String} settings.renderer - Renderer to use. Defaults to "canvas2d". To use "pixi", include the pixi.js file manually. Make sure to download v3!.
          * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
          * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
          * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
@@ -197,6 +197,7 @@ bento.define('bento', [
                 setupCanvas(settings, function () {
                     dev = settings.dev || false;
                     SaveState.setDev(dev);
+                    Utils.setDev(dev);
                     // window resize listeners
                     manualResize = settings.manualResize;
                     window.addEventListener('resize', onResize, false);

@@ -6,6 +6,7 @@
 bento.define('bento/utils', [], function () {
     'use strict';
     var Utils,
+        dev = false,
         isString = function (value) {
             return typeof value === 'string' || value instanceof String;
         },
@@ -726,6 +727,27 @@ bento.define('bento/utils', [], function () {
         },
         isCocoonJs: function () {
             return navigator.isCocoonJS;
+        },
+        /**
+         * Turn dev mode on or off to use throws or console.logs
+         * @function
+         * @instance
+         * @param {Boolean} bool - set to true to use throws instead of console.logs
+         * @name setDev
+         */
+        setDev: function (bool) {
+            dev = bool;
+        },
+        /**
+         * Depending on whether dev mode is on, this will throw the message or console.log it
+         * @param  {String} msg - the message to throw/log
+         */
+        log: function (msg) {
+            if (dev) {
+                throw msg;
+            } else {
+                console.log(msg);
+            }
         },
         /**
          * Enum for sort mode, pass this to Bento.setup
