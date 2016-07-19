@@ -1,7 +1,7 @@
 { "height":15,
  "layers":[
         {
-         "data":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50],
+         "data":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1610612856, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50],
          "height":15,
          "name":"Tile Layer 1",
          "opacity":1,
@@ -12,20 +12,19 @@
          "y":0
         }, 
         {
+         "draworder":"topdown",
          "height":15,
          "name":"Object Layer 1",
          "objects":[
                 {
                  "gid":257,
-                 "height":0,
+                 "height":32,
+                 "id":2,
                  "name":"",
-                 "properties":
-                    {
-
-                    },
+                 "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":0,
+                 "width":32,
                  "x":64,
                  "y":160
                 }],
@@ -36,49 +35,27 @@
          "x":0,
          "y":0
         }],
+ "nextobjectid":7,
  "orientation":"orthogonal",
- "properties":
-    {
-
-    },
+ "renderorder":"right-down",
  "tileheight":16,
  "tilesets":[
         {
+         "columns":16,
          "firstgid":1,
          "image":"..\/images\/tiles.png",
          "imageheight":256,
          "imagewidth":256,
          "margin":0,
-         "name":"tiles",
-         "properties":
-            {
-
-            },
+         "name":"background tiles",
          "spacing":0,
+         "tilecount":256,
          "tileheight":16,
          "tilewidth":16
         }, 
         {
          "firstgid":257,
-         "image":"..\/images\/bunnygirlsmall.png",
-         "imageheight":128,
-         "imagewidth":128,
-         "margin":0,
-         "name":"bunnygirlsmall",
-         "properties":
-            {
-
-            },
-         "spacing":0,
-         "tileheight":32,
-         "tileproperties":
-            {
-             "0":
-                {
-                 "module":"bunny"
-                }
-            },
-         "tilewidth":32
+         "source":"bunnygirltileset.json"
         }],
  "tilewidth":16,
  "version":1,

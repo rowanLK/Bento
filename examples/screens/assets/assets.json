@@ -5,6 +5,7 @@
         "bunnygirlsmall": "bunnygirlsmall.png"
     },
     "json": {
+        "bunnygirltileset": "bunnygirltileset.json",
         "level1": "level1.json",
         "level2": "level2.json"
     }

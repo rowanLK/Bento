@@ -20,7 +20,7 @@ bento.define('bento/components/scale', [
     Scale.prototype.attached = function (data) {
         this.entity = data.entity;
     };
-    /**
+    /*
      * Scales the parent entity in x direction
      * @function
      * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
@@ -30,7 +30,7 @@ bento.define('bento/components/scale', [
     Scale.prototype.setScaleX = function (value) {
         this.entity.scale.x = value;
     };
-    /**
+    /*
      * Scales the parent entity in y direction
      * @function
      * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)

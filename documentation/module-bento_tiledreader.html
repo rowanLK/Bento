@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>modules/gui/counter.js - Documentation</title>
+    <title>bento/tiledreader - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -28,253 +28,528 @@
 
 <div id="main">
     
-    <h1 class="page-title">modules/gui/counter.js</h1>
+    <h1 class="page-title">bento/tiledreader</h1>
     
 
     
 
 
 
+
+<section>
+
+<header>
     
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>/**
- * An entity that behaves like a counter.
- * TODO: document settings parameter
- * &lt;br>Exports: Constructor
- * @module bento/gui/counter
- * @returns Entity
- */
-bento.define('bento/gui/counter', [
-    'bento',
-    'bento/entity',
-    'bento/math/vector2',
-    'bento/components/sprite',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/utils'
-], function (
-    Bento,
-    Entity,
-    Vector2,
-    Sprite,
-    Translation,
-    Rotation,
-    Scale,
-    Utils
-) {
-    'use strict';
-    return function (settings) {
-        /*{
-            value: Number,
-            spacing: Vector,
-            align: String,
-            image: Image, // lower priority
-            frameWidth: Number, // lower priority
-            frameHeight: Number, // lower priority
-            animations: Object, // only way to overwrite animations
-            sprite: Sprite({
-                image: Image,
-                imageName: String,
-                frameWidth: Number,
-                frameHeight: Number,
-                animations: Animation
-            }),
-            position: Vector
-        }*/
-        var value = settings.value || 0,
-            spacing = settings.spacing || new Vector2(0, 0),
-            alignment = settings.align || settings.alignment || 'right',
-            digitWidth = 0,
-            children = [],
-            spriteSettings = {},
-            /*
-             * Counts the number of digits in the value
-             */
-            getDigits = function () {
-                return value.toString().length;
-            },
-            /*
-             * Returns an entity with all digits as animation
-             */
-            createDigit = function () {
-                var sprite = new Sprite({
-                        image: spriteSettings.image,
-                        imageName: spriteSettings.imageName,
-                        frameWidth: spriteSettings.frameWidth,
-                        frameHeight: spriteSettings.frameHeight,
-                        frameCountX: spriteSettings.frameCountX,
-                        frameCountY: spriteSettings.frameCountY,
-                        animations: settings.animations || {
-                            '0': {
-                                frames: [0]
-                            },
-                            '1': {
-                                frames: [1]
-                            },
-                            '2': {
-                                frames: [2]
-                            },
-                            '3': {
-                                frames: [3]
-                            },
-                            '4': {
-                                frames: [4]
-                            },
-                            '5': {
-                                frames: [5]
-                            },
-                            '6': {
-                                frames: [6]
-                            },
-                            '7': {
-                                frames: [7]
-                            },
-                            '8': {
-                                frames: [8]
-                            },
-                            '9': {
-                                frames: [9]
-                            },
-                            '-': {
-                                frames: [10]
-                            }
-                        }
-                    }),
-                    digitSettings = Utils.extend({
-                        components: [sprite],
-                        init: function () {
-                            // setup all digits
-                            digitWidth = spriteSettings.frameWidth;
-                        }
-                    }, settings.digit || {}),
-                    entity = new Entity(digitSettings);
+        
+            
+        
+    
+</header>
 
-                return entity;
-            },
-            /*
-             * Adds or removes children depending on the value
-             * and number of current digits and updates
-             * the visualuzation of the digits
-             */
-            updateDigits = function () {
-                // add or remove digits
-                var i,
-                    valueStr = value.toString(),
-                    pos,
-                    digit,
-                    digits = getDigits(),
-                    difference = children.length - digits;
-                /* update number of children to be
-                    the same as number of digits*/
-                if (difference &lt; 0) {
-                    // create new
-                    for (i = 0; i &lt; Math.abs(difference); ++i) {
-                        digit = createDigit();
-                        children.push(digit);
-                        base.attach(digit);
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">A generic interpreter for Tiled map JSON files.
+<br>Exports: Constructor</div>
+        
 
-                    }
-                } else if (difference > 0) {
-                    // remove
-                    for (i = 0; i &lt; Math.abs(difference); ++i) {
-                        digit = children.pop();
-                        base.remove(digit);
-                    }
-                }
-                /* update animations */
-                for (i = 0; i &lt; children.length; ++i) {
-                    digit = children[i];
-                    digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
-                    digit.getComponent('sprite', function (sprite) {
-                        sprite.setAnimation(valueStr.substr(i, 1));
-                    });
-                }
+        
+            
 
-                /* alignment */
-                if (alignment === 'right') {
-                    // move all the children
-                    for (i = 0; i &lt; children.length; ++i) {
-                        digit = children[i];
-                        pos = digit.position;
-                        pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
-                    }
-                } else if (alignment === 'center') {
-                    for (i = 0; i &lt; children.length; ++i) {
-                        digit = children[i];
-                        pos = digit.position;
-                        pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
-                    }
-                }
-            },
-            entitySettings = {
-                z: settings.z,
-                name: settings.name,
-                position: settings.position,
-                components: [new Sprite({})]
-            },
-            base;
 
-        // copy spritesettings
-        spriteSettings.image = settings.image;
-        spriteSettings.imageName = settings.imageName;
-        spriteSettings.frameWidth = settings.frameWidth;
-        spriteSettings.frameHeight = settings.frameHeight;
-        spriteSettings.frameCountX = settings.frameCountX;
-        spriteSettings.frameCountY = settings.frameCountY;
-        if (settings.sprite) {
-            // replace with settings
-            settings.sprite = settings.sprite.getSettings();
-            spriteSettings.image = settings.sprite.image;
-            spriteSettings.imageName = settings.sprite.imageName;
-            spriteSettings.frameWidth = settings.sprite.frameWidth;
-            spriteSettings.frameHeight = settings.sprite.frameHeight;
-            spriteSettings.frameCountX = settings.sprite.frameCountX;
-            spriteSettings.frameCountY = settings.sprite.frameCountY;
-        }
 
-        Utils.extend(entitySettings, settings);
 
-        /*
-         * Public interface
-         */
-        base = new Entity(entitySettings).extend({
-            init: function () {
-                updateDigits();
-            },
-            /*
-             * Sets current value
-             */
-            setValue: function (val) {
-                value = val;
-                updateDigits();
-            },
-            /*
-             * Retrieves current value
-             */
-            getValue: function () {
-                return value;
-            },
-            addValue: function (val) {
-                value += val;
-                updateDigits();
-            },
-            getDigits: function () {
-                return getDigits();
-            },
-            loopDigits: function (callback) {
-                var i = 0;
-                for (i = 0; i &lt; children.length; ++i) {
-                    callback(children[i]);
-                }
-            }
-        });
-        return base;
-    };
-});</code></pre>
-        </article>
-    </section>
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>settings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Settings object
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>tiled</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Tiled map JSON asset</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onExternalTileset</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onLayer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Called when passing a layer, parameters: (layerJSON)</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onTile</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onObject</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onComplete</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Called when the reader is done</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>spawn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Spawns entities</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="modules_tiledreader.js.html">modules/tiledreader.js</a>, <a href="modules_tiledreader.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Object
+</div>
+
+
+
+    
+
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+     
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="read"><span class="type-signature"></span>read<span class="signature">()</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Read tiled JSON and loop through all layers, tiles and objects
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="modules_tiledreader.js.html">modules/tiledreader.js</a>, <a href="modules_tiledreader.js.html#line226">line 226</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
 
 
 

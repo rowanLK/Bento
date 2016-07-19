@@ -24,31 +24,31 @@ bento.define('bento/components/sprite_old', [
             this.entity = null;
             this.settings = settings;
 
-            /**
+            /*
              * Reference to the Translation component
              * @instance
              * @name translation
              */
             this.translation = new Translation(settings);
-            /**
+            /*
              * Reference to the Rotation component
              * @instance
              * @name rotation
              */
             this.rotation = new Rotation(settings);
-            /**
+            /*
              * Reference to the Scale component
              * @instance
              * @name scale
              */
             this.scale = new Scale(settings);
-            /**
+            /*
              * Reference to the Opacity component
              * @instance
              * @name rotation
              */
             this.opacity = new Opacity(settings);
-            /**
+            /*
              * If renderer is set to pixi, this property is the Pixi component.
              * Otherwise it's the Animation component
              * @instance
@@ -84,7 +84,7 @@ bento.define('bento/components/sprite_old', [
         // remove self?
         this.entity.remove(this);
     };
-    /**
+    /*
      * Allows you to insert components/children entities BEFORE the animation component.
      * This way you can draw objects behind the sprite.
      * This function should be called before you attach the Sprite to the Entity.

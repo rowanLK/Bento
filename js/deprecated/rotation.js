@@ -26,7 +26,7 @@ bento.define('bento/components/rotation', [
         this.entity = data.entity;
     };
 
-    /**
+    /*
      * Rotates the parent entity in degrees
      * @function
      * @param {Number} degrees - Angle in degrees
@@ -36,7 +36,7 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.addAngleDegree = function (value) {
         this.entity.rotation += value * Math.PI / 180;
     };
-    /**
+    /*
      * Rotates the parent entity in radians
      * @function
      * @param {Number} radians - Angle in radians
@@ -46,7 +46,7 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.addAngleRadian = function (value) {
         this.entity.rotation += value;
     };
-    /**
+    /*
      * Rotates the parent entity in degrees
      * @function
      * @param {Number} degrees - Angle in degrees
@@ -56,7 +56,7 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.setAngleDegree = function (value) {
         this.entity.rotation = value * Math.PI / 180;
     };
-    /**
+    /*
      * Rotates the parent entity in radians
      * @function
      * @param {Number} radians - Angle in radians
@@ -66,7 +66,7 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.setAngleRadian = function (value) {
         this.entity.rotation = value;
     };
-    /**
+    /*
      * Returns the parent entity rotation in degrees
      * @function
      * @instance
@@ -75,7 +75,7 @@ bento.define('bento/components/rotation', [
     Rotation.prototype.getAngleDegree = function () {
         return this.entity.rotation * 180 / Math.PI;
     };
-    /**
+    /*
      * Returns the parent entity rotation in radians
      * @function
      * @instance
