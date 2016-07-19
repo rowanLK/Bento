@@ -32,7 +32,7 @@ bento.define('bento/components/opacity', [
         this.entity = data.entity;
     };
 
-    /**
+    /*
      * Set entity opacity
      * @function
      * @instance
@@ -43,7 +43,7 @@ bento.define('bento/components/opacity', [
         // this.opacity = value;
         this.entity.alpha = value;
     };
-    /**
+    /*
      * Get entity opacity
      * @function
      * @instance

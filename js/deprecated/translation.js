@@ -21,14 +21,14 @@ bento.define('bento/components/translation', [
         this.name = 'translation';
         this.subPixel = settings.subPixel || false;
         this.entity = null;
-        /**
+        /*
          * Additional x translation (superposed on the entity position)
          * @instance
          * @default 0
          * @name x
          */
         this.x = 0;
-        /**
+        /*
          * Additional y translation (superposed on the entity position)
          * @instance
          * @default 0

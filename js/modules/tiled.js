@@ -1,12 +1,13 @@
 /**
  * Reads Tiled JSON file and draws layers.
  * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
- * the layer is split into multiple canvases.
+ * the layer is split into multiple canvases. Easiest way to get started is to pass the asset name of the Tiled
+ * JSON and set spawnBackground and spawnEntities to true.
  * <br>Exports: Constructor
  * @module bento/tiled
  * @param {Object} settings - Settings object
  * @param {String} settings.assetName - Name of the Tiled JSON asset to load
- * @param {Boolean} [settings.merge] - Merge tile layers into a single sprite layer, default: false
+ * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
  * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
  * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
  * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)

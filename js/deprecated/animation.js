@@ -76,7 +76,7 @@ bento.define('bento/components/animation', [
         this.onCompleteCallback = function () {};
         this.setup(settings);
     };
-    /**
+    /*
      * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
      * @function
      * @instance
@@ -184,7 +184,7 @@ bento.define('bento/components/animation', [
 
         }
     };
-    /**
+    /*
      * Set component to a different animation. The animation won't change if it's already playing.
      * @function
      * @instance
@@ -219,7 +219,7 @@ bento.define('bento/components/animation', [
             }
         }
     };
-    /**
+    /*
      * Returns the name of current animation playing
      * @function
      * @instance
@@ -229,7 +229,7 @@ bento.define('bento/components/animation', [
     Animation.prototype.getAnimationName = function () {
         return this.currentAnimation.name;
     };
-    /**
+    /*
      * Set current animation to a certain frame
      * @function
      * @instance
@@ -239,7 +239,7 @@ bento.define('bento/components/animation', [
     Animation.prototype.setFrame = function (frameNumber) {
         this.currentFrame = frameNumber;
     };
-    /**
+    /*
      * Get speed of the current animation.
      * @function
      * @instance
@@ -249,7 +249,7 @@ bento.define('bento/components/animation', [
     Animation.prototype.getCurrentSpeed = function () {
         return this.currentAnimation.speed;
     };
-    /**
+    /*
      * Set speed of the current animation.
      * @function
      * @instance
@@ -259,7 +259,7 @@ bento.define('bento/components/animation', [
     Animation.prototype.setCurrentSpeed = function (value) {
         this.currentAnimation.speed = value;
     };
-    /**
+    /*
      * Returns the current frame number
      * @function
      * @instance
@@ -269,7 +269,7 @@ bento.define('bento/components/animation', [
     Animation.prototype.getCurrentFrame = function () {
         return this.currentFrame;
     };
-    /**
+    /*
      * Returns the frame width
      * @function
      * @instance
@@ -334,7 +334,7 @@ bento.define('bento/components/animation', [
         return '[object Animation]';
     };
 
-    /**
+    /*
      * Ignore warnings about invalid animation frames
      * @instance
      * @static
