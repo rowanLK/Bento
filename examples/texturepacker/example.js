@@ -27,7 +27,7 @@ bento.require([
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: 'webgl'
+        pixelSize: 2
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', function (err) {

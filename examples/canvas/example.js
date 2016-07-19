@@ -29,8 +29,7 @@ bento.require([
         canvasDimension: new Rectangle(0, 0, 320, 240),
         assetGroups: {
             'assets': 'assets/assets.json'
-        },
-        renderer: 'auto'
+        }
     }, function () {
         Bento.assets.load('assets', function (err) {
             console.log('ready')
@@ -38,7 +37,7 @@ bento.require([
                 background = new Entity({
                     addNow: true,
                     components: [new Fill({
-                        color: [0.8, 0.8, 0.8, 1]
+                        color: [1, 1, 1, 1]
                     })]
                 }),
                 canvasEntity1 = new Canvas({

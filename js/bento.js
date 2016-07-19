@@ -82,11 +82,12 @@ bento.define('bento', [
         button.innerHTML = 'button';
         debug.debugBar.appendChild(button);
     };
-    var setupCanvas = function (settings, callback) {
+    var setupCanvas = function (settings, onComplete) {
         var parent;
         var pixelRatio = window.devicePixelRatio || 1;
         var windowWidth = window.innerWidth * pixelRatio;
         var windowHeight = window.innerHeight * pixelRatio;
+        var rendererName;
 
         canvas = document.getElementById(settings.canvasId);
 
@@ -107,30 +108,22 @@ bento.define('bento', [
 
         settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
 
-        // TODO: deprecate 'auto' and 'webgl' renderer
-        if (settings.renderer === 'auto') {
-            // automatically set/overwrite pixelSize
-            if (windowWidth > windowHeight) {
-                settings.pixelSize = Math.round(Math.max(windowHeight / canvas.height, 1));
-            } else {
-                settings.pixelSize = Math.round(Math.max(windowWidth / canvas.width, 1));
-            }
-            // max pixelSize 3 (?)
-            settings.pixelSize = Math.min(settings.pixelSize, 3);
-
-            settings.renderer = 'webgl';
-            // canvas is accelerated in cocoonJS
-            // should also use canvas for android?
-            if (Utils.isCocoonJS() /*|| Utils.isAndroid()*/ ) {
-                settings.renderer = 'canvas2d';
-            }
+        // canvas2d and pixi are reserved names
+        if (settings.renderer === 'canvas2d') {
+            rendererName = 'bento/renderers/canvas2d';
+        } else if (settings.renderer === 'pixi') {
+            rendererName = 'bento/renderers/pixi';
+        } else if (settings.renderer === 'auto') {
+            // auto renderer is deprecated! use canvas2d or pixi
+            console.log('WARNING: auto renderer is deprecated. Please use canvas2d or pixi as renderers.')
+            rendererName = 'bento/renderers/canvas2d';
         }
         // setup renderer
-        Renderer(settings.renderer, canvas, settings, function (rend) {
+        new Renderer(rendererName, canvas, settings, function (rend) {
             console.log('Init ' + rend.name + ' as renderer');
             renderer = rend;
             gameData = Bento.getGameData();
-            callback();
+            onComplete();
         });
     };
     var onResize = function () {
@@ -170,7 +163,7 @@ bento.define('bento', [
          * @instance
          * @param {Object} settings - settings for the game
          * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
-         * @param {String} settings.renderer - Renderer to use. Defaults to "auto". To use "webgl", include the bento-webgl.js file manually. To use "pixi", include the pixi.js file manually.
+         * @param {String} settings.renderer - Renderer to use. Defaults to "canvas2d". To use "pixi", include the pixi.js file manually. Make sure to download v3!. 
          * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
          * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
          * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}

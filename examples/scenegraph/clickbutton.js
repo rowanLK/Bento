@@ -19,54 +19,55 @@ bento.define('clickbutton', [
 ) {
     'use strict';
     return function (settings) {
-        var viewport = Bento.getViewport(),
-            entity = new Entity({
-                z: 0,
-                name: '',
-                originRelative: settings.originRelative || new Vector2(0, 0),
-                position: settings.position || new Vector2(0, 0),
-                components: [
-                    new Sprite({
-                        image: settings.image,
-                        frameWidth: settings.frameWidth || 32,
-                        frameHeight: settings.frameHeight || 32,
-                        animations: settings.animations || {
-                            'default': {
-                                speed: 0,
-                                frames: [0]
-                            },
-                            'down': {
-                                speed: 0,
-                                frames: [1]
-                            }
-                        }
-                    }),
-                    new Clickable({
-                        onClick: function () {
-                            entity.getComponent('animation').setAnimation('down');
-                        },
-                        onHoldEnter: function () {
-                            entity.getComponent('animation').setAnimation('down');
-                        },
-                        onHoldLeave: function () {
-                            entity.getComponent('animation').setAnimation('default');
-                        },
-                        pointerUp: function () {
-                            entity.getComponent('animation').setAnimation('default');
-                        },
-                        onHoldEnd: function () {
-                            if (settings.onClick) {
-                                settings.onClick();
-                            }
-                        },
-                        onHold: settings.onHold,
-                        onHoverEnter: settings.onHoverEnter,
-                        onHoverLeave: settings.onHoverLeave
-                    })
-                ],
-                family: ['buttons'],
-                init: function () {}
-            });
+        var viewport = Bento.getViewport();
+        var sprite = new Sprite({
+            image: settings.image,
+            frameWidth: settings.frameWidth || 32,
+            frameHeight: settings.frameHeight || 32,
+            animations: settings.animations || {
+                'default': {
+                    speed: 0,
+                    frames: [0]
+                },
+                'down': {
+                    speed: 0,
+                    frames: [1]
+                }
+            }
+        });
+        var clickable = new Clickable({
+            onClick: function () {
+                sprite.setAnimation('down');
+            },
+            onHoldEnter: function () {
+                sprite.setAnimation('down');
+            },
+            onHoldLeave: function () {
+                sprite.setAnimation('default');
+            },
+            pointerUp: function () {
+                sprite.setAnimation('default');
+            },
+            onHoldEnd: function () {
+                if (settings.onClick) {
+                    settings.onClick();
+                }
+            },
+            onHold: settings.onHold,
+            onHoverEnter: settings.onHoverEnter,
+            onHoverLeave: settings.onHoverLeave
+        });
+        var entity = new Entity({
+            z: 0,
+            name: '',
+            originRelative: settings.originRelative || new Vector2(0, 0),
+            position: settings.position || new Vector2(0, 0),
+            components: [
+                sprite,
+                clickable
+            ],
+            family: ['buttons']
+        });
         return entity;
     };
 });

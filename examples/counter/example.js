@@ -26,8 +26,7 @@ bento.require([
         canvasDimension: new Rectangle(0, 0, 320, 240),
         assetGroups: {
             'assets': 'assets/assets.json'
-        },
-        renderer: 'auto'
+        }
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', function (err) {

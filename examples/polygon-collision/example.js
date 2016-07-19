@@ -78,7 +78,7 @@ bento.require([
                         },
                         pointerDown: function (e) {
                             var position = object.position;
-                            console.log(e)
+                            // console.log(e)
                             if (polygon.hasPosition(e.worldPosition)) {
                                 object.offset = new Vector2(position.x - e.worldPosition.x, position.y - e.worldPosition.y);
                                 object.position = new Vector2(e.worldPosition.x + object.offset.x, e.worldPosition.y + object.offset.y);
@@ -96,7 +96,7 @@ bento.require([
                     family: [''],
                     init: function () {}
                 });
-            console.log(object)
+
             object.attach({
                 draw: function (data) {
                     if (!polygon) {
@@ -108,6 +108,8 @@ bento.require([
                         points = polygon.points,
                         point,
                         next;
+                    ctx.save();
+                    ctx.translate(-object.position.x, -object.position.y);
                     ctx.beginPath();
                     ctx.lineWidth = "2";
                     ctx.strokeStyle = colliding ? 'green' : "black";
@@ -133,6 +135,7 @@ bento.require([
                         ctx.stroke(); // Draw it
                     }
                     ctx.closePath();
+                    ctx.restore();
                 }
             });
             // star shape
