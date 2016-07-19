@@ -740,7 +740,10 @@ bento.define('bento/utils', [], function () {
         },
         /**
          * Depending on whether dev mode is on, this will throw the message or console.log it
-         * @param  {String} msg - the message to throw/log
+         * @function
+         * @instance
+         * @param {String} msg - the message to throw/log
+         * @name log
          */
         log: function (msg) {
             if (dev) {
