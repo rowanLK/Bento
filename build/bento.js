@@ -9126,6 +9126,7 @@ bento.define('bento/managers/asset', [
 
             xhr.open('GET', source, true);
             xhr.onerror = function () {
+                // should 'callback' be 'failure'?
                 callback('ERROR: loading binary ' + source);
             };
             xhr.responseType = 'arraybuffer';
@@ -9140,6 +9141,7 @@ bento.define('bento/managers/asset', [
                     }
                     // loadedAssets.binary[name] = buffer.join('');
                     binary = buffer.join('');
+                    // should 'callback' be 'success'?
                     callback(null, name, binary);
                 }
             };
@@ -9423,18 +9425,15 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {PackedImage} Image
          * @name getImage
          */
-        var getImage = function (name, suppressThrow) {
+        var getImage = function (name) {
             var image, packedImage = texturePacker[name];
             if (!packedImage) {
                 image = getImageElement(name);
                 if (!image) {
-                    if (!supressThrow) {
-                        throw 'Can not find ' + name;
-                    }
+                    Utils.log("ERROR: Image " + name + " could not be found");
                     return null;
                 }
                 packedImage = PackedImage(image);
@@ -9447,14 +9446,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {HTMLImage} Html Image element
          * @name getImageElement
          */
-        var getImageElement = function (name, suppressThrow) {
+        var getImageElement = function (name) {
             var asset = assets.images[name];
-            if (!Utils.isDefined(asset) && !suppressThrow) {
-                throw ('Image asset ' + name + ' could not be found');
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: ImageElement " + name + " could not be found");
             }
             return asset;
         };
@@ -9463,14 +9461,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {Object} Json object
          * @name getJson
          */
-        var getJson = function (name, suppressThrow) {
+        var getJson = function (name) {
             var asset = assets.json[name];
-            if (!Utils.isDefined(asset) && !suppressThrow) {
-                throw ('JSON asset ' + name + ' could not be found');
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: JSON " + name + " could not be found");
             }
             return asset;
         };
@@ -9479,14 +9476,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {Audia} Audia object
          * @name getAudio
          */
-        var getAudio = function (name, suppressThrow) {
+        var getAudio = function (name) {
             var asset = assets.audio[name];
-            if (!Utils.isDefined(asset) && !suppressThrow) {
-                throw ('Audio asset ' + name + ' could not be found');
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Audio " + name + " could not be found");
             }
             return asset;
         };
