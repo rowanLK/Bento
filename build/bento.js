@@ -3994,7 +3994,6 @@ bento.define('bento', [
                 settings.sortMode = settings.sortMode || 0;
                 setupCanvas(settings, function () {
                     dev = settings.dev || false;
-                    SaveState.setDev(dev);
                     Utils.setDev(dev);
                     // window resize listeners
                     manualResize = settings.manualResize;
@@ -4500,8 +4499,6 @@ bento.define('bento/entity', [
                 Bento.objects.add(this);
             }
         }
-
-        Entity.suppressThrows = !Bento.isDev();
     };
     Entity.prototype.isEntity = function () {
         return true;
@@ -4761,10 +4758,7 @@ Bento.objects.attach(entity);
             parent = this;
 
         if (!force && (child.isAdded || child.parent)) {
-            if (Entity.suppressThrows)
-                console.log('Warning: Child ' + child.name + ' was already attached.');
-            else
-                throw 'ERROR: Child was already attached.';
+            Utils.log("ERROR: Child " + child.name + " was already attached.");
             return;
         }
 
@@ -5067,8 +5061,6 @@ Bento.objects.attach(entity);
     Entity.prototype.toString = function () {
         return '[object Entity]';
     };
-
-    Entity.suppressThrows = !Bento.isDev();
 
     return Entity;
 });
@@ -9134,7 +9126,7 @@ bento.define('bento/managers/asset', [
 
             xhr.open('GET', source, true);
             xhr.onerror = function () {
-                callback('ERROR: loading binary ' + source);
+                failure('ERROR: loading binary ' + source);
             };
             xhr.responseType = 'arraybuffer';
             xhr.onload = function (e) {
@@ -9148,7 +9140,7 @@ bento.define('bento/managers/asset', [
                     }
                     // loadedAssets.binary[name] = buffer.join('');
                     binary = buffer.join('');
-                    callback(null, name, binary);
+                    success(null, name, binary);
                 }
             };
             xhr.send();
@@ -9431,18 +9423,15 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {PackedImage} Image
          * @name getImage
          */
-        var getImage = function (name, suppressThrow) {
+        var getImage = function (name) {
             var image, packedImage = texturePacker[name];
             if (!packedImage) {
                 image = getImageElement(name);
                 if (!image) {
-                    if (!supressThrow) {
-                        throw 'Can not find ' + name;
-                    }
+                    Utils.log("ERROR: Image " + name + " could not be found");
                     return null;
                 }
                 packedImage = PackedImage(image);
@@ -9455,14 +9444,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {HTMLImage} Html Image element
          * @name getImageElement
          */
-        var getImageElement = function (name, suppressThrow) {
+        var getImageElement = function (name) {
             var asset = assets.images[name];
-            if (!Utils.isDefined(asset) && !suppressThrow) {
-                throw ('Image asset ' + name + ' could not be found');
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: ImageElement " + name + " could not be found");
             }
             return asset;
         };
@@ -9471,14 +9459,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {Object} Json object
          * @name getJson
          */
-        var getJson = function (name, suppressThrow) {
+        var getJson = function (name) {
             var asset = assets.json[name];
-            if (!Utils.isDefined(asset) && !suppressThrow) {
-                throw ('JSON asset ' + name + ' could not be found');
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: JSON " + name + " could not be found");
             }
             return asset;
         };
@@ -9487,14 +9474,13 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of image
-         * @param {Bool} suppressThrow - Do not throw error if image couldn't be found
          * @returns {Audia} Audia object
          * @name getAudio
          */
-        var getAudio = function (name, suppressThrow) {
+        var getAudio = function (name) {
             var asset = assets.audio[name];
-            if (!Utils.isDefined(asset) && !suppressThrow) {
-                throw ('Audio asset ' + name + ' could not be found');
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Audio " + name + " could not be found");
             }
             return asset;
         };
@@ -10755,7 +10741,6 @@ bento.define('bento/managers/object', [
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
-            suppressThrows,
             sortDefault = function () {
                 // default array sorting method (unstable)
                 objects.sort(function (a, b) {
@@ -10874,10 +10859,7 @@ bento.define('bento/managers/object', [
                     data = getGameData();
 
                 if (object.isAdded || object.parent) {
-                    if (suppressThrows)
-                        console.log('Warning: Entity ' + object.name + ' was already added.');
-                    else
-                        throw 'ERROR: Entity was already added.';
+                    Utils.log("ERROR: Entity " + object.name + " was already added.");
                     return;
                 }
 
@@ -11212,8 +11194,6 @@ bento.define('bento/managers/object', [
             sort = defaultSort;
         }
 
-        suppressThrows = settings.dev ? false : true;
-
         return module;
     };
 });
@@ -11231,7 +11211,6 @@ bento.define('bento/managers/savestate', [
 ) {
     'use strict';
     var uniqueID = document.URL,
-        dev = false,
         storage,
         // an object that acts like a localStorageObject
         storageFallBack = {
@@ -11342,12 +11321,8 @@ bento.define('bento/managers/savestate', [
             try {
                 return JSON.parse(element);
             } catch (e) {
-                if (dev) {
-                    throw 'ERROR: save file corrupted. ' + e;
-                } else {
-                    console.log('WARNING: save file corrupted.', e);
-                    return defaultValue;
-                }
+                Utils.log("ERROR: save file corrupted. " + e);
+                return defaultValue;
             }
         },
         /**
@@ -11421,16 +11396,6 @@ bento.define('bento/managers/savestate', [
          */
         getStorage: function () {
             return storage;
-        },
-        /**
-         * Setting the dev mode to true will use throws instead of console.logs
-         * @function
-         * @instance
-         * @param {Boolean} bool - set to true to use throws instead of console.logs
-         * @name setDev
-         */
-        setDev: function (bool) {
-            dev = bool;
         }
     };
 });
@@ -14254,11 +14219,7 @@ bento.define('bento/tween', [
         });
 
         if (!Utils.isDefined(settings.ease)) {
-            if (Bento.isDev()) {
-                throw 'WARNING: settings.ease is undefined.';
-            } else {
-                console.log('WARNING: settings.ease is undefined.');
-            }
+            Utils.log("WARNING: settings.ease is undefined.");
         }
 
         // tween automatically starts

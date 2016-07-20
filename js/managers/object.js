@@ -30,7 +30,6 @@ bento.define('bento/managers/object', [
             isStopped = false,
             fpsMeter,
             hshg = new Hshg(),
-            suppressThrows,
             sortDefault = function () {
                 // default array sorting method (unstable)
                 objects.sort(function (a, b) {
@@ -149,10 +148,7 @@ bento.define('bento/managers/object', [
                     data = getGameData();
 
                 if (object.isAdded || object.parent) {
-                    if (suppressThrows)
-                        console.log('Warning: Entity ' + object.name + ' was already added.');
-                    else
-                        throw 'ERROR: Entity was already added.';
+                    Utils.log("ERROR: Entity " + object.name + " was already added.");
                     return;
                 }
 
@@ -486,8 +482,6 @@ bento.define('bento/managers/object', [
         if (settings.defaultSort) {
             sort = defaultSort;
         }
-
-        suppressThrows = settings.dev ? false : true;
 
         return module;
     };

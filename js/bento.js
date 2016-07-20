@@ -196,7 +196,6 @@ bento.define('bento', [
                 settings.sortMode = settings.sortMode || 0;
                 setupCanvas(settings, function () {
                     dev = settings.dev || false;
-                    SaveState.setDev(dev);
                     Utils.setDev(dev);
                     // window resize listeners
                     manualResize = settings.manualResize;
