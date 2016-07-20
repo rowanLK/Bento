@@ -9126,8 +9126,7 @@ bento.define('bento/managers/asset', [
 
             xhr.open('GET', source, true);
             xhr.onerror = function () {
-                // should 'callback' be 'failure'?
-                callback('ERROR: loading binary ' + source);
+                failure('ERROR: loading binary ' + source);
             };
             xhr.responseType = 'arraybuffer';
             xhr.onload = function (e) {
@@ -9141,8 +9140,7 @@ bento.define('bento/managers/asset', [
                     }
                     // loadedAssets.binary[name] = buffer.join('');
                     binary = buffer.join('');
-                    // should 'callback' be 'success'?
-                    callback(null, name, binary);
+                    success(null, name, binary);
                 }
             };
             xhr.send();
