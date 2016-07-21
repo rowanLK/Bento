@@ -6301,7 +6301,23 @@ bento.define('bento/utils', [], function () {
          */
         log: function (msg) {
             if (dev) {
-                throw msg;
+                // before throwing, give user a chance to continue.
+                if (window.Cocoon) {
+                    window.Cocoon.Dialog.confirm({
+                        title: "Developer Error",
+                        message: msg + "\nPress OK to ignore."
+                    }, function (accepted) {
+                        if (!accepted) {
+                            throw msg;
+                        }
+                    });
+                } else if (window.confirm) {
+                    if (window.confirm(msg + "\nPress OK to ignore.") === false) {
+                        throw msg;
+                    }
+                } else {
+                    throw msg;
+                }
             } else {
                 console.log(msg);
             }
