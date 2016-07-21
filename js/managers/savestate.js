@@ -77,7 +77,8 @@ bento.define('bento/managers/savestate', [
                 elementKey = JSON.stringify(elementKey);
             }
             if (element === undefined) {
-                throw "ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.";
+                Utils.log("ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.");
+                element = null;
             }
             storage.setItem(uniqueID + elementKey, JSON.stringify(element));
 
