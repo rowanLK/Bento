@@ -4924,13 +4924,13 @@ Bento.objects.attach(entity);
             if (settings.entity) {
                 // single entity
                 if (!settings.entity.isEntity) {
-                    console.log('WARNING: settings.entity is not an entity');
+                    Utils.log("WARNING: settings.entity is not an entity");
                     return null;
                 }
                 array = [settings.entity];
             } else if (settings.entities) {
                 if (!Utils.isArray(settings.entities)) {
-                    console.log('WARNING: settings.entity is not an entity');
+                    Utils.log("WARNING: settings.entity is not an entity");
                     return null;
                 }
                 array = [settings.entities];
@@ -4995,8 +4995,7 @@ Bento.objects.attach(entity);
         }
 
         if (!Utils.isArray(array)) {
-            // throw 'Collision check must be with an Array of object';
-            console.log('Collision check must be with an Array of object');
+            Utils.log("ERROR: Collision check must be with an Array of object");
             return;
         }
         if (!array.length) {
@@ -9736,8 +9735,9 @@ bento.define('bento/managers/audio', [
                 playSound: function (name, loop, onEnd, stopSound) {
                     var audio = assetManager.getAudio(name);
 
-                    if (name.substring(0, 3) !== 'sfx')
+                    if (name.substring(0, 3) !== 'sfx') {
                         console.log("Warning: file names of sound effects should start with 'sfx_'");
+                    }
 
                     if (!mutedSound && !preventSounds) {
                         if (stopSound)
@@ -9777,8 +9777,9 @@ bento.define('bento/managers/audio', [
                     if (stopAllMusic)
                         obj.stopAllMusic();
 
-                    if (name.substring(0, 3) !== 'bgm')
+                    if (name.substring(0, 3) !== 'bgm') {
                         console.log("Warning: file names of music tracks should start with 'bgm_'");
+                    }
 
                     lastMusicPlayed = name;
                     if (Utils.isDefined(loop)) {
@@ -9979,7 +9980,6 @@ bento.define('bento/managers/input', [
             remote,
             remoteButtonsPressed = [],
             remoteButtonStates = {},
-            dev = settings.dev,
             pointerDown = function (evt) {
                 pointers.push({
                     id: evt.id,
@@ -10077,7 +10077,7 @@ bento.define('bento/managers/input', [
                         evt.diffLocalPosition = touch.diffLocalPosition.clone();
                         delete startPositions[evt.id];
                     } else {
-                        console.log('WARNING: touch startPosition was not defined');
+                        Utils.log("ERROR: touch startPosition was not defined");
                     }
                 }
 
@@ -10191,12 +10191,8 @@ bento.define('bento/managers/input', [
                 names = Utils.keyboardMapping[evt.keyCode];
                 // catch unknown keys
                 if (!names) {
-                    if (dev) {
-                        throw 'ERROR: Key with keyCode ' + evt.keyCode + ' is undefined.';
-                    } else {
-                        console.log('WARNING: Key with keyCode ' + evt.keyCode + ' is undefined.');
-                        return;
-                    }
+                    Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
+                    return;
                 }
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = true;
@@ -10212,12 +10208,8 @@ bento.define('bento/managers/input', [
                 names = Utils.keyboardMapping[evt.keyCode];
                 // catch unknown keys
                 if (!names) {
-                    if (dev) {
-                        throw 'ERROR: Key with keyCode ' + evt.keyCode + ' is undefined.';
-                    } else {
-                        console.log('WARNING: Key with keyCode ' + evt.keyCode + ' is undefined.');
-                        return;
-                    }
+                    Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
+                    return;
                 }
                 for (i = 0; i < names.length; ++i) {
                     keyStates[names[i]] = false;
@@ -10490,7 +10482,7 @@ bento.define('bento/managers/input', [
                         evt.diffLocalPosition = touch.diffLocalPosition.clone();
                         delete startPositions[evt.id];
                     } else {
-                        console.log('WARNING: touch startPosition was not defined');
+                        Utils.log("ERROR: touch startPosition was not defined");
                     }
                 }
             };
@@ -11276,7 +11268,8 @@ bento.define('bento/managers/savestate', [
                 elementKey = JSON.stringify(elementKey);
             }
             if (element === undefined) {
-                throw "ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.";
+                Utils.log("ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.");
+                element = null;
             }
             storage.setItem(uniqueID + elementKey, JSON.stringify(element));
 

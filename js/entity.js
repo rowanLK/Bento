@@ -696,13 +696,13 @@ Bento.objects.attach(entity);
             if (settings.entity) {
                 // single entity
                 if (!settings.entity.isEntity) {
-                    console.log('WARNING: settings.entity is not an entity');
+                    Utils.log("WARNING: settings.entity is not an entity");
                     return null;
                 }
                 array = [settings.entity];
             } else if (settings.entities) {
                 if (!Utils.isArray(settings.entities)) {
-                    console.log('WARNING: settings.entity is not an entity');
+                    Utils.log("WARNING: settings.entity is not an entity");
                     return null;
                 }
                 array = [settings.entities];
@@ -767,8 +767,7 @@ Bento.objects.attach(entity);
         }
 
         if (!Utils.isArray(array)) {
-            // throw 'Collision check must be with an Array of object';
-            console.log('Collision check must be with an Array of object');
+            Utils.log("ERROR: Collision check must be with an Array of object");
             return;
         }
         if (!array.length) {
