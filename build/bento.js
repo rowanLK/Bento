@@ -4885,7 +4885,7 @@ Bento.objects.attach(entity);
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
-     * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
+     * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
      * @name collidesWith
      * @returns {Entity/Array} The collided entity/entities, otherwise null
@@ -5079,15 +5079,20 @@ bento.define('bento/eventsystem', [
         removedEvents = [],
         cleanEventListeners = function () {
             var i, j, l, listeners, eventName, callback, context;
-            for (j = 0; j < removedEvents.length; j += 1) {
+            for (j = 0; j < removedEvents.length; ++j) {
                 eventName = removedEvents[j].eventName;
+                if (removedEvents[j].reset === true) {
+                    // reset the whole event listener
+                    events[eventName] = [];
+                    continue;
+                }
                 callback = removedEvents[j].callback;
                 context = removedEvents[j].context;
                 if (Utils.isUndefined(events[eventName])) {
                     continue;
                 }
                 listeners = events[eventName];
-                for (i = listeners.length - 1; i >= 0; i -= 1) {
+                for (i = listeners.length - 1; i >= 0; --i) {
                     if (listeners[i].callback === callback) {
                         if (context) {
                             if (listeners[i].context === context) {
@@ -5118,6 +5123,12 @@ bento.define('bento/eventsystem', [
                 eventName: eventName,
                 callback: callback,
                 context: context
+            });
+        },
+        clearEventListeners = function (eventName) {
+            removedEvents.push({
+                eventName: eventName,
+                reset: true
             });
         };
 
@@ -5190,7 +5201,15 @@ bento.define('bento/eventsystem', [
          * @param {Callback} callback - Reference to the callback function
          * @name off
          */
-        off: removeEventListener
+        off: removeEventListener,
+        /**
+         * Removes all listeners of an event 
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @name clear
+         */
+        clear: clearEventListeners,
     };
 });
 /**
@@ -9987,6 +10006,7 @@ bento.define('bento/managers/input', [
             viewport,
             pointers = [],
             keyStates = {},
+            prevKeyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
             gamepad,
@@ -13248,11 +13268,15 @@ bento.define('bento/screen', [
  * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
  * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
  * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
  * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)
  * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
  * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
+ * @param {Function} [settings.onComplete] - Called when the reader passed all layers
  * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
  * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
+ * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
+ * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
  * @returns Object
  */
 bento.define('bento/tiled', [
@@ -13404,9 +13428,13 @@ bento.define('bento/tiled', [
         var tileWidth = json.tilewidth || 0;
         var tileHeight = json.tileheight || 0;
         var mergeLayers = json.merge || false;
+        var onInit = settings.onInit;
         var onLayer = settings.onLayer;
         var onTile = settings.onTile;
         var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+        var onSpawn = settings.onSpawn;
+        var onSpawnComplete = settings.onSpawnComplete;
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
         var mapSize = new Vector2(width * tileWidth, height * tileHeight);
@@ -13414,8 +13442,11 @@ bento.define('bento/tiled', [
         var layerSprites = new LayerSprites(maxCanvasSize, mapSize);
         var entities = [];
         var backgrounds = [];
+        var entitiesSpawned = 0;
+        var entitiesToSpawn = 0;
         var tiledReader = new TiledReader({
             tiled: json,
+            onInit: onInit,
             onExternalTileset: function (source) {
                 // unfortunately, external tileset paths are relative to the tile json path
                 // making it difficult to load (would need to do path parsing etc...)
@@ -13511,7 +13542,6 @@ bento.define('bento/tiled', [
                     onObject(object, tileSet, tileIndex);
                 }
                 if (settings.spawnEntities) {
-
                     spawnEntity(object, tileSet, tileIndex);
                 }
             },
@@ -13554,6 +13584,10 @@ bento.define('bento/tiled', [
                 for (i = 0; i < l; ++i) {
                     layer = layers[i];
                     makeEntity();
+                }
+
+                if (onComplete) {
+                    onComplete();
                 }
             }
         });
@@ -13605,6 +13639,7 @@ bento.define('bento/tiled', [
                     jsonName: assetName // reference to current json name
                 }
             };
+            entitiesToSpawn += 1;
             bento.require([moduleName], function (Instance) {
                 var instance = new Instance(params),
                     origin = instance.origin,
@@ -13619,7 +13654,15 @@ bento.define('bento/tiled', [
                 Bento.objects.attach(instance);
                 entities.push(instance);
 
-                // TODO: async callback after all entities are loaded
+                entitiesSpawned += 1;
+
+                if (onSpawn) {
+                    onSpawn(instance);
+                }
+
+                if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
+                    onSpawnComplete();
+                }
             });
         };
 
@@ -13669,6 +13712,7 @@ bento.define('bento/tiled', [
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Tiled map JSON asset
  * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
  * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
  * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
  * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON
@@ -13685,6 +13729,7 @@ bento.define('bento/tiledreader', [], function () {
     var TiledReader = function (settings) {
         // cache callbacks
         var onExternalTileset = settings.onExternalTileset;
+        var onInit = settings.onInit;
         var onLayer = settings.onLayer;
         var onTile = settings.onTile;
         var onObject = settings.onObject;
@@ -13884,6 +13929,9 @@ bento.define('bento/tiledreader', [], function () {
 
         importTilesets();
 
+        if (onInit) {
+            onInit(json, externalTilesets);
+        }
         // loopLayers();
 
         return {

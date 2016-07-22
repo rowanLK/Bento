@@ -5,6 +5,7 @@
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Tiled map JSON asset
  * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
  * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
  * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
  * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON
@@ -21,6 +22,7 @@ bento.define('bento/tiledreader', [], function () {
     var TiledReader = function (settings) {
         // cache callbacks
         var onExternalTileset = settings.onExternalTileset;
+        var onInit = settings.onInit;
         var onLayer = settings.onLayer;
         var onTile = settings.onTile;
         var onObject = settings.onObject;
@@ -220,6 +222,9 @@ bento.define('bento/tiledreader', [], function () {
 
         importTilesets();
 
+        if (onInit) {
+            onInit(json, externalTilesets);
+        }
         // loopLayers();
 
         return {

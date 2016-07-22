@@ -657,7 +657,7 @@ Bento.objects.attach(entity);
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
-     * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
+     * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
      * @name collidesWith
      * @returns {Entity/Array} The collided entity/entities, otherwise null

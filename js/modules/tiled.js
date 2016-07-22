@@ -10,11 +10,15 @@
  * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
  * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
  * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
  * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)
  * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
  * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
+ * @param {Function} [settings.onComplete] - Called when the reader passed all layers
  * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
  * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
+ * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
+ * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
  * @returns Object
  */
 bento.define('bento/tiled', [
@@ -166,9 +170,13 @@ bento.define('bento/tiled', [
         var tileWidth = json.tilewidth || 0;
         var tileHeight = json.tileheight || 0;
         var mergeLayers = json.merge || false;
+        var onInit = settings.onInit;
         var onLayer = settings.onLayer;
         var onTile = settings.onTile;
         var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+        var onSpawn = settings.onSpawn;
+        var onSpawnComplete = settings.onSpawnComplete;
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
         var mapSize = new Vector2(width * tileWidth, height * tileHeight);
@@ -176,8 +184,11 @@ bento.define('bento/tiled', [
         var layerSprites = new LayerSprites(maxCanvasSize, mapSize);
         var entities = [];
         var backgrounds = [];
+        var entitiesSpawned = 0;
+        var entitiesToSpawn = 0;
         var tiledReader = new TiledReader({
             tiled: json,
+            onInit: onInit,
             onExternalTileset: function (source) {
                 // unfortunately, external tileset paths are relative to the tile json path
                 // making it difficult to load (would need to do path parsing etc...)
@@ -273,7 +284,6 @@ bento.define('bento/tiled', [
                     onObject(object, tileSet, tileIndex);
                 }
                 if (settings.spawnEntities) {
-
                     spawnEntity(object, tileSet, tileIndex);
                 }
             },
@@ -316,6 +326,10 @@ bento.define('bento/tiled', [
                 for (i = 0; i < l; ++i) {
                     layer = layers[i];
                     makeEntity();
+                }
+
+                if (onComplete) {
+                    onComplete();
                 }
             }
         });
@@ -367,6 +381,7 @@ bento.define('bento/tiled', [
                     jsonName: assetName // reference to current json name
                 }
             };
+            entitiesToSpawn += 1;
             bento.require([moduleName], function (Instance) {
                 var instance = new Instance(params),
                     origin = instance.origin,
@@ -381,7 +396,15 @@ bento.define('bento/tiled', [
                 Bento.objects.attach(instance);
                 entities.push(instance);
 
-                // TODO: async callback after all entities are loaded
+                entitiesSpawned += 1;
+
+                if (onSpawn) {
+                    onSpawn(instance);
+                }
+
+                if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
+                    onSpawnComplete();
+                }
             });
         };
 
