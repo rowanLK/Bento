@@ -1,7 +1,7 @@
 /**
  * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
  * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.audio namespace.
+ * <br>Exports: Object, can be accessed through Bento.saveState namespace.
  * @module bento/managers/savestate
  * @returns SaveState
  */

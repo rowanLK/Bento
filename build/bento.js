@@ -4885,7 +4885,7 @@ Bento.objects.attach(entity);
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Vector2} [settings.offset] - A position offset
-     * @param {CollisionCallback} [settings.callback] - Called when entities are colliding
+     * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
      * @name collidesWith
      * @returns {Entity/Array} The collided entity/entities, otherwise null
@@ -5079,15 +5079,20 @@ bento.define('bento/eventsystem', [
         removedEvents = [],
         cleanEventListeners = function () {
             var i, j, l, listeners, eventName, callback, context;
-            for (j = 0; j < removedEvents.length; j += 1) {
+            for (j = 0; j < removedEvents.length; ++j) {
                 eventName = removedEvents[j].eventName;
+                if (removedEvents[j].reset === true) {
+                    // reset the whole event listener
+                    events[eventName] = [];
+                    continue;
+                }
                 callback = removedEvents[j].callback;
                 context = removedEvents[j].context;
                 if (Utils.isUndefined(events[eventName])) {
                     continue;
                 }
                 listeners = events[eventName];
-                for (i = listeners.length - 1; i >= 0; i -= 1) {
+                for (i = listeners.length - 1; i >= 0; --i) {
                     if (listeners[i].callback === callback) {
                         if (context) {
                             if (listeners[i].context === context) {
@@ -5113,11 +5118,27 @@ bento.define('bento/eventsystem', [
             });
         },
         removeEventListener = function (eventName, callback, context) {
-            // TODO: check if event listeners are really removed
+            var listeners = events[eventName];
+            if (!listeners || listeners.length === 0) {
+                // could use Utils.log here, but I find it not necessary to throw errors for cleaning non-existing events
+                Utils.log('WARNING: event listeners for ' + eventName + ' is empty.', true);
+                return;
+            }
             removedEvents.push({
                 eventName: eventName,
                 callback: callback,
                 context: context
+            });
+        },
+        clearEventListeners = function (eventName) {
+            var listeners = events[eventName];
+            if (!listeners || listeners.length === 0) {
+                Utils.log('WARNING: event listeners for ' + eventName + ' is empty.', true);
+                return;
+            }
+            removedEvents.push({
+                eventName: eventName,
+                reset: true
             });
         };
 
@@ -5190,7 +5211,15 @@ bento.define('bento/eventsystem', [
          * @param {Callback} callback - Reference to the callback function
          * @name off
          */
-        off: removeEventListener
+        off: removeEventListener,
+        /**
+         * Removes all listeners of an event 
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @name clear
+         */
+        clear: clearEventListeners,
     };
 });
 /**
@@ -5553,7 +5582,7 @@ bento.define('bento/transform', [
 });
 /**
  * A collection of useful functions
- * Export type: Object
+ * <br>Exports: Object
  * @module bento/utils
  */
 bento.define('bento/utils', [], function () {
@@ -5649,7 +5678,7 @@ bento.define('bento/utils', [], function () {
                 if (later - now >= timeout) {
                     callback();
                 } else {
-                    rafID = requestAnimationFrame(animationFrame);
+                    rafID = window.requestAnimationFrame(animationFrame);
                 }
             }
 
@@ -5657,7 +5686,7 @@ bento.define('bento/utils', [], function () {
             return {
                 cancel: function () {
                     if (typeof cancelAnimationFrame !== 'undefined') {
-                        cancelAnimationFrame(rafID);
+                        window.cancelAnimationFrame(rafID);
                     }
                 }
             };
@@ -6292,13 +6321,31 @@ bento.define('bento/utils', [], function () {
             dev = bool;
         },
         /**
+         * Is dev mode on
+         * @function
+         * @instance
+         * @name isDev
+         */
+        isDev: function () {
+            return dev;
+        },
+        /**
          * Depending on whether dev mode is on, this will throw the message or console.log it
          * @function
          * @instance
          * @param {String} msg - the message to throw/log
+         * @param {Boolean} warningOnly - Give warning instead of throwing in dev mode
          * @name log
          */
-        log: function (msg) {
+        log: function (msg, warningOnly) {
+            if (warningOnly) {
+                if (dev) {
+                    console.log(msg);
+                }
+                // warnings are ignored outside dev mode
+                return;
+            }
+
             if (dev) {
                 // before throwing, give user a chance to continue.
                 if (window.Cocoon) {
@@ -6333,2724 +6380,6 @@ bento.define('bento/utils', [], function () {
         }
     };
     return Utils;
-});
-/**
- * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
- * unless entity.updateWhenPaused is turned on.
- * <br>Exports: Constructor
- * @module bento/components/clickable
- * @param {Object} settings - Settings
- * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
- * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
- * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
- * @param {Function} settings.onClick - Called when pointer taps on the parent entity
- * @param {Function} settings.onClickUp - The pointer was released above the parent entity
- * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
- * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
- * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
- * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
- * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
- * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/clickable', [
-    'bento',
-    'bento/utils',
-    'bento/math/vector2',
-    'bento/math/transformmatrix',
-    'bento/eventsystem'
-], function (Bento, Utils, Vector2, Matrix, EventSystem) {
-    'use strict';
-
-    var clickables = [];
-
-    var Clickable = function (settings) {
-        var nothing = function () {};
-        this.entity = null;
-        /**
-         * Name of the component
-         * @instance
-         * @default 'clickable'
-         * @name name
-         */
-        this.name = 'clickable';
-        /**
-         * Whether the pointer is over the entity
-         * @instance
-         * @default false
-         * @name isHovering
-         */
-        this.isHovering = false;
-        this.hasTouched = false;
-        /**
-         * Id number of the pointer holding entity
-         * @instance
-         * @default null
-         * @name holdId
-         */
-        this.holdId = null;
-        this.isPointerDown = false;
-        this.initialized = false;
-
-        this.callbacks = {
-            pointerDown: settings.pointerDown || nothing,
-            pointerUp: settings.pointerUp || nothing,
-            pointerMove: settings.pointerMove || nothing,
-            // when clicking on the object
-            onClick: settings.onClick || nothing,
-            onClickUp: settings.onClickUp || nothing,
-            onClickMiss: settings.onClickMiss || nothing,
-            onHold: settings.onHold || nothing,
-            onHoldLeave: settings.onHoldLeave || nothing,
-            onHoldEnter: settings.onHoldEnter || nothing,
-            onHoldEnd: settings.onHoldEnd || nothing,
-            onHoverLeave: settings.onHoverLeave || nothing,
-            onHoverEnter: settings.onHoverEnter || nothing
-        };
-        /**
-         * Static array that holds a reference to all currently active Clickables
-         * @type {Array}
-         */
-        this.clickables = clickables;
-    };
-
-    Clickable.prototype.destroy = function () {
-        var index = clickables.indexOf(this),
-            i = 0,
-            len = 0;
-
-        if (index > -1)
-            clickables[index] = null;
-        // clear the array if it consists of only null's
-        for (i = 0, len = clickables.length; i < len; ++i) {
-            if (clickables[i])
-                break;
-            if (i === len - 1)
-                clickables.length = 0;
-        }
-
-        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
-        this.initialized = false;
-    };
-    Clickable.prototype.start = function () {
-        if (this.initialized) {
-            return;
-        }
-
-        clickables.push(this);
-
-        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
-        this.initialized = true;
-    };
-    Clickable.prototype.update = function () {
-        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
-            this.callbacks.onHold();
-        }
-    };
-    Clickable.prototype.cloneEvent = function (evt) {
-        return {
-            id: evt.id,
-            position: evt.position.clone(),
-            eventType: evt.eventType,
-            localPosition: evt.localPosition.clone(),
-            worldPosition: evt.worldPosition.clone(),
-            diffPosition: evt.diffPosition ? evt.diffPosition.clone() : undefined
-        };
-    };
-    Clickable.prototype.pointerDown = function (evt) {
-        var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-            return;
-        }
-        this.isPointerDown = true;
-        if (this.callbacks.pointerDown) {
-            this.callbacks.pointerDown.call(this, e);
-        }
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e, true);
-        }
-    };
-    Clickable.prototype.pointerUp = function (evt) {
-        var e = this.transformEvent(evt),
-            mousePosition;
-        // if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-        //     return;
-        // }
-        mousePosition = e.localPosition;
-        this.isPointerDown = false;
-        if (this.callbacks.pointerUp) {
-            this.callbacks.pointerUp.call(this, e);
-        }
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            this.callbacks.onClickUp.call(this, [e]);
-            if (this.hasTouched && this.holdId === e.id) {
-                this.holdId = null;
-                this.callbacks.onHoldEnd.call(this, e);
-            }
-        }
-        this.hasTouched = false;
-    };
-    Clickable.prototype.pointerMove = function (evt) {
-        var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-            return;
-        }
-        if (this.callbacks.pointerMove) {
-            this.callbacks.pointerMove.call(this, e);
-        }
-        // hovering?
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e);
-        }
-    };
-    Clickable.prototype.checkHovering = function (evt, clicked) {
-        var mousePosition = evt.localPosition;
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldEnter.call(this, evt);
-            }
-            if (!this.isHovering) {
-                this.callbacks.onHoverEnter.call(this, evt);
-            }
-            this.isHovering = true;
-            if (clicked) {
-                this.hasTouched = true;
-                this.holdId = evt.id;
-                this.callbacks.onClick.call(this, evt);
-            }
-        } else {
-            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldLeave.call(this, evt);
-            }
-            if (this.isHovering) {
-                this.callbacks.onHoverLeave.call(this, evt);
-            }
-            this.isHovering = false;
-            if (clicked) {
-                this.callbacks.onClickMiss.call(this, evt);
-            }
-        }
-    };
-
-    Clickable.prototype.transformEvent = function (evt) {
-        evt.localPosition = this.entity.getLocalPosition(evt.worldPosition);
-        return evt;
-    };
-    Clickable.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Clickable.prototype.toString = function () {
-        return '[object Clickable]';
-    };
-
-    return Clickable;
-});
-/**
- * Component that fills a square.
- * <br>Exports: Constructor
- * @module bento/components/fill
- * @param {Object} settings - Settings
- * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
- * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/fill', [
-    'bento/utils',
-    'bento'
-], function (Utils, Bento) {
-    'use strict';
-    var Fill = function (settings) {
-        var viewport = Bento.getViewport();
-        settings = settings || {};
-        this.name = 'fill';
-        this.color = settings.color || [0, 0, 0, 1];
-        this.dimension = settings.dimension || viewport;
-    };
-    Fill.prototype.draw = function (data) {
-        var dimension = this.dimension;
-        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
-    };
-    Fill.prototype.setup = function (settings) {
-        this.color = settings.color;
-    };
-    Fill.prototype.toString = function () {
-        return '[object Fill]';
-    };
-
-    return Fill;
-});
-/**
- * Sprite component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Constructor
- * @module bento/components/sprite
- * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
- * @param {Function} settings.onLoad - Called when image is loaded through URL
- * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
- * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
- * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
- * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
- * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
- * @example
-// Defines a 3 x 3 spritesheet with several animations
-// Note: The default is automatically defined if no animations object is passed
-var sprite = new Sprite({
-        imageName: "mySpriteSheet",
-        frameCountX: 3,
-        frameCountY: 3,
-        animations: {
-            "default": {
-                frames: [0]
-            },
-            "walk": {
-                speed: 0.2,
-                frames: [1, 2, 3, 4, 5, 6]
-            },
-            "jump": {
-                speed: 0.2,
-                frames: [7, 8]
-            }
-        }
-     }),
-    entity = new Entity({
-        components: [sprite] // attach sprite to entity
-                             // alternative to passing a components array is by calling entity.attach(sprite);
-    });
-
-// attach entity to game
-Bento.objects.attach(entity);
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/sprite', [
-    'bento',
-    'bento/utils',
-], function (Bento, Utils) {
-    'use strict';
-    var Sprite = function (settings) {
-        this.entity = null;
-        this.name = 'sprite';
-        this.visible = true;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        // sprite settings
-        this.spriteImage = null;
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-        this.padding = 0;
-
-        // drawing internals
-        this.frameIndex = 0;
-        this.sourceFrame = 0;
-        this.sourceX = 0;
-        this.sourceY = 0;
-
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-        this.currentAnimationLength = 0;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
-    };
-    /**
-     * Sets up Sprite. This can be used to overwrite the settings object passed to the constructor.
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     */
-    Sprite.prototype.setup = function (settings) {
-        var self = this,
-            padding = 0;
-
-        this.animationSettings = settings || this.animationSettings;
-        padding = this.animationSettings.padding || 0;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        this.padding = this.animationSettings.padding || 0;
-
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
-        }
-    };
-
-    Sprite.prototype.attached = function (data) {
-        var animation,
-            animations = this.animationSettings.animations,
-            i = 0,
-            len = 0,
-            highestFrame = 0;
-
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-
-        // check if the frames of animation go out of bounds
-        for (animation in animations) {
-            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
-                if (animations[animation].frames[i] > highestFrame) {
-                    highestFrame = animations[animation].frames[i];
-                }
-            }
-            if (!animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
-            }
-
-        }
-    };
-    /**
-     * Set component to a different animation. The animation won't change if it's already playing.
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     */
-    Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            this.currentAnimationLength = this.currentAnimation.frames.length;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-            if (this.currentAnimation.backTo > this.currentAnimationLength) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimationLength;
-            }
-        }
-    };
-    /**
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     */
-    Sprite.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /**
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     */
-    Sprite.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /**
-     * Get speed of the current animation.
-     * @function
-     * @instance
-     * @returns {Number} Speed of the current animation
-     * @name getCurrentSpeed
-     */
-    Sprite.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-    /**
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     */
-    Sprite.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /**
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     */
-    Sprite.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /**
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     */
-    Sprite.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    Sprite.prototype.update = function (data) {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-        // no need for update
-        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
-            return;
-        }
-
-        reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-        }
-    };
-
-    Sprite.prototype.updateFrame = function () {
-        this.frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        this.sourceFrame = this.currentAnimation.frames[this.frameIndex];
-        this.sourceX = (this.sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.sourceY = Math.floor(this.sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
-    };
-
-    Sprite.prototype.draw = function (data) {
-        var entity = data.entity,
-            origin = entity.origin;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-
-        this.updateFrame();
-
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
-        data.renderer.drawImage(
-            this.spriteImage,
-            this.sourceX,
-            this.sourceY,
-            this.frameWidth,
-            this.frameHeight,
-            0,
-            0,
-            this.frameWidth,
-            this.frameHeight
-        );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-    Sprite.prototype.toString = function () {
-        return '[object Sprite]';
-    };
-
-    /**
-     * Ignore warnings about invalid animation frames
-     * @instance
-     * @static
-     * @name suppressWarnings
-     */
-    Sprite.suppressWarnings = false;
-
-    return Sprite;
-});
-/*
- * Animation component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Constructor
- * @module bento/components/animation
- * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
- * @param {Function} settings.onLoad - Called when image is loaded through URL
- * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
- * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
- * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
- * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
- * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
- * @example
-// Defines a 3 x 3 spritesheet with several animations
-// Note: The default is automatically defined if no animations object is passed
-var sprite = new Sprite({
-        imageName: "mySpriteSheet",
-        frameCountX: 3,
-        frameCountY: 3,
-        animations: {
-            "default": {
-                frames: [0]
-            },
-            "walk": {
-                speed: 0.2,
-                frames: [1, 2, 3, 4, 5, 6]
-            },
-            "jump": {
-                speed: 0.2,
-                frames: [7, 8]
-            }
-        }
-     }),
-    entity = new Entity({
-        components: [sprite] // attach sprite to entity
-                             // alternative to passing a components array is by calling entity.attach(sprite);
-    });
-
-// attach entity to game
-Bento.objects.attach(entity);
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/animation', [
-    'bento',
-    'bento/utils',
-], function (Bento, Utils) {
-    'use strict';
-    var Animation = function (settings) {
-        this.entity = null;
-        this.name = 'animation';
-        this.visible = true;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        this.spriteImage = null;
-
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-        this.padding = 0;
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
-    };
-    /*
-     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     */
-    Animation.prototype.setup = function (settings) {
-        var self = this,
-            padding = 0;
-
-        this.animationSettings = settings || this.animationSettings;
-        padding = this.animationSettings.padding || 0;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        this.padding = this.animationSettings.padding || 0;
-
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
-        }
-    };
-
-    Animation.prototype.attached = function (data) {
-        var animation,
-            animations = this.animationSettings.animations,
-            i = 0,
-            len = 0,
-            highestFrame = 0;
-
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-
-        // check if the frames of animation go out of bounds
-        for (animation in animations) {
-            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
-                if (animations[animation].frames[i] > highestFrame) {
-                    highestFrame = animations[animation].frames[i];
-                }
-            }
-            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
-            }
-
-        }
-    };
-    /*
-     * Set component to a different animation. The animation won't change if it's already playing.
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     */
-    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimation.frames.length;
-            }
-        }
-    };
-    /*
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     */
-    Animation.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /*
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     */
-    Animation.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /*
-     * Get speed of the current animation.
-     * @function
-     * @instance
-     * @returns {Number} Speed of the current animation
-     * @name getCurrentSpeed
-     */
-    Animation.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-    /*
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     */
-    Animation.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /*
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     */
-    Animation.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /*
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     */
-    Animation.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    Animation.prototype.update = function (data) {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-        reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-        }
-    };
-    Animation.prototype.draw = function (data) {
-        var frameIndex,
-            sourceFrame,
-            sourceX,
-            sourceY,
-            entity = data.entity,
-            origin = entity.origin;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        sourceFrame = this.currentAnimation.frames[frameIndex];
-        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
-
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
-        data.renderer.drawImage(
-            this.spriteImage,
-            sourceX,
-            sourceY,
-            this.frameWidth,
-            this.frameHeight,
-            0,
-            0,
-            this.frameWidth,
-            this.frameHeight
-        );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-    Animation.prototype.toString = function () {
-        return '[object Animation]';
-    };
-
-    /*
-     * Ignore warnings about invalid animation frames
-     * @instance
-     * @static
-     * @name suppressWarnings
-     */
-    Animation.suppressWarnings = false;
-
-    return Animation;
-});
-/*
- * Component that sets the opacity
- * <br>Exports: Constructor
- * @module bento/components/opacity
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @param {Number} settings.opacity - Opacity value (1 is opaque)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/opacity', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Opacity = function (settings) {
-            settings = settings || {};
-            this.name = 'opacity';
-            this.oldOpacity = 1;
-            this.opacity = 1;
-            if (Utils.isDefined(settings.opacity)) {
-                this.opacity = settings.opacity;
-            }
-        };
-    Opacity.prototype.draw = function (data) {
-        // this.oldOpacity = data.renderer.getOpacity();
-        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
-    };
-    Opacity.prototype.postDraw = function (data) {
-        // data.renderer.setOpacity(this.oldOpacity);
-    };
-    Opacity.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-
-    /*
-     * Set entity opacity
-     * @function
-     * @instance
-     * @param {Number} opacity - Opacity value
-     * @name setOpacity
-     */
-    Opacity.prototype.setOpacity = function (value) {
-        // this.opacity = value;
-        this.entity.alpha = value;
-    };
-    /*
-     * Get entity opacity
-     * @function
-     * @instance
-     * @name getOpacity
-     */
-    Opacity.prototype.getOpacity = function () {
-        return this.entity.alpha;
-        // return this.opacity;
-    };
-    Opacity.prototype.toString = function () {
-        return '[object Opacity]';
-    };
-
-    return Opacity;
-});
-/*
- * Component that sets the context rotation for drawing.
- * <br>Exports: Constructor
- * @module bento/components/rotation
- * @param {Object} settings - Settings (unused)
- * @returns Returns a component object.
- */
-bento.define('bento/components/rotation', [
-    'bento/utils',
-], function (Utils) {
-    'use strict';
-    var Rotation = function (settings) {
-        settings = settings || {};
-        this.name = 'rotation';
-        this.entity = null;
-    };
-
-    Rotation.prototype.draw = function (data) {
-        // data.renderer.save();
-        // data.renderer.rotate(data.entity.rotation);
-    };
-    Rotation.prototype.postDraw = function (data) {
-        // data.renderer.restore();
-    };
-    Rotation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-
-    /*
-     * Rotates the parent entity in degrees
-     * @function
-     * @param {Number} degrees - Angle in degrees
-     * @instance
-     * @name addAngleDegree
-     */
-    Rotation.prototype.addAngleDegree = function (value) {
-        this.entity.rotation += value * Math.PI / 180;
-    };
-    /*
-     * Rotates the parent entity in radians
-     * @function
-     * @param {Number} radians - Angle in radians
-     * @instance
-     * @name addAngleRadian
-     */
-    Rotation.prototype.addAngleRadian = function (value) {
-        this.entity.rotation += value;
-    };
-    /*
-     * Rotates the parent entity in degrees
-     * @function
-     * @param {Number} degrees - Angle in degrees
-     * @instance
-     * @name setAngleDegree
-     */
-    Rotation.prototype.setAngleDegree = function (value) {
-        this.entity.rotation = value * Math.PI / 180;
-    };
-    /*
-     * Rotates the parent entity in radians
-     * @function
-     * @param {Number} radians - Angle in radians
-     * @instance
-     * @name setAngleRadian
-     */
-    Rotation.prototype.setAngleRadian = function (value) {
-        this.entity.rotation = value;
-    };
-    /*
-     * Returns the parent entity rotation in degrees
-     * @function
-     * @instance
-     * @name getAngleDegree
-     */
-    Rotation.prototype.getAngleDegree = function () {
-        return this.entity.rotation * 180 / Math.PI;
-    };
-    /*
-     * Returns the parent entity rotation in radians
-     * @function
-     * @instance
-     * @name getAngleRadian
-     */
-    Rotation.prototype.getAngleRadian = function () {
-        return this.entity.rotation;
-    };
-    Rotation.prototype.toString = function () {
-        return '[object Rotation]';
-    };
-
-    return Rotation;
-});
-/*
- * Component that sets the context scale for drawing.
- * <br>Exports: Constructor
- * @module bento/components/scale
- * @param {Object} settings - Settings (unused)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/scale', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Scale = function (settings) {
-        this.entity = null;
-        this.name = 'scale';
-    };
-    Scale.prototype.draw = function (data) {
-        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
-    };
-    Scale.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    /*
-     * Scales the parent entity in x direction
-     * @function
-     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
-     * @instance
-     * @name setScaleX
-     */
-    Scale.prototype.setScaleX = function (value) {
-        this.entity.scale.x = value;
-    };
-    /*
-     * Scales the parent entity in y direction
-     * @function
-     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
-     * @instance
-     * @name setScaleY
-     */
-    Scale.prototype.setScaleY = function (value) {
-        this.entity.scale.y = value;
-    };
-    Scale.prototype.toString = function () {
-        return '[object Scale]';
-    };
-
-    return Scale;
-});
-/*
- * Helper component that attaches the Translation, Scale, Rotation, Opacity
- * and Animation (or Pixi) components. Automatically detects the renderer.
- * <br>Exports: Constructor
- * @module bento/components/sprite
- * @param {Object} settings - Settings object, this object is passed to all other components
- * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
- * the Animation component is attached. Same as Sprite.insertBefore.
- * @param {} settings.... - See other components
- * @returns Returns a component object.
- */
-bento.define('bento/components/sprite_old', [
-    'bento',
-    'bento/utils',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/components/opacity',
-    'bento/components/animation'
-], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation) {
-    'use strict';
-    var renderer,
-        component = function (settings) {
-            this.entity = null;
-            this.settings = settings;
-
-            /*
-             * Reference to the Translation component
-             * @instance
-             * @name translation
-             */
-            this.translation = new Translation(settings);
-            /*
-             * Reference to the Rotation component
-             * @instance
-             * @name rotation
-             */
-            this.rotation = new Rotation(settings);
-            /*
-             * Reference to the Scale component
-             * @instance
-             * @name scale
-             */
-            this.scale = new Scale(settings);
-            /*
-             * Reference to the Opacity component
-             * @instance
-             * @name rotation
-             */
-            this.opacity = new Opacity(settings);
-            /*
-             * If renderer is set to pixi, this property is the Pixi component.
-             * Otherwise it's the Animation component
-             * @instance
-             * @name animation
-             */
-            this.animation = new Animation(settings);
-
-
-            this.components = settings.components || [];
-        };
-
-    component.prototype.attached = function (data) {
-        var i = 0;
-        this.entity = data.entity;
-        // attach all components!
-        if (this.translation) {
-            this.entity.attach(this.translation);
-        }
-        if (this.rotation) {
-            this.entity.attach(this.rotation);
-        }
-        if (this.scale) {
-            this.entity.attach(this.scale);
-        }
-        this.entity.attach(this.opacity);
-
-        // wedge in extra components in before the animation component
-        for (i = 0; i < this.components.length; ++i) {
-            this.entity.attach(this.components[i]);
-        }
-        this.entity.attach(this.animation);
-
-        // remove self?
-        this.entity.remove(this);
-    };
-    /*
-     * Allows you to insert components/children entities BEFORE the animation component.
-     * This way you can draw objects behind the sprite.
-     * This function should be called before you attach the Sprite to the Entity.
-     * @function
-     * @param {Array} array - Array of entities to attach
-     * @instance
-     * @name insertBefore
-     */
-    component.prototype.insertBefore = function (array) {
-        if (!Utils.isArray(array)) {
-            array = [array];
-        }
-        this.components = array;
-        return this;
-    };
-
-    component.prototype.toString = function () {
-        return '[object Sprite]';
-    };
-
-    component.prototype.getSettings = function () {
-        return this.settings;
-    };
-
-    return component;
-});
-/*
- * Component that sets the context translation for drawing.
- * <br>Exports: Constructor
- * @module bento/components/translation
- * @param {Object} settings - Settings
- * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
- * @returns Returns a component object.
- */
-bento.define('bento/components/translation', [
-    'bento',
-    'bento/utils',
-    'bento/math/vector2'
-], function (Bento, Utils, Vector2) {
-    'use strict';
-    var bentoSettings;
-    var Translation = function (settings) {
-        if (!bentoSettings) {
-            bentoSettings = Bento.getSettings();
-        }
-        settings = settings || {};
-        this.name = 'translation';
-        this.subPixel = settings.subPixel || false;
-        this.entity = null;
-        /*
-         * Additional x translation (superposed on the entity position)
-         * @instance
-         * @default 0
-         * @name x
-         */
-        this.x = 0;
-        /*
-         * Additional y translation (superposed on the entity position)
-         * @instance
-         * @default 0
-         * @name y
-         */
-        this.y = 0;
-    };
-    Translation.prototype.draw = function (data) {
-        var entity = data.entity,
-            parent = entity.parent,
-            position = entity.position,
-            origin = entity.origin,
-            scroll = data.viewport;
-
-        entity.transform.x = this.x;
-        entity.transform.y = this.y;
-        /*data.renderer.save();
-        if (this.subPixel || bentoSettings.subPixel) {
-            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
-        } else {
-            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
-        }
-        // scroll (only applies to parent objects)
-        if (!parent && !entity.float) {
-            data.renderer.translate(-scroll.x, -scroll.y);
-        }*/
-    };
-    Translation.prototype.postDraw = function (data) {
-        // data.renderer.restore();
-    };
-    Translation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Translation.prototype.toString = function () {
-        return '[object Translation]';
-    };
-
-    return Translation;
-});
-/*
- * DEPRECATED: performance is sub par, recommended to use Canvas2d or Pixi renderer
- * WebGL renderer using gl-sprites by Matt DesLauriers
- * @copyright (C) 2015 LuckyKat
- */
-bento.define('bento/renderers/webgl', [
-    'bento/utils',
-    'bento/renderers/canvas2d'
-], function (Utils, Canvas2d) {
-    return function (canvas, settings) {
-        var canWebGl = (function () {
-                // try making a canvas
-                try {
-                    var canvas = document.createElement('canvas');
-                    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-                } catch (e) {
-                    return false;
-                }
-            })(),
-            context,
-            glRenderer,
-            original,
-            pixelSize = settings.pixelSize || 1,
-            renderer = {
-                name: 'webgl',
-                save: function () {
-                    glRenderer.save();
-                },
-                restore: function () {
-                    glRenderer.restore();
-                },
-                setTransform: function (a, b, c, d, tx, ty) {
-                    // not sure, untested
-                    glRenderer.transform = glRenderer.transform.clone([
-                        a, b, 0, tx,
-                        c, d, 0, ty,
-                        0, 0, 1, 0,
-                        0, 0, 0, 1
-                    ]);
-                },
-                translate: function (x, y) {
-                    glRenderer.translate(x, y);
-                },
-                scale: function (x, y) {
-                    glRenderer.scale(x, y);
-                },
-                rotate: function (angle) {
-                    glRenderer.rotate(angle);
-                },
-                fillRect: function (color, x, y, w, h) {
-                    var oldColor = glRenderer.color;
-                    //
-                    renderer.setColor(color);
-                    glRenderer.fillRect(x, y, w, h);
-                    glRenderer.color = oldColor;
-                },
-                fillCircle: function (color, x, y, radius) {},
-                strokeRect: function (color, x, y, w, h) {
-                    var oldColor = glRenderer.color;
-                    //
-                    renderer.setColor(color);
-                    glRenderer.strokeRect(x, y, w, h);
-                    glRenderer.color = oldColor;
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    var image = packedImage.image;
-                    if (!image.texture) {
-                        image.texture = window.GlSprites.createTexture2D(context, image);
-                    }
-                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
-                },
-                begin: function () {
-                    glRenderer.begin();
-                },
-                flush: function () {
-                    glRenderer.end();
-                },
-                setColor: function (color) {
-                    glRenderer.color = color;
-                },
-                getOpacity: function () {
-                    return glRenderer.color[3];
-                },
-                setOpacity: function (value) {
-                    glRenderer.color[3] = value;
-                },
-                createSurface: function (width, height) {
-                    var newCanvas = document.createElement('canvas'),
-                        newContext,
-                        newGlRenderer;
-
-                    newCanvas.width = width;
-                    newCanvas.height = height;
-
-                    newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    newGlRenderer = new window.GlSprites.SpriteRenderer(newContext);
-                    newGlRenderer.ortho(canvas.width, canvas.height);
-
-                    return {
-                        canvas: newCanvas,
-                        context: newGlRenderer
-                    };
-                },
-                setContext: function (ctx) {
-                    glRenderer = ctx;
-                },
-                restoreContext: function () {
-                    glRenderer = original;
-                }
-            };
-
-        // fallback
-        if (canWebGl && Utils.isDefined(window.GlSprites)) {
-            // resize canvas according to pixelSize
-            canvas.width *= pixelSize;
-            canvas.height *= pixelSize;
-            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-
-            glRenderer = new window.GlSprites.SpriteRenderer(context);
-            glRenderer.ortho(canvas.width / pixelSize, canvas.height / pixelSize);
-            original = glRenderer;
-            return renderer;
-        } else {
-            console.log('webgl failed, revert to canvas');
-            return Canvas2d(canvas, settings);
-        }
-    };
-});
-/**
- * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/requirejs/domReady for details
- */
-/*jslint*/
-/*global require: false, define: false, requirejs: false,
-  window: false, clearInterval: false, document: false,
-  self: false, setInterval: false */
-
-
-bento.define('bento/lib/domready', [], function () {
-    'use strict';
-
-    var isTop, testDiv, scrollIntervalId,
-        isBrowser = typeof window !== "undefined" && window.document,
-        isPageLoaded = !isBrowser,
-        doc = isBrowser ? document : null,
-        readyCalls = [];
-
-    function runCallbacks(callbacks) {
-        var i;
-        for (i = 0; i < callbacks.length; i += 1) {
-            callbacks[i](doc);
-        }
-    }
-
-    function callReady() {
-        var callbacks = readyCalls;
-
-        if (isPageLoaded) {
-            //Call the DOM ready callbacks
-            if (callbacks.length) {
-                readyCalls = [];
-                runCallbacks(callbacks);
-            }
-        }
-    }
-
-    /**
-     * Sets the page as loaded.
-     */
-    function pageLoaded() {
-        if (!isPageLoaded) {
-            isPageLoaded = true;
-            if (scrollIntervalId) {
-                clearInterval(scrollIntervalId);
-            }
-
-            callReady();
-        }
-    }
-
-    if (isBrowser) {
-        if (document.addEventListener) {
-            //Standards. Hooray! Assumption here that if standards based,
-            //it knows about DOMContentLoaded.
-            document.addEventListener("DOMContentLoaded", pageLoaded, false);
-            window.addEventListener("load", pageLoaded, false);
-        } else if (window.attachEvent) {
-            window.attachEvent("onload", pageLoaded);
-
-            testDiv = document.createElement('div');
-            try {
-                isTop = window.frameElement === null;
-            } catch (e) {}
-
-            //DOMContentLoaded approximation that uses a doScroll, as found by
-            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
-            //but modified by other contributors, including jdalton
-            if (testDiv.doScroll && isTop && window.external) {
-                scrollIntervalId = setInterval(function () {
-                    try {
-                        testDiv.doScroll();
-                        pageLoaded();
-                    } catch (e) {}
-                }, 30);
-            }
-        }
-
-        //Check if document already complete, and if so, just trigger page load
-        //listeners. Latest webkit browsers also use "interactive", and
-        //will fire the onDOMContentLoaded before "interactive" but not after
-        //entering "interactive" or "complete". More details:
-        //http://dev.w3.org/html5/spec/the-end.html#the-end
-        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
-        //Hmm, this is more complicated on further use, see "firing too early"
-        //bug: https://github.com/requirejs/domReady/issues/1
-        //so removing the || document.readyState === "interactive" test.
-        //There is still a window.onload binding that should get fired if
-        //DOMContentLoaded is missed.
-        if (document.readyState === "complete") {
-            pageLoaded();
-        }
-    }
-
-    /** START OF PUBLIC API **/
-
-    /**
-     * Registers a callback for DOM ready. If DOM is already ready, the
-     * callback is called immediately.
-     * @param {Function} callback
-     */
-    function domReady(callback) {
-        if (isPageLoaded) {
-            callback(doc);
-        } else {
-            readyCalls.push(callback);
-        }
-        return domReady;
-    }
-
-    domReady.version = '2.0.1';
-
-    /**
-     * Loader Plugin API method
-     */
-    domReady.load = function (name, req, onLoad, config) {
-        if (config.isBuild) {
-            onLoad(null);
-        } else {
-            domReady(onLoad);
-        }
-    };
-
-    /** END OF PUBLIC API **/
-
-    return domReady;
-});
-
-// https://gist.github.com/kirbysayshi/1760774
-
-bento.define('hshg', [], function () {
-
-    //---------------------------------------------------------------------
-    // GLOBAL FUNCTIONS
-    //---------------------------------------------------------------------
-
-    /**
-     * Updates every object's position in the grid, but only if
-     * the hash value for that object has changed.
-     * This method DOES NOT take into account object expansion or
-     * contraction, just position, and does not attempt to change
-     * the grid the object is currently in; it only (possibly) changes
-     * the cell.
-     *
-     * If the object has significantly changed in size, the best bet is to
-     * call removeObject() and addObject() sequentially, outside of the
-     * normal update cycle of HSHG.
-     *
-     * @return  void   desc
-     */
-    function update_RECOMPUTE() {
-
-        var i, obj, grid, meta, objAABB, newObjHash;
-
-        // for each object
-        for (i = 0; i < this._globalObjects.length; i++) {
-            obj = this._globalObjects[i];
-            meta = obj.HSHG;
-            grid = meta.grid;
-
-            if (obj.staticHshg) {
-                continue;
-            }
-
-            // recompute hash
-            objAABB = obj.getAABB();
-            newObjHash = grid.toHash(objAABB.min[0], objAABB.min[1]);
-
-            if (newObjHash !== meta.hash) {
-                // grid position has changed, update!
-                grid.removeObject(obj);
-                grid.addObject(obj, newObjHash);
-            }
-        }
-    }
-
-    // not implemented yet :)
-    function update_REMOVEALL() {
-
-    }
-
-    function testAABBOverlap(objA, objB) {
-        var a, b;
-        if (objA.staticHshg && objB.staticHshg) {
-            return false;
-        }
-
-        a = objA.getAABB();
-        b = objB.getAABB();
-
-        //if(a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.min[2] > b.max[2]
-        //|| a.max[0] < b.min[0] || a.max[1] < b.min[1] || a.max[2] < b.min[2]){
-
-        if (a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.max[0] < b.min[0] || a.max[1] < b.min[1]) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    function getLongestAABBEdge(min, max) {
-        return Math.max(
-            Math.abs(max[0] - min[0]), Math.abs(max[1] - min[1])
-            //,Math.abs(max[2] - min[2])
-        );
-    }
-
-    //---------------------------------------------------------------------
-    // ENTITIES
-    //---------------------------------------------------------------------
-
-    function HSHG() {
-
-        this.MAX_OBJECT_CELL_DENSITY = 1 / 8 // objects / cells
-        this.INITIAL_GRID_LENGTH = 256 // 16x16
-        this.HIERARCHY_FACTOR = 2
-        this.HIERARCHY_FACTOR_SQRT = Math.SQRT2
-        this.UPDATE_METHOD = update_RECOMPUTE // or update_REMOVEALL
-
-        this._grids = [];
-        this._globalObjects = [];
-    }
-
-    //HSHG.prototype.init = function(){
-    //  this._grids = [];
-    //  this._globalObjects = [];
-    //}
-
-    HSHG.prototype.addObject = function (obj) {
-        var x, i, cellSize, objAABB = obj.getAABB(),
-            objSize = getLongestAABBEdge(objAABB.min, objAABB.max),
-            oneGrid, newGrid;
-
-        // for HSHG metadata
-        obj.HSHG = {
-            globalObjectsIndex: this._globalObjects.length
-        };
-
-        // add to global object array
-        this._globalObjects.push(obj);
-
-        if (this._grids.length == 0) {
-            // no grids exist yet
-            cellSize = objSize * this.HIERARCHY_FACTOR_SQRT;
-            newGrid = new Grid(cellSize, this.INITIAL_GRID_LENGTH, this);
-            newGrid.initCells();
-            newGrid.addObject(obj);
-
-            this._grids.push(newGrid);
-        } else {
-            x = 0;
-
-            // grids are sorted by cellSize, smallest to largest
-            for (i = 0; i < this._grids.length; i++) {
-                oneGrid = this._grids[i];
-                x = oneGrid.cellSize;
-                if (objSize < x) {
-                    x = x / this.HIERARCHY_FACTOR;
-                    if (objSize < x) {
-                        // find appropriate size
-                        while (objSize < x) {
-                            x = x / this.HIERARCHY_FACTOR;
-                        }
-                        newGrid = new Grid(x * this.HIERARCHY_FACTOR, this.INITIAL_GRID_LENGTH, this);
-                        newGrid.initCells();
-                        // assign obj to grid
-                        newGrid.addObject(obj)
-                        // insert grid into list of grids directly before oneGrid
-                        this._grids.splice(i, 0, newGrid);
-                    } else {
-                        // insert obj into grid oneGrid
-                        oneGrid.addObject(obj);
-                    }
-                    return;
-                }
-            }
-
-            while (objSize >= x) {
-                x = x * this.HIERARCHY_FACTOR;
-            }
-
-            newGrid = new Grid(x, this.INITIAL_GRID_LENGTH, this);
-            newGrid.initCells();
-            // insert obj into grid
-            newGrid.addObject(obj)
-            // add newGrid as last element in grid list
-            this._grids.push(newGrid);
-        }
-    }
-
-    HSHG.prototype.removeObject = function (obj) {
-        var meta = obj.HSHG,
-            globalObjectsIndex, replacementObj;
-
-        if (meta === undefined) {
-            //throw Error(obj + ' was not in the HSHG.');
-            return;
-        }
-
-        // remove object from global object list
-        globalObjectsIndex = meta.globalObjectsIndex
-        if (globalObjectsIndex === this._globalObjects.length - 1) {
-            this._globalObjects.pop();
-        } else {
-            replacementObj = this._globalObjects.pop();
-            replacementObj.HSHG.globalObjectsIndex = globalObjectsIndex;
-            this._globalObjects[globalObjectsIndex] = replacementObj;
-        }
-
-        meta.grid.removeObject(obj);
-
-        // remove meta data
-        delete obj.HSHG;
-    }
-
-    HSHG.prototype.update = function () {
-        this.UPDATE_METHOD.call(this);
-    }
-
-    HSHG.prototype.queryForCollisionPairs = function (broadOverlapTestCallback) {
-
-        var i, j, k, l, c, grid, cell, objA, objB, offset, adjacentCell, biggerGrid, objAAABB, objAHashInBiggerGrid, possibleCollisions = []
-
-        // default broad test to internal aabb overlap test
-        broadOverlapTest = broadOverlapTestCallback || testAABBOverlap;
-
-        // for all grids ordered by cell size ASC
-        for (i = 0; i < this._grids.length; i++) {
-            grid = this._grids[i];
-
-            // for each cell of the grid that is occupied
-            for (j = 0; j < grid.occupiedCells.length; j++) {
-                cell = grid.occupiedCells[j];
-
-                // collide all objects within the occupied cell
-                for (k = 0; k < cell.objectContainer.length; k++) {
-                    objA = cell.objectContainer[k];
-                    for (l = k + 1; l < cell.objectContainer.length; l++) {
-                        objB = cell.objectContainer[l];
-                        if (broadOverlapTest(objA, objB) === true) {
-                            possibleCollisions.push([objA, objB]);
-                        }
-                    }
-                }
-
-                // for the first half of all adjacent cells (offset 4 is the current cell)
-                for (c = 0; c < 4; c++) {
-                    offset = cell.neighborOffsetArray[c];
-
-                    //if(offset === null) { continue; }
-
-                    adjacentCell = grid.allCells[cell.allCellsIndex + offset];
-
-                    // collide all objects in cell with adjacent cell
-                    for (k = 0; k < cell.objectContainer.length; k++) {
-                        objA = cell.objectContainer[k];
-                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
-                            objB = adjacentCell.objectContainer[l];
-                            if (broadOverlapTest(objA, objB) === true) {
-                                possibleCollisions.push([objA, objB]);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // forall objects that are stored in this grid
-            for (j = 0; j < grid.allObjects.length; j++) {
-                objA = grid.allObjects[j];
-                objAAABB = objA.getAABB();
-
-                // for all grids with cellsize larger than grid
-                for (k = i + 1; k < this._grids.length; k++) {
-                    biggerGrid = this._grids[k];
-                    objAHashInBiggerGrid = biggerGrid.toHash(objAAABB.min[0], objAAABB.min[1]);
-                    cell = biggerGrid.allCells[objAHashInBiggerGrid];
-
-                    // check objA against every object in all cells in offset array of cell
-                    // for all adjacent cells...
-                    for (c = 0; c < cell.neighborOffsetArray.length; c++) {
-                        offset = cell.neighborOffsetArray[c];
-
-                        //if(offset === null) { continue; }
-
-                        adjacentCell = biggerGrid.allCells[cell.allCellsIndex + offset];
-
-                        // for all objects in the adjacent cell...
-                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
-                            objB = adjacentCell.objectContainer[l];
-                            // test against object A
-                            if (broadOverlapTest(objA, objB) === true) {
-                                possibleCollisions.push([objA, objB]);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        //
-        for (i = 0; i < possibleCollisions.length; ++i) {
-            if (possibleCollisions[i][0].collided) {
-                possibleCollisions[i][0].collided({
-                    other: possibleCollisions[i][1]
-                });
-            }
-            if (possibleCollisions[i][1].collided) {
-                possibleCollisions[i][1].collided({
-                    other: possibleCollisions[i][0]
-                });
-            }
-        }
-
-        // return list of object pairs
-        return possibleCollisions;
-    }
-
-    HSHG.update_RECOMPUTE = update_RECOMPUTE;
-    HSHG.update_REMOVEALL = update_REMOVEALL;
-
-    /**
-     * Grid
-     *
-     * @constructor
-     * @param   int cellSize  the pixel size of each cell of the grid
-     * @param   int cellCount  the total number of cells for the grid (width x height)
-     * @param   HSHG parentHierarchy    the HSHG to which this grid belongs
-     * @return  void
-     */
-    function Grid(cellSize, cellCount, parentHierarchy) {
-        this.cellSize = cellSize;
-        this.inverseCellSize = 1 / cellSize;
-        this.rowColumnCount = ~~Math.sqrt(cellCount);
-        this.xyHashMask = this.rowColumnCount - 1;
-        this.occupiedCells = [];
-        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
-        this.allObjects = [];
-        this.sharedInnerOffsets = [];
-
-        this._parentHierarchy = parentHierarchy || null;
-    }
-
-    Grid.prototype.initCells = function () {
-
-        // TODO: inner/unique offset rows 0 and 2 may need to be
-        // swapped due to +y being "down" vs "up"
-
-        var i, gridLength = this.allCells.length,
-            x, y, wh = this.rowColumnCount,
-            isOnRightEdge, isOnLeftEdge, isOnTopEdge, isOnBottomEdge, innerOffsets = [
-                // y+ down offsets
-                //-1 + -wh, -wh, -wh + 1,
-                //-1, 0, 1,
-                //wh - 1, wh, wh + 1
-
-                // y+ up offsets
-                wh - 1, wh, wh + 1, -1, 0, 1, -1 + -wh, -wh, -wh + 1
-            ],
-            leftOffset, rightOffset, topOffset, bottomOffset, uniqueOffsets = [],
-            cell;
-
-        this.sharedInnerOffsets = innerOffsets;
-
-        // init all cells, creating offset arrays as needed
-
-        for (i = 0; i < gridLength; i++) {
-
-            cell = new Cell();
-            // compute row (y) and column (x) for an index
-            y = ~~ (i / this.rowColumnCount);
-            x = ~~ (i - (y * this.rowColumnCount));
-
-            // reset / init
-            isOnRightEdge = false;
-            isOnLeftEdge = false;
-            isOnTopEdge = false;
-            isOnBottomEdge = false;
-
-            // right or left edge cell
-            if ((x + 1) % this.rowColumnCount == 0) {
-                isOnRightEdge = true;
-            } else if (x % this.rowColumnCount == 0) {
-                isOnLeftEdge = true;
-            }
-
-            // top or bottom edge cell
-            if ((y + 1) % this.rowColumnCount == 0) {
-                isOnTopEdge = true;
-            } else if (y % this.rowColumnCount == 0) {
-                isOnBottomEdge = true;
-            }
-
-            // if cell is edge cell, use unique offsets, otherwise use inner offsets
-            if (isOnRightEdge || isOnLeftEdge || isOnTopEdge || isOnBottomEdge) {
-
-                // figure out cardinal offsets first
-                rightOffset = isOnRightEdge === true ? -wh + 1 : 1;
-                leftOffset = isOnLeftEdge === true ? wh - 1 : -1;
-                topOffset = isOnTopEdge === true ? -gridLength + wh : wh;
-                bottomOffset = isOnBottomEdge === true ? gridLength - wh : -wh;
-
-                // diagonals are composites of the cardinals
-                uniqueOffsets = [
-                    // y+ down offset
-                    //leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset,
-                    //leftOffset, 0, rightOffset,
-                    //leftOffset + topOffset, topOffset, rightOffset + topOffset
-
-                    // y+ up offset
-                    leftOffset + topOffset, topOffset, rightOffset + topOffset,
-                    leftOffset, 0, rightOffset,
-                    leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset
-                ];
-
-                cell.neighborOffsetArray = uniqueOffsets;
-            } else {
-                cell.neighborOffsetArray = this.sharedInnerOffsets;
-            }
-
-            cell.allCellsIndex = i;
-            this.allCells[i] = cell;
-        }
-    }
-
-    Grid.prototype.toHash = function (x, y, z) {
-        var i, xHash, yHash, zHash;
-
-        if (x < 0) {
-            i = (-x) * this.inverseCellSize;
-            xHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
-        } else {
-            i = x * this.inverseCellSize;
-            xHash = ~~i & this.xyHashMask;
-        }
-
-        if (y < 0) {
-            i = (-y) * this.inverseCellSize;
-            yHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
-        } else {
-            i = y * this.inverseCellSize;
-            yHash = ~~i & this.xyHashMask;
-        }
-
-        //if(z < 0){
-        //  i = (-z) * this.inverseCellSize;
-        //  zHash = this.rowColumnCount - 1 - ( ~~i & this.xyHashMask );
-        //} else {
-        //  i = z * this.inverseCellSize;
-        //  zHash = ~~i & this.xyHashMask;
-        //}
-
-        return xHash + yHash * this.rowColumnCount
-            //+ zHash * this.rowColumnCount * this.rowColumnCount;
-    }
-
-    Grid.prototype.addObject = function (obj, hash) {
-        var objAABB, objHash, targetCell;
-
-        // technically, passing this in this should save some computational effort when updating objects
-        if (hash !== undefined) {
-            objHash = hash;
-        } else {
-            objAABB = obj.getAABB()
-            objHash = this.toHash(objAABB.min[0], objAABB.min[1])
-        }
-        targetCell = this.allCells[objHash];
-
-        if (targetCell.objectContainer.length === 0) {
-            // insert this cell into occupied cells list
-            targetCell.occupiedCellsIndex = this.occupiedCells.length;
-            this.occupiedCells.push(targetCell);
-        }
-
-        // add meta data to obj, for fast update/removal
-        obj.HSHG.objectContainerIndex = targetCell.objectContainer.length;
-        obj.HSHG.hash = objHash;
-        obj.HSHG.grid = this;
-        obj.HSHG.allGridObjectsIndex = this.allObjects.length;
-        // add obj to cell
-        targetCell.objectContainer.push(obj);
-
-        // we can assume that the targetCell is already a member of the occupied list
-
-        // add to grid-global object list
-        this.allObjects.push(obj);
-
-        // do test for grid density
-        if (this.allObjects.length / this.allCells.length > this._parentHierarchy.MAX_OBJECT_CELL_DENSITY) {
-            // grid must be increased in size
-            this.expandGrid();
-        }
-    }
-
-    Grid.prototype.removeObject = function (obj) {
-        var meta = obj.HSHG,
-            hash, containerIndex, allGridObjectsIndex, cell, replacementCell, replacementObj;
-
-        hash = meta.hash;
-        containerIndex = meta.objectContainerIndex;
-        allGridObjectsIndex = meta.allGridObjectsIndex;
-        cell = this.allCells[hash];
-
-        // remove object from cell object container
-        if (cell.objectContainer.length === 1) {
-            // this is the last object in the cell, so reset it
-            cell.objectContainer.length = 0;
-
-            // remove cell from occupied list
-            if (cell.occupiedCellsIndex === this.occupiedCells.length - 1) {
-                // special case if the cell is the newest in the list
-                this.occupiedCells.pop();
-            } else {
-                replacementCell = this.occupiedCells.pop();
-                replacementCell.occupiedCellsIndex = cell.occupiedCellsIndex;
-                this.occupiedCells[cell.occupiedCellsIndex] = replacementCell;
-            }
-
-            cell.occupiedCellsIndex = null;
-        } else {
-            // there is more than one object in the container
-            if (containerIndex === cell.objectContainer.length - 1) {
-                // special case if the obj is the newest in the container
-                cell.objectContainer.pop();
-            } else {
-                replacementObj = cell.objectContainer.pop();
-                replacementObj.HSHG.objectContainerIndex = containerIndex;
-                cell.objectContainer[containerIndex] = replacementObj;
-            }
-        }
-
-        // remove object from grid object list
-        if (allGridObjectsIndex === this.allObjects.length - 1) {
-            this.allObjects.pop();
-        } else {
-            replacementObj = this.allObjects.pop();
-            replacementObj.HSHG.allGridObjectsIndex = allGridObjectsIndex;
-            this.allObjects[allGridObjectsIndex] = replacementObj;
-        }
-    }
-
-    Grid.prototype.expandGrid = function () {
-        var i, j, currentCellCount = this.allCells.length,
-            currentRowColumnCount = this.rowColumnCount,
-            currentXYHashMask = this.xyHashMask
-
-        , newCellCount = currentCellCount * 4 // double each dimension
-        , newRowColumnCount = ~~Math.sqrt(newCellCount), newXYHashMask = newRowColumnCount - 1, allObjects = this.allObjects.slice(0) // duplicate array, not objects contained
-        , aCell, push = Array.prototype.push;
-
-        // remove all objects
-        for (i = 0; i < allObjects.length; i++) {
-            this.removeObject(allObjects[i]);
-        }
-
-        // reset grid values, set new grid to be 4x larger than last
-        this.rowColumnCount = newRowColumnCount;
-        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
-        this.xyHashMask = newXYHashMask;
-
-        // initialize new cells
-        this.initCells();
-
-        // re-add all objects to grid
-        for (i = 0; i < allObjects.length; i++) {
-            this.addObject(allObjects[i]);
-        }
-    }
-
-    /**
-     * A cell of the grid
-     *
-     * @constructor
-     * @return  void   desc
-     */
-    function Cell() {
-        this.objectContainer = [];
-        this.neighborOffsetArray;
-        this.occupiedCellsIndex = null;
-        this.allCellsIndex = null;
-    }
-
-    //---------------------------------------------------------------------
-    // EXPORTS
-    //---------------------------------------------------------------------
-
-    HSHG._private = {
-        Grid: Grid,
-        Cell: Cell,
-        testAABBOverlap: testAABBOverlap,
-        getLongestAABBEdge: getLongestAABBEdge
-    };
-
-    return HSHG;
-});
-// https://github.com/pieroxy/lz-string/
-// Modifications: wrapped in Bento define
-
-
-// Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
-// This work is free. You can redistribute it and/or modify it
-// under the terms of the WTFPL, Version 2
-// For more information see LICENSE.txt or http://www.wtfpl.net/
-//
-// For more information, the home page:
-// http://pieroxy.net/blog/pages/lz-string/testing.html
-//
-// LZ-based compression algorithm, version 1.4.4
-
-bento.define('lzstring', [], function () {
-    // private property
-    var f = String.fromCharCode;
-    var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
-    var baseReverseDic = {};
-
-    function getBaseValue(alphabet, character) {
-        if (!baseReverseDic[alphabet]) {
-            baseReverseDic[alphabet] = {};
-            for (var i = 0; i < alphabet.length; i++) {
-                baseReverseDic[alphabet][alphabet.charAt(i)] = i;
-            }
-        }
-        return baseReverseDic[alphabet][character];
-    }
-
-    var LZString = {
-        compressToBase64: function (input) {
-            if (input == null) return "";
-            var res = LZString._compress(input, 6, function (a) {
-                return keyStrBase64.charAt(a);
-            });
-            switch (res.length % 4) { // To produce valid Base64
-                default: // When could this happen ?
-            case 0:
-                return res;
-            case 1:
-                return res + "===";
-            case 2:
-                return res + "==";
-            case 3:
-                return res + "=";
-            }
-        },
-
-        decompressFromBase64: function (input) {
-            if (input == null) return "";
-            if (input == "") return null;
-            return LZString._decompress(input.length, 32, function (index) {
-                return getBaseValue(keyStrBase64, input.charAt(index));
-            });
-        },
-
-        compressToUTF16: function (input) {
-            if (input == null) return "";
-            return LZString._compress(input, 15, function (a) {
-                return f(a + 32);
-            }) + " ";
-        },
-
-        decompressFromUTF16: function (compressed) {
-            if (compressed == null) return "";
-            if (compressed == "") return null;
-            return LZString._decompress(compressed.length, 16384, function (index) {
-                return compressed.charCodeAt(index) - 32;
-            });
-        },
-
-        //compress into uint8array (UCS-2 big endian format)
-        compressToUint8Array: function (uncompressed) {
-            var compressed = LZString.compress(uncompressed);
-            var buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
-
-            for (var i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
-                var current_value = compressed.charCodeAt(i);
-                buf[i * 2] = current_value >>> 8;
-                buf[i * 2 + 1] = current_value % 256;
-            }
-            return buf;
-        },
-
-        //decompress from uint8array (UCS-2 big endian format)
-        decompressFromUint8Array: function (compressed) {
-            if (compressed === null || compressed === undefined) {
-                return LZString.decompress(compressed);
-            } else {
-                var buf = new Array(compressed.length / 2); // 2 bytes per character
-                for (var i = 0, TotalLen = buf.length; i < TotalLen; i++) {
-                    buf[i] = compressed[i * 2] * 256 + compressed[i * 2 + 1];
-                }
-
-                var result = [];
-                buf.forEach(function (c) {
-                    result.push(f(c));
-                });
-                return LZString.decompress(result.join(''));
-
-            }
-
-        },
-
-
-        //compress into a string that is already URI encoded
-        compressToEncodedURIComponent: function (input) {
-            if (input == null) return "";
-            return LZString._compress(input, 6, function (a) {
-                return keyStrUriSafe.charAt(a);
-            });
-        },
-
-        //decompress from an output of compressToEncodedURIComponent
-        decompressFromEncodedURIComponent: function (input) {
-            if (input == null) return "";
-            if (input == "") return null;
-            input = input.replace(/ /g, "+");
-            return LZString._decompress(input.length, 32, function (index) {
-                return getBaseValue(keyStrUriSafe, input.charAt(index));
-            });
-        },
-
-        compress: function (uncompressed) {
-            return LZString._compress(uncompressed, 16, function (a) {
-                return f(a);
-            });
-        },
-        _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
-            if (uncompressed == null) return "";
-            var i, value,
-                context_dictionary = {},
-                context_dictionaryToCreate = {},
-                context_c = "",
-                context_wc = "",
-                context_w = "",
-                context_enlargeIn = 2, // Compensate for the first entry which should not count
-                context_dictSize = 3,
-                context_numBits = 2,
-                context_data = [],
-                context_data_val = 0,
-                context_data_position = 0,
-                ii;
-
-            for (ii = 0; ii < uncompressed.length; ii += 1) {
-                context_c = uncompressed.charAt(ii);
-                if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
-                    context_dictionary[context_c] = context_dictSize++;
-                    context_dictionaryToCreate[context_c] = true;
-                }
-
-                context_wc = context_w + context_c;
-                if (Object.prototype.hasOwnProperty.call(context_dictionary, context_wc)) {
-                    context_w = context_wc;
-                } else {
-                    if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
-                        if (context_w.charCodeAt(0) < 256) {
-                            for (i = 0; i < context_numBits; i++) {
-                                context_data_val = (context_data_val << 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                            }
-                            value = context_w.charCodeAt(0);
-                            for (i = 0; i < 8; i++) {
-                                context_data_val = (context_data_val << 1) | (value & 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = value >> 1;
-                            }
-                        } else {
-                            value = 1;
-                            for (i = 0; i < context_numBits; i++) {
-                                context_data_val = (context_data_val << 1) | value;
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = 0;
-                            }
-                            value = context_w.charCodeAt(0);
-                            for (i = 0; i < 16; i++) {
-                                context_data_val = (context_data_val << 1) | (value & 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = value >> 1;
-                            }
-                        }
-                        context_enlargeIn--;
-                        if (context_enlargeIn == 0) {
-                            context_enlargeIn = Math.pow(2, context_numBits);
-                            context_numBits++;
-                        }
-                        delete context_dictionaryToCreate[context_w];
-                    } else {
-                        value = context_dictionary[context_w];
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-
-
-                    }
-                    context_enlargeIn--;
-                    if (context_enlargeIn == 0) {
-                        context_enlargeIn = Math.pow(2, context_numBits);
-                        context_numBits++;
-                    }
-                    // Add wc to the dictionary.
-                    context_dictionary[context_wc] = context_dictSize++;
-                    context_w = String(context_c);
-                }
-            }
-
-            // Output the code for w.
-            if (context_w !== "") {
-                if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
-                    if (context_w.charCodeAt(0) < 256) {
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                        }
-                        value = context_w.charCodeAt(0);
-                        for (i = 0; i < 8; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-                    } else {
-                        value = 1;
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1) | value;
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = 0;
-                        }
-                        value = context_w.charCodeAt(0);
-                        for (i = 0; i < 16; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-                    }
-                    context_enlargeIn--;
-                    if (context_enlargeIn == 0) {
-                        context_enlargeIn = Math.pow(2, context_numBits);
-                        context_numBits++;
-                    }
-                    delete context_dictionaryToCreate[context_w];
-                } else {
-                    value = context_dictionary[context_w];
-                    for (i = 0; i < context_numBits; i++) {
-                        context_data_val = (context_data_val << 1) | (value & 1);
-                        if (context_data_position == bitsPerChar - 1) {
-                            context_data_position = 0;
-                            context_data.push(getCharFromInt(context_data_val));
-                            context_data_val = 0;
-                        } else {
-                            context_data_position++;
-                        }
-                        value = value >> 1;
-                    }
-
-
-                }
-                context_enlargeIn--;
-                if (context_enlargeIn == 0) {
-                    context_enlargeIn = Math.pow(2, context_numBits);
-                    context_numBits++;
-                }
-            }
-
-            // Mark the end of the stream
-            value = 2;
-            for (i = 0; i < context_numBits; i++) {
-                context_data_val = (context_data_val << 1) | (value & 1);
-                if (context_data_position == bitsPerChar - 1) {
-                    context_data_position = 0;
-                    context_data.push(getCharFromInt(context_data_val));
-                    context_data_val = 0;
-                } else {
-                    context_data_position++;
-                }
-                value = value >> 1;
-            }
-
-            // Flush the last char
-            while (true) {
-                context_data_val = (context_data_val << 1);
-                if (context_data_position == bitsPerChar - 1) {
-                    context_data.push(getCharFromInt(context_data_val));
-                    break;
-                } else context_data_position++;
-            }
-            return context_data.join('');
-        },
-
-        decompress: function (compressed) {
-            if (compressed == null) return "";
-            if (compressed == "") return null;
-            return LZString._decompress(compressed.length, 32768, function (index) {
-                return compressed.charCodeAt(index);
-            });
-        },
-
-        _decompress: function (length, resetValue, getNextValue) {
-            var dictionary = [],
-                next,
-                enlargeIn = 4,
-                dictSize = 4,
-                numBits = 3,
-                entry = "",
-                result = [],
-                i,
-                w,
-                bits, resb, maxpower, power,
-                c,
-                data = {
-                    val: getNextValue(0),
-                    position: resetValue,
-                    index: 1
-                };
-
-            for (i = 0; i < 3; i += 1) {
-                dictionary[i] = i;
-            }
-
-            bits = 0;
-            maxpower = Math.pow(2, 2);
-            power = 1;
-            while (power != maxpower) {
-                resb = data.val & data.position;
-                data.position >>= 1;
-                if (data.position == 0) {
-                    data.position = resetValue;
-                    data.val = getNextValue(data.index++);
-                }
-                bits |= (resb > 0 ? 1 : 0) * power;
-                power <<= 1;
-            }
-
-            switch (next = bits) {
-            case 0:
-                bits = 0;
-                maxpower = Math.pow(2, 8);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-                c = f(bits);
-                break;
-            case 1:
-                bits = 0;
-                maxpower = Math.pow(2, 16);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-                c = f(bits);
-                break;
-            case 2:
-                return "";
-            }
-            dictionary[3] = c;
-            w = c;
-            result.push(c);
-            while (true) {
-                if (data.index > length) {
-                    return "";
-                }
-
-                bits = 0;
-                maxpower = Math.pow(2, numBits);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-
-                switch (c = bits) {
-                case 0:
-                    bits = 0;
-                    maxpower = Math.pow(2, 8);
-                    power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position;
-                        data.position >>= 1;
-                        if (data.position == 0) {
-                            data.position = resetValue;
-                            data.val = getNextValue(data.index++);
-                        }
-                        bits |= (resb > 0 ? 1 : 0) * power;
-                        power <<= 1;
-                    }
-
-                    dictionary[dictSize++] = f(bits);
-                    c = dictSize - 1;
-                    enlargeIn--;
-                    break;
-                case 1:
-                    bits = 0;
-                    maxpower = Math.pow(2, 16);
-                    power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position;
-                        data.position >>= 1;
-                        if (data.position == 0) {
-                            data.position = resetValue;
-                            data.val = getNextValue(data.index++);
-                        }
-                        bits |= (resb > 0 ? 1 : 0) * power;
-                        power <<= 1;
-                    }
-                    dictionary[dictSize++] = f(bits);
-                    c = dictSize - 1;
-                    enlargeIn--;
-                    break;
-                case 2:
-                    return result.join('');
-                }
-
-                if (enlargeIn == 0) {
-                    enlargeIn = Math.pow(2, numBits);
-                    numBits++;
-                }
-
-                if (dictionary[c]) {
-                    entry = dictionary[c];
-                } else {
-                    if (c === dictSize) {
-                        entry = w + w.charAt(0);
-                    } else {
-                        return null;
-                    }
-                }
-                result.push(entry);
-
-                // Add w+entry[0] to the dictionary.
-                dictionary[dictSize++] = w + entry.charAt(0);
-                enlargeIn--;
-
-                w = entry;
-
-                if (enlargeIn == 0) {
-                    enlargeIn = Math.pow(2, numBits);
-                    numBits++;
-                }
-
-            }
-        }
-    };
-    return LZString;
-});
-// http://www.makeitgo.ws/articles/animationframe/
-// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
-// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
-bento.define('bento/lib/requestanimationframe', [], function () {
-    'use strict';
-
-    var lastTime = 0,
-        vendors = ['ms', 'moz', 'webkit', 'o'];
-    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
-        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
-    }
-
-    if (!window.requestAnimationFrame)
-        window.requestAnimationFrame = function (callback, element) {
-            var currTime = new Date().getTime(),
-                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
-                id = window.setTimeout(function () {
-                    callback(currTime + timeToCall);
-                }, timeToCall);
-            lastTime = currTime + timeToCall;
-            return id;
-        };
-
-    if (!window.cancelAnimationFrame)
-        window.cancelAnimationFrame = function (id) {
-            clearTimeout(id);
-        };
-    return window.requestAnimationFrame;
 });
 /**
  * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
@@ -10754,14 +8083,14 @@ bento.define('bento/managers/object', [
                 objects.sort(function (a, b) {
                     return a.z - b.z;
                 });
-
             },
-            sort = function () {
+            sortStable = function () {
                 // default method for sorting: stable sort
                 Utils.stableSort.inplace(objects, function (a, b) {
                     return a.z - b.z;
                 });
             },
+            sort = sortStable,
             cleanObjects = function () {
                 var i;
                 // loop objects array from end to start and remove null elements
@@ -10817,7 +8146,7 @@ bento.define('bento/managers/object', [
                     fpsMeter.tick();
                 }
 
-                requestAnimationFrame(mainLoop);
+                window.requestAnimationFrame(mainLoop);
             },
             update = function (data) {
                 var object,
@@ -11066,7 +8395,7 @@ bento.define('bento/managers/object', [
                         // initialize it
                         quickAccess[type] = [];
                         array = quickAccess[type];
-                        console.log('Warning: family called ' + type + ' does not exist');
+                        Utils.log('Warning: family called ' + type + ' does not exist', true);
                     }
                     if (callback && array.length) {
                         callback(array);
@@ -11192,14 +8521,15 @@ bento.define('bento/managers/object', [
                 now: Date.now
             };
         }
+        // TODO: deprecate this
         if (settings.debug && Utils.isDefined(window.FPSMeter)) {
-            FPSMeter.defaults.graph = 1;
-            fpsMeter = new FPSMeter();
+            window.FPSMeter.defaults.graph = 1;
+            fpsMeter = new window.FPSMeter();
         }
 
         // swap sort method with default sorting method
         if (settings.defaultSort) {
-            sort = defaultSort;
+            sort = sortDefault;
         }
 
         return module;
@@ -11208,7 +8538,7 @@ bento.define('bento/managers/object', [
 /**
  * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
  * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.audio namespace.
+ * <br>Exports: Object, can be accessed through Bento.saveState namespace.
  * @module bento/managers/savestate
  * @returns SaveState
  */
@@ -11517,6 +8847,4244 @@ bento.define('bento/managers/screen', [
         return screenManager;
 
     };
+});
+/*
+ * Animation component. Draws an animated sprite on screen at the entity position.
+ * <br>Exports: Constructor
+ * @module bento/components/animation
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
+ * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between frames
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+// Defines a 3 x 3 spritesheet with several animations
+// Note: The default is automatically defined if no animations object is passed
+var sprite = new Sprite({
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3,
+        animations: {
+            "default": {
+                frames: [0]
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
+            }
+        }
+     }),
+    entity = new Entity({
+        components: [sprite] // attach sprite to entity
+                             // alternative to passing a components array is by calling entity.attach(sprite);
+    });
+
+// attach entity to game
+Bento.objects.attach(entity);
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/animation', [
+    'bento',
+    'bento/utils',
+], function (Bento, Utils) {
+    'use strict';
+    var Animation = function (settings) {
+        this.entity = null;
+        this.name = 'animation';
+        this.visible = true;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        this.spriteImage = null;
+
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.padding = 0;
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /*
+     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     */
+    Animation.prototype.setup = function (settings) {
+        var self = this,
+            padding = 0;
+
+        this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        this.padding = this.animationSettings.padding || 0;
+
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+    };
+
+    Animation.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
+
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
+        }
+    };
+    /*
+     * Set component to a different animation. The animation won't change if it's already playing.
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     */
+    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimation.frames.length;
+            }
+        }
+    };
+    /*
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
+     */
+    Animation.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+    /*
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     */
+    Animation.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /*
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /*
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Animation.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /*
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Animation.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /*
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Animation.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    Animation.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        reachedEnd = false;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+    Animation.prototype.draw = function (data) {
+        var frameIndex,
+            sourceFrame,
+            sourceX,
+            sourceY,
+            entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sourceFrame = this.currentAnimation.frames[frameIndex];
+        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+
+        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.drawImage(
+            this.spriteImage,
+            sourceX,
+            sourceY,
+            this.frameWidth,
+            this.frameHeight,
+            0,
+            0,
+            this.frameWidth,
+            this.frameHeight
+        );
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+    Animation.prototype.toString = function () {
+        return '[object Animation]';
+    };
+
+    /*
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
+
+    return Animation;
+});
+/*
+ * Component that sets the opacity
+ * <br>Exports: Constructor
+ * @module bento/components/opacity
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @param {Number} settings.opacity - Opacity value (1 is opaque)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/opacity', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var Opacity = function (settings) {
+            settings = settings || {};
+            this.name = 'opacity';
+            this.oldOpacity = 1;
+            this.opacity = 1;
+            if (Utils.isDefined(settings.opacity)) {
+                this.opacity = settings.opacity;
+            }
+        };
+    Opacity.prototype.draw = function (data) {
+        // this.oldOpacity = data.renderer.getOpacity();
+        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
+    };
+    Opacity.prototype.postDraw = function (data) {
+        // data.renderer.setOpacity(this.oldOpacity);
+    };
+    Opacity.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+
+    /*
+     * Set entity opacity
+     * @function
+     * @instance
+     * @param {Number} opacity - Opacity value
+     * @name setOpacity
+     */
+    Opacity.prototype.setOpacity = function (value) {
+        // this.opacity = value;
+        this.entity.alpha = value;
+    };
+    /*
+     * Get entity opacity
+     * @function
+     * @instance
+     * @name getOpacity
+     */
+    Opacity.prototype.getOpacity = function () {
+        return this.entity.alpha;
+        // return this.opacity;
+    };
+    Opacity.prototype.toString = function () {
+        return '[object Opacity]';
+    };
+
+    return Opacity;
+});
+/*
+ * Component that sets the context rotation for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/rotation
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/rotation', [
+    'bento/utils',
+], function (Utils) {
+    'use strict';
+    var Rotation = function (settings) {
+        settings = settings || {};
+        this.name = 'rotation';
+        this.entity = null;
+    };
+
+    Rotation.prototype.draw = function (data) {
+        // data.renderer.save();
+        // data.renderer.rotate(data.entity.rotation);
+    };
+    Rotation.prototype.postDraw = function (data) {
+        // data.renderer.restore();
+    };
+    Rotation.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+
+    /*
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name addAngleDegree
+     */
+    Rotation.prototype.addAngleDegree = function (value) {
+        this.entity.rotation += value * Math.PI / 180;
+    };
+    /*
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name addAngleRadian
+     */
+    Rotation.prototype.addAngleRadian = function (value) {
+        this.entity.rotation += value;
+    };
+    /*
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name setAngleDegree
+     */
+    Rotation.prototype.setAngleDegree = function (value) {
+        this.entity.rotation = value * Math.PI / 180;
+    };
+    /*
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name setAngleRadian
+     */
+    Rotation.prototype.setAngleRadian = function (value) {
+        this.entity.rotation = value;
+    };
+    /*
+     * Returns the parent entity rotation in degrees
+     * @function
+     * @instance
+     * @name getAngleDegree
+     */
+    Rotation.prototype.getAngleDegree = function () {
+        return this.entity.rotation * 180 / Math.PI;
+    };
+    /*
+     * Returns the parent entity rotation in radians
+     * @function
+     * @instance
+     * @name getAngleRadian
+     */
+    Rotation.prototype.getAngleRadian = function () {
+        return this.entity.rotation;
+    };
+    Rotation.prototype.toString = function () {
+        return '[object Rotation]';
+    };
+
+    return Rotation;
+});
+/*
+ * Component that sets the context scale for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/scale
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/scale', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var Scale = function (settings) {
+        this.entity = null;
+        this.name = 'scale';
+    };
+    Scale.prototype.draw = function (data) {
+        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
+    };
+    Scale.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    /*
+     * Scales the parent entity in x direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleX
+     */
+    Scale.prototype.setScaleX = function (value) {
+        this.entity.scale.x = value;
+    };
+    /*
+     * Scales the parent entity in y direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleY
+     */
+    Scale.prototype.setScaleY = function (value) {
+        this.entity.scale.y = value;
+    };
+    Scale.prototype.toString = function () {
+        return '[object Scale]';
+    };
+
+    return Scale;
+});
+/*
+ * Helper component that attaches the Translation, Scale, Rotation, Opacity
+ * and Animation (or Pixi) components. Automatically detects the renderer.
+ * <br>Exports: Constructor
+ * @module bento/components/sprite
+ * @param {Object} settings - Settings object, this object is passed to all other components
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
+ * the Animation component is attached. Same as Sprite.insertBefore.
+ * @param {} settings.... - See other components
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/sprite_old', [
+    'bento',
+    'bento/utils',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/components/opacity',
+    'bento/components/animation'
+], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation) {
+    'use strict';
+    var renderer,
+        component = function (settings) {
+            this.entity = null;
+            this.settings = settings;
+
+            /*
+             * Reference to the Translation component
+             * @instance
+             * @name translation
+             */
+            this.translation = new Translation(settings);
+            /*
+             * Reference to the Rotation component
+             * @instance
+             * @name rotation
+             */
+            this.rotation = new Rotation(settings);
+            /*
+             * Reference to the Scale component
+             * @instance
+             * @name scale
+             */
+            this.scale = new Scale(settings);
+            /*
+             * Reference to the Opacity component
+             * @instance
+             * @name rotation
+             */
+            this.opacity = new Opacity(settings);
+            /*
+             * If renderer is set to pixi, this property is the Pixi component.
+             * Otherwise it's the Animation component
+             * @instance
+             * @name animation
+             */
+            this.animation = new Animation(settings);
+
+
+            this.components = settings.components || [];
+        };
+
+    component.prototype.attached = function (data) {
+        var i = 0;
+        this.entity = data.entity;
+        // attach all components!
+        if (this.translation) {
+            this.entity.attach(this.translation);
+        }
+        if (this.rotation) {
+            this.entity.attach(this.rotation);
+        }
+        if (this.scale) {
+            this.entity.attach(this.scale);
+        }
+        this.entity.attach(this.opacity);
+
+        // wedge in extra components in before the animation component
+        for (i = 0; i < this.components.length; ++i) {
+            this.entity.attach(this.components[i]);
+        }
+        this.entity.attach(this.animation);
+
+        // remove self?
+        this.entity.remove(this);
+    };
+    /*
+     * Allows you to insert components/children entities BEFORE the animation component.
+     * This way you can draw objects behind the sprite.
+     * This function should be called before you attach the Sprite to the Entity.
+     * @function
+     * @param {Array} array - Array of entities to attach
+     * @instance
+     * @name insertBefore
+     */
+    component.prototype.insertBefore = function (array) {
+        if (!Utils.isArray(array)) {
+            array = [array];
+        }
+        this.components = array;
+        return this;
+    };
+
+    component.prototype.toString = function () {
+        return '[object Sprite]';
+    };
+
+    component.prototype.getSettings = function () {
+        return this.settings;
+    };
+
+    return component;
+});
+/*
+ * Component that sets the context translation for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/translation
+ * @param {Object} settings - Settings
+ * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/translation', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2'
+], function (Bento, Utils, Vector2) {
+    'use strict';
+    var bentoSettings;
+    var Translation = function (settings) {
+        if (!bentoSettings) {
+            bentoSettings = Bento.getSettings();
+        }
+        settings = settings || {};
+        this.name = 'translation';
+        this.subPixel = settings.subPixel || false;
+        this.entity = null;
+        /*
+         * Additional x translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name x
+         */
+        this.x = 0;
+        /*
+         * Additional y translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name y
+         */
+        this.y = 0;
+    };
+    Translation.prototype.draw = function (data) {
+        var entity = data.entity,
+            parent = entity.parent,
+            position = entity.position,
+            origin = entity.origin,
+            scroll = data.viewport;
+
+        entity.transform.x = this.x;
+        entity.transform.y = this.y;
+        /*data.renderer.save();
+        if (this.subPixel || bentoSettings.subPixel) {
+            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
+        } else {
+            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
+        }
+        // scroll (only applies to parent objects)
+        if (!parent && !entity.float) {
+            data.renderer.translate(-scroll.x, -scroll.y);
+        }*/
+    };
+    Translation.prototype.postDraw = function (data) {
+        // data.renderer.restore();
+    };
+    Translation.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Translation.prototype.toString = function () {
+        return '[object Translation]';
+    };
+
+    return Translation;
+});
+/*
+ * DEPRECATED: performance is sub par, recommended to use Canvas2d or Pixi renderer
+ * WebGL renderer using gl-sprites by Matt DesLauriers
+ * @copyright (C) 2015 LuckyKat
+ */
+bento.define('bento/renderers/webgl', [
+    'bento/utils',
+    'bento/renderers/canvas2d'
+], function (Utils, Canvas2d) {
+    return function (canvas, settings) {
+        var canWebGl = (function () {
+                // try making a canvas
+                try {
+                    var canvas = document.createElement('canvas');
+                    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                } catch (e) {
+                    return false;
+                }
+            })(),
+            context,
+            glRenderer,
+            original,
+            pixelSize = settings.pixelSize || 1,
+            renderer = {
+                name: 'webgl',
+                save: function () {
+                    glRenderer.save();
+                },
+                restore: function () {
+                    glRenderer.restore();
+                },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    // not sure, untested
+                    glRenderer.transform = glRenderer.transform.clone([
+                        a, b, 0, tx,
+                        c, d, 0, ty,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1
+                    ]);
+                },
+                translate: function (x, y) {
+                    glRenderer.translate(x, y);
+                },
+                scale: function (x, y) {
+                    glRenderer.scale(x, y);
+                },
+                rotate: function (angle) {
+                    glRenderer.rotate(angle);
+                },
+                fillRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    //
+                    renderer.setColor(color);
+                    glRenderer.fillRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                fillCircle: function (color, x, y, radius) {},
+                strokeRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    //
+                    renderer.setColor(color);
+                    glRenderer.strokeRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    var image = packedImage.image;
+                    if (!image.texture) {
+                        image.texture = window.GlSprites.createTexture2D(context, image);
+                    }
+                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
+                },
+                begin: function () {
+                    glRenderer.begin();
+                },
+                flush: function () {
+                    glRenderer.end();
+                },
+                setColor: function (color) {
+                    glRenderer.color = color;
+                },
+                getOpacity: function () {
+                    return glRenderer.color[3];
+                },
+                setOpacity: function (value) {
+                    glRenderer.color[3] = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext,
+                        newGlRenderer;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    newGlRenderer = new window.GlSprites.SpriteRenderer(newContext);
+                    newGlRenderer.ortho(canvas.width, canvas.height);
+
+                    return {
+                        canvas: newCanvas,
+                        context: newGlRenderer
+                    };
+                },
+                setContext: function (ctx) {
+                    glRenderer = ctx;
+                },
+                restoreContext: function () {
+                    glRenderer = original;
+                }
+            };
+
+        // fallback
+        if (canWebGl && Utils.isDefined(window.GlSprites)) {
+            // resize canvas according to pixelSize
+            canvas.width *= pixelSize;
+            canvas.height *= pixelSize;
+            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+            glRenderer = new window.GlSprites.SpriteRenderer(context);
+            glRenderer.ortho(canvas.width / pixelSize, canvas.height / pixelSize);
+            original = glRenderer;
+            return renderer;
+        } else {
+            console.log('webgl failed, revert to canvas');
+            return Canvas2d(canvas, settings);
+        }
+    };
+});
+/**
+ * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
+ * unless entity.updateWhenPaused is turned on.
+ * <br>Exports: Constructor
+ * @module bento/components/clickable
+ * @param {Object} settings - Settings
+ * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
+ * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
+ * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
+ * @param {Function} settings.onClick - Called when pointer taps on the parent entity
+ * @param {Function} settings.onClickUp - The pointer was released above the parent entity
+ * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
+ * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
+ * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
+ * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
+ * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
+ * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/clickable', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/math/transformmatrix',
+    'bento/eventsystem'
+], function (Bento, Utils, Vector2, Matrix, EventSystem) {
+    'use strict';
+
+    var clickables = [];
+
+    var Clickable = function (settings) {
+        var nothing = function () {};
+        this.entity = null;
+        /**
+         * Name of the component
+         * @instance
+         * @default 'clickable'
+         * @name name
+         */
+        this.name = 'clickable';
+        /**
+         * Whether the pointer is over the entity
+         * @instance
+         * @default false
+         * @name isHovering
+         */
+        this.isHovering = false;
+        this.hasTouched = false;
+        /**
+         * Id number of the pointer holding entity
+         * @instance
+         * @default null
+         * @name holdId
+         */
+        this.holdId = null;
+        this.isPointerDown = false;
+        this.initialized = false;
+
+        this.callbacks = {
+            pointerDown: settings.pointerDown || nothing,
+            pointerUp: settings.pointerUp || nothing,
+            pointerMove: settings.pointerMove || nothing,
+            // when clicking on the object
+            onClick: settings.onClick || nothing,
+            onClickUp: settings.onClickUp || nothing,
+            onClickMiss: settings.onClickMiss || nothing,
+            onHold: settings.onHold || nothing,
+            onHoldLeave: settings.onHoldLeave || nothing,
+            onHoldEnter: settings.onHoldEnter || nothing,
+            onHoldEnd: settings.onHoldEnd || nothing,
+            onHoverLeave: settings.onHoverLeave || nothing,
+            onHoverEnter: settings.onHoverEnter || nothing
+        };
+        /**
+         * Static array that holds a reference to all currently active Clickables
+         * @type {Array}
+         */
+        this.clickables = clickables;
+    };
+
+    Clickable.prototype.destroy = function () {
+        var index = clickables.indexOf(this),
+            i = 0,
+            len = 0;
+
+        if (index > -1)
+            clickables[index] = null;
+        // clear the array if it consists of only null's
+        for (i = 0, len = clickables.length; i < len; ++i) {
+            if (clickables[i])
+                break;
+            if (i === len - 1)
+                clickables.length = 0;
+        }
+
+        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
+        this.initialized = false;
+    };
+    Clickable.prototype.start = function () {
+        if (this.initialized) {
+            return;
+        }
+
+        clickables.push(this);
+
+        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
+        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
+        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
+        this.initialized = true;
+    };
+    Clickable.prototype.update = function () {
+        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
+            this.callbacks.onHold();
+        }
+    };
+    Clickable.prototype.cloneEvent = function (evt) {
+        return {
+            id: evt.id,
+            position: evt.position.clone(),
+            eventType: evt.eventType,
+            localPosition: evt.localPosition.clone(),
+            worldPosition: evt.worldPosition.clone(),
+            diffPosition: evt.diffPosition ? evt.diffPosition.clone() : undefined
+        };
+    };
+    Clickable.prototype.pointerDown = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+            return;
+        }
+        this.isPointerDown = true;
+        if (this.callbacks.pointerDown) {
+            this.callbacks.pointerDown.call(this, e);
+        }
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e, true);
+        }
+    };
+    Clickable.prototype.pointerUp = function (evt) {
+        var e = this.transformEvent(evt),
+            mousePosition;
+        // if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+        //     return;
+        // }
+        mousePosition = e.localPosition;
+        this.isPointerDown = false;
+        if (this.callbacks.pointerUp) {
+            this.callbacks.pointerUp.call(this, e);
+        }
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            this.callbacks.onClickUp.call(this, [e]);
+            if (this.hasTouched && this.holdId === e.id) {
+                this.holdId = null;
+                this.callbacks.onHoldEnd.call(this, e);
+            }
+        }
+        this.hasTouched = false;
+    };
+    Clickable.prototype.pointerMove = function (evt) {
+        var e = this.transformEvent(evt);
+        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+            return;
+        }
+        if (this.callbacks.pointerMove) {
+            this.callbacks.pointerMove.call(this, e);
+        }
+        // hovering?
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e);
+        }
+    };
+    Clickable.prototype.checkHovering = function (evt, clicked) {
+        var mousePosition = evt.localPosition;
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldEnter.call(this, evt);
+            }
+            if (!this.isHovering) {
+                this.callbacks.onHoverEnter.call(this, evt);
+            }
+            this.isHovering = true;
+            if (clicked) {
+                this.hasTouched = true;
+                this.holdId = evt.id;
+                this.callbacks.onClick.call(this, evt);
+            }
+        } else {
+            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldLeave.call(this, evt);
+            }
+            if (this.isHovering) {
+                this.callbacks.onHoverLeave.call(this, evt);
+            }
+            this.isHovering = false;
+            if (clicked) {
+                this.callbacks.onClickMiss.call(this, evt);
+            }
+        }
+    };
+
+    Clickable.prototype.transformEvent = function (evt) {
+        evt.localPosition = this.entity.getLocalPosition(evt.worldPosition);
+        return evt;
+    };
+    Clickable.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Clickable.prototype.toString = function () {
+        return '[object Clickable]';
+    };
+
+    return Clickable;
+});
+/**
+ * Component that fills a square.
+ * <br>Exports: Constructor
+ * @module bento/components/fill
+ * @param {Object} settings - Settings
+ * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
+ * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/fill', [
+    'bento/utils',
+    'bento'
+], function (Utils, Bento) {
+    'use strict';
+    var Fill = function (settings) {
+        var viewport = Bento.getViewport();
+        settings = settings || {};
+        this.name = 'fill';
+        this.color = settings.color || [0, 0, 0, 1];
+        this.dimension = settings.dimension || viewport;
+    };
+    Fill.prototype.draw = function (data) {
+        var dimension = this.dimension;
+        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
+    };
+    Fill.prototype.setup = function (settings) {
+        this.color = settings.color;
+    };
+    Fill.prototype.toString = function () {
+        return '[object Fill]';
+    };
+
+    return Fill;
+});
+/**
+ * Sprite component. Draws an animated sprite on screen at the entity position.
+ * <br>Exports: Constructor
+ * @module bento/components/sprite
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
+ * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between frames
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+// Defines a 3 x 3 spritesheet with several animations
+// Note: The default is automatically defined if no animations object is passed
+var sprite = new Sprite({
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3,
+        animations: {
+            "default": {
+                frames: [0]
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
+            }
+        }
+     }),
+    entity = new Entity({
+        components: [sprite] // attach sprite to entity
+                             // alternative to passing a components array is by calling entity.attach(sprite);
+    });
+
+// attach entity to game
+Bento.objects.attach(entity);
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/sprite', [
+    'bento',
+    'bento/utils',
+], function (Bento, Utils) {
+    'use strict';
+    var Sprite = function (settings) {
+        this.entity = null;
+        this.name = 'sprite';
+        this.visible = true;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        // sprite settings
+        this.spriteImage = null;
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.padding = 0;
+
+        // drawing internals
+        this.frameIndex = 0;
+        this.sourceFrame = 0;
+        this.sourceX = 0;
+        this.sourceY = 0;
+
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+        this.currentAnimationLength = 0;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /**
+     * Sets up Sprite. This can be used to overwrite the settings object passed to the constructor.
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     */
+    Sprite.prototype.setup = function (settings) {
+        var self = this,
+            padding = 0;
+
+        this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        this.padding = this.animationSettings.padding || 0;
+
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+    };
+
+    Sprite.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
+
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            if (!animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
+        }
+    };
+    /**
+     * Set component to a different animation. The animation won't change if it's already playing.
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     */
+    Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
+            }
+        }
+    };
+    /**
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
+     */
+    Sprite.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+    /**
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     */
+    Sprite.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Sprite.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Sprite.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Sprite.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Sprite.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    Sprite.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        // no need for update
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+
+        reachedEnd = false;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+
+    Sprite.prototype.updateFrame = function () {
+        this.frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        this.sourceFrame = this.currentAnimation.frames[this.frameIndex];
+        this.sourceX = (this.sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.sourceY = Math.floor(this.sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+    };
+
+    Sprite.prototype.draw = function (data) {
+        var entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+
+        this.updateFrame();
+
+        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.drawImage(
+            this.spriteImage,
+            this.sourceX,
+            this.sourceY,
+            this.frameWidth,
+            this.frameHeight,
+            0,
+            0,
+            this.frameWidth,
+            this.frameHeight
+        );
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+    Sprite.prototype.toString = function () {
+        return '[object Sprite]';
+    };
+
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Sprite.suppressWarnings = false;
+
+    return Sprite;
+});
+/**
+ * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/requirejs/domReady for details
+ */
+/*jslint*/
+/*global require: false, define: false, requirejs: false,
+  window: false, clearInterval: false, document: false,
+  self: false, setInterval: false */
+
+
+bento.define('bento/lib/domready', [], function () {
+    'use strict';
+
+    var isTop, testDiv, scrollIntervalId,
+        isBrowser = typeof window !== "undefined" && window.document,
+        isPageLoaded = !isBrowser,
+        doc = isBrowser ? document : null,
+        readyCalls = [];
+
+    function runCallbacks(callbacks) {
+        var i;
+        for (i = 0; i < callbacks.length; i += 1) {
+            callbacks[i](doc);
+        }
+    }
+
+    function callReady() {
+        var callbacks = readyCalls;
+
+        if (isPageLoaded) {
+            //Call the DOM ready callbacks
+            if (callbacks.length) {
+                readyCalls = [];
+                runCallbacks(callbacks);
+            }
+        }
+    }
+
+    /**
+     * Sets the page as loaded.
+     */
+    function pageLoaded() {
+        if (!isPageLoaded) {
+            isPageLoaded = true;
+            if (scrollIntervalId) {
+                clearInterval(scrollIntervalId);
+            }
+
+            callReady();
+        }
+    }
+
+    if (isBrowser) {
+        if (document.addEventListener) {
+            //Standards. Hooray! Assumption here that if standards based,
+            //it knows about DOMContentLoaded.
+            document.addEventListener("DOMContentLoaded", pageLoaded, false);
+            window.addEventListener("load", pageLoaded, false);
+        } else if (window.attachEvent) {
+            window.attachEvent("onload", pageLoaded);
+
+            testDiv = document.createElement('div');
+            try {
+                isTop = window.frameElement === null;
+            } catch (e) {}
+
+            //DOMContentLoaded approximation that uses a doScroll, as found by
+            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
+            //but modified by other contributors, including jdalton
+            if (testDiv.doScroll && isTop && window.external) {
+                scrollIntervalId = setInterval(function () {
+                    try {
+                        testDiv.doScroll();
+                        pageLoaded();
+                    } catch (e) {}
+                }, 30);
+            }
+        }
+
+        //Check if document already complete, and if so, just trigger page load
+        //listeners. Latest webkit browsers also use "interactive", and
+        //will fire the onDOMContentLoaded before "interactive" but not after
+        //entering "interactive" or "complete". More details:
+        //http://dev.w3.org/html5/spec/the-end.html#the-end
+        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
+        //Hmm, this is more complicated on further use, see "firing too early"
+        //bug: https://github.com/requirejs/domReady/issues/1
+        //so removing the || document.readyState === "interactive" test.
+        //There is still a window.onload binding that should get fired if
+        //DOMContentLoaded is missed.
+        if (document.readyState === "complete") {
+            pageLoaded();
+        }
+    }
+
+    /** START OF PUBLIC API **/
+
+    /**
+     * Registers a callback for DOM ready. If DOM is already ready, the
+     * callback is called immediately.
+     * @param {Function} callback
+     */
+    function domReady(callback) {
+        if (isPageLoaded) {
+            callback(doc);
+        } else {
+            readyCalls.push(callback);
+        }
+        return domReady;
+    }
+
+    domReady.version = '2.0.1';
+
+    /**
+     * Loader Plugin API method
+     */
+    domReady.load = function (name, req, onLoad, config) {
+        if (config.isBuild) {
+            onLoad(null);
+        } else {
+            domReady(onLoad);
+        }
+    };
+
+    /** END OF PUBLIC API **/
+
+    return domReady;
+});
+
+// https://gist.github.com/kirbysayshi/1760774
+
+bento.define('hshg', [], function () {
+
+    //---------------------------------------------------------------------
+    // GLOBAL FUNCTIONS
+    //---------------------------------------------------------------------
+
+    /**
+     * Updates every object's position in the grid, but only if
+     * the hash value for that object has changed.
+     * This method DOES NOT take into account object expansion or
+     * contraction, just position, and does not attempt to change
+     * the grid the object is currently in; it only (possibly) changes
+     * the cell.
+     *
+     * If the object has significantly changed in size, the best bet is to
+     * call removeObject() and addObject() sequentially, outside of the
+     * normal update cycle of HSHG.
+     *
+     * @return  void   desc
+     */
+    function update_RECOMPUTE() {
+
+        var i, obj, grid, meta, objAABB, newObjHash;
+
+        // for each object
+        for (i = 0; i < this._globalObjects.length; i++) {
+            obj = this._globalObjects[i];
+            meta = obj.HSHG;
+            grid = meta.grid;
+
+            if (obj.staticHshg) {
+                continue;
+            }
+
+            // recompute hash
+            objAABB = obj.getAABB();
+            newObjHash = grid.toHash(objAABB.min[0], objAABB.min[1]);
+
+            if (newObjHash !== meta.hash) {
+                // grid position has changed, update!
+                grid.removeObject(obj);
+                grid.addObject(obj, newObjHash);
+            }
+        }
+    }
+
+    // not implemented yet :)
+    function update_REMOVEALL() {
+
+    }
+
+    function testAABBOverlap(objA, objB) {
+        var a, b;
+        if (objA.staticHshg && objB.staticHshg) {
+            return false;
+        }
+
+        a = objA.getAABB();
+        b = objB.getAABB();
+
+        //if(a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.min[2] > b.max[2]
+        //|| a.max[0] < b.min[0] || a.max[1] < b.min[1] || a.max[2] < b.min[2]){
+
+        if (a.min[0] > b.max[0] || a.min[1] > b.max[1] || a.max[0] < b.min[0] || a.max[1] < b.min[1]) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function getLongestAABBEdge(min, max) {
+        return Math.max(
+            Math.abs(max[0] - min[0]), Math.abs(max[1] - min[1])
+            //,Math.abs(max[2] - min[2])
+        );
+    }
+
+    //---------------------------------------------------------------------
+    // ENTITIES
+    //---------------------------------------------------------------------
+
+    function HSHG() {
+
+        this.MAX_OBJECT_CELL_DENSITY = 1 / 8 // objects / cells
+        this.INITIAL_GRID_LENGTH = 256 // 16x16
+        this.HIERARCHY_FACTOR = 2
+        this.HIERARCHY_FACTOR_SQRT = Math.SQRT2
+        this.UPDATE_METHOD = update_RECOMPUTE // or update_REMOVEALL
+
+        this._grids = [];
+        this._globalObjects = [];
+    }
+
+    //HSHG.prototype.init = function(){
+    //  this._grids = [];
+    //  this._globalObjects = [];
+    //}
+
+    HSHG.prototype.addObject = function (obj) {
+        var x, i, cellSize, objAABB = obj.getAABB(),
+            objSize = getLongestAABBEdge(objAABB.min, objAABB.max),
+            oneGrid, newGrid;
+
+        // for HSHG metadata
+        obj.HSHG = {
+            globalObjectsIndex: this._globalObjects.length
+        };
+
+        // add to global object array
+        this._globalObjects.push(obj);
+
+        if (this._grids.length == 0) {
+            // no grids exist yet
+            cellSize = objSize * this.HIERARCHY_FACTOR_SQRT;
+            newGrid = new Grid(cellSize, this.INITIAL_GRID_LENGTH, this);
+            newGrid.initCells();
+            newGrid.addObject(obj);
+
+            this._grids.push(newGrid);
+        } else {
+            x = 0;
+
+            // grids are sorted by cellSize, smallest to largest
+            for (i = 0; i < this._grids.length; i++) {
+                oneGrid = this._grids[i];
+                x = oneGrid.cellSize;
+                if (objSize < x) {
+                    x = x / this.HIERARCHY_FACTOR;
+                    if (objSize < x) {
+                        // find appropriate size
+                        while (objSize < x) {
+                            x = x / this.HIERARCHY_FACTOR;
+                        }
+                        newGrid = new Grid(x * this.HIERARCHY_FACTOR, this.INITIAL_GRID_LENGTH, this);
+                        newGrid.initCells();
+                        // assign obj to grid
+                        newGrid.addObject(obj)
+                        // insert grid into list of grids directly before oneGrid
+                        this._grids.splice(i, 0, newGrid);
+                    } else {
+                        // insert obj into grid oneGrid
+                        oneGrid.addObject(obj);
+                    }
+                    return;
+                }
+            }
+
+            while (objSize >= x) {
+                x = x * this.HIERARCHY_FACTOR;
+            }
+
+            newGrid = new Grid(x, this.INITIAL_GRID_LENGTH, this);
+            newGrid.initCells();
+            // insert obj into grid
+            newGrid.addObject(obj)
+            // add newGrid as last element in grid list
+            this._grids.push(newGrid);
+        }
+    }
+
+    HSHG.prototype.removeObject = function (obj) {
+        var meta = obj.HSHG,
+            globalObjectsIndex, replacementObj;
+
+        if (meta === undefined) {
+            //throw Error(obj + ' was not in the HSHG.');
+            return;
+        }
+
+        // remove object from global object list
+        globalObjectsIndex = meta.globalObjectsIndex
+        if (globalObjectsIndex === this._globalObjects.length - 1) {
+            this._globalObjects.pop();
+        } else {
+            replacementObj = this._globalObjects.pop();
+            replacementObj.HSHG.globalObjectsIndex = globalObjectsIndex;
+            this._globalObjects[globalObjectsIndex] = replacementObj;
+        }
+
+        meta.grid.removeObject(obj);
+
+        // remove meta data
+        delete obj.HSHG;
+    }
+
+    HSHG.prototype.update = function () {
+        this.UPDATE_METHOD.call(this);
+    }
+
+    HSHG.prototype.queryForCollisionPairs = function (broadOverlapTestCallback) {
+
+        var i, j, k, l, c, grid, cell, objA, objB, offset, adjacentCell, biggerGrid, objAAABB, objAHashInBiggerGrid, possibleCollisions = []
+
+        // default broad test to internal aabb overlap test
+        broadOverlapTest = broadOverlapTestCallback || testAABBOverlap;
+
+        // for all grids ordered by cell size ASC
+        for (i = 0; i < this._grids.length; i++) {
+            grid = this._grids[i];
+
+            // for each cell of the grid that is occupied
+            for (j = 0; j < grid.occupiedCells.length; j++) {
+                cell = grid.occupiedCells[j];
+
+                // collide all objects within the occupied cell
+                for (k = 0; k < cell.objectContainer.length; k++) {
+                    objA = cell.objectContainer[k];
+                    for (l = k + 1; l < cell.objectContainer.length; l++) {
+                        objB = cell.objectContainer[l];
+                        if (broadOverlapTest(objA, objB) === true) {
+                            possibleCollisions.push([objA, objB]);
+                        }
+                    }
+                }
+
+                // for the first half of all adjacent cells (offset 4 is the current cell)
+                for (c = 0; c < 4; c++) {
+                    offset = cell.neighborOffsetArray[c];
+
+                    //if(offset === null) { continue; }
+
+                    adjacentCell = grid.allCells[cell.allCellsIndex + offset];
+
+                    // collide all objects in cell with adjacent cell
+                    for (k = 0; k < cell.objectContainer.length; k++) {
+                        objA = cell.objectContainer[k];
+                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
+                            objB = adjacentCell.objectContainer[l];
+                            if (broadOverlapTest(objA, objB) === true) {
+                                possibleCollisions.push([objA, objB]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // forall objects that are stored in this grid
+            for (j = 0; j < grid.allObjects.length; j++) {
+                objA = grid.allObjects[j];
+                objAAABB = objA.getAABB();
+
+                // for all grids with cellsize larger than grid
+                for (k = i + 1; k < this._grids.length; k++) {
+                    biggerGrid = this._grids[k];
+                    objAHashInBiggerGrid = biggerGrid.toHash(objAAABB.min[0], objAAABB.min[1]);
+                    cell = biggerGrid.allCells[objAHashInBiggerGrid];
+
+                    // check objA against every object in all cells in offset array of cell
+                    // for all adjacent cells...
+                    for (c = 0; c < cell.neighborOffsetArray.length; c++) {
+                        offset = cell.neighborOffsetArray[c];
+
+                        //if(offset === null) { continue; }
+
+                        adjacentCell = biggerGrid.allCells[cell.allCellsIndex + offset];
+
+                        // for all objects in the adjacent cell...
+                        for (l = 0; l < adjacentCell.objectContainer.length; l++) {
+                            objB = adjacentCell.objectContainer[l];
+                            // test against object A
+                            if (broadOverlapTest(objA, objB) === true) {
+                                possibleCollisions.push([objA, objB]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //
+        for (i = 0; i < possibleCollisions.length; ++i) {
+            if (possibleCollisions[i][0].collided) {
+                possibleCollisions[i][0].collided({
+                    other: possibleCollisions[i][1]
+                });
+            }
+            if (possibleCollisions[i][1].collided) {
+                possibleCollisions[i][1].collided({
+                    other: possibleCollisions[i][0]
+                });
+            }
+        }
+
+        // return list of object pairs
+        return possibleCollisions;
+    }
+
+    HSHG.update_RECOMPUTE = update_RECOMPUTE;
+    HSHG.update_REMOVEALL = update_REMOVEALL;
+
+    /**
+     * Grid
+     *
+     * @constructor
+     * @param   int cellSize  the pixel size of each cell of the grid
+     * @param   int cellCount  the total number of cells for the grid (width x height)
+     * @param   HSHG parentHierarchy    the HSHG to which this grid belongs
+     * @return  void
+     */
+    function Grid(cellSize, cellCount, parentHierarchy) {
+        this.cellSize = cellSize;
+        this.inverseCellSize = 1 / cellSize;
+        this.rowColumnCount = ~~Math.sqrt(cellCount);
+        this.xyHashMask = this.rowColumnCount - 1;
+        this.occupiedCells = [];
+        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
+        this.allObjects = [];
+        this.sharedInnerOffsets = [];
+
+        this._parentHierarchy = parentHierarchy || null;
+    }
+
+    Grid.prototype.initCells = function () {
+
+        // TODO: inner/unique offset rows 0 and 2 may need to be
+        // swapped due to +y being "down" vs "up"
+
+        var i, gridLength = this.allCells.length,
+            x, y, wh = this.rowColumnCount,
+            isOnRightEdge, isOnLeftEdge, isOnTopEdge, isOnBottomEdge, innerOffsets = [
+                // y+ down offsets
+                //-1 + -wh, -wh, -wh + 1,
+                //-1, 0, 1,
+                //wh - 1, wh, wh + 1
+
+                // y+ up offsets
+                wh - 1, wh, wh + 1, -1, 0, 1, -1 + -wh, -wh, -wh + 1
+            ],
+            leftOffset, rightOffset, topOffset, bottomOffset, uniqueOffsets = [],
+            cell;
+
+        this.sharedInnerOffsets = innerOffsets;
+
+        // init all cells, creating offset arrays as needed
+
+        for (i = 0; i < gridLength; i++) {
+
+            cell = new Cell();
+            // compute row (y) and column (x) for an index
+            y = ~~ (i / this.rowColumnCount);
+            x = ~~ (i - (y * this.rowColumnCount));
+
+            // reset / init
+            isOnRightEdge = false;
+            isOnLeftEdge = false;
+            isOnTopEdge = false;
+            isOnBottomEdge = false;
+
+            // right or left edge cell
+            if ((x + 1) % this.rowColumnCount == 0) {
+                isOnRightEdge = true;
+            } else if (x % this.rowColumnCount == 0) {
+                isOnLeftEdge = true;
+            }
+
+            // top or bottom edge cell
+            if ((y + 1) % this.rowColumnCount == 0) {
+                isOnTopEdge = true;
+            } else if (y % this.rowColumnCount == 0) {
+                isOnBottomEdge = true;
+            }
+
+            // if cell is edge cell, use unique offsets, otherwise use inner offsets
+            if (isOnRightEdge || isOnLeftEdge || isOnTopEdge || isOnBottomEdge) {
+
+                // figure out cardinal offsets first
+                rightOffset = isOnRightEdge === true ? -wh + 1 : 1;
+                leftOffset = isOnLeftEdge === true ? wh - 1 : -1;
+                topOffset = isOnTopEdge === true ? -gridLength + wh : wh;
+                bottomOffset = isOnBottomEdge === true ? gridLength - wh : -wh;
+
+                // diagonals are composites of the cardinals
+                uniqueOffsets = [
+                    // y+ down offset
+                    //leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset,
+                    //leftOffset, 0, rightOffset,
+                    //leftOffset + topOffset, topOffset, rightOffset + topOffset
+
+                    // y+ up offset
+                    leftOffset + topOffset, topOffset, rightOffset + topOffset,
+                    leftOffset, 0, rightOffset,
+                    leftOffset + bottomOffset, bottomOffset, rightOffset + bottomOffset
+                ];
+
+                cell.neighborOffsetArray = uniqueOffsets;
+            } else {
+                cell.neighborOffsetArray = this.sharedInnerOffsets;
+            }
+
+            cell.allCellsIndex = i;
+            this.allCells[i] = cell;
+        }
+    }
+
+    Grid.prototype.toHash = function (x, y, z) {
+        var i, xHash, yHash, zHash;
+
+        if (x < 0) {
+            i = (-x) * this.inverseCellSize;
+            xHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
+        } else {
+            i = x * this.inverseCellSize;
+            xHash = ~~i & this.xyHashMask;
+        }
+
+        if (y < 0) {
+            i = (-y) * this.inverseCellSize;
+            yHash = this.rowColumnCount - 1 - (~~i & this.xyHashMask);
+        } else {
+            i = y * this.inverseCellSize;
+            yHash = ~~i & this.xyHashMask;
+        }
+
+        //if(z < 0){
+        //  i = (-z) * this.inverseCellSize;
+        //  zHash = this.rowColumnCount - 1 - ( ~~i & this.xyHashMask );
+        //} else {
+        //  i = z * this.inverseCellSize;
+        //  zHash = ~~i & this.xyHashMask;
+        //}
+
+        return xHash + yHash * this.rowColumnCount
+            //+ zHash * this.rowColumnCount * this.rowColumnCount;
+    }
+
+    Grid.prototype.addObject = function (obj, hash) {
+        var objAABB, objHash, targetCell;
+
+        // technically, passing this in this should save some computational effort when updating objects
+        if (hash !== undefined) {
+            objHash = hash;
+        } else {
+            objAABB = obj.getAABB()
+            objHash = this.toHash(objAABB.min[0], objAABB.min[1])
+        }
+        targetCell = this.allCells[objHash];
+
+        if (targetCell.objectContainer.length === 0) {
+            // insert this cell into occupied cells list
+            targetCell.occupiedCellsIndex = this.occupiedCells.length;
+            this.occupiedCells.push(targetCell);
+        }
+
+        // add meta data to obj, for fast update/removal
+        obj.HSHG.objectContainerIndex = targetCell.objectContainer.length;
+        obj.HSHG.hash = objHash;
+        obj.HSHG.grid = this;
+        obj.HSHG.allGridObjectsIndex = this.allObjects.length;
+        // add obj to cell
+        targetCell.objectContainer.push(obj);
+
+        // we can assume that the targetCell is already a member of the occupied list
+
+        // add to grid-global object list
+        this.allObjects.push(obj);
+
+        // do test for grid density
+        if (this.allObjects.length / this.allCells.length > this._parentHierarchy.MAX_OBJECT_CELL_DENSITY) {
+            // grid must be increased in size
+            this.expandGrid();
+        }
+    }
+
+    Grid.prototype.removeObject = function (obj) {
+        var meta = obj.HSHG,
+            hash, containerIndex, allGridObjectsIndex, cell, replacementCell, replacementObj;
+
+        hash = meta.hash;
+        containerIndex = meta.objectContainerIndex;
+        allGridObjectsIndex = meta.allGridObjectsIndex;
+        cell = this.allCells[hash];
+
+        // remove object from cell object container
+        if (cell.objectContainer.length === 1) {
+            // this is the last object in the cell, so reset it
+            cell.objectContainer.length = 0;
+
+            // remove cell from occupied list
+            if (cell.occupiedCellsIndex === this.occupiedCells.length - 1) {
+                // special case if the cell is the newest in the list
+                this.occupiedCells.pop();
+            } else {
+                replacementCell = this.occupiedCells.pop();
+                replacementCell.occupiedCellsIndex = cell.occupiedCellsIndex;
+                this.occupiedCells[cell.occupiedCellsIndex] = replacementCell;
+            }
+
+            cell.occupiedCellsIndex = null;
+        } else {
+            // there is more than one object in the container
+            if (containerIndex === cell.objectContainer.length - 1) {
+                // special case if the obj is the newest in the container
+                cell.objectContainer.pop();
+            } else {
+                replacementObj = cell.objectContainer.pop();
+                replacementObj.HSHG.objectContainerIndex = containerIndex;
+                cell.objectContainer[containerIndex] = replacementObj;
+            }
+        }
+
+        // remove object from grid object list
+        if (allGridObjectsIndex === this.allObjects.length - 1) {
+            this.allObjects.pop();
+        } else {
+            replacementObj = this.allObjects.pop();
+            replacementObj.HSHG.allGridObjectsIndex = allGridObjectsIndex;
+            this.allObjects[allGridObjectsIndex] = replacementObj;
+        }
+    }
+
+    Grid.prototype.expandGrid = function () {
+        var i, j, currentCellCount = this.allCells.length,
+            currentRowColumnCount = this.rowColumnCount,
+            currentXYHashMask = this.xyHashMask
+
+        , newCellCount = currentCellCount * 4 // double each dimension
+        , newRowColumnCount = ~~Math.sqrt(newCellCount), newXYHashMask = newRowColumnCount - 1, allObjects = this.allObjects.slice(0) // duplicate array, not objects contained
+        , aCell, push = Array.prototype.push;
+
+        // remove all objects
+        for (i = 0; i < allObjects.length; i++) {
+            this.removeObject(allObjects[i]);
+        }
+
+        // reset grid values, set new grid to be 4x larger than last
+        this.rowColumnCount = newRowColumnCount;
+        this.allCells = Array(this.rowColumnCount * this.rowColumnCount);
+        this.xyHashMask = newXYHashMask;
+
+        // initialize new cells
+        this.initCells();
+
+        // re-add all objects to grid
+        for (i = 0; i < allObjects.length; i++) {
+            this.addObject(allObjects[i]);
+        }
+    }
+
+    /**
+     * A cell of the grid
+     *
+     * @constructor
+     * @return  void   desc
+     */
+    function Cell() {
+        this.objectContainer = [];
+        this.neighborOffsetArray;
+        this.occupiedCellsIndex = null;
+        this.allCellsIndex = null;
+    }
+
+    //---------------------------------------------------------------------
+    // EXPORTS
+    //---------------------------------------------------------------------
+
+    HSHG._private = {
+        Grid: Grid,
+        Cell: Cell,
+        testAABBOverlap: testAABBOverlap,
+        getLongestAABBEdge: getLongestAABBEdge
+    };
+
+    return HSHG;
+});
+// https://github.com/pieroxy/lz-string/
+// Modifications: wrapped in Bento define
+
+
+// Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
+// This work is free. You can redistribute it and/or modify it
+// under the terms of the WTFPL, Version 2
+// For more information see LICENSE.txt or http://www.wtfpl.net/
+//
+// For more information, the home page:
+// http://pieroxy.net/blog/pages/lz-string/testing.html
+//
+// LZ-based compression algorithm, version 1.4.4
+
+bento.define('lzstring', [], function () {
+    // private property
+    var f = String.fromCharCode;
+    var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+    var baseReverseDic = {};
+
+    function getBaseValue(alphabet, character) {
+        if (!baseReverseDic[alphabet]) {
+            baseReverseDic[alphabet] = {};
+            for (var i = 0; i < alphabet.length; i++) {
+                baseReverseDic[alphabet][alphabet.charAt(i)] = i;
+            }
+        }
+        return baseReverseDic[alphabet][character];
+    }
+
+    var LZString = {
+        compressToBase64: function (input) {
+            if (input == null) return "";
+            var res = LZString._compress(input, 6, function (a) {
+                return keyStrBase64.charAt(a);
+            });
+            switch (res.length % 4) { // To produce valid Base64
+                default: // When could this happen ?
+            case 0:
+                return res;
+            case 1:
+                return res + "===";
+            case 2:
+                return res + "==";
+            case 3:
+                return res + "=";
+            }
+        },
+
+        decompressFromBase64: function (input) {
+            if (input == null) return "";
+            if (input == "") return null;
+            return LZString._decompress(input.length, 32, function (index) {
+                return getBaseValue(keyStrBase64, input.charAt(index));
+            });
+        },
+
+        compressToUTF16: function (input) {
+            if (input == null) return "";
+            return LZString._compress(input, 15, function (a) {
+                return f(a + 32);
+            }) + " ";
+        },
+
+        decompressFromUTF16: function (compressed) {
+            if (compressed == null) return "";
+            if (compressed == "") return null;
+            return LZString._decompress(compressed.length, 16384, function (index) {
+                return compressed.charCodeAt(index) - 32;
+            });
+        },
+
+        //compress into uint8array (UCS-2 big endian format)
+        compressToUint8Array: function (uncompressed) {
+            var compressed = LZString.compress(uncompressed);
+            var buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
+
+            for (var i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
+                var current_value = compressed.charCodeAt(i);
+                buf[i * 2] = current_value >>> 8;
+                buf[i * 2 + 1] = current_value % 256;
+            }
+            return buf;
+        },
+
+        //decompress from uint8array (UCS-2 big endian format)
+        decompressFromUint8Array: function (compressed) {
+            if (compressed === null || compressed === undefined) {
+                return LZString.decompress(compressed);
+            } else {
+                var buf = new Array(compressed.length / 2); // 2 bytes per character
+                for (var i = 0, TotalLen = buf.length; i < TotalLen; i++) {
+                    buf[i] = compressed[i * 2] * 256 + compressed[i * 2 + 1];
+                }
+
+                var result = [];
+                buf.forEach(function (c) {
+                    result.push(f(c));
+                });
+                return LZString.decompress(result.join(''));
+
+            }
+
+        },
+
+
+        //compress into a string that is already URI encoded
+        compressToEncodedURIComponent: function (input) {
+            if (input == null) return "";
+            return LZString._compress(input, 6, function (a) {
+                return keyStrUriSafe.charAt(a);
+            });
+        },
+
+        //decompress from an output of compressToEncodedURIComponent
+        decompressFromEncodedURIComponent: function (input) {
+            if (input == null) return "";
+            if (input == "") return null;
+            input = input.replace(/ /g, "+");
+            return LZString._decompress(input.length, 32, function (index) {
+                return getBaseValue(keyStrUriSafe, input.charAt(index));
+            });
+        },
+
+        compress: function (uncompressed) {
+            return LZString._compress(uncompressed, 16, function (a) {
+                return f(a);
+            });
+        },
+        _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
+            if (uncompressed == null) return "";
+            var i, value,
+                context_dictionary = {},
+                context_dictionaryToCreate = {},
+                context_c = "",
+                context_wc = "",
+                context_w = "",
+                context_enlargeIn = 2, // Compensate for the first entry which should not count
+                context_dictSize = 3,
+                context_numBits = 2,
+                context_data = [],
+                context_data_val = 0,
+                context_data_position = 0,
+                ii;
+
+            for (ii = 0; ii < uncompressed.length; ii += 1) {
+                context_c = uncompressed.charAt(ii);
+                if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
+                    context_dictionary[context_c] = context_dictSize++;
+                    context_dictionaryToCreate[context_c] = true;
+                }
+
+                context_wc = context_w + context_c;
+                if (Object.prototype.hasOwnProperty.call(context_dictionary, context_wc)) {
+                    context_w = context_wc;
+                } else {
+                    if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+                        if (context_w.charCodeAt(0) < 256) {
+                            for (i = 0; i < context_numBits; i++) {
+                                context_data_val = (context_data_val << 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                            }
+                            value = context_w.charCodeAt(0);
+                            for (i = 0; i < 8; i++) {
+                                context_data_val = (context_data_val << 1) | (value & 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = value >> 1;
+                            }
+                        } else {
+                            value = 1;
+                            for (i = 0; i < context_numBits; i++) {
+                                context_data_val = (context_data_val << 1) | value;
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = 0;
+                            }
+                            value = context_w.charCodeAt(0);
+                            for (i = 0; i < 16; i++) {
+                                context_data_val = (context_data_val << 1) | (value & 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = value >> 1;
+                            }
+                        }
+                        context_enlargeIn--;
+                        if (context_enlargeIn == 0) {
+                            context_enlargeIn = Math.pow(2, context_numBits);
+                            context_numBits++;
+                        }
+                        delete context_dictionaryToCreate[context_w];
+                    } else {
+                        value = context_dictionary[context_w];
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+
+
+                    }
+                    context_enlargeIn--;
+                    if (context_enlargeIn == 0) {
+                        context_enlargeIn = Math.pow(2, context_numBits);
+                        context_numBits++;
+                    }
+                    // Add wc to the dictionary.
+                    context_dictionary[context_wc] = context_dictSize++;
+                    context_w = String(context_c);
+                }
+            }
+
+            // Output the code for w.
+            if (context_w !== "") {
+                if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+                    if (context_w.charCodeAt(0) < 256) {
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                        }
+                        value = context_w.charCodeAt(0);
+                        for (i = 0; i < 8; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+                    } else {
+                        value = 1;
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1) | value;
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = 0;
+                        }
+                        value = context_w.charCodeAt(0);
+                        for (i = 0; i < 16; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+                    }
+                    context_enlargeIn--;
+                    if (context_enlargeIn == 0) {
+                        context_enlargeIn = Math.pow(2, context_numBits);
+                        context_numBits++;
+                    }
+                    delete context_dictionaryToCreate[context_w];
+                } else {
+                    value = context_dictionary[context_w];
+                    for (i = 0; i < context_numBits; i++) {
+                        context_data_val = (context_data_val << 1) | (value & 1);
+                        if (context_data_position == bitsPerChar - 1) {
+                            context_data_position = 0;
+                            context_data.push(getCharFromInt(context_data_val));
+                            context_data_val = 0;
+                        } else {
+                            context_data_position++;
+                        }
+                        value = value >> 1;
+                    }
+
+
+                }
+                context_enlargeIn--;
+                if (context_enlargeIn == 0) {
+                    context_enlargeIn = Math.pow(2, context_numBits);
+                    context_numBits++;
+                }
+            }
+
+            // Mark the end of the stream
+            value = 2;
+            for (i = 0; i < context_numBits; i++) {
+                context_data_val = (context_data_val << 1) | (value & 1);
+                if (context_data_position == bitsPerChar - 1) {
+                    context_data_position = 0;
+                    context_data.push(getCharFromInt(context_data_val));
+                    context_data_val = 0;
+                } else {
+                    context_data_position++;
+                }
+                value = value >> 1;
+            }
+
+            // Flush the last char
+            while (true) {
+                context_data_val = (context_data_val << 1);
+                if (context_data_position == bitsPerChar - 1) {
+                    context_data.push(getCharFromInt(context_data_val));
+                    break;
+                } else context_data_position++;
+            }
+            return context_data.join('');
+        },
+
+        decompress: function (compressed) {
+            if (compressed == null) return "";
+            if (compressed == "") return null;
+            return LZString._decompress(compressed.length, 32768, function (index) {
+                return compressed.charCodeAt(index);
+            });
+        },
+
+        _decompress: function (length, resetValue, getNextValue) {
+            var dictionary = [],
+                next,
+                enlargeIn = 4,
+                dictSize = 4,
+                numBits = 3,
+                entry = "",
+                result = [],
+                i,
+                w,
+                bits, resb, maxpower, power,
+                c,
+                data = {
+                    val: getNextValue(0),
+                    position: resetValue,
+                    index: 1
+                };
+
+            for (i = 0; i < 3; i += 1) {
+                dictionary[i] = i;
+            }
+
+            bits = 0;
+            maxpower = Math.pow(2, 2);
+            power = 1;
+            while (power != maxpower) {
+                resb = data.val & data.position;
+                data.position >>= 1;
+                if (data.position == 0) {
+                    data.position = resetValue;
+                    data.val = getNextValue(data.index++);
+                }
+                bits |= (resb > 0 ? 1 : 0) * power;
+                power <<= 1;
+            }
+
+            switch (next = bits) {
+            case 0:
+                bits = 0;
+                maxpower = Math.pow(2, 8);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+                c = f(bits);
+                break;
+            case 1:
+                bits = 0;
+                maxpower = Math.pow(2, 16);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+                c = f(bits);
+                break;
+            case 2:
+                return "";
+            }
+            dictionary[3] = c;
+            w = c;
+            result.push(c);
+            while (true) {
+                if (data.index > length) {
+                    return "";
+                }
+
+                bits = 0;
+                maxpower = Math.pow(2, numBits);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+
+                switch (c = bits) {
+                case 0:
+                    bits = 0;
+                    maxpower = Math.pow(2, 8);
+                    power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position;
+                        data.position >>= 1;
+                        if (data.position == 0) {
+                            data.position = resetValue;
+                            data.val = getNextValue(data.index++);
+                        }
+                        bits |= (resb > 0 ? 1 : 0) * power;
+                        power <<= 1;
+                    }
+
+                    dictionary[dictSize++] = f(bits);
+                    c = dictSize - 1;
+                    enlargeIn--;
+                    break;
+                case 1:
+                    bits = 0;
+                    maxpower = Math.pow(2, 16);
+                    power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position;
+                        data.position >>= 1;
+                        if (data.position == 0) {
+                            data.position = resetValue;
+                            data.val = getNextValue(data.index++);
+                        }
+                        bits |= (resb > 0 ? 1 : 0) * power;
+                        power <<= 1;
+                    }
+                    dictionary[dictSize++] = f(bits);
+                    c = dictSize - 1;
+                    enlargeIn--;
+                    break;
+                case 2:
+                    return result.join('');
+                }
+
+                if (enlargeIn == 0) {
+                    enlargeIn = Math.pow(2, numBits);
+                    numBits++;
+                }
+
+                if (dictionary[c]) {
+                    entry = dictionary[c];
+                } else {
+                    if (c === dictSize) {
+                        entry = w + w.charAt(0);
+                    } else {
+                        return null;
+                    }
+                }
+                result.push(entry);
+
+                // Add w+entry[0] to the dictionary.
+                dictionary[dictSize++] = w + entry.charAt(0);
+                enlargeIn--;
+
+                w = entry;
+
+                if (enlargeIn == 0) {
+                    enlargeIn = Math.pow(2, numBits);
+                    numBits++;
+                }
+
+            }
+        }
+    };
+    return LZString;
+});
+// http://www.makeitgo.ws/articles/animationframe/
+// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+bento.define('bento/lib/requestanimationframe', [], function () {
+    'use strict';
+
+    var lastTime = 0,
+        vendors = ['ms', 'moz', 'webkit', 'o'];
+    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
+    }
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function (callback, element) {
+            var currTime = new Date().getTime(),
+                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
+                id = window.setTimeout(function () {
+                    callback(currTime + timeToCall);
+                }, timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
+
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function (id) {
+            clearTimeout(id);
+        };
+    return window.requestAnimationFrame;
+});
+/**
+ * A helper module that returns a rectangle with the same aspect ratio as the screen size.
+ * Assuming portrait mode, autoresize holds the width and then fills up the height
+ * If the height goes over the max or minimum size, then the width gets adapted.
+ * <br>Exports: Constructor
+ * @module bento/autoresize
+ * @param {Rectangle} canvasDimension - Default size
+ * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
+ * then autoresize will start filling up the width
+ * @param {Boolean} isLandscape - Game is landscape, swap operations of width and height
+ * @returns Rectangle
+ */
+bento.define('bento/autoresize', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvasDimension, minSize, maxSize, isLandscape) {
+        var originalDimension = canvasDimension.clone(),
+            innerWidth = window.innerWidth,
+            innerHeight = window.innerHeight,
+            devicePixelRatio = window.devicePixelRatio,
+            deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
+            deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,
+            swap = function () {
+                // swap width and height
+                var temp = canvasDimension.width;
+                canvasDimension.width = canvasDimension.height;
+                canvasDimension.height = temp;
+            },
+            setup = function () {
+                var ratio = deviceWidth / deviceHeight;
+
+                if (ratio > 1) {
+                    // user is holding device wrong
+                    ratio = 1 / ratio;
+                }
+
+                canvasDimension.height = canvasDimension.width / ratio;
+
+                // exceed min size?
+                if (canvasDimension.height < minSize) {
+                    canvasDimension.height = minSize;
+                    canvasDimension.width = ratio * canvasDimension.height;
+                }
+                if (canvasDimension.height > maxSize) {
+                    canvasDimension.height = maxSize;
+                    canvasDimension.width = ratio * canvasDimension.height;
+                }
+
+                if (isLandscape) {
+                    swap();
+                }
+
+                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
+                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
+                return canvasDimension;
+            },
+            scrollAndResize = function () {
+                window.scrollTo(0, 0);
+            };
+
+
+        window.addEventListener('orientationchange', scrollAndResize, false);
+
+        if (isLandscape) {
+            swap();
+        }
+
+        return setup();
+    };
+});
+/**
+ * An Entity that helps using a HTML5 2d canvas as Sprite. Its component temporarily takes over
+ * the renderer, so any entity that gets attached to the parent will start drawing on the canvas.
+ * <br>Exports: Constructor
+ * @param {Object} settings - Required, set the width and height
+ * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
+ * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
+ * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
+ * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
+ * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
+ * @module bento/canvas
+ * @returns Entity
+ */
+bento.define('bento/canvas', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/utils',
+    'bento/tween',
+    'bento/packedimage',
+    'bento/objectpool',
+    'bento/renderers/canvas2d'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween,
+    PackedImage,
+    ObjectPool,
+    Canvas2D
+) {
+    'use strict';
+    var canvasPool = new ObjectPool({
+        poolSize: 1,
+        constructor: function () {
+            var canvas = document.createElement('canvas');
+
+            return canvas;
+        },
+        destructor: function (obj) {
+            // clear canvas
+            var context = obj.getContext('2d');
+            context.clearRect(0, 0, obj.width, obj.height);
+            // clear texture
+            if (obj.texture) {
+                obj.texture = null;
+            }
+            return obj;
+        }
+    });
+    return function (settings) {
+        var viewport = Bento.getViewport(),
+            i,
+            l,
+            sprite,
+            canvas,
+            context,
+            originalRenderer,
+            renderer,
+            packedImage,
+            entity,
+            components,
+            drawn = false,
+            // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
+            component = {
+                name: 'rendererSwapper',
+                draw: function (data) {
+                    // draw once
+                    if (drawn) {
+                        return;
+                    }
+
+                    // clear up canvas
+                    if (!settings.preventAutoClear) {
+                        context.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+
+                    // clear up webgl
+                    if (canvas.texture) {
+                        canvas.texture = null;
+                    }
+
+                    // swap renderer
+                    originalRenderer = data.renderer;
+                    data.renderer = renderer;
+
+                    // re-apply the origin translation
+                    data.renderer.save();
+                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
+                },
+                postDraw: function (data) {
+                    if (drawn) {
+                        return;
+                    }
+                    data.renderer.restore();
+                    // swap back
+                    data.renderer = originalRenderer;
+
+                    // draw once
+                    if (settings.drawOnce) {
+                        drawn = true;
+                    }
+                }
+            };
+
+        // init canvas
+        if (settings.canvas) {
+            canvas = settings.canvas;
+        } else {
+            canvas = canvasPool.get();
+            canvas.width = settings.width;
+            canvas.height = settings.height;
+        }
+        context = canvas.getContext('2d');
+
+        // init renderer
+        renderer = new Canvas2D(canvas, {
+            pixelSize: settings.pixelSize || 1
+        });
+
+        // init sprite
+        packedImage = new PackedImage(canvas);
+        sprite = new Sprite({
+            image: packedImage
+        });
+
+        // init entity and its components
+        // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
+        components = [sprite, component];
+        // attach any other component in settings
+        if (settings.components) {
+            for (i = 0, l = settings.components.length; i < l; ++i) {
+                components.push(settings.components[i]);
+            }
+        }
+        entity = new Entity({
+            z: settings.z,
+            name: settings.name,
+            origin: settings.origin,
+            originRelative: settings.originRelative,
+            position: settings.position,
+            components: components,
+            family: settings.family,
+            init: settings.init
+        });
+
+        // public interface
+        entity.extend({
+            /**
+             * Returns the canvas element
+             * @function
+             * @instance
+             * @returns HTML Canvas Element
+             * @name getCanvas
+             */
+            getCanvas: function () {
+                return canvas;
+            },
+            /**
+             * Returns the 2d context, to perform manual drawing operations
+             * @function
+             * @instance
+             * @returns HTML Canvas 2d Context
+             * @name getContext
+             */
+            getContext: function () {
+                return context;
+            }
+        });
+
+        return entity;
+    };
+});
+/*
+ * Returns a color array, for use in renderer
+ * <br>Exports: Constructor
+ * @param {Number} r - Red value [0...255]
+ * @param {Number} g - Green value [0...255]
+ * @param {Number} b - Blue value [0...255]
+ * @param {Number} a - Alpha value [0...1]
+ * @returns {Array} Returns a color array
+ * @module bento/color
+ */
+bento.define('bento/color', ['bento/utils'], function (Utils) {
+    return function (r, g, b, a) {
+        r = r / 255;
+        r = g / 255;
+        r = b / 255;
+        if (!Utils.isDefined(a)) {
+            a = 1;
+        }
+        return [r, g, b, a];
+    };
+});
+/**
+ * General object pool
+ * <br>Exports: Constructor
+ * @param {Object} settings - Settings object is required
+ * @param {Function} settings.constructor - function that returns the object for pooling
+ * @param {Function} settings.destructor - function that resets object for reuse
+ * @param {Number} settings.poolSize - amount to pre-initialize
+ * @module bento/objectpool
+ * @returns ObjectPool
+ */
+bento.define('bento/objectpool', [
+    'bento',
+    'bento/utils'
+], function (
+    Bento,
+    Utils
+) {
+    'use strict';
+    return function (specs) {
+        var pool = [],
+            isInitialized = false,
+            constructor = specs.constructor,
+            destructor = specs.destructor,
+            pushObject = function () {
+                pool.push(constructor());
+            };
+
+        if (!constructor) {
+            throw 'Error: Must pass a settings.constructor function that returns an object';
+        }
+        if (!destructor) {
+            throw 'Error: Must pass a settings.destructor function that cleans the object';
+        }
+
+        // return interface
+        return {
+            /**
+             * Returns a new object from the pool, the pool is populated automatically if empty
+             */
+            get: function () {
+                // pool is empty!
+                if (pool.length === 0) {
+                    pushObject();
+                }
+                // get the last in the pool
+                return pool.pop();
+            },
+            /**
+             * Puts object back in the pool
+             */
+            discard: function (obj) {
+                // reset the object
+                destructor(obj);
+                // put it back
+                pool.push(obj);
+            },
+            init: function () {
+                if (isInitialized) {
+                    return;
+                }
+                isInitialized = true;
+                Utils.repeat(specs.poolSize || 0, pushObject);
+
+            }
+        };
+    };
+});
+/**
+ * Screen object. Screens are convenience modules that are similar to levels/rooms/scenes in games.
+ * Tiled Map Editor can be used to design the levels {@link http://www.mapeditor.org/}.
+ * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
+ * <br>Exports: Constructor
+ * @module bento/screen
+ * @param {Object} settings - Settings object
+ * @param {String} settings.tiled - Asset name of the json file
+ * @param {String} settings.onShow - Callback when screen starts
+ * @param {String} settings.onHide - Callback when screen is removed
+ * @param {Rectangle} [settings.dimension] - Set dimension of the screen (overwritten by tmx size)
+ * @returns Screen
+ */
+bento.define('bento/screen', [
+    'bento/utils',
+    'bento',
+    'bento/math/rectangle',
+    'bento/math/vector2',
+    'bento/tiled'
+], function (Utils, Bento, Rectangle, Vector2, Tiled) {
+    'use strict';
+    return function (settings) {
+        /*settings = {
+            dimension: Rectangle, [optional / overwritten by tmx size]
+            tiled: String
+        }*/
+        var viewport = Bento.getViewport(),
+            module = {
+                /**
+                 * Name of the screen
+                 * @instance
+                 * @name name
+                 */
+                name: null,
+                /**
+                 * Reference to Tiled object (if tiled was used)
+                 * @instance
+                 * @see module:bento/tiled
+                 * @name tiled
+                 */
+                tiled: null,
+                /**
+                 * Dimension of the screen
+                 * @instance
+                 * @name dimension
+                 */
+                dimension: (settings && settings.dimension) ? settings.dimension : viewport.clone(),
+                extend: function (object) {
+                    return Utils.extend(this, object);
+                },
+                /**
+                 * Loads a tiled map
+                 * @function
+                 * @instance
+                 * @returns {String} name - Name of the JSON asset
+                 * @name loadTiled
+                 */
+                loadTiled: function (name) {
+                    this.tiled = new Tiled({
+                        assetName: name,
+                        spawnBackground: true,
+                        spawnEntities: true
+                    });
+                    this.dimension = this.tiled.dimension;
+                },
+                /**
+                 * Callback when the screen is shown (called by screen manager)
+                 * @function
+                 * @instance
+                 * @returns {Object} data - Extra data to be passed
+                 * @name onShow
+                 */
+                onShow: function (data) {
+                    if (settings) {
+                        // load tiled map if present
+                        if (settings.tiled) {
+                            this.loadTiled(settings.tiled);
+                        }
+                        // callback
+                        if (settings.onShow) {
+                            settings.onShow(data);
+                        }
+                    }
+                },
+                /**
+                 * Removes all objects and restores viewport position
+                 * @function
+                 * @instance
+                 * @returns {Object} data - Extra data to be passed
+                 * @name onHide
+                 */
+                onHide: function (data) {
+                    var viewport = Bento.getViewport();
+                    // remove all objects
+                    Bento.removeAll();
+                    // reset viewport scroll when hiding screen
+                    viewport.x = 0;
+                    viewport.y = 0;
+                    // callback
+                    if (settings.onHide) {
+                        settings.onHide(data);
+                    }
+                }
+            };
+
+        return module;
+    };
+});
+/**
+ * Reads Tiled JSON file and draws layers.
+ * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
+ * the layer is split into multiple canvases. Easiest way to get started is to pass the asset name of the Tiled
+ * JSON and set spawnBackground and spawnEntities to true.
+ * <br>Exports: Constructor
+ * @module bento/tiled
+ * @param {Object} settings - Settings object
+ * @param {String} settings.assetName - Name of the Tiled JSON asset to load
+ * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
+ * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
+ * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
+ * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)
+ * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
+ * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
+ * @param {Function} [settings.onComplete] - Called when the reader passed all layers
+ * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
+ * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
+ * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
+ * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
+ * @returns Object
+ */
+bento.define('bento/tiled', [
+    'bento',
+    'bento/entity',
+    'bento/components/sprite',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/math/polygon',
+    'bento/packedimage',
+    'bento/utils',
+    'bento/tiledreader'
+], function (
+    Bento,
+    Entity,
+    Sprite,
+    Vector2,
+    Rectangle,
+    Polygon,
+    PackedImage,
+    Utils,
+    TiledReader
+) {
+    'use strict';
+    // a collection of sprites/canvases that represent the drawn tiled layers
+    var LayerSprites = function (canvasSize, mapSize) {
+        // number of sprites horizontally
+        var spritesCountX = Math.ceil(mapSize.x / canvasSize.x);
+        var spritesCountY = Math.ceil(mapSize.y / canvasSize.y);
+        // combined width of canvases
+        var width = spritesCountX * canvasSize.x;
+        var height = spritesCountY * canvasSize.y;
+        // collection of canvases
+        var layers = {
+            // "0": [canvas, canvas, ...]
+            length: 0
+        };
+        var initLayer = function (layerId) {
+            var i;
+            var layer = [];
+            var canvas;
+            var context;
+
+            for (i = 0; i < spritesCountX * spritesCountY; ++i) {
+                canvas = document.createElement('canvas');
+                canvas.width = canvasSize.x;
+                canvas.height = canvasSize.y;
+                context = canvas.getContext('2d');
+                canvas.context = context;
+                layer.push(canvas);
+            }
+            layers[layerId] = layer;
+            layers.length += 1;
+        };
+        var getCanvas = function (layerId, destination) {
+            // convert destination position to array index
+            var x = Math.floor(destination.x / canvasSize.x) % spritesCountX;
+            var y = Math.floor(destination.y / canvasSize.y) % spritesCountY;
+            var index = x + y * spritesCountX;
+
+            // init collection if needed
+            if (!layers[layerId]) {
+                initLayer(layerId);
+            }
+
+            return {
+                index: index,
+                canvas: layers[layerId][index]
+            };
+        };
+
+        return {
+            spritesCountX: spritesCountX,
+            spritesCountY: spritesCountY,
+            canvasSize: canvasSize,
+            layers: layers,
+            getSpritesFromLayer: function (layerId) {
+                return layers[layerId];
+            },
+            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD) {
+                // get the corresponding canvas
+                var canvasData = getCanvas(layerId, destination);
+                var canvas = canvasData.canvas;
+                var index = canvasData.index;
+                var context = canvas.context;
+                var doFlipX = false;
+                var doFlipY = false;
+                var rotation = 0;
+                // canvas offset
+                var offset = new Vector2(
+                    canvasSize.x * (index % spritesCountX),
+                    canvasSize.y * Math.floor(index / spritesCountX)
+                );
+
+                // convert to rotation and flipping
+                if (!flipD) {
+                    if (flipX && flipY) {
+                        rotation = Math.PI;
+                    } else {
+                        doFlipX = flipX;
+                        doFlipY = flipY;
+                    }
+                } else {
+                    if (!flipX && !flipY) {
+                        rotation = Math.PI / 2;
+                        doFlipY = true;
+                    } else if (flipX && !flipY) {
+                        rotation = Math.PI / 2;
+                    } else if (!flipX && flipY) {
+                        rotation = Math.PI * 3 / 2;
+                    } else if (flipX && flipY) {
+                        rotation = Math.PI / 2;
+                        doFlipX = true;
+                    }
+                }
+
+                context.save();
+                // move to destination
+                context.translate(destination.x - offset.x, destination.y - offset.y);
+                // offset origin for rotation
+                context.translate(source.width / 2, source.height / 2);
+                // apply rotation
+                context.rotate(rotation);
+                context.scale(doFlipX ? -1 : 1, doFlipY ? -1 : 1);
+                // offset origin
+                context.translate(-source.width / 2, -source.height / 2);
+                // draw the tile!
+                context.drawImage(
+                    packedImage.image,
+                    packedImage.x + source.x,
+                    packedImage.y + source.y,
+                    source.width,
+                    source.height,
+                    0,
+                    0,
+                    destination.width,
+                    destination.height
+                );
+                context.restore();
+            }
+        };
+    };
+
+    var Tiled = function (settings) {
+        var assetName = settings.assetName;
+        var json = settings.tiled || Bento.assets.getJson(assetName);
+        var width = json.width || 0;
+        var height = json.height || 0;
+        var tileWidth = json.tilewidth || 0;
+        var tileHeight = json.tileheight || 0;
+        var mergeLayers = json.merge || false;
+        var onInit = settings.onInit;
+        var onLayer = settings.onLayer;
+        var onTile = settings.onTile;
+        var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+        var onSpawn = settings.onSpawn;
+        var onSpawnComplete = settings.onSpawnComplete;
+        var offset = settings.offset || new Vector2(0, 0);
+        var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
+        var mapSize = new Vector2(width * tileWidth, height * tileHeight);
+        var currentSpriteLayer = -1;
+        var layerSprites = new LayerSprites(maxCanvasSize, mapSize);
+        var entities = [];
+        var backgrounds = [];
+        var entitiesSpawned = 0;
+        var entitiesToSpawn = 0;
+        var tiledReader = new TiledReader({
+            tiled: json,
+            onInit: onInit,
+            onExternalTileset: function (source) {
+                // unfortunately, external tileset paths are relative to the tile json path
+                // making it difficult to load (would need to do path parsing etc...)
+                // instead we try to make an educated guess what the asset name is
+                var json;
+                var jsonPath = source.indexOf('json/');
+                var relativePath = source.indexOf('../');
+                var path = source;
+                var split;
+                if (jsonPath >= 0) {
+                    // if the name "json/" is there, we can guess the path is after the json/ part
+                    path = source.substring(jsonPath + ('json/').length);
+                } else if (relativePath >= 0) {
+                    // no json/ is there and the path has relative indicators
+                    path = source;
+
+                    if (assetName) {
+                        // path parsing, urgh
+                        split = assetName.split('/');
+                        split.pop(); // remove filename
+                        while (path.indexOf('../') >= 0) {
+                            if (split.length === 0) {
+                                throw "ERROR: Impossible path to external tileset";
+                            }
+                            // move up one folder
+                            split.pop();
+                            path = path.replace('../', '');
+                        }
+                        // final path, may need an extra slash
+                        path = split.join('/') + (split.length ? '/' : '') + path;
+                    } else {
+                        // more dangerous method: try removing all relative indicators
+                        while (path.indexOf('../') >= 0) {
+                            path = path.replace('../', '');
+                        }
+                    }
+                }
+                path = path.replace('.json', '');
+
+                json = Bento.assets.getJson(path);
+
+                return json;
+            },
+            onLayer: function (layer) {
+                if (layer.type === "tilelayer") {
+                    if (!mergeLayers) {
+                        currentSpriteLayer += 1;
+                    } else {
+                        currentSpriteLayer = 0;
+                    }
+                }
+                if (onLayer) {
+                    onLayer(layer);
+                }
+            },
+            onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
+                // get destination position
+                var x = tileX * tileWidth;
+                var y = tileY * tileHeight;
+                var destination = new Rectangle(x, y, tileWidth, tileHeight);
+
+                // get source position
+                var source = getSourceTile(tileSet, tileIndex);
+
+                // retrieve the corresponding image asset
+                // there is a very high chance the url contains "images/" since the json files
+                // should be stored in the "json/" folder and images in "images/"
+                var imageUrl = tileSet.image;
+                var assetName;
+                var imageAsset;
+                assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
+                assetName = assetName.replace('.png', '');
+                imageAsset = Bento.assets.getImage(assetName);
+
+                // draw on the layer
+                // TODO: cache the drawn layers? Would load faster if a player returns to a screen, on the other hand it could lead to memory hogging
+                layerSprites.drawTile(
+                    currentSpriteLayer,
+                    destination,
+                    source,
+                    imageAsset,
+                    flipX,
+                    flipY,
+                    flipD
+                );
+
+                if (onTile) {
+                    onTile(tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
+                }
+            },
+            onObject: function (object, tileSet, tileIndex) {
+                if (onObject) {
+                    onObject(object, tileSet, tileIndex);
+                }
+                if (settings.spawnEntities) {
+                    spawnEntity(object, tileSet, tileIndex);
+                }
+            },
+            onComplete: function () {
+                var layers = layerSprites.layers;
+                var layer;
+                var l = layers.length;
+                var i;
+                var canvasSize = layerSprites.canvasSize;
+                var spritesCountX = layerSprites.spritesCountX;
+                var spritesCountY = layerSprites.spritesCountY;
+                var makeEntity = function () {
+                    var j = 0;
+                    var canvas;
+                    var sprite;
+                    var entity;
+                    for (j = 0; j < layer.length; ++j) {
+                        canvas = layer[j];
+                        sprite = new Sprite({
+                            image: new PackedImage(canvas)
+                        });
+                        entity = new Entity({
+                            z: 0,
+                            name: 'background',
+                            family: ['backgrounds'],
+                            position: new Vector2(
+                                offset.x + canvasSize.x * (j % spritesCountX),
+                                offset.y + canvasSize.y * Math.floor(j / spritesCountX)
+                            ),
+                            components: [sprite]
+                        });
+                        // spawn background entities now?
+                        if (settings.spawnBackground) {
+                            Bento.objects.attach(entity);
+                        }
+                        backgrounds.push(entity);
+                    }
+                };
+
+                for (i = 0; i < l; ++i) {
+                    layer = layers[i];
+                    makeEntity();
+                }
+
+                if (onComplete) {
+                    onComplete();
+                }
+            }
+        });
+        // helper function to get the source in the image
+        var getSourceTile = function (tileset, index) {
+            var tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
+            var tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
+
+            return new Rectangle(
+                (index % tilesetWidth) * tileset.tilewidth,
+                Math.floor(index / tilesetWidth) * tileset.tileheight,
+                tileset.tilewidth,
+                tileset.tileheight
+            );
+        };
+        // attempt to spawn object by tileproperty "module"
+        // this is mainly for backwards compatibility of the old Tiled module
+        var spawnEntity = function (object, tileSet, tileIndex) {
+            var tileproperties;
+            var properties;
+            var moduleName;
+            var x = object.x;
+            var y = object.y;
+            var params;
+            if (!object.gid) {
+                // not an entity (it's a rectangle or other shape)
+                return;
+            }
+            tileproperties = tileSet.tileproperties;
+            if (!tileproperties) {
+                return;
+            }
+            properties = tileproperties[tileIndex];
+            if (!properties) {
+                return;
+            }
+            moduleName = properties.module;
+            if (!moduleName) {
+                return;
+            }
+            params = {
+                tiled: {
+                    position: new Vector2(x, y),
+                    tileSet: tileSet,
+                    tileIndex: tileIndex,
+                    tileProperties: properties,
+                    object: object,
+                    objectProperties: object.properties,
+                    jsonName: assetName // reference to current json name
+                }
+            };
+            entitiesToSpawn += 1;
+            bento.require([moduleName], function (Instance) {
+                var instance = new Instance(params),
+                    origin = instance.origin,
+                    dimension = instance.dimension;
+
+                instance.position = new Vector2(
+                    offset.x + x + origin.x,
+                    offset.y + y + (origin.y - dimension.height)
+                );
+
+                // add to game
+                Bento.objects.attach(instance);
+                entities.push(instance);
+
+                entitiesSpawned += 1;
+
+                if (onSpawn) {
+                    onSpawn(instance);
+                }
+
+                if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
+                    onSpawnComplete();
+                }
+            });
+        };
+
+        tiledReader.read();
+
+        return {
+            name: settings.name || 'tiled',
+            /**
+             * Name of the Tiled JSON asset
+             * @instance
+             * @name assetName
+             */
+            assetName: assetName,
+            /**
+             * Rectangle with width and height of the Tiled map in pixels
+             * @instance
+             * @name dimension
+             */
+            dimension: new Rectangle(0, 0, mapSize.x, mapSize.y),
+            /**
+             * Array of all entities spawned
+             * @instance
+             * @name entities
+             */
+            entities: entities,
+            /**
+             * Array of all background entities spawned
+             * @instance
+             * @name backgrounds
+             */
+            backgrounds: backgrounds,
+            /**
+             * Object containing all drawn layers
+             * @instance
+             * @name layerImages
+             */
+            layerImages: layerSprites
+        };
+    };
+
+    return Tiled;
+});
+/**
+ * A generic interpreter for Tiled map JSON files.
+ * <br>Exports: Constructor
+ * @module bento/tiledreader
+ * @param {Object} settings - Settings object
+ * @param {String} settings.tiled - Tiled map JSON asset
+ * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
+ * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
+ * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
+ * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON
+ * @param {Function} [settings.onComplete] - Called when the reader is done
+ * @param {Boolean} [settings.spawn] - Spawns entities
+ * @returns Object
+ */
+bento.define('bento/tiledreader', [], function () {
+    'use strict';
+    var FLIPX = 0x80000000;
+    var FLIPY = 0x40000000;
+    var FLIPDIAGONAL = 0x20000000;
+
+    var TiledReader = function (settings) {
+        // cache callbacks
+        var onExternalTileset = settings.onExternalTileset;
+        var onInit = settings.onInit;
+        var onLayer = settings.onLayer;
+        var onTile = settings.onTile;
+        var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+
+        // the tiled json
+        var json = settings.tiled || {};
+
+        // width and height in tiles
+        var width = json.width || 0;
+        var height = json.height || 0;
+
+        // width and height of a single tile
+        var tileWidth = json.tilewidth || 0;
+        var tileHeight = json.tileheight || 0;
+
+        // tilesets
+        var tilesets = json.tilesets || [];
+        var tilesetsCount = tilesets.length;
+        var externalTilesets = {
+            // "source": tileset JSON
+        };
+        var cachedFirstGids = [];
+
+        // layers
+        var layers = json.layers || [];
+        var layersCount = layers.length;
+
+        // load external tilesets
+        var importTilesets = function () {
+            var i;
+            var l;
+            var tileset;
+            var source;
+
+            // loop through all tilesets, look for external tilesets
+            for (i = 0, l = tilesets.length; i < l; ++i) {
+                tileset = tilesets[i];
+                source = tileset.source;
+                if (source) {
+                    // to stay independent of any asset loader, this is loaded through a callback
+                    externalTilesets[source] = onExternalTileset(source);
+                }
+
+                // meanwhile, cache all firstGids for faster lookups
+                cachedFirstGids.push(tileset.firstgid);
+            }
+        };
+        var decompress = function (layer) {
+            var base64ToUint32array = function (base64) {
+                var raw = window.atob(base64);
+                var i;
+                var len = raw.length;
+                var bytes = new Uint8Array(len);
+                for (i = 0; i < len; i++) {
+                    bytes[i] = raw.charCodeAt(i);
+                }
+                var data = new Uint32Array(bytes.buffer, 0, len / 4);
+                return data;
+            };
+            var encoding = layer.encoding;
+            if (encoding === 'base64') {
+                layer.data = base64ToUint32array(layer.data);
+                layer.encoding = null;
+            } else if (encoding) {
+                // TODO: compression formats
+                throw "ERROR: compression not supported. Please set Tile Layer Format to CSV in Tiled.";
+            }
+            return layer;
+        };
+        var loopLayers = function () {
+            var i, il;
+            var j, jl;
+            var k, kl;
+            var layers = json.layers;
+            var layer;
+            var layerData;
+            var lh;
+            var lw;
+            var objects;
+            var object;
+            var properties;
+            var layerId = 0;
+            var type;
+            var getTileset = function (gid) {
+                var l,
+                    tileset,
+                    count = tilesetsCount,
+                    current = null,
+                    firstGid,
+                    currentFirstGid;
+
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l < count; ++l) {
+                    firstGid = cachedFirstGids[l];
+                    if (firstGid <= gid) {
+                        current = tilesets[l];
+                        currentFirstGid = firstGid;
+                    }
+                }
+
+                // tileset is external?
+                if (current.source) {
+                    current = externalTilesets[current.source];
+                }
+
+                return {
+                    tileSet: current,
+                    firstGid: currentFirstGid
+                };
+            };
+            var tileCallback = function (data, x, y) {
+                // callback for every tile (stored layer.data)
+                var gid = data[y * width + x];
+                var tilesetData;
+                var tileIndex;
+                var flipX;
+                var flipY;
+                var flipDiagonal;
+
+                // no tile
+                if (gid === 0) {
+                    return;
+                }
+
+                // read out the flags
+                flipX = (gid & FLIPX);
+                flipY = (gid & FLIPY);
+                flipDiagonal = (gid & FLIPDIAGONAL);
+
+                // clear flags
+                gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
+
+                // get the corresponding tileset and tile index
+                tilesetData = getTileset(gid);
+                tileIndex = gid - tilesetData.firstGid;
+
+                // callback
+                onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
+            };
+            var objectCallback = function (object) {
+                var tileIndex;
+                var tilesetData;
+                var gid = object.gid;
+                if (gid) {
+                    // get the corresponding tileset and tile index
+                    tilesetData = getTileset(gid);
+                    tileIndex = gid - tilesetData.firstGid;
+                    onObject(object, tilesetData.tileSet, tileIndex);
+                } else {
+                    // gid may not be present, in that case it's a rectangle or other shape
+                    onObject(object);
+                }
+            };
+
+            // loop through layers
+            for (k = 0, kl = layers.length; k < kl; ++k) {
+                layer = layers[k];
+                type = layer.type;
+
+                if (onLayer) {
+                    onLayer(layer);
+                }
+                if (type === 'tilelayer') {
+                    // skip layer if invisible???
+                    if (!layer.visible) {
+                        continue;
+                    }
+
+                    // decompress data?
+                    decompress(layer);
+
+                    layerData = layer.data;
+
+                    // loop through layer.data, which should be width * height in size
+                    for (j = 0; j < height; ++j) {
+                        for (i = 0; i < width; ++i) {
+                            tileCallback(layerData, i, j);
+                        }
+                    }
+
+                } else if (type === 'objectgroup') {
+                    objects = layer.objects || [];
+                    il = objects.length;
+                    for (i = 0; i < il; ++i) {
+                        object = objects[i];
+
+                        objectCallback(object);
+                    }
+                }
+            }
+            if (onComplete) {
+                onComplete();
+            }
+        };
+
+        importTilesets();
+
+        if (onInit) {
+            onInit(json, externalTilesets);
+        }
+        // loopLayers();
+
+        return {
+            /**
+             * Read tiled JSON and loop through all layers, tiles and objects
+             * @function
+             * @instance
+             * @name read
+             */
+            read: loopLayers
+        };
+    };
+
+    return TiledReader;
+});
+/**
+ * The Tween is an entity that performs an interpolation within a timeframe. The entity
+ * removes itself after the tween ends.
+ * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
+ * <br>Exports: Constructor
+ * @module bento/tween
+ * @param {Object} settings - Settings object
+ * @param {Number} settings.from - Starting value
+ * @param {Number} settings.to - End value
+ * @param {Number} settings.in - Time frame
+ * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
+ * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
+ * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
+ * @param {Function} [settings.onUpdate] - Called every tick during the tween lifetime. Callback parameters: (value, time)
+ * @param {Function} [settings.onComplete] - Called when tween ends
+ * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
+ * @param {Number} [settings.delay] - Wait an amount of ticks before starting
+ * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
+ * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional)
+ * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
+ * @returns Entity
+ */
+bento.define('bento/tween', [
+    'bento',
+    'bento/math/vector2',
+    'bento/utils',
+    'bento/entity'
+], function (Bento, Vector2, Utils, Entity) {
+    'use strict';
+    var robbertPenner = {
+        // t: current time, b: begInnIng value, c: change In value, d: duration
+        easeInQuad: function (t, b, c, d) {
+            return c * (t /= d) * t + b;
+        },
+        easeOutQuad: function (t, b, c, d) {
+            return -c * (t /= d) * (t - 2) + b;
+        },
+        easeInOutQuad: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t + b;
+            return -c / 2 * ((--t) * (t - 2) - 1) + b;
+        },
+        easeInCubic: function (t, b, c, d) {
+            return c * (t /= d) * t * t + b;
+        },
+        easeOutCubic: function (t, b, c, d) {
+            return c * ((t = t / d - 1) * t * t + 1) + b;
+        },
+        easeInOutCubic: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
+            return c / 2 * ((t -= 2) * t * t + 2) + b;
+        },
+        easeInQuart: function (t, b, c, d) {
+            return c * (t /= d) * t * t * t + b;
+        },
+        easeOutQuart: function (t, b, c, d) {
+            return -c * ((t = t / d - 1) * t * t * t - 1) + b;
+        },
+        easeInOutQuart: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
+            return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
+        },
+        easeInQuint: function (t, b, c, d) {
+            return c * (t /= d) * t * t * t * t + b;
+        },
+        easeOutQuint: function (t, b, c, d) {
+            return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+        },
+        easeInOutQuint: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
+            return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
+        },
+        easeInSine: function (t, b, c, d) {
+            return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
+        },
+        easeOutSine: function (t, b, c, d) {
+            return c * Math.sin(t / d * (Math.PI / 2)) + b;
+        },
+        easeInOutSine: function (t, b, c, d) {
+            return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+        },
+        easeInExpo: function (t, b, c, d) {
+            return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
+        },
+        easeOutExpo: function (t, b, c, d) {
+            return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
+        },
+        easeInOutExpo: function (t, b, c, d) {
+            if (t === 0) return b;
+            if (t === d) return b + c;
+            if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
+            return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
+        },
+        easeInCirc: function (t, b, c, d) {
+            return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
+        },
+        easeOutCirc: function (t, b, c, d) {
+            return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
+        },
+        easeInOutCirc: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
+            return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
+        },
+        easeInElastic: function (t, b, c, d) {
+            var s = 1.70158,
+                p = 0,
+                a = c;
+            if (t === 0) return b;
+            if ((t /= d) === 1) return b + c;
+            if (!p) p = d * 0.3;
+            if (a < Math.abs(c)) {
+                a = c;
+                s = p / 4;
+            } else s = p / (2 * Math.PI) * Math.asin(c / a);
+            return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+        },
+        easeOutElastic: function (t, b, c, d) {
+            var s = 1.70158,
+                p = 0,
+                a = c;
+            if (t === 0) return b;
+            if ((t /= d) === 1) return b + c;
+            if (!p) p = d * 0.3;
+            if (a < Math.abs(c)) {
+                a = c;
+                s = p / 4;
+            } else s = p / (2 * Math.PI) * Math.asin(c / a);
+            return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
+        },
+        easeInOutElastic: function (t, b, c, d) {
+            var s = 1.70158,
+                p = 0,
+                a = c;
+            if (t === 0) return b;
+            if ((t /= d / 2) === 2) return b + c;
+            if (!p) p = d * (0.3 * 1.5);
+            if (a < Math.abs(c)) {
+                a = c;
+                s = p / 4;
+            } else s = p / (2 * Math.PI) * Math.asin(c / a);
+            if (t < 1) return -0.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+            return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * 0.5 + c + b;
+        },
+        easeInBack: function (t, b, c, d, s) {
+            if (s === undefined) s = 1.70158;
+            return c * (t /= d) * t * ((s + 1) * t - s) + b;
+        },
+        easeOutBack: function (t, b, c, d, s) {
+            if (s === undefined) s = 1.70158;
+            return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+        },
+        easeInOutBack: function (t, b, c, d, s) {
+            if (s === undefined) s = 1.70158;
+            if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
+            return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
+        },
+        easeInBounce: function (t, b, c, d) {
+            return c - this.easeOutBounce(d - t, 0, c, d) + b;
+        },
+        easeOutBounce: function (t, b, c, d) {
+            if ((t /= d) < (1 / 2.75)) {
+                return c * (7.5625 * t * t) + b;
+            } else if (t < (2 / 2.75)) {
+                return c * (7.5625 * (t -= (1.5 / 2.75)) * t + 0.75) + b;
+            } else if (t < (2.5 / 2.75)) {
+                return c * (7.5625 * (t -= (2.25 / 2.75)) * t + 0.9375) + b;
+            } else {
+                return c * (7.5625 * (t -= (2.625 / 2.75)) * t + 0.984375) + b;
+            }
+        },
+        easeInOutBounce: function (t, b, c, d) {
+            if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
+            return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
+        }
+    };
+    var interpolations = {
+        linear: function (s, e, t, alpha, beta) {
+            return (e - s) * t + s;
+        },
+        quadratic: function (s, e, t, alpha, beta) {
+            return (e - s) * t * t + s;
+        },
+        squareroot: function (s, e, t, alpha, beta) {
+            return (e - s) * Math.pow(t, 0.5) + s;
+        },
+        cubic: function (s, e, t, alpha, beta) {
+            return (e - s) * t * t * t + s;
+        },
+        cuberoot: function (s, e, t, alpha, beta) {
+            return (e - s) * Math.pow(t, 1 / 3) + s;
+        },
+        exponential: function (s, e, t, alpha, beta) {
+            //takes alpha as growth/damp factor
+            return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+        },
+        elastic: function (s, e, t, alpha, beta) {
+            //alpha=growth factor, beta=wavenumber
+            return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+        },
+        sin: function (s, e, t, alpha, beta) {
+            //s=offset, e=amplitude, alpha=wavenumber
+            return s + e * Math.sin(alpha * t * 2 * Math.PI);
+        },
+        cos: function (s, e, t, alpha, beta) {
+            //s=offset, e=amplitude, alpha=wavenumber
+            return s + e * Math.cos(alpha * t * 2 * Math.PI);
+        }
+    };
+    var interpolate = function (type, s, e, t, alpha, beta) {
+        // interpolate(string type,float from,float to,float time,float alpha,float beta)
+        // s = starting value
+        // e = ending value
+        // t = time variable (going from 0 to 1)
+        var fn = interpolations[type];
+        if (s.isVector2 && e.isVector2) {
+            if (fn) {
+                return new Vector2(
+                    fn(s.x, e.x, t, alpha, beta),
+                    fn(s.y, e.y, t, alpha, beta)
+                );
+            } else {
+                return new Vector2(
+                    robbertPenner[type](t, s.x, e.x - s.x, 1),
+                    robbertPenner[type](t, s.y, e.y - s.y, 1)
+                );
+            }
+        } else {
+            if (fn) {
+                return fn(s, e, t, alpha, beta);
+            } else {
+                return robbertPenner[type](t, s, e - s, 1);
+            }
+        }
+    };
+
+    var Tween = function (settings) {
+        /* settings = {
+            from: Number
+            to: Number
+            in: Number
+            ease: String
+            alpha: Number (optional)
+            beta: Number (optional)
+            stay: Boolean (optional)
+            do: Gunction (value, time) {} (optional)
+            onComplete: function () {} (optional)
+            id: Number (optional),
+            updateWhenPaused: Boolean (optional)
+            ignoreGameSpeed: Boolean (optional)
+        }*/
+        var time = 0;
+        var added = false;
+        var running = true;
+        var onUpdate = settings.onUpdate || settings.do;
+        var ease = settings.ease || 'linear';
+        var startVal = settings.from || 0;
+        var delay = settings.delay || 0;
+        var delayTimer = 0;
+        var endVal = Utils.isDefined(settings.to) ? settings.to : 1;
+        var deltaT = settings.in || 1;
+        var alpha = Utils.isDefined(settings.alpha) ? settings.alpha : 1;
+        var beta = Utils.isDefined(settings.beta) ? settings.beta : 1;
+        var ignoreGameSpeed = settings.ignoreGameSpeed;
+        var stay = settings.stay;
+        var tween = new Entity(settings).extend({
+            id: settings.id,
+            update: function (data) {
+                if (!running) {
+                    return;
+                }
+                if (delayTimer < delay) {
+                    delayTimer += 1;
+                    return;
+                }
+                if (ignoreGameSpeed) {
+                    time += 1;
+                } else {
+                    time += data.speed;
+                }
+                // run update
+                if (onUpdate) {
+                    onUpdate.apply(this, [interpolate(
+                        ease,
+                        startVal,
+                        endVal,
+                        time / deltaT,
+                        alpha,
+                        beta
+                    ), time]);
+                }
+                // end
+                if (time >= deltaT && !stay) {
+                    if (settings.onComplete) {
+                        settings.onComplete.apply(this);
+                    }
+                    Bento.objects.remove(tween);
+                    added = false;
+                }
+            },
+            /**
+             * Start the tween. Only call if you used stop() before.
+             * @function
+             * @instance
+             * @returns {Entity} Returns self
+             * @name begin
+             */
+            begin: function () {
+                time = 0;
+                if (!added) {
+                    Bento.objects.add(tween);
+                    added = true;
+                }
+                running = true;
+                return tween;
+            },
+            /**
+             * Stops the tween (note that the entity isn't removed).
+             * @function
+             * @instance
+             * @returns {Entity} Returns self
+             * @name stop
+             */
+            stop: function () {
+                time = 0;
+                running = false;
+                return tween;
+            }
+        });
+
+        if (!Utils.isDefined(settings.ease)) {
+            Utils.log("WARNING: settings.ease is undefined.");
+        }
+
+        // tween automatically starts
+        tween.begin();
+
+        return tween;
+    };
+
+    // enums
+    Tween.LINEAR = 'linear';
+    Tween.QUADRATIC = 'quadratic';
+    Tween.CUBIC = 'cubic';
+    Tween.SQUAREROOT = 'squareroot';
+    Tween.CUBEROOT = 'cuberoot';
+    Tween.EXPONENTIAL = 'exponential';
+    Tween.ELASTIC = 'elastic';
+    Tween.SIN = 'sin';
+    Tween.COS = 'cos';
+    Tween.EASEINQUAD = 'easeInQuad';
+    Tween.EASEOUTQUAD = 'easeOutQuad';
+    Tween.EASEINOUTQUAD = 'easeInOutQuad';
+    Tween.EASEINCUBIC = 'easeInCubic';
+    Tween.EASEOUTCUBIC = 'easeOutCubic';
+    Tween.EASEINOUTCUBIC = 'easeInOutCubic';
+    Tween.EASEINQUART = 'easeInQuart';
+    Tween.EASEOUTQUART = 'easeOutQuart';
+    Tween.EASEINOUTQUART = 'easeInOutQuart';
+    Tween.EASEINQUINT = 'easeInQuint';
+    Tween.EASEOUTQUINT = 'easeOutQuint';
+    Tween.EASEINOUTQUINT = 'easeInOutQuint';
+    Tween.EASEINSINE = 'easeInSine';
+    Tween.EASEOUTSINE = 'easeOutSine';
+    Tween.EASEINOUTSINE = 'easeInOutSine';
+    Tween.EASEINEXPO = 'easeInExpo';
+    Tween.EASEOUTEXPO = 'easeOutExpo';
+    Tween.EASEINOUTEXPO = 'easeInOutExpo';
+    Tween.EASEINCIRC = 'easeInCirc';
+    Tween.EASEOUTCIRC = 'easeOutCirc';
+    Tween.EASEINOUTCIRC = 'easeInOutCirc';
+    Tween.EASEINELASTIC = 'easeInElastic';
+    Tween.EASEOUTELASTIC = 'easeOutElastic';
+    Tween.EASEINOUTELASTIC = 'easeInOutElastic';
+    Tween.EASEINBACK = 'easeInBack';
+    Tween.EASEOUTBACK = 'easeOutBack';
+    Tween.EASEINOUTBACK = 'easeInOutBack';
+    Tween.EASEINBOUNCE = 'easeInBounce';
+    Tween.EASEOUTBOUNCE = 'easeOutBounce';
+    Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
+
+    return Tween;
 });
 /**
  * A 2-dimensional array
@@ -12789,1498 +14357,6 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     return Vector2;
 });
 /**
- * A helper module that returns a rectangle with the same aspect ratio as the screen size.
- * Assuming portrait mode, autoresize holds the width and then fills up the height
- * If the height goes over the max or minimum size, then the width gets adapted.
- * <br>Exports: Constructor
- * @module bento/autoresize
- * @param {Rectangle} canvasDimension - Default size
- * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
- * then autoresize will start filling up the width
- * @param {Boolean} isLandscape - Game is landscape, swap operations of width and height
- * @returns Rectangle
- */
-bento.define('bento/autoresize', [
-    'bento/utils'
-], function (Utils) {
-    return function (canvasDimension, minSize, maxSize, isLandscape) {
-        var originalDimension = canvasDimension.clone(),
-            innerWidth = window.innerWidth,
-            innerHeight = window.innerHeight,
-            devicePixelRatio = window.devicePixelRatio,
-            deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
-            deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,
-            swap = function () {
-                // swap width and height
-                var temp = canvasDimension.width;
-                canvasDimension.width = canvasDimension.height;
-                canvasDimension.height = temp;
-            },
-            setup = function () {
-                var ratio = deviceWidth / deviceHeight;
-
-                if (ratio > 1) {
-                    // user is holding device wrong
-                    ratio = 1 / ratio;
-                }
-
-                canvasDimension.height = canvasDimension.width / ratio;
-
-                // exceed min size?
-                if (canvasDimension.height < minSize) {
-                    canvasDimension.height = minSize;
-                    canvasDimension.width = ratio * canvasDimension.height;
-                }
-                if (canvasDimension.height > maxSize) {
-                    canvasDimension.height = maxSize;
-                    canvasDimension.width = ratio * canvasDimension.height;
-                }
-
-                if (isLandscape) {
-                    swap();
-                }
-
-                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
-                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
-                return canvasDimension;
-            },
-            scrollAndResize = function () {
-                window.scrollTo(0, 0);
-            };
-
-
-        window.addEventListener('orientationchange', scrollAndResize, false);
-
-        if (isLandscape) {
-            swap();
-        }
-
-        return setup();
-    };
-});
-/**
- * An Entity that helps using a HTML5 2d canvas as Sprite. Its component temporarily takes over
- * the renderer, so any entity that gets attached to the parent will start drawing on the canvas.
- * <br>Exports: Constructor
- * @param {Object} settings - Required, set the width and height
- * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
- * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
- * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
- * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
- * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
- * @module bento/canvas
- * @returns Entity
- */
-bento.define('bento/canvas', [
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/components/sprite',
-    'bento/components/clickable',
-    'bento/entity',
-    'bento/eventsystem',
-    'bento/utils',
-    'bento/tween',
-    'bento/packedimage',
-    'bento/objectpool',
-    'bento/renderers/canvas2d'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Sprite,
-    Clickable,
-    Entity,
-    EventSystem,
-    Utils,
-    Tween,
-    PackedImage,
-    ObjectPool,
-    Canvas2D
-) {
-    'use strict';
-    var canvasPool = new ObjectPool({
-        poolSize: 1,
-        constructor: function () {
-            var canvas = document.createElement('canvas');
-
-            return canvas;
-        },
-        destructor: function (obj) {
-            // clear canvas
-            var context = obj.getContext('2d');
-            context.clearRect(0, 0, obj.width, obj.height);
-            // clear texture
-            if (obj.texture) {
-                obj.texture = null;
-            }
-            return obj;
-        }
-    });
-    return function (settings) {
-        var viewport = Bento.getViewport(),
-            i,
-            l,
-            sprite,
-            canvas,
-            context,
-            originalRenderer,
-            renderer,
-            packedImage,
-            entity,
-            components,
-            drawn = false,
-            // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
-            component = {
-                name: 'rendererSwapper',
-                draw: function (data) {
-                    // draw once
-                    if (drawn) {
-                        return;
-                    }
-
-                    // clear up canvas
-                    if (!settings.preventAutoClear) {
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-
-                    // clear up webgl
-                    if (canvas.texture) {
-                        canvas.texture = null;
-                    }
-
-                    // swap renderer
-                    originalRenderer = data.renderer;
-                    data.renderer = renderer;
-
-                    // re-apply the origin translation
-                    data.renderer.save();
-                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
-                },
-                postDraw: function (data) {
-                    if (drawn) {
-                        return;
-                    }
-                    data.renderer.restore();
-                    // swap back
-                    data.renderer = originalRenderer;
-
-                    // draw once
-                    if (settings.drawOnce) {
-                        drawn = true;
-                    }
-                }
-            };
-
-        // init canvas
-        if (settings.canvas) {
-            canvas = settings.canvas;
-        } else {
-            canvas = canvasPool.get();
-            canvas.width = settings.width;
-            canvas.height = settings.height;
-        }
-        context = canvas.getContext('2d');
-
-        // init renderer
-        renderer = new Canvas2D(canvas, {
-            pixelSize: settings.pixelSize || 1
-        });
-
-        // init sprite
-        packedImage = new PackedImage(canvas);
-        sprite = new Sprite({
-            image: packedImage
-        });
-
-        // init entity and its components
-        // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
-        components = [sprite, component];
-        // attach any other component in settings
-        if (settings.components) {
-            for (i = 0, l = settings.components.length; i < l; ++i) {
-                components.push(settings.components[i]);
-            }
-        }
-        entity = new Entity({
-            z: settings.z,
-            name: settings.name,
-            origin: settings.origin,
-            originRelative: settings.originRelative,
-            position: settings.position,
-            components: components,
-            family: settings.family,
-            init: settings.init
-        });
-
-        // public interface
-        entity.extend({
-            /**
-             * Returns the canvas element
-             * @function
-             * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
-             */
-            getCanvas: function () {
-                return canvas;
-            },
-            /**
-             * Returns the 2d context, to perform manual drawing operations
-             * @function
-             * @instance
-             * @returns HTML Canvas 2d Context
-             * @name getContext
-             */
-            getContext: function () {
-                return context;
-            }
-        });
-
-        return entity;
-    };
-});
-/*
- * Returns a color array, for use in renderer
- * <br>Exports: Constructor
- * @param {Number} r - Red value [0...255]
- * @param {Number} g - Green value [0...255]
- * @param {Number} b - Blue value [0...255]
- * @param {Number} a - Alpha value [0...1]
- * @returns {Array} Returns a color array
- * @module bento/color
- */
-bento.define('bento/color', ['bento/utils'], function (Utils) {
-    return function (r, g, b, a) {
-        r = r / 255;
-        r = g / 255;
-        r = b / 255;
-        if (!Utils.isDefined(a)) {
-            a = 1;
-        }
-        return [r, g, b, a];
-    };
-});
-/**
- * General object pool
- * <br>Exports: Constructor
- * @param {Object} settings - Settings object is required
- * @param {Function} settings.constructor - function that returns the object for pooling
- * @param {Function} settings.destructor - function that resets object for reuse
- * @param {Number} settings.poolSize - amount to pre-initialize
- * @module bento/objectpool
- * @returns ObjectPool
- */
-bento.define('bento/objectpool', [
-    'bento',
-    'bento/utils'
-], function (
-    Bento,
-    Utils
-) {
-    'use strict';
-    return function (specs) {
-        var pool = [],
-            isInitialized = false,
-            constructor = specs.constructor,
-            destructor = specs.destructor,
-            pushObject = function () {
-                pool.push(constructor());
-            };
-
-        if (!constructor) {
-            throw 'Error: Must pass a settings.constructor function that returns an object';
-        }
-        if (!destructor) {
-            throw 'Error: Must pass a settings.destructor function that cleans the object';
-        }
-
-        // return interface
-        return {
-            /**
-             * Returns a new object from the pool, the pool is populated automatically if empty
-             */
-            get: function () {
-                // pool is empty!
-                if (pool.length === 0) {
-                    pushObject();
-                }
-                // get the last in the pool
-                return pool.pop();
-            },
-            /**
-             * Puts object back in the pool
-             */
-            discard: function (obj) {
-                // reset the object
-                destructor(obj);
-                // put it back
-                pool.push(obj);
-            },
-            init: function () {
-                if (isInitialized) {
-                    return;
-                }
-                isInitialized = true;
-                Utils.repeat(specs.poolSize || 0, pushObject);
-
-            }
-        };
-    };
-});
-/**
- * Screen object. Screens are convenience modules that are similar to levels/rooms/scenes in games.
- * Tiled Map Editor can be used to design the levels {@link http://www.mapeditor.org/}.
- * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
- * <br>Exports: Constructor
- * @module bento/screen
- * @param {Object} settings - Settings object
- * @param {String} settings.tiled - Asset name of the json file
- * @param {String} settings.onShow - Callback when screen starts
- * @param {String} settings.onHide - Callback when screen is removed
- * @param {Rectangle} [settings.dimension] - Set dimension of the screen (overwritten by tmx size)
- * @returns Screen
- */
-bento.define('bento/screen', [
-    'bento/utils',
-    'bento',
-    'bento/math/rectangle',
-    'bento/math/vector2',
-    'bento/tiled'
-], function (Utils, Bento, Rectangle, Vector2, Tiled) {
-    'use strict';
-    return function (settings) {
-        /*settings = {
-            dimension: Rectangle, [optional / overwritten by tmx size]
-            tiled: String
-        }*/
-        var viewport = Bento.getViewport(),
-            module = {
-                /**
-                 * Name of the screen
-                 * @instance
-                 * @name name
-                 */
-                name: null,
-                /**
-                 * Reference to Tiled object (if tiled was used)
-                 * @instance
-                 * @see module:bento/tiled
-                 * @name tiled
-                 */
-                tiled: null,
-                /**
-                 * Dimension of the screen
-                 * @instance
-                 * @name dimension
-                 */
-                dimension: (settings && settings.dimension) ? settings.dimension : viewport.clone(),
-                extend: function (object) {
-                    return Utils.extend(this, object);
-                },
-                /**
-                 * Loads a tiled map
-                 * @function
-                 * @instance
-                 * @returns {String} name - Name of the JSON asset
-                 * @name loadTiled
-                 */
-                loadTiled: function (name) {
-                    this.tiled = new Tiled({
-                        assetName: name,
-                        spawnBackground: true,
-                        spawnEntities: true
-                    });
-                    this.dimension = this.tiled.dimension;
-                },
-                /**
-                 * Callback when the screen is shown (called by screen manager)
-                 * @function
-                 * @instance
-                 * @returns {Object} data - Extra data to be passed
-                 * @name onShow
-                 */
-                onShow: function (data) {
-                    if (settings) {
-                        // load tiled map if present
-                        if (settings.tiled) {
-                            this.loadTiled(settings.tiled);
-                        }
-                        // callback
-                        if (settings.onShow) {
-                            settings.onShow(data);
-                        }
-                    }
-                },
-                /**
-                 * Removes all objects and restores viewport position
-                 * @function
-                 * @instance
-                 * @returns {Object} data - Extra data to be passed
-                 * @name onHide
-                 */
-                onHide: function (data) {
-                    var viewport = Bento.getViewport();
-                    // remove all objects
-                    Bento.removeAll();
-                    // reset viewport scroll when hiding screen
-                    viewport.x = 0;
-                    viewport.y = 0;
-                    // callback
-                    if (settings.onHide) {
-                        settings.onHide(data);
-                    }
-                }
-            };
-
-        return module;
-    };
-});
-/**
- * Reads Tiled JSON file and draws layers.
- * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
- * the layer is split into multiple canvases. Easiest way to get started is to pass the asset name of the Tiled
- * JSON and set spawnBackground and spawnEntities to true.
- * <br>Exports: Constructor
- * @module bento/tiled
- * @param {Object} settings - Settings object
- * @param {String} settings.assetName - Name of the Tiled JSON asset to load
- * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
- * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
- * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
- * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)
- * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
- * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
- * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
- * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
- * @returns Object
- */
-bento.define('bento/tiled', [
-    'bento',
-    'bento/entity',
-    'bento/components/sprite',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/math/polygon',
-    'bento/packedimage',
-    'bento/utils',
-    'bento/tiledreader'
-], function (
-    Bento,
-    Entity,
-    Sprite,
-    Vector2,
-    Rectangle,
-    Polygon,
-    PackedImage,
-    Utils,
-    TiledReader
-) {
-    'use strict';
-    // a collection of sprites/canvases that represent the drawn tiled layers
-    var LayerSprites = function (canvasSize, mapSize) {
-        // number of sprites horizontally
-        var spritesCountX = Math.ceil(mapSize.x / canvasSize.x);
-        var spritesCountY = Math.ceil(mapSize.y / canvasSize.y);
-        // combined width of canvases
-        var width = spritesCountX * canvasSize.x;
-        var height = spritesCountY * canvasSize.y;
-        // collection of canvases
-        var layers = {
-            // "0": [canvas, canvas, ...]
-            length: 0
-        };
-        var initLayer = function (layerId) {
-            var i;
-            var layer = [];
-            var canvas;
-            var context;
-
-            for (i = 0; i < spritesCountX * spritesCountY; ++i) {
-                canvas = document.createElement('canvas');
-                canvas.width = canvasSize.x;
-                canvas.height = canvasSize.y;
-                context = canvas.getContext('2d');
-                canvas.context = context;
-                layer.push(canvas);
-            }
-            layers[layerId] = layer;
-            layers.length += 1;
-        };
-        var getCanvas = function (layerId, destination) {
-            // convert destination position to array index
-            var x = Math.floor(destination.x / canvasSize.x) % spritesCountX;
-            var y = Math.floor(destination.y / canvasSize.y) % spritesCountY;
-            var index = x + y * spritesCountX;
-
-            // init collection if needed
-            if (!layers[layerId]) {
-                initLayer(layerId);
-            }
-
-            return {
-                index: index,
-                canvas: layers[layerId][index]
-            };
-        };
-
-        return {
-            spritesCountX: spritesCountX,
-            spritesCountY: spritesCountY,
-            canvasSize: canvasSize,
-            layers: layers,
-            getSpritesFromLayer: function (layerId) {
-                return layers[layerId];
-            },
-            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD) {
-                // get the corresponding canvas
-                var canvasData = getCanvas(layerId, destination);
-                var canvas = canvasData.canvas;
-                var index = canvasData.index;
-                var context = canvas.context;
-                var doFlipX = false;
-                var doFlipY = false;
-                var rotation = 0;
-                // canvas offset
-                var offset = new Vector2(
-                    canvasSize.x * (index % spritesCountX),
-                    canvasSize.y * Math.floor(index / spritesCountX)
-                );
-
-                // convert to rotation and flipping
-                if (!flipD) {
-                    if (flipX && flipY) {
-                        rotation = Math.PI;
-                    } else {
-                        doFlipX = flipX;
-                        doFlipY = flipY;
-                    }
-                } else {
-                    if (!flipX && !flipY) {
-                        rotation = Math.PI / 2;
-                        doFlipY = true;
-                    } else if (flipX && !flipY) {
-                        rotation = Math.PI / 2;
-                    } else if (!flipX && flipY) {
-                        rotation = Math.PI * 3 / 2;
-                    } else if (flipX && flipY) {
-                        rotation = Math.PI / 2;
-                        doFlipX = true;
-                    }
-                }
-
-                context.save();
-                // move to destination
-                context.translate(destination.x - offset.x, destination.y - offset.y);
-                // offset origin for rotation
-                context.translate(source.width / 2, source.height / 2);
-                // apply rotation
-                context.rotate(rotation);
-                context.scale(doFlipX ? -1 : 1, doFlipY ? -1 : 1);
-                // offset origin
-                context.translate(-source.width / 2, -source.height / 2);
-                // draw the tile!
-                context.drawImage(
-                    packedImage.image,
-                    packedImage.x + source.x,
-                    packedImage.y + source.y,
-                    source.width,
-                    source.height,
-                    0,
-                    0,
-                    destination.width,
-                    destination.height
-                );
-                context.restore();
-            }
-        };
-    };
-
-    var Tiled = function (settings) {
-        var assetName = settings.assetName;
-        var json = settings.tiled || Bento.assets.getJson(assetName);
-        var width = json.width || 0;
-        var height = json.height || 0;
-        var tileWidth = json.tilewidth || 0;
-        var tileHeight = json.tileheight || 0;
-        var mergeLayers = json.merge || false;
-        var onLayer = settings.onLayer;
-        var onTile = settings.onTile;
-        var onObject = settings.onObject;
-        var offset = settings.offset || new Vector2(0, 0);
-        var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
-        var mapSize = new Vector2(width * tileWidth, height * tileHeight);
-        var currentSpriteLayer = -1;
-        var layerSprites = new LayerSprites(maxCanvasSize, mapSize);
-        var entities = [];
-        var backgrounds = [];
-        var tiledReader = new TiledReader({
-            tiled: json,
-            onExternalTileset: function (source) {
-                // unfortunately, external tileset paths are relative to the tile json path
-                // making it difficult to load (would need to do path parsing etc...)
-                // instead we try to make an educated guess what the asset name is
-                var json;
-                var jsonPath = source.indexOf('json/');
-                var relativePath = source.indexOf('../');
-                var path = source;
-                var split;
-                if (jsonPath >= 0) {
-                    // if the name "json/" is there, we can guess the path is after the json/ part
-                    path = source.substring(jsonPath + ('json/').length);
-                } else if (relativePath >= 0) {
-                    // no json/ is there and the path has relative indicators
-                    path = source;
-
-                    if (assetName) {
-                        // path parsing, urgh
-                        split = assetName.split('/');
-                        split.pop(); // remove filename
-                        while (path.indexOf('../') >= 0) {
-                            if (split.length === 0) {
-                                throw "ERROR: Impossible path to external tileset";
-                            }
-                            // move up one folder
-                            split.pop();
-                            path = path.replace('../', '');
-                        }
-                        // final path, may need an extra slash
-                        path = split.join('/') + (split.length ? '/' : '') + path;
-                    } else {
-                        // more dangerous method: try removing all relative indicators
-                        while (path.indexOf('../') >= 0) {
-                            path = path.replace('../', '');
-                        }
-                    }
-                }
-                path = path.replace('.json', '');
-
-                json = Bento.assets.getJson(path);
-
-                return json;
-            },
-            onLayer: function (layer) {
-                if (layer.type === "tilelayer") {
-                    if (!mergeLayers) {
-                        currentSpriteLayer += 1;
-                    } else {
-                        currentSpriteLayer = 0;
-                    }
-                }
-                if (onLayer) {
-                    onLayer(layer);
-                }
-            },
-            onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
-                // get destination position
-                var x = tileX * tileWidth;
-                var y = tileY * tileHeight;
-                var destination = new Rectangle(x, y, tileWidth, tileHeight);
-
-                // get source position
-                var source = getSourceTile(tileSet, tileIndex);
-
-                // retrieve the corresponding image asset
-                // there is a very high chance the url contains "images/" since the json files
-                // should be stored in the "json/" folder and images in "images/"
-                var imageUrl = tileSet.image;
-                var assetName;
-                var imageAsset;
-                assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
-                assetName = assetName.replace('.png', '');
-                imageAsset = Bento.assets.getImage(assetName);
-
-                // draw on the layer
-                // TODO: cache the drawn layers? Would load faster if a player returns to a screen, on the other hand it could lead to memory hogging
-                layerSprites.drawTile(
-                    currentSpriteLayer,
-                    destination,
-                    source,
-                    imageAsset,
-                    flipX,
-                    flipY,
-                    flipD
-                );
-
-                if (onTile) {
-                    onTile(tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
-                }
-            },
-            onObject: function (object, tileSet, tileIndex) {
-                if (onObject) {
-                    onObject(object, tileSet, tileIndex);
-                }
-                if (settings.spawnEntities) {
-
-                    spawnEntity(object, tileSet, tileIndex);
-                }
-            },
-            onComplete: function () {
-                var layers = layerSprites.layers;
-                var layer;
-                var l = layers.length;
-                var i;
-                var canvasSize = layerSprites.canvasSize;
-                var spritesCountX = layerSprites.spritesCountX;
-                var spritesCountY = layerSprites.spritesCountY;
-                var makeEntity = function () {
-                    var j = 0;
-                    var canvas;
-                    var sprite;
-                    var entity;
-                    for (j = 0; j < layer.length; ++j) {
-                        canvas = layer[j];
-                        sprite = new Sprite({
-                            image: new PackedImage(canvas)
-                        });
-                        entity = new Entity({
-                            z: 0,
-                            name: 'background',
-                            family: ['backgrounds'],
-                            position: new Vector2(
-                                offset.x + canvasSize.x * (j % spritesCountX),
-                                offset.y + canvasSize.y * Math.floor(j / spritesCountX)
-                            ),
-                            components: [sprite]
-                        });
-                        // spawn background entities now?
-                        if (settings.spawnBackground) {
-                            Bento.objects.attach(entity);
-                        }
-                        backgrounds.push(entity);
-                    }
-                };
-
-                for (i = 0; i < l; ++i) {
-                    layer = layers[i];
-                    makeEntity();
-                }
-            }
-        });
-        // helper function to get the source in the image
-        var getSourceTile = function (tileset, index) {
-            var tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
-            var tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
-
-            return new Rectangle(
-                (index % tilesetWidth) * tileset.tilewidth,
-                Math.floor(index / tilesetWidth) * tileset.tileheight,
-                tileset.tilewidth,
-                tileset.tileheight
-            );
-        };
-        // attempt to spawn object by tileproperty "module"
-        // this is mainly for backwards compatibility of the old Tiled module
-        var spawnEntity = function (object, tileSet, tileIndex) {
-            var tileproperties;
-            var properties;
-            var moduleName;
-            var x = object.x;
-            var y = object.y;
-            var params;
-            if (!object.gid) {
-                // not an entity (it's a rectangle or other shape)
-                return;
-            }
-            tileproperties = tileSet.tileproperties;
-            if (!tileproperties) {
-                return;
-            }
-            properties = tileproperties[tileIndex];
-            if (!properties) {
-                return;
-            }
-            moduleName = properties.module;
-            if (!moduleName) {
-                return;
-            }
-            params = {
-                tiled: {
-                    position: new Vector2(x, y),
-                    tileSet: tileSet,
-                    tileIndex: tileIndex,
-                    tileProperties: properties,
-                    object: object,
-                    objectProperties: object.properties,
-                    jsonName: assetName // reference to current json name
-                }
-            };
-            bento.require([moduleName], function (Instance) {
-                var instance = new Instance(params),
-                    origin = instance.origin,
-                    dimension = instance.dimension;
-
-                instance.position = new Vector2(
-                    offset.x + x + origin.x,
-                    offset.y + y + (origin.y - dimension.height)
-                );
-
-                // add to game
-                Bento.objects.attach(instance);
-                entities.push(instance);
-
-                // TODO: async callback after all entities are loaded
-            });
-        };
-
-        tiledReader.read();
-
-        return {
-            name: settings.name || 'tiled',
-            /**
-             * Name of the Tiled JSON asset
-             * @instance
-             * @name assetName
-             */
-            assetName: assetName,
-            /**
-             * Rectangle with width and height of the Tiled map in pixels
-             * @instance
-             * @name dimension
-             */
-            dimension: new Rectangle(0, 0, mapSize.x, mapSize.y),
-            /**
-             * Array of all entities spawned
-             * @instance
-             * @name entities
-             */
-            entities: entities,
-            /**
-             * Array of all background entities spawned
-             * @instance
-             * @name backgrounds
-             */
-            backgrounds: backgrounds,
-            /**
-             * Object containing all drawn layers
-             * @instance
-             * @name layerImages
-             */
-            layerImages: layerSprites
-        };
-    };
-
-    return Tiled;
-});
-/**
- * A generic interpreter for Tiled map JSON files.
- * <br>Exports: Constructor
- * @module bento/tiledreader
- * @param {Object} settings - Settings object
- * @param {String} settings.tiled - Tiled map JSON asset
- * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
- * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
- * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
- * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON
- * @param {Function} [settings.onComplete] - Called when the reader is done
- * @param {Boolean} [settings.spawn] - Spawns entities
- * @returns Object
- */
-bento.define('bento/tiledreader', [], function () {
-    'use strict';
-    var FLIPX = 0x80000000;
-    var FLIPY = 0x40000000;
-    var FLIPDIAGONAL = 0x20000000;
-
-    var TiledReader = function (settings) {
-        // cache callbacks
-        var onExternalTileset = settings.onExternalTileset;
-        var onLayer = settings.onLayer;
-        var onTile = settings.onTile;
-        var onObject = settings.onObject;
-        var onComplete = settings.onComplete;
-
-        // the tiled json
-        var json = settings.tiled || {};
-
-        // width and height in tiles
-        var width = json.width || 0;
-        var height = json.height || 0;
-
-        // width and height of a single tile
-        var tileWidth = json.tilewidth || 0;
-        var tileHeight = json.tileheight || 0;
-
-        // tilesets
-        var tilesets = json.tilesets || [];
-        var tilesetsCount = tilesets.length;
-        var externalTilesets = {
-            // "source": tileset JSON
-        };
-        var cachedFirstGids = [];
-
-        // layers
-        var layers = json.layers || [];
-        var layersCount = layers.length;
-
-        // load external tilesets
-        var importTilesets = function () {
-            var i;
-            var l;
-            var tileset;
-            var source;
-
-            // loop through all tilesets, look for external tilesets
-            for (i = 0, l = tilesets.length; i < l; ++i) {
-                tileset = tilesets[i];
-                source = tileset.source;
-                if (source) {
-                    // to stay independent of any asset loader, this is loaded through a callback
-                    externalTilesets[source] = onExternalTileset(source);
-                }
-
-                // meanwhile, cache all firstGids for faster lookups
-                cachedFirstGids.push(tileset.firstgid);
-            }
-        };
-        var decompress = function (layer) {
-            var base64ToUint32array = function (base64) {
-                var raw = window.atob(base64);
-                var i;
-                var len = raw.length;
-                var bytes = new Uint8Array(len);
-                for (i = 0; i < len; i++) {
-                    bytes[i] = raw.charCodeAt(i);
-                }
-                var data = new Uint32Array(bytes.buffer, 0, len / 4);
-                return data;
-            };
-            var encoding = layer.encoding;
-            if (encoding === 'base64') {
-                layer.data = base64ToUint32array(layer.data);
-                layer.encoding = null;
-            } else if (encoding) {
-                // TODO: compression formats
-                throw "ERROR: compression not supported. Please set Tile Layer Format to CSV in Tiled.";
-            }
-            return layer;
-        };
-        var loopLayers = function () {
-            var i, il;
-            var j, jl;
-            var k, kl;
-            var layers = json.layers;
-            var layer;
-            var layerData;
-            var lh;
-            var lw;
-            var objects;
-            var object;
-            var properties;
-            var layerId = 0;
-            var type;
-            var getTileset = function (gid) {
-                var l,
-                    tileset,
-                    count = tilesetsCount,
-                    current = null,
-                    firstGid,
-                    currentFirstGid;
-
-                // loop through tilesets and find the highest firstgid that's
-                // still lower or equal to the gid
-                for (l = 0; l < count; ++l) {
-                    firstGid = cachedFirstGids[l];
-                    if (firstGid <= gid) {
-                        current = tilesets[l];
-                        currentFirstGid = firstGid;
-                    }
-                }
-
-                // tileset is external?
-                if (current.source) {
-                    current = externalTilesets[current.source];
-                }
-
-                return {
-                    tileSet: current,
-                    firstGid: currentFirstGid
-                };
-            };
-            var tileCallback = function (data, x, y) {
-                // callback for every tile (stored layer.data)
-                var gid = data[y * width + x];
-                var tilesetData;
-                var tileIndex;
-                var flipX;
-                var flipY;
-                var flipDiagonal;
-
-                // no tile
-                if (gid === 0) {
-                    return;
-                }
-
-                // read out the flags
-                flipX = (gid & FLIPX);
-                flipY = (gid & FLIPY);
-                flipDiagonal = (gid & FLIPDIAGONAL);
-
-                // clear flags
-                gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
-
-                // get the corresponding tileset and tile index
-                tilesetData = getTileset(gid);
-                tileIndex = gid - tilesetData.firstGid;
-
-                // callback
-                onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
-            };
-            var objectCallback = function (object) {
-                var tileIndex;
-                var tilesetData;
-                var gid = object.gid;
-                if (gid) {
-                    // get the corresponding tileset and tile index
-                    tilesetData = getTileset(gid);
-                    tileIndex = gid - tilesetData.firstGid;
-                    onObject(object, tilesetData.tileSet, tileIndex);
-                } else {
-                    // gid may not be present, in that case it's a rectangle or other shape
-                    onObject(object);
-                }
-            };
-
-            // loop through layers
-            for (k = 0, kl = layers.length; k < kl; ++k) {
-                layer = layers[k];
-                type = layer.type;
-
-                if (onLayer) {
-                    onLayer(layer);
-                }
-                if (type === 'tilelayer') {
-                    // skip layer if invisible???
-                    if (!layer.visible) {
-                        continue;
-                    }
-
-                    // decompress data?
-                    decompress(layer);
-
-                    layerData = layer.data;
-
-                    // loop through layer.data, which should be width * height in size
-                    for (j = 0; j < height; ++j) {
-                        for (i = 0; i < width; ++i) {
-                            tileCallback(layerData, i, j);
-                        }
-                    }
-
-                } else if (type === 'objectgroup') {
-                    objects = layer.objects || [];
-                    il = objects.length;
-                    for (i = 0; i < il; ++i) {
-                        object = objects[i];
-
-                        objectCallback(object);
-                    }
-                }
-            }
-            if (onComplete) {
-                onComplete();
-            }
-        };
-
-        importTilesets();
-
-        // loopLayers();
-
-        return {
-            /**
-             * Read tiled JSON and loop through all layers, tiles and objects
-             * @function
-             * @instance
-             * @name read
-             */
-            read: loopLayers
-        };
-    };
-
-    return TiledReader;
-});
-/**
- * The Tween is an entity that performs an interpolation within a timeframe. The entity
- * removes itself after the tween ends.
- * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
- * <br>Exports: Constructor
- * @module bento/tween
- * @param {Object} settings - Settings object
- * @param {Number} settings.from - Starting value
- * @param {Number} settings.to - End value
- * @param {Number} settings.in - Time frame
- * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
- * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
- * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
- * @param {Function} [settings.onUpdate] - Called every tick during the tween lifetime. Callback parameters: (value, time)
- * @param {Function} [settings.onComplete] - Called when tween ends
- * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
- * @param {Number} [settings.delay] - Wait an amount of ticks before starting
- * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
- * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional)
- * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
- * @returns Entity
- */
-bento.define('bento/tween', [
-    'bento',
-    'bento/math/vector2',
-    'bento/utils',
-    'bento/entity'
-], function (Bento, Vector2, Utils, Entity) {
-    'use strict';
-    var robbertPenner = {
-        // t: current time, b: begInnIng value, c: change In value, d: duration
-        easeInQuad: function (t, b, c, d) {
-            return c * (t /= d) * t + b;
-        },
-        easeOutQuad: function (t, b, c, d) {
-            return -c * (t /= d) * (t - 2) + b;
-        },
-        easeInOutQuad: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t + b;
-            return -c / 2 * ((--t) * (t - 2) - 1) + b;
-        },
-        easeInCubic: function (t, b, c, d) {
-            return c * (t /= d) * t * t + b;
-        },
-        easeOutCubic: function (t, b, c, d) {
-            return c * ((t = t / d - 1) * t * t + 1) + b;
-        },
-        easeInOutCubic: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
-            return c / 2 * ((t -= 2) * t * t + 2) + b;
-        },
-        easeInQuart: function (t, b, c, d) {
-            return c * (t /= d) * t * t * t + b;
-        },
-        easeOutQuart: function (t, b, c, d) {
-            return -c * ((t = t / d - 1) * t * t * t - 1) + b;
-        },
-        easeInOutQuart: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
-            return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
-        },
-        easeInQuint: function (t, b, c, d) {
-            return c * (t /= d) * t * t * t * t + b;
-        },
-        easeOutQuint: function (t, b, c, d) {
-            return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
-        },
-        easeInOutQuint: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
-            return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
-        },
-        easeInSine: function (t, b, c, d) {
-            return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
-        },
-        easeOutSine: function (t, b, c, d) {
-            return c * Math.sin(t / d * (Math.PI / 2)) + b;
-        },
-        easeInOutSine: function (t, b, c, d) {
-            return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
-        },
-        easeInExpo: function (t, b, c, d) {
-            return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
-        },
-        easeOutExpo: function (t, b, c, d) {
-            return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
-        },
-        easeInOutExpo: function (t, b, c, d) {
-            if (t === 0) return b;
-            if (t === d) return b + c;
-            if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
-            return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
-        },
-        easeInCirc: function (t, b, c, d) {
-            return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
-        },
-        easeOutCirc: function (t, b, c, d) {
-            return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
-        },
-        easeInOutCirc: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
-            return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
-        },
-        easeInElastic: function (t, b, c, d) {
-            var s = 1.70158,
-                p = 0,
-                a = c;
-            if (t === 0) return b;
-            if ((t /= d) === 1) return b + c;
-            if (!p) p = d * 0.3;
-            if (a < Math.abs(c)) {
-                a = c;
-                s = p / 4;
-            } else s = p / (2 * Math.PI) * Math.asin(c / a);
-            return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-        },
-        easeOutElastic: function (t, b, c, d) {
-            var s = 1.70158,
-                p = 0,
-                a = c;
-            if (t === 0) return b;
-            if ((t /= d) === 1) return b + c;
-            if (!p) p = d * 0.3;
-            if (a < Math.abs(c)) {
-                a = c;
-                s = p / 4;
-            } else s = p / (2 * Math.PI) * Math.asin(c / a);
-            return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
-        },
-        easeInOutElastic: function (t, b, c, d) {
-            var s = 1.70158,
-                p = 0,
-                a = c;
-            if (t === 0) return b;
-            if ((t /= d / 2) === 2) return b + c;
-            if (!p) p = d * (0.3 * 1.5);
-            if (a < Math.abs(c)) {
-                a = c;
-                s = p / 4;
-            } else s = p / (2 * Math.PI) * Math.asin(c / a);
-            if (t < 1) return -0.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-            return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * 0.5 + c + b;
-        },
-        easeInBack: function (t, b, c, d, s) {
-            if (s === undefined) s = 1.70158;
-            return c * (t /= d) * t * ((s + 1) * t - s) + b;
-        },
-        easeOutBack: function (t, b, c, d, s) {
-            if (s === undefined) s = 1.70158;
-            return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
-        },
-        easeInOutBack: function (t, b, c, d, s) {
-            if (s === undefined) s = 1.70158;
-            if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
-            return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
-        },
-        easeInBounce: function (t, b, c, d) {
-            return c - this.easeOutBounce(d - t, 0, c, d) + b;
-        },
-        easeOutBounce: function (t, b, c, d) {
-            if ((t /= d) < (1 / 2.75)) {
-                return c * (7.5625 * t * t) + b;
-            } else if (t < (2 / 2.75)) {
-                return c * (7.5625 * (t -= (1.5 / 2.75)) * t + 0.75) + b;
-            } else if (t < (2.5 / 2.75)) {
-                return c * (7.5625 * (t -= (2.25 / 2.75)) * t + 0.9375) + b;
-            } else {
-                return c * (7.5625 * (t -= (2.625 / 2.75)) * t + 0.984375) + b;
-            }
-        },
-        easeInOutBounce: function (t, b, c, d) {
-            if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
-            return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
-        }
-    };
-    var interpolations = {
-        linear: function (s, e, t, alpha, beta) {
-            return (e - s) * t + s;
-        },
-        quadratic: function (s, e, t, alpha, beta) {
-            return (e - s) * t * t + s;
-        },
-        squareroot: function (s, e, t, alpha, beta) {
-            return (e - s) * Math.pow(t, 0.5) + s;
-        },
-        cubic: function (s, e, t, alpha, beta) {
-            return (e - s) * t * t * t + s;
-        },
-        cuberoot: function (s, e, t, alpha, beta) {
-            return (e - s) * Math.pow(t, 1 / 3) + s;
-        },
-        exponential: function (s, e, t, alpha, beta) {
-            //takes alpha as growth/damp factor
-            return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
-        },
-        elastic: function (s, e, t, alpha, beta) {
-            //alpha=growth factor, beta=wavenumber
-            return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
-        },
-        sin: function (s, e, t, alpha, beta) {
-            //s=offset, e=amplitude, alpha=wavenumber
-            return s + e * Math.sin(alpha * t * 2 * Math.PI);
-        },
-        cos: function (s, e, t, alpha, beta) {
-            //s=offset, e=amplitude, alpha=wavenumber
-            return s + e * Math.cos(alpha * t * 2 * Math.PI);
-        }
-    };
-    var interpolate = function (type, s, e, t, alpha, beta) {
-        // interpolate(string type,float from,float to,float time,float alpha,float beta)
-        // s = starting value
-        // e = ending value
-        // t = time variable (going from 0 to 1)
-        var fn = interpolations[type];
-        if (s.isVector2 && e.isVector2) {
-            if (fn) {
-                return new Vector2(
-                    fn(s.x, e.x, t, alpha, beta),
-                    fn(s.y, e.y, t, alpha, beta)
-                );
-            } else {
-                return new Vector2(
-                    robbertPenner[type](t, s.x, e.x - s.x, 1),
-                    robbertPenner[type](t, s.y, e.y - s.y, 1)
-                );
-            }
-        } else {
-            if (fn) {
-                return fn(s, e, t, alpha, beta);
-            } else {
-                return robbertPenner[type](t, s, e - s, 1);
-            }
-        }
-    };
-
-    var Tween = function (settings) {
-        /* settings = {
-            from: Number
-            to: Number
-            in: Number
-            ease: String
-            alpha: Number (optional)
-            beta: Number (optional)
-            stay: Boolean (optional)
-            do: Gunction (value, time) {} (optional)
-            onComplete: function () {} (optional)
-            id: Number (optional),
-            updateWhenPaused: Boolean (optional)
-            ignoreGameSpeed: Boolean (optional)
-        }*/
-        var time = 0;
-        var added = false;
-        var running = true;
-        var onUpdate = settings.onUpdate || settings.do;
-        var ease = settings.ease || 'linear';
-        var startVal = settings.from || 0;
-        var delay = settings.delay || 0;
-        var delayTimer = 0;
-        var endVal = Utils.isDefined(settings.to) ? settings.to : 1;
-        var deltaT = settings.in || 1;
-        var alpha = Utils.isDefined(settings.alpha) ? settings.alpha : 1;
-        var beta = Utils.isDefined(settings.beta) ? settings.beta : 1;
-        var ignoreGameSpeed = settings.ignoreGameSpeed;
-        var stay = settings.stay;
-        var tween = new Entity(settings).extend({
-            id: settings.id,
-            update: function (data) {
-                if (!running) {
-                    return;
-                }
-                if (delayTimer < delay) {
-                    delayTimer += 1;
-                    return;
-                }
-                if (ignoreGameSpeed) {
-                    time += 1;
-                } else {
-                    time += data.speed;
-                }
-                // run update
-                if (onUpdate) {
-                    onUpdate.apply(this, [interpolate(
-                        ease,
-                        startVal,
-                        endVal,
-                        time / deltaT,
-                        alpha,
-                        beta
-                    ), time]);
-                }
-                // end
-                if (time >= deltaT && !stay) {
-                    if (settings.onComplete) {
-                        settings.onComplete.apply(this);
-                    }
-                    Bento.objects.remove(tween);
-                    added = false;
-                }
-            },
-            /**
-             * Start the tween. Only call if you used stop() before.
-             * @function
-             * @instance
-             * @returns {Entity} Returns self
-             * @name begin
-             */
-            begin: function () {
-                time = 0;
-                if (!added) {
-                    Bento.objects.add(tween);
-                    added = true;
-                }
-                running = true;
-                return tween;
-            },
-            /**
-             * Stops the tween (note that the entity isn't removed).
-             * @function
-             * @instance
-             * @returns {Entity} Returns self
-             * @name stop
-             */
-            stop: function () {
-                time = 0;
-                running = false;
-                return tween;
-            }
-        });
-
-        if (!Utils.isDefined(settings.ease)) {
-            Utils.log("WARNING: settings.ease is undefined.");
-        }
-
-        // tween automatically starts
-        tween.begin();
-
-        return tween;
-    };
-
-    // enums
-    Tween.LINEAR = 'linear';
-    Tween.QUADRATIC = 'quadratic';
-    Tween.CUBIC = 'cubic';
-    Tween.SQUAREROOT = 'squareroot';
-    Tween.CUBEROOT = 'cuberoot';
-    Tween.EXPONENTIAL = 'exponential';
-    Tween.ELASTIC = 'elastic';
-    Tween.SIN = 'sin';
-    Tween.COS = 'cos';
-    Tween.EASEINQUAD = 'easeInQuad';
-    Tween.EASEOUTQUAD = 'easeOutQuad';
-    Tween.EASEINOUTQUAD = 'easeInOutQuad';
-    Tween.EASEINCUBIC = 'easeInCubic';
-    Tween.EASEOUTCUBIC = 'easeOutCubic';
-    Tween.EASEINOUTCUBIC = 'easeInOutCubic';
-    Tween.EASEINQUART = 'easeInQuart';
-    Tween.EASEOUTQUART = 'easeOutQuart';
-    Tween.EASEINOUTQUART = 'easeInOutQuart';
-    Tween.EASEINQUINT = 'easeInQuint';
-    Tween.EASEOUTQUINT = 'easeOutQuint';
-    Tween.EASEINOUTQUINT = 'easeInOutQuint';
-    Tween.EASEINSINE = 'easeInSine';
-    Tween.EASEOUTSINE = 'easeOutSine';
-    Tween.EASEINOUTSINE = 'easeInOutSine';
-    Tween.EASEINEXPO = 'easeInExpo';
-    Tween.EASEOUTEXPO = 'easeOutExpo';
-    Tween.EASEINOUTEXPO = 'easeInOutExpo';
-    Tween.EASEINCIRC = 'easeInCirc';
-    Tween.EASEOUTCIRC = 'easeOutCirc';
-    Tween.EASEINOUTCIRC = 'easeInOutCirc';
-    Tween.EASEINELASTIC = 'easeInElastic';
-    Tween.EASEOUTELASTIC = 'easeOutElastic';
-    Tween.EASEINOUTELASTIC = 'easeInOutElastic';
-    Tween.EASEINBACK = 'easeInBack';
-    Tween.EASEOUTBACK = 'easeOutBack';
-    Tween.EASEINOUTBACK = 'easeInOutBack';
-    Tween.EASEINBOUNCE = 'easeInBounce';
-    Tween.EASEOUTBOUNCE = 'easeOutBounce';
-    Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
-
-    return Tween;
-});
-/**
  * Canvas 2d renderer
  * @copyright (C) 2015 LuckyKat
  */
@@ -14696,6 +14772,7 @@ bento.define('bento/components/pixi/sprite', [
 });
 /**
  * An entity that behaves like a click button.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {Sprite} settings.sprite - Sprite component. The sprite should have an "up", "down" and an "inactive" animation. Alternatively, you can pass all Sprite settings. Then, by default "up" and "down" are assumed to be frames 0 and 1 respectively. Frame 3 is assumed to be "inactive", if it exists
  * @param {Function} settings.onClick - Callback when user clicks on the button ("this" refers to the clickbutton entity). Alternatively, you can listen to a "clickButton" event, the entity is passed as parameter.
@@ -14703,7 +14780,6 @@ bento.define('bento/components/pixi/sprite', [
  * @param {String} [settings.sfx] - Plays sound when pressed
  * @param {Function} [settings.onButtonDown] - When the user holds the mouse or touches the button
  * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
- * <br>Exports: Constructor
  * @module bento/gui/clickbutton
  * @returns Entity
  */
@@ -15109,6 +15185,7 @@ bento.define('bento/gui/counter', [
 });
 /**
  * An entity that displays text. Custom fonts can be loaded through CSS.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {String} settings.text - String to set as text
  * @param {String} settings.font - Name of the font
@@ -15123,7 +15200,6 @@ bento.define('bento/gui/counter', [
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
  * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
- * <br>Exports: Constructor
  * @module bento/gui/text
  * @returns Entity
  */
@@ -15802,13 +15878,13 @@ bento.define('bento/gui/text', [
 });
 /**
  * An entity that behaves like a toggle button.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {Sprite} settings.sprite - Same as clickbutton! See @link module:bento/gui/clickbutton}
  * @param {Bool} settings.active - Whether the button starts in the active state (default: true)
  * @param {Bool} settings.toggled - Initial toggle state (default: false)
  * @param {String} settings.onToggle - Callback when user clicks on the toggle ("this" refers to the clickbutton entity).
  * @param {String} [settings.sfx] - Plays sound when pressed
- * <br>Exports: Constructor
  * @module bento/gui/togglebutton
  * @returns Entity
  */

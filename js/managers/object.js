@@ -35,14 +35,14 @@ bento.define('bento/managers/object', [
                 objects.sort(function (a, b) {
                     return a.z - b.z;
                 });
-
             },
-            sort = function () {
+            sortStable = function () {
                 // default method for sorting: stable sort
                 Utils.stableSort.inplace(objects, function (a, b) {
                     return a.z - b.z;
                 });
             },
+            sort = sortStable,
             cleanObjects = function () {
                 var i;
                 // loop objects array from end to start and remove null elements
@@ -98,7 +98,7 @@ bento.define('bento/managers/object', [
                     fpsMeter.tick();
                 }
 
-                requestAnimationFrame(mainLoop);
+                window.requestAnimationFrame(mainLoop);
             },
             update = function (data) {
                 var object,
@@ -347,7 +347,7 @@ bento.define('bento/managers/object', [
                         // initialize it
                         quickAccess[type] = [];
                         array = quickAccess[type];
-                        console.log('Warning: family called ' + type + ' does not exist');
+                        Utils.log('Warning: family called ' + type + ' does not exist', true);
                     }
                     if (callback && array.length) {
                         callback(array);
@@ -473,14 +473,15 @@ bento.define('bento/managers/object', [
                 now: Date.now
             };
         }
+        // TODO: deprecate this
         if (settings.debug && Utils.isDefined(window.FPSMeter)) {
-            FPSMeter.defaults.graph = 1;
-            fpsMeter = new FPSMeter();
+            window.FPSMeter.defaults.graph = 1;
+            fpsMeter = new window.FPSMeter();
         }
 
         // swap sort method with default sorting method
         if (settings.defaultSort) {
-            sort = defaultSort;
+            sort = sortDefault;
         }
 
         return module;

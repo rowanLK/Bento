@@ -1,12 +1,12 @@
 /**
  * An entity that behaves like a toggle button.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {Sprite} settings.sprite - Same as clickbutton! See @link module:bento/gui/clickbutton}
  * @param {Bool} settings.active - Whether the button starts in the active state (default: true)
  * @param {Bool} settings.toggled - Initial toggle state (default: false)
  * @param {String} settings.onToggle - Callback when user clicks on the toggle ("this" refers to the clickbutton entity).
  * @param {String} [settings.sfx] - Plays sound when pressed
- * <br>Exports: Constructor
  * @module bento/gui/togglebutton
  * @returns Entity
  */
