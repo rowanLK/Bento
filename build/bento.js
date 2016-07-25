@@ -5572,7 +5572,7 @@ bento.define('bento/transform', [
 });
 /**
  * A collection of useful functions
- * Export type: Object
+ * <br>Exports: Object
  * @module bento/utils
  */
 bento.define('bento/utils', [], function () {
@@ -10006,7 +10006,6 @@ bento.define('bento/managers/input', [
             viewport,
             pointers = [],
             keyStates = {},
-            prevKeyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
             gamepad,
@@ -11228,7 +11227,7 @@ bento.define('bento/managers/object', [
 /**
  * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
  * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.audio namespace.
+ * <br>Exports: Object, can be accessed through Bento.saveState namespace.
  * @module bento/managers/savestate
  * @returns SaveState
  */
@@ -14744,6 +14743,7 @@ bento.define('bento/components/pixi/sprite', [
 });
 /**
  * An entity that behaves like a click button.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {Sprite} settings.sprite - Sprite component. The sprite should have an "up", "down" and an "inactive" animation. Alternatively, you can pass all Sprite settings. Then, by default "up" and "down" are assumed to be frames 0 and 1 respectively. Frame 3 is assumed to be "inactive", if it exists
  * @param {Function} settings.onClick - Callback when user clicks on the button ("this" refers to the clickbutton entity). Alternatively, you can listen to a "clickButton" event, the entity is passed as parameter.
@@ -14751,7 +14751,6 @@ bento.define('bento/components/pixi/sprite', [
  * @param {String} [settings.sfx] - Plays sound when pressed
  * @param {Function} [settings.onButtonDown] - When the user holds the mouse or touches the button
  * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
- * <br>Exports: Constructor
  * @module bento/gui/clickbutton
  * @returns Entity
  */
@@ -15157,6 +15156,7 @@ bento.define('bento/gui/counter', [
 });
 /**
  * An entity that displays text. Custom fonts can be loaded through CSS.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {String} settings.text - String to set as text
  * @param {String} settings.font - Name of the font
@@ -15171,7 +15171,6 @@ bento.define('bento/gui/counter', [
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
  * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
- * <br>Exports: Constructor
  * @module bento/gui/text
  * @returns Entity
  */
@@ -15850,13 +15849,13 @@ bento.define('bento/gui/text', [
 });
 /**
  * An entity that behaves like a toggle button.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {Sprite} settings.sprite - Same as clickbutton! See @link module:bento/gui/clickbutton}
  * @param {Bool} settings.active - Whether the button starts in the active state (default: true)
  * @param {Bool} settings.toggled - Initial toggle state (default: false)
  * @param {String} settings.onToggle - Callback when user clicks on the toggle ("this" refers to the clickbutton entity).
  * @param {String} [settings.sfx] - Plays sound when pressed
- * <br>Exports: Constructor
  * @module bento/gui/togglebutton
  * @returns Entity
  */

@@ -1,5 +1,6 @@
 /**
  * An entity that displays text. Custom fonts can be loaded through CSS.
+ * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
  * @param {String} settings.text - String to set as text
  * @param {String} settings.font - Name of the font
@@ -14,7 +15,6 @@
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
  * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
- * <br>Exports: Constructor
  * @module bento/gui/text
  * @returns Entity
  */

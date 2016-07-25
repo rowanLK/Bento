@@ -1,6 +1,6 @@
 /**
  * A collection of useful functions
- * Export type: Object
+ * <br>Exports: Object
  * @module bento/utils
  */
 bento.define('bento/utils', [], function () {
