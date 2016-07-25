@@ -758,12 +758,15 @@ bento.define('bento/utils', [], function () {
         log: function (msg, warningOnly) {
             if (warningOnly) {
                 if (dev) {
-                    console.log(msg);
+                    if (navigator.isCocoonJS) {
+                        console.log(msg);
+                    } else {
+                        console.error(msg);
+                    }
                 }
                 // warnings are ignored outside dev mode
                 return;
             }
-
             if (dev) {
                 // before throwing, give user a chance to continue.
                 if (window.Cocoon) {
@@ -775,10 +778,6 @@ bento.define('bento/utils', [], function () {
                             throw msg;
                         }
                     });
-                } else if (window.confirm) {
-                    if (window.confirm(msg + "\nPress OK to ignore.") === false) {
-                        throw msg;
-                    }
                 } else {
                     throw msg;
                 }
