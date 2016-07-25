@@ -96,7 +96,7 @@ bento.define('bento/utils', [], function () {
                 if (later - now >= timeout) {
                     callback();
                 } else {
-                    rafID = requestAnimationFrame(animationFrame);
+                    rafID = window.requestAnimationFrame(animationFrame);
                 }
             }
 
@@ -104,7 +104,7 @@ bento.define('bento/utils', [], function () {
             return {
                 cancel: function () {
                     if (typeof cancelAnimationFrame !== 'undefined') {
-                        cancelAnimationFrame(rafID);
+                        window.cancelAnimationFrame(rafID);
                     }
                 }
             };
@@ -739,13 +739,31 @@ bento.define('bento/utils', [], function () {
             dev = bool;
         },
         /**
+         * Is dev mode on
+         * @function
+         * @instance
+         * @name isDev
+         */
+        isDev: function () {
+            return dev;
+        },
+        /**
          * Depending on whether dev mode is on, this will throw the message or console.log it
          * @function
          * @instance
          * @param {String} msg - the message to throw/log
+         * @param {Boolean} warningOnly - Give warning instead of throwing in dev mode
          * @name log
          */
-        log: function (msg) {
+        log: function (msg, warningOnly) {
+            if (warningOnly) {
+                if (dev) {
+                    console.log(msg);
+                }
+                // warnings are ignored outside dev mode
+                return;
+            }
+
             if (dev) {
                 // before throwing, give user a chance to continue.
                 if (window.Cocoon) {
