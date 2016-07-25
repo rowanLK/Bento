@@ -748,7 +748,7 @@ bento.define('bento/utils', [], function () {
             return dev;
         },
         /**
-         * Depending on whether dev mode is on, this will throw the message or console.log it
+         * Depending on whether dev mode is on, this will throw the message or console.error it
          * @function
          * @instance
          * @param {String} msg - the message to throw/log
@@ -756,33 +756,16 @@ bento.define('bento/utils', [], function () {
          * @name log
          */
         log: function (msg, warningOnly) {
-            if (warningOnly) {
-                if (dev) {
-                    if (navigator.isCocoonJS) {
-                        console.log(msg);
-                    } else {
-                        console.error(msg);
-                    }
-                }
-                // warnings are ignored outside dev mode
-                return;
-            }
             if (dev) {
-                // before throwing, give user a chance to continue.
-                if (window.Cocoon) {
-                    window.Cocoon.Dialog.confirm({
-                        title: "Developer Error",
-                        message: msg + "\nPress OK to ignore."
-                    }, function (accepted) {
-                        if (!accepted) {
-                            throw msg;
-                        }
-                    });
+                if (warningOnly || window.Cocoon) {
+                    console.error(msg);
                 } else {
                     throw msg;
                 }
-            } else {
-                console.log(msg);
+            }
+            // warnings are ignored outside dev mode
+            else if (!warningOnly) {
+                console.error(msg);
             }
         },
         /**
