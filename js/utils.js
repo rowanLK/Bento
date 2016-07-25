@@ -748,43 +748,14 @@ bento.define('bento/utils', [], function () {
             return dev;
         },
         /**
-         * Depending on whether dev mode is on, this will throw the message or console.log it
+         * Wrapper around console.error
          * @function
          * @instance
-         * @param {String} msg - the message to throw/log
-         * @param {Boolean} warningOnly - Give warning instead of throwing in dev mode
+         * @param {String} msg - the message to log
          * @name log
          */
-        log: function (msg, warningOnly) {
-            if (warningOnly) {
-                if (dev) {
-                    console.log(msg);
-                }
-                // warnings are ignored outside dev mode
-                return;
-            }
-
-            if (dev) {
-                // before throwing, give user a chance to continue.
-                if (window.Cocoon) {
-                    window.Cocoon.Dialog.confirm({
-                        title: "Developer Error",
-                        message: msg + "\nPress OK to ignore."
-                    }, function (accepted) {
-                        if (!accepted) {
-                            throw msg;
-                        }
-                    });
-                } else if (window.confirm) {
-                    if (window.confirm(msg + "\nPress OK to ignore.") === false) {
-                        throw msg;
-                    }
-                } else {
-                    throw msg;
-                }
-            } else {
-                console.log(msg);
-            }
+        log: function (msg) {
+            console.error(msg);
         },
         /**
          * Enum for sort mode, pass this to Bento.setup
