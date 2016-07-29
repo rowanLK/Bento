@@ -19,7 +19,7 @@ bento.define('bento/screen', [
     'bento/tiled'
 ], function (Utils, Bento, Rectangle, Vector2, Tiled) {
     'use strict';
-    return function (settings) {
+    var Screen = function (settings) {
         /*settings = {
             dimension: Rectangle, [optional / overwritten by tmx size]
             tiled: String
@@ -78,7 +78,7 @@ bento.define('bento/screen', [
                         }
                         // callback
                         if (settings.onShow) {
-                            settings.onShow(data);
+                            settings.onShow.call(module, data);
                         }
                     }
                 },
@@ -98,11 +98,12 @@ bento.define('bento/screen', [
                     viewport.y = 0;
                     // callback
                     if (settings.onHide) {
-                        settings.onHide(data);
+                        settings.onHide.call(module, data);
                     }
                 }
             };
 
         return module;
     };
+    return Screen;
 });

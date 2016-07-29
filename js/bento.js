@@ -155,6 +155,55 @@ bento.define('bento', [
         canvasScale.x = width / viewport.width;
         canvasScale.y = height / viewport.height;
     };
+    var setScreenshotListener = function (evtName) {
+        var takeScreenshot = false;
+        var openNewBackgroundTab = function (link) {
+            // TODO: different behavior in Windows, check navigator.platform
+            var a = document.createElement("a");
+            var evt = document.createEvent("MouseEvents");
+            a.href = link;
+
+            //the tenth parameter of initMouseEvent sets ctrl key
+            evt.initMouseEvent(
+                "click",    // type 
+                true,       // canBubble
+                true,       // canceable
+                window,     // view
+                0,          // detail
+                0,          // screenX
+                0,          // screenY
+                0,          // clientX
+                0,          // clientY
+                false,      // ctrlKey
+                true,       // altKey
+                false,      // shiftKey
+                false,      // metaKey
+                0,          // button
+                null        // relatedTarget
+            );
+            a.dispatchEvent(evt);
+        };
+
+        if (navigator.isCocoonJS || window.Windows || window.ejecta) {
+            // disable in Cocoon, UWP and Ejecta/tvOS platforms
+            return;
+        }
+        if (!dev) {
+            // should be in dev mode to take screenshots (?)
+            return;
+        }
+
+        EventSystem.on(evtName, function () {
+            takeScreenshot = true;
+        });
+        EventSystem.on('postDraw', function (data) {
+            if (takeScreenshot) {
+                takeScreenshot = false;
+                openNewBackgroundTab(canvas.toDataURL());
+            }
+        });
+
+    };
     var Bento = {
         /**
          * Setup game. Initializes all Bento managers.
@@ -175,6 +224,7 @@ bento.define('bento', [
          * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
          * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
          * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
+         * @param {Object} settings.screenshot - Event name for taking screenshots
          * @param {Function} callback - Called when game is loaded (not implemented yet)
          */
         setup: function (settings, callback) {
@@ -238,10 +288,15 @@ bento.define('bento', [
                         }
                         if (settings.reload.jump) {
                             EventSystem.on(settings.reload.jump, function () {
-                                var res = prompt('Show which screen?');
+                                var res = window.prompt('Show which screen?');
                                 Bento.screens.show(res);
                             });
                         }
+                    }
+
+                    // screenshot key
+                    if (settings.screenshot) {
+                        setScreenshotListener(settings.screenshot);
                     }
                 });
             });
@@ -321,7 +376,7 @@ bento.define('bento', [
             // reload current screen
             Bento.screens.show(screenName || currentScreen.name);
             // restart the mainloop
-            setTimeout(Bento.objects.run, 120);
+            window.setTimeout(Bento.objects.run, 120);
         },
         /**
          * Returns a gameData object
