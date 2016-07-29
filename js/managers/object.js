@@ -345,9 +345,9 @@ bento.define('bento/managers/object', [
                     var array = quickAccess[type];
                     if (!array) {
                         // initialize it
-                        quickAccess[type] = [];
-                        array = quickAccess[type];
-                        Utils.log('Warning: family called ' + type + ' does not exist', true);
+                        array = [];
+                        quickAccess[type] = array;
+                        // Utils.log('Warning: family called ' + type + ' does not exist', true);
                     }
                     if (callback && array.length) {
                         callback(array);

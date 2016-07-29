@@ -79,7 +79,9 @@ bento.define('bento/managers/screen', [
                     if (!currentScreen) {
                         return;
                     }
-                    currentScreen.onHide(data);
+                    if (currentScreen.onHide) {
+                        currentScreen.onHide(data);
+                    }
                     EventSystem.fire('screenHidden', currentScreen);
                     currentScreen = null;
                 },
