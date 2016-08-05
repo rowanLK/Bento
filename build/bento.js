@@ -13429,7 +13429,7 @@ bento.define('bento/tiled', [
                 layer.push(canvas);
             }
             layers[layerId] = layer;
-            layers.length += 1;
+            layers.length = Math.max(layers.length, layerId + 1);
         };
         var getCanvas = function (layerId, destination) {
             // convert destination position to array index
@@ -13683,7 +13683,9 @@ bento.define('bento/tiled', [
 
                 for (i = 0; i < l; ++i) {
                     layer = layers[i];
-                    makeEntity();
+                    if (layer) {
+                        makeEntity();
+                    }
                 }
 
                 if (onComplete) {
