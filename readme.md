@@ -17,62 +17,13 @@ Remembering parameters and module names is a drag. These Sublime Text snippets w
 
 Please refer to the documentation hosted on the Lucky Kat [bitbucket page](http://luckykat.bitbucket.org/).
 
-## Code Example
-
-Better examples can be found in the examples folder.
-
-```javascript
-// Start with a bento.require call
-bento.require([
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/entity'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Entity
-) {
-    'use strict';
-
-    // Start up Bento game engine
-    Bento.setup({
-        // points to a canvas element
-        canvasId: 'canvas',
-        // resizes the canvas
-        canvasDimension: new Rectangle(0, 0, 640, 480),
-        // specify your assets in a json file
-        assetGroups: {
-            'assets': 'assets/assets.json'
-        },
-        // automatically chooses renderer (canvas2d or webgl)
-        renderer: 'auto'
-    }, function () {
-        // Ready to load assets (You could add a loader screen here)
-        console.log('Bento ready');
-
-        // Start loading assets
-        Bento.assets.load('assets', function (err) {            
-            console.log('Start game');
-
-            /* Your game code here */
-
-        }, function (current, total) {
-            // Loader
-            console.log('Loading asset ' + current + '/' + total);
-        });
-    });
-});
-```
 ## Acknowledgement
 
 Bento has the following dependencies
 
 * Require.js by jrburke
-* PIXI by GoodBoyDigital
-* gl-sprites by mattdesl
 * Audia by richaur (AMD implementation by sprky0)
+* PIXI by GoodBoyDigital (optional)
 
 ## License
 

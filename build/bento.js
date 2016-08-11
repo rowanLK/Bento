@@ -11721,7 +11721,7 @@ bento.define('bento/math/array2d', [], function () {
         };
     };
 });
-/**
+/* DEPRECATED: use transformmatrix
  * Matrix
  * <br>Exports: Constructor
  * @module bento/math/matrix
@@ -12014,6 +12014,7 @@ bento.define('bento/math/matrix', [
  * @param {Array} points - An array of Vector2 with positions of all points
  * @returns {Polygon} Returns a polygon.
  */
+// TODO: cleanup, change to prototype object
 bento.define('bento/math/polygon', [
     'bento/utils',
     'bento/math/rectangle'
@@ -12453,9 +12454,9 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
 });
 /**
  * 3x 3 Matrix specifically used for transformations
- * [ a c tx ]
- * [ b d ty ]
- * [ 0 0 1  ]
+ * <br>[ a c tx ]
+ * <br>[ b d ty ]
+ * <br>[ 0 0 1  ]
  * <br>Exports: Constructor
  * @module bento/math/transformmatrix
  * @returns {Matrix} Returns a matrix object.
@@ -12475,6 +12476,13 @@ bento.define('bento/math/transformmatrix', [
         this.ty = 0;
     }
 
+    /**
+     * Applies matrix on a vector
+     * @function
+     * @returns {Vector2} Transformed vector
+     * @instance
+     * @name multiplyWithVector
+     */
     Matrix.prototype.multiplyWithVector = function (vector) {
         var x = vector.x;
         var y = vector.y;
@@ -12496,6 +12504,15 @@ bento.define('bento/math/transformmatrix', [
         return vector;
     };
 
+    /**
+     * Apply translation transformation on the matrix
+     * @function
+     * @param {Number} x - Translation in x axis
+     * @param {Number} y - Translation in y axis
+     * @returns {Matrix} Matrix with translation transform
+     * @instance
+     * @name translate
+     */
     Matrix.prototype.translate = function (x, y) {
         this.tx += x;
         this.ty += y;
@@ -12503,6 +12520,15 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
+    /**
+     * Apply scale transformation on the matrix
+     * @function
+     * @param {Number} x - Scale in x axis
+     * @param {Number} y - Scale in y axis
+     * @returns {Matrix} Matrix with scale transform
+     * @instance
+     * @name scale
+     */
     Matrix.prototype.scale = function (x, y) {
         this.a *= x;
         this.b *= y;
@@ -12514,6 +12540,16 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
+    /**
+     * Apply rotation transformation on the matrix
+     * @function
+     * @param {Number} angle - Angle to rotate in radians
+     * @param {Number} [sin] - Precomputed sin(angle) if known
+     * @param {Number} [cos] - Precomputed cos(angle) if known
+     * @returns {Matrix} Matrix with rotation transform
+     * @instance
+     * @name rotate
+     */
     Matrix.prototype.rotate = function (angle, sin, cos) {
         var a = this.a;
         var b = this.b;
@@ -12539,6 +12575,14 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
+    /**
+     * Multiplies matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} Self
+     * @instance
+     * @name multiplyWith
+     */
     Matrix.prototype.multiplyWith = function (matrix) {
         var a = this.a;
         var b = this.b;
@@ -12554,10 +12598,25 @@ bento.define('bento/math/transformmatrix', [
 
         return this;
     };
+    /**
+     * Multiplies matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name multiply
+     */
     Matrix.prototype.multiply = function (matrix) {
         return this.clone().multiplyWith(matrix);
     };
 
+    /**
+     * Clones matrix
+     * @function
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name clone
+     */
     Matrix.prototype.clone = function () {
         var matrix = new Matrix();
         matrix.a = this.a;
@@ -12570,6 +12629,13 @@ bento.define('bento/math/transformmatrix', [
         return matrix;
     };
 
+    /**
+     * Resets matrix to identity matrix
+     * @function
+     * @returns {Matrix} Self
+     * @instance
+     * @name reset
+     */
     Matrix.prototype.reset = function () {
         this.a = 1;
         this.b = 0;
@@ -12577,8 +12643,13 @@ bento.define('bento/math/transformmatrix', [
         this.d = 1;
         this.tx = 0;
         this.ty = 0;
+        return this;
     };
-
+    Matrix.prototype.identity = Matrix.prototype.reset;
+    
+    Matrix.prototype.toString = function () {
+        return '[object Matrix]';
+    };
     return Matrix;
 });
 /**
@@ -12875,7 +12946,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
     };
-    /**
+    /* DEPRECATED
      * Represent the vector as a 1x3 matrix
      * @function
      * @returns {Matrix} Returns a 1x3 Matrix
@@ -13646,9 +13717,9 @@ bento.define('bento/tiled', [
                 }
             },
             onComplete: function () {
-                var layers = layerSprites.layers;
+                var canvasLayers = layerSprites.layers;
                 var layer;
-                var l = layers.length;
+                var l = canvasLayers.length;
                 var i;
                 var canvasSize = layerSprites.canvasSize;
                 var spritesCountX = layerSprites.spritesCountX;
@@ -13658,6 +13729,7 @@ bento.define('bento/tiled', [
                     var canvas;
                     var sprite;
                     var entity;
+                    var tiledLayer = json.layers[i];
                     for (j = 0; j < layer.length; ++j) {
                         canvas = layer[j];
                         sprite = new Sprite({
@@ -13665,7 +13737,7 @@ bento.define('bento/tiled', [
                         });
                         entity = new Entity({
                             z: 0,
-                            name: 'background',
+                            name: tiledLayer.name || 'background',
                             family: ['backgrounds'],
                             position: new Vector2(
                                 offset.x + canvasSize.x * (j % spritesCountX),
@@ -13682,7 +13754,7 @@ bento.define('bento/tiled', [
                 };
 
                 for (i = 0; i < l; ++i) {
-                    layer = layers[i];
+                    layer = canvasLayers[i];
                     if (layer) {
                         makeEntity();
                     }
@@ -14580,12 +14652,14 @@ bento.define('bento/renderers/pixi', [
     'bento/math/transformmatrix',
     'bento/renderers/canvas2d'
 ], function (Bento, Utils, TransformMatrix, Canvas2d) {
+    var PIXI = window.PIXI;
     return function (canvas, settings) {
+        var gl;
         var canWebGl = (function () {
             // try making a canvas
             try {
-                var canvas = document.createElement('canvas');
-                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!window.WebGLRenderingContext;
             } catch (e) {
                 return false;
             }
@@ -14740,6 +14814,12 @@ bento.define('bento/renderers/pixi', [
                 displayObject.parent = transformObject;
                 displayObject.updateTransform();
                 displayObject.renderWebGL(pixiRenderer);
+            },
+            getContext: function () {
+                return gl;
+            },
+            getPixiRenderer: function () {
+                return pixiRenderer;
             }
         };
 
@@ -14748,13 +14828,14 @@ bento.define('bento/renderers/pixi', [
             // Matrix = PIXI.Matrix;
             matrix = new TransformMatrix();
             // additional scale
-            if (Utils.isCocoonJs()) {
-                cocoonScale = window.innerWidth / canvas.width;
-                console.log('Cocoon-Pixi scale', cocoonScale);
-            }
             // resize canvas according to pixelSize
-            canvas.width *= pixelSize * cocoonScale;
-            canvas.height *= pixelSize * cocoonScale;
+            canvas.width *= pixelSize;
+            canvas.height *= pixelSize;
+            if (Utils.isCocoonJs()) {
+                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
+                canvas.width *= cocoonScale;
+                canvas.height *= cocoonScale;
+            }
             pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
                 view: canvas,
                 backgroundColor: 0x000000,
@@ -16000,6 +16081,7 @@ bento.define('bento/gui/togglebutton', [
             },
             sprite = settings.sprite || new Sprite({
                 image: settings.image,
+                imageName: settings.imageName,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
                 frameCountX: settings.frameCountX,

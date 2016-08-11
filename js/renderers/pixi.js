@@ -7,12 +7,14 @@ bento.define('bento/renderers/pixi', [
     'bento/math/transformmatrix',
     'bento/renderers/canvas2d'
 ], function (Bento, Utils, TransformMatrix, Canvas2d) {
+    var PIXI = window.PIXI;
     return function (canvas, settings) {
+        var gl;
         var canWebGl = (function () {
             // try making a canvas
             try {
-                var canvas = document.createElement('canvas');
-                return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!window.WebGLRenderingContext;
             } catch (e) {
                 return false;
             }
@@ -167,6 +169,12 @@ bento.define('bento/renderers/pixi', [
                 displayObject.parent = transformObject;
                 displayObject.updateTransform();
                 displayObject.renderWebGL(pixiRenderer);
+            },
+            getContext: function () {
+                return gl;
+            },
+            getPixiRenderer: function () {
+                return pixiRenderer;
             }
         };
 
@@ -175,13 +183,14 @@ bento.define('bento/renderers/pixi', [
             // Matrix = PIXI.Matrix;
             matrix = new TransformMatrix();
             // additional scale
-            if (Utils.isCocoonJs()) {
-                cocoonScale = window.innerWidth / canvas.width;
-                console.log('Cocoon-Pixi scale', cocoonScale);
-            }
             // resize canvas according to pixelSize
-            canvas.width *= pixelSize * cocoonScale;
-            canvas.height *= pixelSize * cocoonScale;
+            canvas.width *= pixelSize;
+            canvas.height *= pixelSize;
+            if (Utils.isCocoonJs()) {
+                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
+                canvas.width *= cocoonScale;
+                canvas.height *= cocoonScale;
+            }
             pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
                 view: canvas,
                 backgroundColor: 0x000000,

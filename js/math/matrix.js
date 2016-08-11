@@ -1,4 +1,4 @@
-/**
+/* DEPRECATED: use transformmatrix
  * Matrix
  * <br>Exports: Constructor
  * @module bento/math/matrix

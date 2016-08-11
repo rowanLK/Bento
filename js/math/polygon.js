@@ -5,6 +5,7 @@
  * @param {Array} points - An array of Vector2 with positions of all points
  * @returns {Polygon} Returns a polygon.
  */
+// TODO: cleanup, change to prototype object
 bento.define('bento/math/polygon', [
     'bento/utils',
     'bento/math/rectangle'
