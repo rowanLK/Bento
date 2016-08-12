@@ -292,7 +292,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
     };
-    /**
+    /* DEPRECATED
      * Represent the vector as a 1x3 matrix
      * @function
      * @returns {Matrix} Returns a 1x3 Matrix

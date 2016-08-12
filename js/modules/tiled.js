@@ -71,7 +71,7 @@ bento.define('bento/tiled', [
                 layer.push(canvas);
             }
             layers[layerId] = layer;
-            layers.length += 1;
+            layers.length = Math.max(layers.length, layerId + 1);
         };
         var getCanvas = function (layerId, destination) {
             // convert destination position to array index
@@ -288,9 +288,9 @@ bento.define('bento/tiled', [
                 }
             },
             onComplete: function () {
-                var layers = layerSprites.layers;
+                var canvasLayers = layerSprites.layers;
                 var layer;
-                var l = layers.length;
+                var l = canvasLayers.length;
                 var i;
                 var canvasSize = layerSprites.canvasSize;
                 var spritesCountX = layerSprites.spritesCountX;
@@ -300,6 +300,7 @@ bento.define('bento/tiled', [
                     var canvas;
                     var sprite;
                     var entity;
+                    var tiledLayer = json.layers[i];
                     for (j = 0; j < layer.length; ++j) {
                         canvas = layer[j];
                         sprite = new Sprite({
@@ -307,7 +308,7 @@ bento.define('bento/tiled', [
                         });
                         entity = new Entity({
                             z: 0,
-                            name: 'background',
+                            name: tiledLayer.name || 'background',
                             family: ['backgrounds'],
                             position: new Vector2(
                                 offset.x + canvasSize.x * (j % spritesCountX),
@@ -324,8 +325,10 @@ bento.define('bento/tiled', [
                 };
 
                 for (i = 0; i < l; ++i) {
-                    layer = layers[i];
-                    makeEntity();
+                    layer = canvasLayers[i];
+                    if (layer) {
+                        makeEntity();
+                    }
                 }
 
                 if (onComplete) {

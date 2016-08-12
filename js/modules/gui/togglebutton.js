@@ -48,6 +48,7 @@ bento.define('bento/gui/togglebutton', [
             },
             sprite = settings.sprite || new Sprite({
                 image: settings.image,
+                imageName: settings.imageName,
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
                 frameCountX: settings.frameCountX,

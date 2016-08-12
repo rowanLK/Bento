@@ -1,8 +1,8 @@
 /**
  * 3x 3 Matrix specifically used for transformations
- * [ a c tx ]
- * [ b d ty ]
- * [ 0 0 1  ]
+ * <br>[ a c tx ]
+ * <br>[ b d ty ]
+ * <br>[ 0 0 1  ]
  * <br>Exports: Constructor
  * @module bento/math/transformmatrix
  * @returns {Matrix} Returns a matrix object.
@@ -22,6 +22,13 @@ bento.define('bento/math/transformmatrix', [
         this.ty = 0;
     }
 
+    /**
+     * Applies matrix on a vector
+     * @function
+     * @returns {Vector2} Transformed vector
+     * @instance
+     * @name multiplyWithVector
+     */
     Matrix.prototype.multiplyWithVector = function (vector) {
         var x = vector.x;
         var y = vector.y;
@@ -43,6 +50,15 @@ bento.define('bento/math/transformmatrix', [
         return vector;
     };
 
+    /**
+     * Apply translation transformation on the matrix
+     * @function
+     * @param {Number} x - Translation in x axis
+     * @param {Number} y - Translation in y axis
+     * @returns {Matrix} Matrix with translation transform
+     * @instance
+     * @name translate
+     */
     Matrix.prototype.translate = function (x, y) {
         this.tx += x;
         this.ty += y;
@@ -50,6 +66,15 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
+    /**
+     * Apply scale transformation on the matrix
+     * @function
+     * @param {Number} x - Scale in x axis
+     * @param {Number} y - Scale in y axis
+     * @returns {Matrix} Matrix with scale transform
+     * @instance
+     * @name scale
+     */
     Matrix.prototype.scale = function (x, y) {
         this.a *= x;
         this.b *= y;
@@ -61,6 +86,16 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
+    /**
+     * Apply rotation transformation on the matrix
+     * @function
+     * @param {Number} angle - Angle to rotate in radians
+     * @param {Number} [sin] - Precomputed sin(angle) if known
+     * @param {Number} [cos] - Precomputed cos(angle) if known
+     * @returns {Matrix} Matrix with rotation transform
+     * @instance
+     * @name rotate
+     */
     Matrix.prototype.rotate = function (angle, sin, cos) {
         var a = this.a;
         var b = this.b;
@@ -86,6 +121,14 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
 
+    /**
+     * Multiplies matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} Self
+     * @instance
+     * @name multiplyWith
+     */
     Matrix.prototype.multiplyWith = function (matrix) {
         var a = this.a;
         var b = this.b;
@@ -101,10 +144,25 @@ bento.define('bento/math/transformmatrix', [
 
         return this;
     };
+    /**
+     * Multiplies matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name multiply
+     */
     Matrix.prototype.multiply = function (matrix) {
         return this.clone().multiplyWith(matrix);
     };
 
+    /**
+     * Clones matrix
+     * @function
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name clone
+     */
     Matrix.prototype.clone = function () {
         var matrix = new Matrix();
         matrix.a = this.a;
@@ -117,6 +175,13 @@ bento.define('bento/math/transformmatrix', [
         return matrix;
     };
 
+    /**
+     * Resets matrix to identity matrix
+     * @function
+     * @returns {Matrix} Self
+     * @instance
+     * @name reset
+     */
     Matrix.prototype.reset = function () {
         this.a = 1;
         this.b = 0;
@@ -124,7 +189,12 @@ bento.define('bento/math/transformmatrix', [
         this.d = 1;
         this.tx = 0;
         this.ty = 0;
+        return this;
     };
-
+    Matrix.prototype.identity = Matrix.prototype.reset;
+    
+    Matrix.prototype.toString = function () {
+        return '[object Matrix]';
+    };
     return Matrix;
 });
