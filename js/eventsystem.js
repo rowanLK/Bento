@@ -148,7 +148,7 @@ bento.define('bento/eventsystem', [
          */
         off: removeEventListener,
         /**
-         * Removes all listeners of an event 
+         * Removes all listeners of an event
          * @function
          * @instance
          * @param {String} eventName - Name of the event
