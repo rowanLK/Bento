@@ -106,12 +106,14 @@ bento.define('bento/renderers/pixi', [
             },
             drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                 var image = packedImage.image;
+                var px = packedImage.x;
+                var py = packedImage.y;
                 var rectangle;
                 var sprite;
                 var texture;
                 // If image and frame size don't correspond Pixi will throw an error and break the game.
                 // This check tries to prevent that.
-                if (sx + sw > image.width || sy + sh > image.height) {
+                if (px + sx + sw > image.width || py + sy + sh > image.height) {
                     console.log("Warning: image and frame size do not correspond.", image);
                     return;
                 }
@@ -119,7 +121,7 @@ bento.define('bento/renderers/pixi', [
                     // initialize pixi baseTexture
                     image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
                 }
-                rectangle = new PIXI.Rectangle(sx, sy, sw, sh);
+                rectangle = new PIXI.Rectangle(px + sx, py + sy, sw, sh);
                 texture = new PIXI.Texture(image.texture, rectangle);
                 texture._updateUvs();
 
