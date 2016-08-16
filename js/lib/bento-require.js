@@ -10,7 +10,7 @@
             var module;
             var moduleName;
             var array;
-            
+
             // check for circular dependency
             for (moduleName in waiting) {
                 if (!waiting.hasOwnProperty(moduleName)) {

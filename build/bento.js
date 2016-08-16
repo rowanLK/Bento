@@ -5268,7 +5268,7 @@ bento.define('bento/eventsystem', [
          */
         off: removeEventListener,
         /**
-         * Removes all listeners of an event 
+         * Removes all listeners of an event
          * @function
          * @instance
          * @param {String} eventName - Name of the event
@@ -6335,6 +6335,18 @@ bento.define('bento/utils', [], function () {
             return arguments[this.getRandom(arguments.length)];
         },
         /**
+         * Clamps a numerical value between a minimum and maximum value
+         * @function
+         * @instance
+         * @param {Number} min - lower limit
+         * @param {Number} value - value to clamp between min and max
+         * @param {Number} max - upper limit
+         * @name clamp
+         */
+        clamp: function (min, value, max) {
+            return Math.max(min, Math.min(value, max));
+        },
+        /**
          * Checks useragent if device is an apple device. Works on web only.
          * @function
          * @instance
@@ -6887,7 +6899,7 @@ bento.define('bento/components/sprite', [
                     highestFrame = animations[animation].frames[i];
                 }
             }
-            if (!animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
                 console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
             }
 
@@ -12646,7 +12658,7 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
     Matrix.prototype.identity = Matrix.prototype.reset;
-    
+
     Matrix.prototype.toString = function () {
         return '[object Matrix]';
     };

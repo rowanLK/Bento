@@ -192,7 +192,7 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
     Matrix.prototype.identity = Matrix.prototype.reset;
-    
+
     Matrix.prototype.toString = function () {
         return '[object Matrix]';
     };
