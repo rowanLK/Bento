@@ -186,7 +186,7 @@ bento.define('bento/components/sprite', [
                     highestFrame = animations[animation].frames[i];
                 }
             }
-            if (!animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
                 console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
             }
 
