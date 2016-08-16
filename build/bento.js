@@ -5268,7 +5268,7 @@ bento.define('bento/eventsystem', [
          */
         off: removeEventListener,
         /**
-         * Removes all listeners of an event 
+         * Removes all listeners of an event
          * @function
          * @instance
          * @param {String} eventName - Name of the event
@@ -12658,7 +12658,7 @@ bento.define('bento/math/transformmatrix', [
         return this;
     };
     Matrix.prototype.identity = Matrix.prototype.reset;
-    
+
     Matrix.prototype.toString = function () {
         return '[object Matrix]';
     };
