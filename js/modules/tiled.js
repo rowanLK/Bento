@@ -98,7 +98,7 @@ bento.define('bento/tiled', [
             getSpritesFromLayer: function (layerId) {
                 return layers[layerId];
             },
-            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD) {
+            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD, opacity) {
                 // get the corresponding canvas
                 var canvasData = getCanvas(layerId, destination);
                 var canvas = canvasData.canvas;
@@ -145,6 +145,11 @@ bento.define('bento/tiled', [
                 context.scale(doFlipX ? -1 : 1, doFlipY ? -1 : 1);
                 // offset origin
                 context.translate(-source.width / 2, -source.height / 2);
+                // opacity
+                if (opacity !== undefined) {
+                    context.globalAlpha = opacity;
+                }
+
                 // draw the tile!
                 context.drawImage(
                     packedImage.image,
@@ -157,6 +162,7 @@ bento.define('bento/tiled', [
                     destination.width,
                     destination.height
                 );
+                context.globalAlpha = 1;
                 context.restore();
             }
         };
@@ -186,6 +192,7 @@ bento.define('bento/tiled', [
         var backgrounds = [];
         var entitiesSpawned = 0;
         var entitiesToSpawn = 0;
+        var opacity = 1;
         var tiledReader = new TiledReader({
             tiled: json,
             onInit: onInit,
@@ -240,6 +247,7 @@ bento.define('bento/tiled', [
                         currentSpriteLayer = 0;
                     }
                 }
+                opacity = layer.opacity;
                 if (onLayer) {
                     onLayer(layer);
                 }
@@ -272,7 +280,8 @@ bento.define('bento/tiled', [
                     imageAsset,
                     flipX,
                     flipY,
-                    flipD
+                    flipD,
+                    opacity
                 );
 
                 if (onTile) {
