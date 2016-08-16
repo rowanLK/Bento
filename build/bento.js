@@ -13527,7 +13527,7 @@ bento.define('bento/tiled', [
             getSpritesFromLayer: function (layerId) {
                 return layers[layerId];
             },
-            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD) {
+            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD, opacity) {
                 // get the corresponding canvas
                 var canvasData = getCanvas(layerId, destination);
                 var canvas = canvasData.canvas;
@@ -13574,6 +13574,11 @@ bento.define('bento/tiled', [
                 context.scale(doFlipX ? -1 : 1, doFlipY ? -1 : 1);
                 // offset origin
                 context.translate(-source.width / 2, -source.height / 2);
+                // opacity
+                if (opacity !== undefined) {
+                    context.globalAlpha = opacity;
+                }
+
                 // draw the tile!
                 context.drawImage(
                     packedImage.image,
@@ -13586,6 +13591,7 @@ bento.define('bento/tiled', [
                     destination.width,
                     destination.height
                 );
+                context.globalAlpha = 1;
                 context.restore();
             }
         };
@@ -13615,6 +13621,7 @@ bento.define('bento/tiled', [
         var backgrounds = [];
         var entitiesSpawned = 0;
         var entitiesToSpawn = 0;
+        var opacity = 1;
         var tiledReader = new TiledReader({
             tiled: json,
             onInit: onInit,
@@ -13669,6 +13676,7 @@ bento.define('bento/tiled', [
                         currentSpriteLayer = 0;
                     }
                 }
+                opacity = layer.opacity;
                 if (onLayer) {
                     onLayer(layer);
                 }
@@ -13701,7 +13709,8 @@ bento.define('bento/tiled', [
                     imageAsset,
                     flipX,
                     flipY,
-                    flipD
+                    flipD,
+                    opacity
                 );
 
                 if (onTile) {
@@ -14751,12 +14760,14 @@ bento.define('bento/renderers/pixi', [
             },
             drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                 var image = packedImage.image;
+                var px = packedImage.x;
+                var py = packedImage.y;
                 var rectangle;
                 var sprite;
                 var texture;
                 // If image and frame size don't correspond Pixi will throw an error and break the game.
                 // This check tries to prevent that.
-                if (sx + sw > image.width || sy + sh > image.height) {
+                if (px + sx + sw > image.width || py + sy + sh > image.height) {
                     console.log("Warning: image and frame size do not correspond.", image);
                     return;
                 }
@@ -14764,7 +14775,7 @@ bento.define('bento/renderers/pixi', [
                     // initialize pixi baseTexture
                     image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
                 }
-                rectangle = new PIXI.Rectangle(sx, sy, sw, sh);
+                rectangle = new PIXI.Rectangle(px + sx, py + sy, sw, sh);
                 texture = new PIXI.Texture(image.texture, rectangle);
                 texture._updateUvs();
 
