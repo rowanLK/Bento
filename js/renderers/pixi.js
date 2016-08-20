@@ -156,8 +156,8 @@ bento.define('bento/renderers/pixi', [
                 // with spritepool
                 texture = image.frame;
                 rectangle = texture._frame;
-                rectangle.x = sx;
-                rectangle.y = sy;
+                rectangle.x = px + sx;
+                rectangle.y = py + sy;
                 rectangle.width = sw;
                 rectangle.height = sh;
                 texture._updateUvs();
