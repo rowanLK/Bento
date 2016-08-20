@@ -1,0 +1,37 @@
+div.description {
+    margin-top: 0px;
+    /*margin-left: 32px;*/
+}
+div.param-desc {
+    margin-left: 32px;
+}
+h5 + table.params {
+    margin-left: 32px;
+}
+dl.details {
+    margin-top: 4px;
+    margin-bottom: 4px;
+    margin-left: 32px;
+    font-size: 12px;
+    line-height: 16px;
+}
+dl.param-type {
+    margin-left: 32px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+    border-bottom: none;
+}
+.name {
+    font-weight: bold;
+}
+
+h5 {
+    margin-left: 32px;
+    font-size: 100%;
+    font-style: italic;
+}
+
+pre.prettyprint {
+    margin-left: 32px;
+}

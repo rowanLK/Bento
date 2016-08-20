@@ -6,7 +6,6 @@
  * @module {Entity} bento/entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
- * @param {Function} settings.onCollide - Called when object collides in HSHG
  * @param {Array} settings.components - Array of component module functions
  * @param {Array} settings.family - Array of family names. See {@link module:bento/managers/object#getByFamily}
  * @param {Vector2} settings.position - Vector2 of position to set
@@ -20,8 +19,6 @@
  * @param {Boolean} settings.updateWhenPaused - Should entity keep updating when game is paused
  * @param {Boolean} settings.global - Should entity remain after hiding a screen
  * @param {Boolean} settings.float - Should entity move with the screen
- * @param {Boolean} settings.useHshg - (DEPRECATED)Should entity use HSHG for collisions
- * @param {Boolean} settings.staticHshg - (DEPRECATED)Is entity a static object in HSHG (doesn't check collisions on others, but can get checked on)
  * @example
 var entity = new Entity({
     z: 0,
@@ -110,13 +107,6 @@ bento.define('bento/entity', [
         this.name = '';
         this.isAdded = false;
         /**
-         * Use Hierarchical Spatial Hash Grids
-         * @instance
-         * @default ''
-         * @name useHshg
-         */
-        this.useHshg = false;
-        /**
          * Position of the entity
          * @instance
          * @default Vector2(0, 0)
@@ -131,7 +121,7 @@ bento.define('bento/entity', [
          */
         this.origin = new Vector2(0, 0);
         /**
-         * Families of the entity
+         * Families of the entity. Note: edit this before the entity is attached.
          * @instance
          * @default []
          * @see module:bento/managers/object#getByFamily
@@ -168,10 +158,10 @@ bento.define('bento/entity', [
          */
         this.scale = new Vector2(1, 1);
         /**
-         * Rotation of the entity
+         * Rotation of the entity in radians
          * @instance
          * @default 0
-         * @name scale
+         * @name rotation
          */
         this.rotation = 0;
         /**
@@ -195,7 +185,7 @@ bento.define('bento/entity', [
          */
         this.transform = new Transform(this);
         /**
-         * Entity's parent object, is set by the attach function
+         * Entity's parent object, is set by the attach function, not recommended to set manually unless you know what you're doing.
          * @instance
          * @default null
          * @see module:bento/entity#attach
@@ -242,10 +232,6 @@ bento.define('bento/entity', [
             this.updateWhenPaused = settings.updateWhenPaused || 0;
             this.global = settings.global || false;
             this.float = settings.float || false;
-            // hshg: deprecated
-            this.useHshg = settings.useHshg || false;
-            this.staticHshg = settings.staticHshg || false;
-            this.onCollide = settings.onCollide;
 
             // attach components after initializing other variables
             if (settings.components) {
@@ -789,23 +775,6 @@ Bento.objects.attach(entity);
         return null;
     };
 
-    // for use with Hshg
-    Entity.prototype.getAABB = function () {
-        var box;
-        if (this.staticHshg) {
-            // cache boundingbox
-            if (!this.box) {
-                this.box = this.getBoundingBox();
-            }
-            box = this.box;
-        } else {
-            box = this.getBoundingBox();
-        }
-        return {
-            min: [box.x, box.y],
-            max: [box.x + box.width, box.y + box.height]
-        };
-    };
     /**
      * Transforms this entity's position to the world position
      * @function

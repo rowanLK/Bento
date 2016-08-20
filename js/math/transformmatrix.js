@@ -193,6 +193,46 @@ bento.define('bento/math/transformmatrix', [
     };
     Matrix.prototype.identity = Matrix.prototype.reset;
 
+    /**
+     * Prepend matrix
+     * @function
+     * @param {Matrix} Other matrix
+     * @instance
+     * @returns {Matrix} Self
+     */
+    Matrix.prototype.prependWith = function (matrix) {
+        var selfTx = this.tx;
+        var selfA = this.a;
+        var selfC = this.c;
+
+        this.a = selfA * matrix.a + this.b * matrix.c;
+        this.b = selfA * matrix.b + this.b * matrix.d;
+        this.c = selfC * matrix.a + this.d * matrix.c;
+        this.d = selfC * matrix.b + this.d * matrix.d;
+
+        this.tx = selfTx * matrix.a + this.ty * matrix.c + matrix.tx;
+        this.ty = selfTx * matrix.b + this.ty * matrix.d + matrix.ty;
+
+        return this;
+    };
+
+    /**
+     * Prepends matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to prepend
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name prepend
+     */
+    Matrix.prototype.prepend = function (matrix) {
+        return this.clone().prependWith(matrix);
+    };
+
+    // aliases
+    Matrix.prototype.appendWith = Matrix.prototype.multiplyWith;
+    Matrix.prototype.append = Matrix.prototype.multiply;
+
+
     Matrix.prototype.toString = function () {
         return '[object Matrix]';
     };
