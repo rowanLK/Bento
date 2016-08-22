@@ -8,6 +8,28 @@ bento.define('bento/renderers/pixi', [
     'bento/renderers/canvas2d'
 ], function (Bento, Utils, TransformMatrix, Canvas2d) {
     var PIXI = window.PIXI;
+    var SpritePool = function (initialSize) {
+        var i;
+        // initialize        
+        this.sprites = [];
+        for (i = 0; i < initialSize; ++i) {
+            this.sprites.push(new PIXI.Sprite());
+        }
+        this.index = 0;
+    };
+    SpritePool.prototype.reset = function () {
+        this.index = 0;
+    };
+    SpritePool.prototype.getSprite = function () {
+        var sprite = this.sprites[this.index];
+        if (!sprite) {
+            sprite = new PIXI.Sprite();
+            this.sprites.push(sprite);
+        }
+        this.index += 1;
+        return sprite;
+    };
+
     return function (canvas, settings) {
         var gl;
         var canWebGl = (function () {
@@ -33,6 +55,7 @@ bento.define('bento/renderers/pixi', [
         var cocoonScale = 1;
         var pixelSize = settings.pixelSize || 1;
         var tempDisplayObjectParent = null;
+        var spritePool = new SpritePool(2000);
         var transformObject = {
             worldTransform: null,
             worldAlpha: 1,
@@ -109,7 +132,7 @@ bento.define('bento/renderers/pixi', [
                 var px = packedImage.x;
                 var py = packedImage.y;
                 var rectangle;
-                var sprite;
+                var sprite = spritePool.getSprite();
                 var texture;
                 // If image and frame size don't correspond Pixi will throw an error and break the game.
                 // This check tries to prevent that.
@@ -120,19 +143,38 @@ bento.define('bento/renderers/pixi', [
                 if (!image.texture) {
                     // initialize pixi baseTexture
                     image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+                    image.frame = new PIXI.Texture(image.texture);
                 }
+                // without spritepool
+                /*
                 rectangle = new PIXI.Rectangle(px + sx, py + sy, sw, sh);
                 texture = new PIXI.Texture(image.texture, rectangle);
                 texture._updateUvs();
-
-                // should sprites be reused instead of spawning one all the time(?)
                 sprite = new PIXI.Sprite(texture);
+                */
+                
+                // with spritepool
+                texture = image.frame;
+                rectangle = texture._frame;
+                rectangle.x = px + sx;
+                rectangle.y = py + sy;
+                rectangle.width = sw;
+                rectangle.height = sh;
+                texture._updateUvs();
+                sprite._texture = texture;
+
                 sprite.worldTransform = matrix;
                 sprite.worldAlpha = alpha;
 
                 // push into batch
                 pixiRenderer.setObjectRenderer(spriteRenderer);
                 spriteRenderer.render(sprite);
+
+                // did the spriteRenderer flush in the meantime?
+                if (spriteRenderer.currentBatchSize === 0) {
+                    // the spritepool can be reset as well then
+                    spritePool.reset();
+                }
             },
             begin: function () {
                 spriteRenderer.start();
@@ -144,6 +186,7 @@ bento.define('bento/renderers/pixi', [
             flush: function () {
                 // note: only spriterenderer has an implementation of flush
                 spriteRenderer.flush();
+                spritePool.reset();
                 if (pixelSize !== 1 || Utils.isCocoonJs()) {
                     this.restore();
                 }

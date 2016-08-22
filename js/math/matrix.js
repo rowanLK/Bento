@@ -45,7 +45,7 @@ bento.define('bento/math/matrix', [
             }
 
             return {
-                /**
+                /*
                  * Returns true
                  * @function
                  * @returns {Boolean} Is always true
@@ -55,7 +55,7 @@ bento.define('bento/math/matrix', [
                 isMatrix: function () {
                     return true;
                 },
-                /**
+                /*
                  * Returns a string representation of the matrix (useful for debugging purposes)
                  * @function
                  * @returns {String} String matrix
@@ -76,7 +76,7 @@ bento.define('bento/math/matrix', [
                     }
                     return str;
                 },
-                /**
+                /*
                  * Get the value inside matrix
                  * @function
                  * @param {Number} x - x index
@@ -88,7 +88,7 @@ bento.define('bento/math/matrix', [
                 get: function (x, y) {
                     return get(x, y);
                 },
-                /**
+                /*
                  * Set the value inside matrix
                  * @function
                  * @param {Number} x - x index
@@ -100,7 +100,7 @@ bento.define('bento/math/matrix', [
                 set: function (x, y, value) {
                     set(x, y, value);
                 },
-                /**
+                /*
                  * Set the values inside matrix using an array.
                  * If the matrix is 2x2 in size, then supplying an array with
                  * values [1, 2, 3, 4] will result in a matrix
@@ -121,7 +121,7 @@ bento.define('bento/math/matrix', [
                     }
                     return this;
                 },
-                /**
+                /*
                  * Get the matrix width
                  * @function
                  * @returns {Number} The width of the matrix
@@ -131,7 +131,7 @@ bento.define('bento/math/matrix', [
                 getWidth: function () {
                     return n;
                 },
-                /**
+                /*
                  * Get the matrix height
                  * @function
                  * @returns {Number} The height of the matrix
@@ -141,7 +141,7 @@ bento.define('bento/math/matrix', [
                 getHeight: function () {
                     return m;
                 },
-                /**
+                /*
                  * Callback at every iteration.
                  *
                  * @callback IterationCallBack
@@ -149,7 +149,7 @@ bento.define('bento/math/matrix', [
                  * @param {Number} y - The current y index
                  * @param {Number} value - The value at the x,y index
                  */
-                /**
+                /*
                  * Iterate through matrix
                  * @function
                  * @param {IterationCallback} callback - Callback function to be called every iteration
@@ -167,7 +167,7 @@ bento.define('bento/math/matrix', [
                         }
                     }
                 },
-                /**
+                /*
                  * Transposes the current matrix
                  * @function
                  * @returns {Matrix} Returns self
@@ -188,7 +188,7 @@ bento.define('bento/math/matrix', [
                     m = [n, n = m][0];
                     return this;
                 },
-                /**
+                /*
                  * Addition of another matrix
                  * @function
                  * @param {Matrix} matrix - matrix to add
@@ -208,7 +208,7 @@ bento.define('bento/math/matrix', [
                     }
                     return this;
                 },
-                /**
+                /*
                  * Addition of another matrix
                  * @function
                  * @param {Matrix} matrix - matrix to add
@@ -217,7 +217,7 @@ bento.define('bento/math/matrix', [
                  * @name add
                  */
                 add: add,
-                /**
+                /*
                  * Multiply with another matrix
                  * If a new matrix C is the result of A * B = C
                  * then B is the current matrix and becomes C, A is the input matrix
@@ -257,7 +257,7 @@ bento.define('bento/math/matrix', [
                     m = newHeight;
                     return this;
                 },
-                /**
+                /*
                  * Multiply with another matrix
                  * If a new matrix C is the result of A * B = C
                  * then B is the current matrix and becomes C, A is the input matrix
@@ -268,7 +268,7 @@ bento.define('bento/math/matrix', [
                  * @name multiply
                  */
                 multiply: multiply,
-                /**
+                /*
                  * Returns a clone of the current matrix
                  * @function
                  * @returns {Matrix} A new matrix

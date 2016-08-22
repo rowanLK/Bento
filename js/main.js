@@ -19,7 +19,7 @@
              * @param {Array} dependencyModuleNames - Array of module names
              * @param {Function} callback - Called when dependencies are loaded.
              * Function parameters is a list of corresponding module objects
-             * @name require
+             * @name bento require
              */
             require: req,
             /**
@@ -30,7 +30,7 @@
              * @param {Array} dependencyModuleNames - Array of module names
              * @param {Function} callback - Called when dependencies are loaded.
              * Function parameters is a list of corresponding module objects
-             * @name define
+             * @name bento define
              */
             define: function () {
                 var name = arguments[0];
@@ -39,12 +39,12 @@
                 }
                 def.apply(this, arguments);
             },
-            /**
+            /*
              * Deletes all loaded modules. See {@link http://requirejs.org/docs/api.html#undef}
              * Modules loaded after bento.watch started are affected
              * @function
              * @instance
-             * @name refresh
+             * @name bento.refresh
              */
             refresh: function () {
                 var i = 0;
@@ -53,11 +53,11 @@
                     rjs.undef(modules[i]);
                 }
             },
-            /**
+            /*
              * Start collecting modules for deletion
              * @function
              * @instance
-             * @name watch
+             * @name bento.watch
              */
             watch: function () {
                 startWatching = true;

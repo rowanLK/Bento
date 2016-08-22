@@ -12,10 +12,9 @@
  * @returns ObjectManager
  */
 bento.define('bento/managers/object', [
-    'hshg',
     'bento/utils',
     'bento/eventsystem'
-], function (Hshg, Utils, EventSystem) {
+], function (Utils, EventSystem) {
     'use strict';
     return function (getGameData, settings) {
         var objects = [],
@@ -29,7 +28,6 @@ bento.define('bento/managers/object', [
             isPaused = 0,
             isStopped = false,
             fpsMeter,
-            hshg = new Hshg(),
             sortDefault = function () {
                 // default array sorting method (unstable)
                 objects.sort(function (a, b) {
@@ -116,10 +114,6 @@ bento.define('bento/managers/object', [
                         object.update(data);
                     }
                 }
-                if (!isPaused) {
-                    hshg.update();
-                    hshg.queryForCollisionPairs();
-                }
                 EventSystem.fire('postUpdate', data);
             },
             draw = function (data) {
@@ -170,9 +164,6 @@ bento.define('bento/managers/object', [
                         quickAccess[type].push(object);
                     }
                 }
-                if (object.useHshg && object.getAABB) {
-                    hshg.addObject(object);
-                }
 
                 if (object.start) {
                     object.start(data);
@@ -220,9 +211,6 @@ bento.define('bento/managers/object', [
                         }
                         object.isAdded = false;
                     }
-                    if (object.useHshg && object.getAABB) {
-                        hshg.removeObject(object);
-                    }
                     // remove from access pools
                     if (object.family) {
                         family = object.family;
@@ -254,15 +242,10 @@ bento.define('bento/managers/object', [
                             module.remove(object);
                         }
                     }
-                    // bug in hshg: objects don't get removed here, so we respawn hshg
-                    hshg = new Hshg();
                     // re-add all global objects
                     cleanObjects();
                     for (i = 0; i < objects.length; ++i) {
                         object = objects[i];
-                        if (object.useHshg && object.getAABB) {
-                            hshg.addObject(object);
-                        }
                     }
                 },
                 /**
@@ -432,15 +415,6 @@ bento.define('bento/managers/object', [
                  */
                 draw: function (data) {
                     draw(data);
-                },
-                /**
-                 * Gets the current HSHG grid instance
-                 * @function
-                 * @instance
-                 * @name getHshg
-                 */
-                getHshg: function () {
-                    return hshg;
                 },
                 /**
                  * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
