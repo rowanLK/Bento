@@ -1,4 +1,8 @@
-## Bento Javascript Game Engine
+<h3 align="center">
+  <img style="max-width: 100%; max-height: 200px" src="http://www.heigames.com/bento-header.png" alt="Bento" />
+</h3>
+
+# Bento Javascript Game Engine
 
 Bento is a modular, component based Javascript game engine. 
 
@@ -8,14 +12,14 @@ Install Node.js and use `npm install`. To build the engine, use the `gulp` comma
 
 ## How to use
 
-(Not written yet...)
-Easiest way to get started for now is to copy the Empty Bento project: https://bitbucket.org/luckykat/empty-bento-project
+(Not written yet...)<br>
+Easiest way to get started for now is to download the [Empty Bento project](https://github.com/LuckyKat/Bento-Empty-Project)
 
-Remembering parameters and module names is a drag. These Sublime Text snippets will make your life easier: [snippets](https://bitbucket.org/snippets/luckykat/xREop)
+Install these Sublime Text snippets to make your life easier! No need for remembering function parameters and module names: [snippets](https://gist.github.com/HernanZh/d12d81cd2de72c735171e866f5236632)
 
 ## API Reference
 
-Please refer to the documentation hosted on the Lucky Kat [bitbucket page](http://luckykat.bitbucket.org/).
+Please refer to the documentation hosted on the Lucky Kat [github page](https://luckykat.github.io/Bento/).
 
 ## Acknowledgement
 
