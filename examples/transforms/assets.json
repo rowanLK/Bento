@@ -1,6 +1,6 @@
 {
-    "main": {
-        "path": "assets/main/",
+    "assets": {
+        "path": "assets/",
         "images": {
             "bunnygirlsmall": "bunnygirlsmall.png",
             "buttona": "buttona.png",
@@ -10,6 +10,9 @@
         },
         "json": {
             "bunny": "bunny.json"
+        },
+        "fonts": {
+            "font": "font.ttf"
         }
     }
 }

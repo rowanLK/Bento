@@ -1,9 +1,0 @@
-{
-    "path": "assets/",
-    "images": {
-        "image": "image.png"
-    },
-    "texturePacker": {
-        "image": "image.json"
-    }
-}
