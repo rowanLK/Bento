@@ -19,7 +19,8 @@ bento.define('bento/managers/asset', [
             audio: {},
             json: {},
             images: {},
-            binary: {}
+            binary: {},
+            fonts: {}
         };
         var texturePacker = {};
         var packs = [];
@@ -68,9 +69,16 @@ bento.define('bento/managers/asset', [
                 callback('Timeout: loading JSON ' + source);
             };
             xhr.onreadystatechange = function () {
+                var jsonData;
                 if (xhr.readyState === 4) {
                     if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
-                        callback(null, name, JSON.parse(xhr.responseText));
+                        try {
+                            jsonData = JSON.parse(xhr.responseText);
+                        } catch (e) {
+                            console.log('ERROR: Could not parse JSON ' + name + ' at ' + source);
+                            console.log('Trying to parse', xhr.responseText);
+                        }
+                        callback(null, name, jsonData);
                     } else {
                         callback('Error: State ' + xhr.readyState + ' ' + source);
                     }
@@ -116,6 +124,68 @@ bento.define('bento/managers/asset', [
                 // TODO: Implement failure: should it retry to load the image?
                 console.log('ERROR: loading image ' + source);
             }, false);
+        };
+        var loadTTF = function (name, source, callback) {
+            // for every font to load we measure the width on a canvas
+            var splitName = name;
+            var canvas = document.createElement('canvas');
+            var context = canvas.getContext('2d');
+            var width = 0;
+            var oldWidth;
+            var intervalId;
+            var checkCount = 0;
+            var measure = function () {
+                width = context.measureText('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,').width;
+                // console.log(width);
+                return width;
+            };
+            var loadFont = function () {
+                // this method works with Canvas+
+                var style = document.createElement('style');
+                style.setAttribute("type", "text/css");
+                style.innerHTML = "@font-face { font-family: '" + name +
+                    "'; src: url('" + source + "');}"
+
+                document.body.appendChild(style);
+            };
+            // detect a loaded font by checking if the width changed
+            var isLoaded = function () {
+                return oldWidth !== measure();
+            };
+
+            // unlike other assets, the font name is not allowed to have slashes!
+            if (name.indexOf("/") >= 0) {
+                splitName = name.split("/");
+                // swap name with last word
+                name = splitName[splitName.length - 1];
+            }
+
+            context.font = "16px " + name;
+            // measure for the first time
+            oldWidth = measure();
+            loadFont();
+
+            // check every 100ms
+            intervalId = window.setInterval(function () {
+                if (isLoaded()) {
+                    // done!
+                    window.clearInterval(intervalId);
+                    if (callback) {
+                        callback(null, name, name);
+                    }
+                } else if (checkCount >= 20) {
+                    // give up after 2000ms
+                    // possible scenarios:
+                    // * a mistake was made, for example a typo in the path, and the font was never loaded
+                    // * the font was already loaded (can happen in reloading in Cocoon devapp)
+                    // either way we continue as if nothing happened, not loading the font shouldn't crash the game
+                    window.clearInterval(intervalId);
+                    if (callback) {
+                        callback(null, name, name);
+                    }
+                }
+                checkCount += 1;
+            }, 100);
         };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
@@ -213,6 +283,18 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            var onLoadTTF = function (err, name, ttf) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets.fonts[name] = ttf;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
             var onLoadAudio = function (err, name, audio) {
                 if (err) {
                     console.log(err);
@@ -291,6 +373,17 @@ bento.define('bento/managers/asset', [
                     readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
                 }
             }
+            // get fonts
+            if (Utils.isDefined(group.fonts)) {
+                assetCount += Utils.getKeyLength(group.fonts);
+                for (asset in group.fonts) {
+                    if (!group.fonts.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadTTF, asset, path + 'fonts/' + group.fonts[asset], onLoadTTF);
+                }
+            }
+            
             // load all assets
             loadAllAssets();
 

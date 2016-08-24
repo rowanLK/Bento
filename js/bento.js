@@ -225,9 +225,10 @@ bento.define('bento', [
          * @param {String} settings.reload.jump - Event name for screen jump: asks user to jumps to a screen
          * @param {Boolean} settings.dev - Use dev mode (for now it's only used for deciding between using throws or console.log's). Optional, default is false.
          * @param {Object} settings.screenshot - Event name for taking screenshots
-         * @param {Function} callback - Called when game is loaded (not implemented yet)
+         * @param {Function} settings.onComplete - Called when game is loaded
          */
         setup: function (settings, callback) {
+            callback = callback || settings.onComplete || settings.onLoad;
             bentoSettings = settings;
             DomReady(function () {
                 var runGame = function () {
