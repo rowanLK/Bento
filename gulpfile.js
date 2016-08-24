@@ -91,7 +91,7 @@ gulp.task('watch', function () {
 
 gulp.task('doc', function () {
     gulp.src('./js/**/*.js')
-        .pipe(exec('jsdoc -r -c conf.json ./readme.md -d documentation -t ./node_modules/minami'));
+        .pipe(exec('jsdoc -r -c conf.json ./readme.md -d docs -t ./node_modules/minami'));
 });
 
 gulp.task('docwatch', function () {
