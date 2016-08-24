@@ -1,0 +1,8 @@
+{
+    "assets": {
+        "path": "assets/",
+        "images": {
+            "numberslarge": "numberslarge.png"
+        }
+    }
+}
