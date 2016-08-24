@@ -136,17 +136,20 @@ bento.define('bento/managers/asset', [
             var checkCount = 0;
             var measure = function () {
                 width = context.measureText('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,').width;
-                // console.log(width);
                 return width;
             };
             var loadFont = function () {
+                // append a style element with the font face
                 // this method works with Canvas+
                 var style = document.createElement('style');
                 style.setAttribute("type", "text/css");
                 style.innerHTML = "@font-face { font-family: '" + name +
-                    "'; src: url('" + source + "');}"
+                    "'; src: url('" + source + "');}";
 
                 document.body.appendChild(style);
+
+                // try setting it
+                context.font = "normal 16px " + name;            
             };
             // detect a loaded font by checking if the width changed
             var isLoaded = function () {
@@ -159,11 +162,11 @@ bento.define('bento/managers/asset', [
                 // swap name with last word
                 name = splitName[splitName.length - 1];
             }
+            
+            loadFont();
 
-            context.font = "16px " + name;
             // measure for the first time
             oldWidth = measure();
-            loadFont();
 
             // check every 100ms
             intervalId = window.setInterval(function () {
@@ -173,13 +176,14 @@ bento.define('bento/managers/asset', [
                     if (callback) {
                         callback(null, name, name);
                     }
-                } else if (checkCount >= 20) {
-                    // give up after 2000ms
+                } else if (checkCount >= 10) {
+                    // give up after 1000ms
                     // possible scenarios:
                     // * a mistake was made, for example a typo in the path, and the font was never loaded
                     // * the font was already loaded (can happen in reloading in Cocoon devapp)
                     // either way we continue as if nothing happened, not loading the font shouldn't crash the game
                     window.clearInterval(intervalId);
+                    console.log('Warning: font "' + name + '" timed out with loading.');
                     if (callback) {
                         callback(null, name, name);
                     }

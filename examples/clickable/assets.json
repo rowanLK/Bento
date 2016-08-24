@@ -1,0 +1,13 @@
+{
+    "assets": {
+        "path": "assets/",
+        "images": {
+            "buttonplay": "buttonplay.png",
+            "buttonl": "buttonl.png",
+            "buttonr": "buttonr.png"
+        },
+        "fonts": {
+            "font": "font.ttf"
+        }
+    }
+}

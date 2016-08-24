@@ -3,109 +3,100 @@ bento.require([
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/entity',
-    'bento/components/animation',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
+    'bento/components/sprite',
     'bento/components/fill',
     'bento/components/clickable',
     'bento/tween',
-    'clickbutton'
+    'bento/gui/clickbutton',
+    'bento/gui/text'
 ], function (
     Bento,
     Vector2,
     Rectangle,
     Entity,
-    Animation,
-    Translation,
-    Rotation,
-    Scale,
+    Sprite,
     Fill,
     Clickable,
     Tween,
-    ClickButton
+    ClickButton,
+    Text
 ) {
+    var onLoaded = function (err) {
+        var viewport = Bento.getViewport();
+        var background = new Entity({
+            z: 0,
+            name: 'background',
+            components: [
+                new Fill({
+                    color: [1, 1, 1, 1]
+                })
+            ]
+        });
+        var text1 = new Text({
+            z: 1,
+            position: new Vector2(viewport.width / 2, viewport.height / 3 - 48),
+            text: 'Click to move',
+            font: 'font',
+            fontSize: 16,
+            fontColor: '#000000',
+            align: 'center'
+        });
+        var text2 = new Text({
+            z: 1,
+            position: new Vector2(viewport.width / 2, viewport.height * 2 / 3 - 36),
+            text: 'Click to reset',
+            font: 'font',
+            fontSize: 16,
+            fontColor: '#000000',
+            align: 'center'
+        });
+        // an entity with a clickable component attached
+        var triangle = new Entity({
+            z: 1,
+            name: 'triangle',
+            position: new Vector2(viewport.width / 2, viewport.height / 3),
+            originRelative: new Vector2(0.5, 0.5),
+            components: [
+                new Sprite({
+                    imageName: 'buttonr'
+                }),
+                new Clickable({
+                    onClick: function () {
+                        triangle.position.x += 8;
+                    }
+                })
+            ]
+        });
+        // a full implementation of entity + clickable to make a standard click button
+        // check the source to see how it works
+        var buttonPlay = new ClickButton({
+            z: 1,
+            name: 'play',
+            imageName: 'buttonplay',
+            frameCountX: 1,
+            frameCountY: 2,
+            position: new Vector2(viewport.width / 2, viewport.height * 2 / 3),
+            onClick: function () {
+                triangle.position.x = viewport.width / 2;
+            }
+        });
+
+        Bento.objects.attach(background);
+        Bento.objects.attach(triangle);
+        Bento.objects.attach(buttonPlay);
+        Bento.objects.attach(text1);
+        Bento.objects.attach(text2);
+    };
+
     Bento.setup({
         canvasId: 'canvas',
         canvasDimension: new Rectangle(0, 0, 160, 240),
-        assetGroups: {
-            'assets': 'assets/assets.json'
+        pixelSize: 3,
+        onComplete: function () {
+            // load all assets and start game afterwards
+            Bento.assets.loadAllAssets({
+                onComplete: onLoaded
+            });
         }
-    }, function () {
-        console.log('ready');
-        Bento.assets.load('assets', function (err) {
-            var viewport = Bento.getViewport(),
-                background = new Entity({
-                    addNow: true,
-                    components: [new Fill({
-                        color: [1, 1, 1, 1]
-                    })]
-                }),
-                bunny1 = new Entity({
-                    components: [
-                        new Translation(),
-                        new Animation({
-                            image: Bento.assets.getImage('bunnygirlsmall'),
-                            frameWidth: 32,
-                            frameHeight: 32,
-                            animations: {
-                                'idle': {
-                                    speed: 0.1,
-                                    frames: [0, 10, 11, 12]
-                                }
-                            },
-                        }),
-                        new Clickable({
-                            pointerDown: function (evt) {
-                                console.log(this.isHovering);
-                                /*Tween({
-                                from: 16,
-                                to: 160,
-                                'in': 60,
-                                ease: 'easeOutBounce',
-                                do: function (v, t) {
-                                    bunny1.setPositionY(v);
-                                },
-                                onComplete: function () {
-
-                                }
-                            });*/
-                            },
-                            pointerMove: function (evt) {
-                                //console.log(evt.worldPosition.x);
-                            },
-                            holding: function () {
-                                console.log('holding')
-                            },
-                            hovering: function () {
-                                console.log('hovering')
-                            }
-                        })
-                    ],
-                    position: new Vector2(16, 16),
-                    originRelative: new Vector2(0.5, 0.5),
-                    init: function () {
-                        this.getComponent('animation').setAnimation('idle');
-                    }
-                }),
-                button = ClickButton({
-                    image: Bento.assets.getImage('bunnygirlsmall'),
-                    position: new Vector2(80, 80),
-                    frameWidth: 32,
-                    frameHeight: 32,
-                    onClick: function () {
-                        console.log('clicked')
-                    }
-                });
-            Bento.objects.add(bunny1);
-            Bento.objects.add(button);
-
-            setTimeout(function () {
-                Bento.objects.remove(bunny1);
-            }, 2000);
-
-        }, function (current, total) {
-            console.log(current + '/' + total);
-        });
     });
 });
