@@ -9,6 +9,19 @@
 <body>
     <canvas id="canvas"></canvas>
     <div id="explanation">
+Bento can use Pixi as renderer. It's important to note that Bento does not implement any of the Pixi classes, but uses a unique way of rendering with Pixi. So if you haven't worked with Pixi before, don't worry! Pixi is purely used as a renderer and its internal scenegraph is completely avoided.
+<br>
+<br>
+It may sound confusing, and it is, honestly! I'd like to consider Pixi as half a game engine: it has its own scenegraph, sprite classes and its own draw loop.
+<br>
+<br>
+Anyway, if you want, you can still use Pixi classes and other of its features (such as filters). Check out bento/components/pixi/sprite module. The Bento Sprite component can be used as normal with this module, however this module exposes a PIXI.Sprite for you to use. In this example, a blur filter was applied.
+<br>
+<br>
+You can still use the Pixi scenegraph with this method. Use the .addChild functions to attach on the Pixi containers to make full use of Pixi.
+<br>
+<br>
+To gain more insight on how Bento uses Pixi, check out <a href="https://github.com/LuckyKat/pixi-canvas">Pixi-Canvas</a>, a stand-alone renderer using Pixi with a canvas-like API.
     </div>
 </body>
 </html>

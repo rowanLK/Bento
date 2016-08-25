@@ -8,6 +8,30 @@
 <body>
     <canvas id="canvas"></canvas>
     <div id="explanation">
+In Bento, tweens can be used to interpolate one value to another within a set amount of time.
+<br>
+<br>
+Tweens are programmed like so:
+<p style="font-family: monospace;">
+<br>new Tween({
+<br>&emsp;    from: 0, 
+<br>&emsp;    to: 100, 
+<br>&emsp;    in: 60, 
+<br>&emsp;    ease: Tween.LINEAR, 
+<br>&emsp;    onUpdate: function (v, t) {
+<br>&emsp;&emsp;&emsp;        // for example, tweening the x position
+<br>&emsp;&emsp;&emsp;        entity.position.x = v;
+<br>&emsp;    },
+<br>&emsp;    onComplete: function () {
+<br>&emsp;&emsp;&emsp;        // stuff to happen when tween ends
+<br>&emsp;    }
+<br>});
+</p>
+<br>Note how the actual usage of the tweened value is applied in onUpdate. This is much more flexible than tweening a set of properties. 
+<br>
+<br><p style="font-size: 4px">Seriously, what's up with all the Javascript game engines implementing tweens as<br>
+Tween(object).from(properties, value).to(properties, value).start() anyway???
+<br>We don't all need to copy from TweenJS and GreenSock, those are targeted to tweening DOM elements.</p>
     </div>
 </body>
 </html>

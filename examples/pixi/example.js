@@ -111,6 +111,7 @@ bento.require([
 
     // start setup
     Bento.setup({
+        canvasId: "canvas",
         canvasDimension: new Rectangle(0, 0, 160, 240),
         renderer: 'pixi', // must use pixi! the pixi library is included in index.html
         pixelSize: 3,

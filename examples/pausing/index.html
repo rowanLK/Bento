@@ -8,6 +8,16 @@
 <body>
     <canvas id="canvas"></canvas>
     <div id="explanation">
+Pausing in Bento is handled by skipping the update functions. The game is still being drawn (so it's important that you keep all game logic inside update and rendering in draw).
+<br>
+<br>
+A very useful feature is the updateWhenPaused setting in entities. This is not a boolean but a number. Bento can be paused by calling Bento.objects.pause(number). Notice how the pause function takes a number parameter: this is the pause level. Entities with a higher updateWhenPaused value will ignore the pause state. 
+<br>
+<br>
+This is very useful for managing menu states for example. Spawn an overlay with menu buttons when the player taps on a pause button and set a pause. Need a sub menu? Spawn another overlay and set the pause level higher! You can stack menus with this method. 
+<br>
+<br>
+Note that the EventSystem continues to listen to events during paused states.
     </div>
 </body>
 </html>
