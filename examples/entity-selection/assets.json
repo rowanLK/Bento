@@ -1,0 +1,17 @@
+{
+    "main": {
+        "path": "assets/",
+        "images": {
+            "bunnygirlsmall": "bunnygirlsmall.png",
+            "buttonblue": "buttonblue.png",
+            "buttonred": "buttonred.png",
+            "buttongreen": "buttongreen.png",
+            "ballblue": "ballblue.png",
+            "ballred": "ballred.png",
+            "ballgreen": "ballgreen.png"
+        },
+        "fonts": {
+            "font": "font.ttf"
+        }
+    }
+}

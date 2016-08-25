@@ -76,6 +76,7 @@ bento.require([
     };
 
     Bento.setup({
+        canvasId: "canvas",
         canvasDimension: new Rectangle(0, 0, 320, 240),
         onComplete: function () {
             // load all assets and start game afterwards
