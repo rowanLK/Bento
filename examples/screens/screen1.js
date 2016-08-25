@@ -7,7 +7,8 @@ bento.define('screen1', [
     'bento/components/sprite',
     'bento/components/fill',
     'bento/tween',
-    'bento/screen'
+    'bento/screen',
+    'bento/gui/text'
 ], function (
     Bento,
     Vector2,
@@ -17,12 +18,14 @@ bento.define('screen1', [
     Sprite,
     Fill,
     Tween,
-    Screen
+    Screen,
+    Text
 ) {
     'use strict';
-    var object = Screen({
+    var object = new Screen({
         tiled: 'level1',
         onShow: function () {
+            var viewport = Bento.getViewport();
             var fill = new Entity({
                 z: -1,
                 name: 'fill',
@@ -30,7 +33,19 @@ bento.define('screen1', [
                     color: [0.8, 0.8, 1, 1]
                 })]
             });
+            var text = new Text({
+                z: 1,
+                position: new Vector2(0, 0),
+                text: 'Click on the bunny to change screen',
+                font: 'font',
+                fontSize: 12,
+                fontColor: '#ffffff',
+                maxWidth: viewport.width,
+                align: 'left',
+                textBaseline: 'top'
+            });
             Bento.objects.attach(fill);
+            Bento.objects.attach(text);
             console.log('screen 1 loaded');
         }
     });

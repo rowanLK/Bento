@@ -1,0 +1,11 @@
+{
+    "main": {
+        "path": "assets/",
+        "images": {
+            "bunnygirlsmall": "bunnygirlsmall.png"
+        },
+        "fonts": {
+            "font": "font.ttf"
+        }
+    }
+}
