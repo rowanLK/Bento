@@ -1,0 +1,27 @@
+<html>
+<head>
+    <title>Scenegraph Example</title>
+    <script type="text/javascript" src="../../build/bento.js"></script>
+    <script type="text/javascript" src="example.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="explanation">
+This is an example of a scenegraph structure, aka parent-child relations between entities. 3 Entities are parented to eachother. Clicking on them rotates one.
+<br>
+<br>
+Make sure you understand the difference between world positions and local positions. The most upper entity has a position that's somewhere in the middle of the screen: (80, 80) to be exact.<br>
+The bunny below however, has a position of (0, 16). This (local) position is automatically transformed to a world position of (80, 96), until you start rotating that is.
+<br>
+<br>
+To attach an entity to a parent entity, you use .attach(). This is the same function used for components, and as such there is actually no difference between attaching entities and components. Both are considered as "components".<br>
+You can also place the entity in the components array in the constructor.
+<br>
+<br>
+Some quirks with parented entities:<br>
+* Bento.objects.get() and getByFamily() only work on the root entities. Child entities can not be "get"-ted. To find a child entity, you will need to use Bento.objects.get() on the parent and then .getComponent on each parent until you get to the child.<br>
+* getBoundingBox returns the local boundingbox and as result it's not possible to use collidesWith between childed entities. It would give erroneous results. This may change in the future.
+    </div>
+</body>
+</html>

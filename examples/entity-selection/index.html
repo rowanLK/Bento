@@ -1,0 +1,30 @@
+<html>
+<head>
+    <title>Selection Example</title>
+    <script type="text/javascript" src="../../build/bento.js"></script>
+    <script type="text/javascript" src="example.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="explanation">
+Finding other entities during gameplay is an important feature which is handled by the Bento Object Manager (Bento.objects). There are 3 methods:
+<br>
+<br>
+* Bento.objects.get (green)<br>
+Gets the first object it can find with a certain name. Returns null and doesn't call the callback if nothing found.<br>
+<br>
+<br>
+* Bento.objects.getByName (blue)<br>
+Computationally the heaviest of all. If you need a group of entities, it's recommended to use families.<br>
+<br>
+<br>
+* Bento.objects.getByFamily (red)<br>
+Bento Object Manager caches all entities of a family in an array. This provides a relatively quick method to retrieve a group of entities. You can make an entity a family member of multiple families by passing an array in the constructor.<br>
+Note: entity.family is inspected by the object manager the moment you use Bento.objects.attach(). Editing the entity.family array after it has been attached will do nothing.
+<br>
+<br>
+The get methods are computationally quite heavy, so try to cache your results if you need a reference to an existing entity instead of using Bento.objects.get every frame.
+    </div>
+</body>
+</html>

@@ -203,7 +203,7 @@ bento.define('bento/components/sprite', [
      */
     Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
-        if (!anim) {
+        if (!Sprite.suppressWarnings && !anim) {
             console.log('Warning: animation ' + name + ' does not exist.');
             return;
         }
@@ -222,7 +222,7 @@ bento.define('bento/components/sprite', [
             if (!keepCurrentFrame) {
                 this.currentFrame = 0;
             }
-            if (this.currentAnimation.backTo > this.currentAnimationLength) {
+            if (!Sprite.suppressWarnings && this.currentAnimation.backTo > this.currentAnimationLength) {
                 console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
                 this.currentAnimation.backTo = this.currentAnimationLength;
             }

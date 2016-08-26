@@ -6,6 +6,12 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-    <div id="wrapper"></div>
+    <canvas id="canvas"></canvas>
+    <div id="explanation">
+You can consider a Screen in Bento as a level in a game. Use the Screen Manager (Bento.screens) to switch screens. For example: Bento.screens.show("screens/title"). Bento.screens.show uses the module name to look up the correct module and loads the screen asynchronously with bento.require().
+<br>
+<br>
+A screen can be used to load a Tiled map. You may also load a Tiled map manually for more control. Check the Tiled example!
+    </div>
 </body>
 </html>

@@ -20,27 +20,27 @@ bento.define('bunny', [
     'use strict';
     return function () {
         var sprite = new Sprite({
-                image: Bento.assets.getImage('bunnygirlsmall'),
-                frameWidth: 32,
-                frameHeight: 32,
-                animations: {
-                    'default': {
-                        speed: 0.1,
-                        frames: [0, 10, 11, 12]
-                    },
-                    'walk': {
-                        speed: 0.15,
-                        frames: [4, 5, 6, 7, 8, 9]
-                    }
+            image: Bento.assets.getImage('bunnygirlsmall'),
+            frameWidth: 32,
+            frameHeight: 32,
+            animations: {
+                'default': {
+                    speed: 0.1,
+                    frames: [0, 10, 11, 12]
+                },
+                'walk': {
+                    speed: 0.15,
+                    frames: [4, 5, 6, 7, 8, 9]
                 }
-            }),
-            entity = new Entity({
-                z: 1,
-                name: 'bunny',
-                originRelative: new Vector2(0.5, 0.5),
-                components: [sprite],
-                family: ['bunnies']
-            });
+            }
+        });
+        var entity = new Entity({
+            z: 1,
+            name: 'bunny',
+            originRelative: new Vector2(0.5, 0.5),
+            components: [sprite],
+            family: ['bunnies']
+        });
 
         return entity;
     };

@@ -1,0 +1,18 @@
+{
+    "main": {
+        "path": "assets/",
+        "images": {
+            "bunnygirlsmall": "bunnygirlsmall.png"
+        },
+        "audio": {
+            "bgm_oldbrokenradio": ["bgm_oldbrokenradio.mp3", "bgm_oldbrokenradio.ogg", "bgm_oldbrokenradio.ac3"],
+            "sfx_blip": ["sfx_blip.mp3", "sfx_blip.ogg", "sfx_blip.ac3"],
+            "sfx_jump": ["sfx_jump.mp3", "sfx_jump.ogg", "sfx_jump.ac3"],
+            "sfx_pickup": ["sfx_pickup.mp3", "sfx_pickup.ogg", "sfx_pickup.ac3"],
+            "sfx_powerup": ["sfx_powerup.mp3", "sfx_powerup.ogg", "sfx_powerup.ac3"]
+        },
+        "fonts": {
+            "font": "font.ttf"
+        }
+    }
+}

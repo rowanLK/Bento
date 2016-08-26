@@ -579,12 +579,31 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Number} number - Number of times to repeat
          * @param {Function} fn - function to perform
+         * @param {Array} [params] - Parameters to pass to function
          * @name repeat
          */
-        repeat: function (number, fn) {
+        repeat: function (number, fn, params) {
             var i;
-            for (i = 0; i < number; ++i) {
-                fn(i, number);
+            var count;
+            var action;
+            if (typeof number === "number") {
+                count = number;
+                action = fn;
+            } else {
+                // swapped the parameters
+                count = fn;
+                action = number;
+            }
+            if (!action.apply) {
+                Utils.log("Did not pass a function");
+                return;
+            }
+            for (i = 0; i < count; ++i) {
+                if (params) {
+                    action.apply(window, params)
+                } else {
+                    action();
+                }
             }
         },
         /**

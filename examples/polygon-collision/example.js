@@ -10,6 +10,7 @@ bento.require([
     'bento/components/scale',
     'bento/components/fill',
     'bento/components/clickable',
+    'bento/gui/text',
     'bento/tween'
 ], function (
     Bento,
@@ -23,6 +24,7 @@ bento.require([
     Scale,
     Fill,
     Clickable,
+    Text,
     Tween
 ) {
     Bento.setup({
@@ -31,10 +33,21 @@ bento.require([
         assetGroups: {
             'assets': 'assets/assets.json'
         },
-        renderer: 'canvas2d'
+        renderer: 'canvas2d',
+        pixelSize: 3
     }, function () {
         Bento.assets.load('assets', function (err) {
             var viewport = Bento.getViewport(),
+                text = new Text({
+                    z: 1,
+                    position: new Vector2(4, 4),
+                    text: 'Drag the arrow over the star. Just an example of non-convex polygon collisions.',
+                    font: 'Arial',
+                    fontSize: 12,
+                    fontColor: '#000',
+                    align: 'left',
+                    maxWidth: viewport.width
+                }),
                 background = new Entity({
                     addNow: true,
                     components: [new Fill({
@@ -154,6 +167,7 @@ bento.require([
             set();
 
             Bento.objects.add(object);
+            Bento.objects.add(text);
 
         }, function (current, total) {
             console.log(current + '/' + total);
