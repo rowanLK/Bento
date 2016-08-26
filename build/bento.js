@@ -8680,7 +8680,7 @@ bento.define('bento/managers/asset', [
                         try {
                             jsonData = JSON.parse(xhr.responseText);
                         } catch (e) {
-                            console.log('ERROR: Could not parse JSON ' + name + ' at ' + source);
+                            Utils.log('ERROR: Could not parse JSON ' + name + ' at ' + source);
                             console.log('Trying to parse', xhr.responseText);
                         }
                         callback(null, name, jsonData);
@@ -8727,7 +8727,7 @@ bento.define('bento/managers/asset', [
             }, false);
             img.addEventListener('error', function (evt) {
                 // TODO: Implement failure: should it retry to load the image?
-                console.log('ERROR: loading image ' + source);
+                Utils.log('ERROR: loading image ' + source);
             }, false);
         };
         var loadTTF = function (name, source, callback) {
@@ -8754,7 +8754,7 @@ bento.define('bento/managers/asset', [
                 document.body.appendChild(style);
 
                 // try setting it
-                context.font = "normal 16px " + name;            
+                context.font = "normal 16px " + name;
             };
             // detect a loaded font by checking if the width changed
             var isLoaded = function () {
@@ -8767,7 +8767,7 @@ bento.define('bento/managers/asset', [
                 // swap name with last word
                 name = splitName[splitName.length - 1];
             }
-            
+
             loadFont();
 
             // measure for the first time
@@ -8788,7 +8788,7 @@ bento.define('bento/managers/asset', [
                     // * the font was already loaded (can happen in reloading in Cocoon devapp)
                     // either way we continue as if nothing happened, not loading the font shouldn't crash the game
                     window.clearInterval(intervalId);
-                    console.log('Warning: font "' + name + '" timed out with loading.');
+                    Utils.log('Warning: font "' + name + '" timed out with loading.');
                     if (callback) {
                         callback(null, name, name);
                     }
@@ -8815,7 +8815,7 @@ bento.define('bento/managers/asset', [
             var loaded = 0;
             var callback = function (err, name, json) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     return;
                 }
                 assetGroups[name] = json;
@@ -8857,7 +8857,7 @@ bento.define('bento/managers/asset', [
             };
             var onLoadImage = function (err, name, image) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     return;
                 }
                 assets.images[name] = image;
@@ -8869,7 +8869,7 @@ bento.define('bento/managers/asset', [
             };
             var onLoadPack = function (err, name, json) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     return;
                 }
                 assets.json[name] = json;
@@ -8882,7 +8882,7 @@ bento.define('bento/managers/asset', [
             };
             var onLoadJson = function (err, name, json) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     return;
                 }
                 assets.json[name] = json;
@@ -8894,7 +8894,7 @@ bento.define('bento/managers/asset', [
             };
             var onLoadTTF = function (err, name, ttf) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     return;
                 }
                 assets.fonts[name] = ttf;
@@ -8906,7 +8906,7 @@ bento.define('bento/managers/asset', [
             };
             var onLoadAudio = function (err, name, audio) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                 } else {
                     assets.audio[name] = audio;
                 }
@@ -8992,7 +8992,7 @@ bento.define('bento/managers/asset', [
                     readyForLoading(loadTTF, asset, path + 'fonts/' + group.fonts[asset], onLoadTTF);
                 }
             }
-            
+
             // load all assets
             loadAllAssets();
 
@@ -9010,7 +9010,7 @@ bento.define('bento/managers/asset', [
         var loadImageFromUrl = function (name, url, callback) {
             var onLoadImage = function (err, name, image) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     if (callback) {
                         callback(err);
                     }
@@ -9035,7 +9035,7 @@ bento.define('bento/managers/asset', [
         var loadJsonFromUrl = function (name, url, callback) {
             var onLoadJson = function (err, name, json) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     if (callback) {
                         callback(err);
                     }
@@ -9060,7 +9060,7 @@ bento.define('bento/managers/asset', [
         var loadAudioFromUrl = function (name, url, callback) {
             var onLoadAudio = function (err, name, audio) {
                 if (err) {
-                    console.log(err);
+                    Utils.log(err);
                     if (callback) {
                         callback(err);
                     }
