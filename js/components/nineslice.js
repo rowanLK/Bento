@@ -1,5 +1,3 @@
-//TODO minimum dimensions
-
 /**
  * Nineslice component
  */
@@ -78,16 +76,22 @@ bento.define('bento/components/nineslice', [
 
         this.padding = settings.padding || 0;
 
-        this.frameWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
-        this.frameHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
+        if (this.spriteImage) {
+            this.frameWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
+            this.frameHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
 
-        this.width = settings.width || 0;
-        this.height = settings.height || 0;
+            if (this.entity) {
+                // set dimension of entity object
+                this.entity.dimension.width = this.width;
+                this.entity.dimension.height = this.height;
+            }
+        }
 
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.width;
-            this.entity.dimension.height = this.height;
+        if (settings.width){
+        	this.width = Math.max(settings.width || 0, this.frameWidth * 2);
+        }
+        if (settings.height){
+        	this.height = Math.max(settings.height || 0, this.frameHeight * 2);
         }
     };
 
@@ -99,14 +103,14 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.setWidth = function (width) {
-        this.width = width || this.width;
+        this.width = Math.max(width || this.width, this.frameWidth * 2);
         if (this.entity) {
             this.entity.dimension.width = this.width;
         }
     };
 
     NineSlice.prototype.setHeight = function (height) {
-        this.height = height || this.height;
+       this.height = Math.max(height || this.height, this.frameHeight * 2);
         if (this.entity) {
             this.entity.dimension.height = this.height;
         }
