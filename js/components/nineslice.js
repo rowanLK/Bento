@@ -87,11 +87,11 @@ bento.define('bento/components/nineslice', [
             }
         }
 
-        if (settings.width){
-        	this.width = Math.max(settings.width || 0, this.frameWidth * 2);
+        if (settings.width) {
+            this.width = Math.max(settings.width || 0, this.frameWidth * 2);
         }
-        if (settings.height){
-        	this.height = Math.max(settings.height || 0, this.frameHeight * 2);
+        if (settings.height) {
+            this.height = Math.max(settings.height || 0, this.frameHeight * 2);
         }
     };
 
@@ -110,7 +110,7 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.setHeight = function (height) {
-       this.height = Math.max(height || this.height, this.frameHeight * 2);
+        this.height = Math.max(height || this.height, this.frameHeight * 2);
         if (this.entity) {
             this.entity.dimension.height = this.height;
         }
