@@ -37,8 +37,8 @@ bento.define('bento/components/nineslice', [
         this.padding = 0;
 
         // drawing internals
-        this.partWidth = 0;
-        this.partHeight = 0;
+        this.sliceWidth = 0;
+        this.sliceHeight = 0;
 
         this.setup(settings);
     };
@@ -77,21 +77,21 @@ bento.define('bento/components/nineslice', [
         this.padding = settings.padding || 0;
 
         if (this.spriteImage) {
-            this.frameWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
-            this.frameHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
-
-            if (this.entity) {
-                // set dimension of entity object
-                this.entity.dimension.width = this.width;
-                this.entity.dimension.height = this.height;
-            }
+            this.sliceWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
+            this.sliceHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
         }
 
         if (settings.width) {
-            this.width = Math.max(settings.width || 0, this.frameWidth * 2);
+            this.width = Math.max(settings.width || 0, this.sliceWidth * 2);
         }
         if (settings.height) {
-            this.height = Math.max(settings.height || 0, this.frameHeight * 2);
+            this.height = Math.max(settings.height || 0, this.sliceHeight * 2);
+        }
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.width;
+            this.entity.dimension.height = this.height;
         }
     };
 
@@ -103,39 +103,47 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.setWidth = function (width) {
-        this.width = Math.max(width || this.width, this.frameWidth * 2);
+        this.width = Math.max(width || this.width, this.sliceWidth * 2);
         if (this.entity) {
+            var relOriginX = this.entity.origin.x / this.entity.dimension.width;
             this.entity.dimension.width = this.width;
+            this.entity.origin.x = relOriginX * this.width;
         }
     };
 
     NineSlice.prototype.setHeight = function (height) {
-        this.height = Math.max(height || this.height, this.frameHeight * 2);
+        this.height = Math.max(height || this.height, this.sliceHeight * 2);
         if (this.entity) {
+            var relOriginY = this.entity.origin.y / this.entity.dimension.height;
             this.entity.dimension.height = this.height;
+            this.entity.origin.y = relOriginY * this.height;
         }
     };
 
     NineSlice.prototype.fillArea = function (renderer, frame, x, y, width, height) {
-        var sx = (this.frameWidth + this.padding) * (frame % 3);
-        var sy = (this.frameHeight + this.padding) * Math.floor(frame / 3);
+        var sx = (this.sliceWidth + this.padding) * (frame % 3);
+        var sy = (this.sliceHeight + this.padding) * Math.floor(frame / 3);
+
+        if (width === 0 || height === 0) {
+            return;
+        }
 
         if (!width) {
-            width = this.frameWidth;
+            width = this.sliceWidth;
         }
         if (!height) {
-            height = this.frameHeight;
+            height = this.sliceHeight;
         }
 
-        renderer.drawImage(this.spriteImage, sx, sy, this.frameWidth, this.frameHeight, x, y, width, height);
+        renderer.drawImage(this.spriteImage, sx, sy, this.sliceWidth, this.sliceHeight, x, y, width, height);
     };
 
     NineSlice.prototype.draw = function (data) {
         var entity = data.entity;
         var origin = data.entity.origin;
 
-        var innerWidth = this.width - this.frameWidth * 2;
-        var innerHeight = this.height - this.frameHeight * 2;
+        var innerWidth = this.width - this.sliceWidth * 2;
+        var innerHeight = this.height - this.sliceHeight * 2;
 
         if (this.width === 0 || this.height === 0) {
             return;
@@ -146,21 +154,21 @@ bento.define('bento/components/nineslice', [
         //top left corner
         this.fillArea(data.renderer, 0, 0, 0);
         //top stretch
-        this.fillArea(data.renderer, 1, this.frameWidth, 0, innerWidth, this.frameHeight);
+        this.fillArea(data.renderer, 1, this.sliceWidth, 0, innerWidth, this.sliceHeight);
         //top right corner
-        this.fillArea(data.renderer, 2, this.width - this.frameWidth, 0);
+        this.fillArea(data.renderer, 2, this.width - this.sliceWidth, 0);
         //left stretch
-        this.fillArea(data.renderer, 3, 0, this.frameHeight, this.frameWidth, innerHeight);
+        this.fillArea(data.renderer, 3, 0, this.sliceHeight, this.sliceWidth, innerHeight);
         //center stretch
-        this.fillArea(data.renderer, 4, this.frameWidth, this.frameHeight, innerWidth, innerHeight);
+        this.fillArea(data.renderer, 4, this.sliceWidth, this.sliceHeight, innerWidth, innerHeight);
         //right stretch
-        this.fillArea(data.renderer, 5, this.width - this.frameWidth, this.frameHeight, this.frameWidth, innerHeight);
+        this.fillArea(data.renderer, 5, this.width - this.sliceWidth, this.sliceHeight, this.sliceWidth, innerHeight);
         //bottom left corner
-        this.fillArea(data.renderer, 6, 0, this.height - this.frameHeight);
+        this.fillArea(data.renderer, 6, 0, this.height - this.sliceHeight);
         //bottom stretch
-        this.fillArea(data.renderer, 7, this.frameWidth, this.height - this.frameHeight, innerWidth, this.frameHeight);
+        this.fillArea(data.renderer, 7, this.sliceWidth, this.height - this.sliceHeight, innerWidth, this.sliceHeight);
         //bottom right corner
-        this.fillArea(data.renderer, 8, this.width - this.frameWidth, this.height - this.frameHeight);
+        this.fillArea(data.renderer, 8, this.width - this.sliceWidth, this.height - this.sliceHeight);
 
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
