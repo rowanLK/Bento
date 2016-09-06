@@ -261,9 +261,14 @@ bento.define('bento/tween', [
         var beta = Utils.isDefined(settings.beta) ? settings.beta : 1;
         var ignoreGameSpeed = settings.ignoreGameSpeed;
         var stay = settings.stay;
+        var autoResumeTimer = -1;
         var tween = new Entity(settings).extend({
             id: settings.id,
             update: function (data) {
+                //if an autoresume timer is running, decrease it and resume when it is done
+                if (--autoResumeTimer === 0) {
+                    tween.resume();
+                }
                 if (!running) {
                     return;
                 }
@@ -323,6 +328,37 @@ bento.define('bento/tween', [
                 time = 0;
                 running = false;
                 return tween;
+            },
+            /**
+             * Pauses the tween. The tween will resume itself after a certain duration if provided.
+             * @function
+             * @instance
+             * @param {Number} [duration] - time after which to autoresume. If not provided the tween is paused indefinitely.
+             * @returns {Entity} Returns self
+             * @name pause
+             */
+            pause: function (duration) {
+                running = false;
+                //if a duration is provided, resume the tween after that duration.
+                if (duration) {
+                    autoResumeTimer = duration;
+                }
+                return tween;
+            },
+            /**
+             * Resumes the tween.
+             * @function
+             * @instance
+             * @returns {Entity} Returns self
+             * @name resume
+             */
+            resume: function () {
+                if (!added) {
+                    return tween.begin();
+                } else {
+                    running = true;
+                    return tween;
+                }
             }
         });
 
