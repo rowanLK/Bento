@@ -266,12 +266,8 @@ bento.define('bento/tween', [
             id: settings.id,
             update: function (data) {
                 //if an autoresume timer is running, decrease it and resume when it is done
-                if (autoResumeTimer > -1) {
-                    autoResumeTimer--;
-                    if (autoResumeTimer === 0) {
-                        tween.resume();
-                        autoResumeTimer = -1;
-                    }
+                if (--autoResumeTimer === 0) {
+                    tween.resume();
                 }
                 if (!running) {
                     return;
