@@ -323,7 +323,41 @@ bento.define('bento/tween', [
                 time = 0;
                 running = false;
                 return tween;
-            }
+            },
+            /**
+             * Pauses the tween. The tween will resume itself after a certain duration if provided.
+             * @function
+             * @instance
+             * @param {Number} [duration] - time after which to autoresume. If not provided the tween is paused indefinitely.
+             * @param {Number} [updateWhenPaused] - Should pause duration keep decreasing when game is paused
+             * @returns {Entity} Returns self
+             * @name pause
+             */
+             pause: function (duration, updateWhenPaused) {
+                running = false;
+                //if a duration is provided, resume the tween after that duration.
+                if (duration) {
+                    Utils.timeout(duration, function(){
+                        tween.resume();
+                    }, updateWhenPaused || 0);
+                }
+                return tween;
+             },
+            /**
+             * Resumes the tween.
+             * @function
+             * @instance
+             * @returns {Entity} Returns self
+             * @name resume
+             */
+             resume : function() {
+                if (!added){
+                    return tween.begin();
+                } else {
+                    running = true;
+                    return tween;
+                }
+             }
         });
 
         if (!Utils.isDefined(settings.ease)) {
