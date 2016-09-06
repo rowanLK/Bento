@@ -333,16 +333,16 @@ bento.define('bento/tween', [
              * @returns {Entity} Returns self
              * @name pause
              */
-             pause: function (duration, updateWhenPaused) {
+            pause: function (duration, updateWhenPaused) {
                 running = false;
                 //if a duration is provided, resume the tween after that duration.
                 if (duration) {
-                    Utils.timeout(duration, function(){
+                    Utils.timeout(duration, function () {
                         tween.resume();
                     }, updateWhenPaused || 0);
                 }
                 return tween;
-             },
+            },
             /**
              * Resumes the tween.
              * @function
@@ -350,14 +350,14 @@ bento.define('bento/tween', [
              * @returns {Entity} Returns self
              * @name resume
              */
-             resume : function() {
-                if (!added){
+            resume: function () {
+                if (!added) {
                     return tween.begin();
                 } else {
                     running = true;
                     return tween;
                 }
-             }
+            }
         });
 
         if (!Utils.isDefined(settings.ease)) {
