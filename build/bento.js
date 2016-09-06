@@ -14117,9 +14117,18 @@ bento.define('bento/tween', [
         var beta = Utils.isDefined(settings.beta) ? settings.beta : 1;
         var ignoreGameSpeed = settings.ignoreGameSpeed;
         var stay = settings.stay;
+        var autoResumeTimer = -1;
         var tween = new Entity(settings).extend({
             id: settings.id,
             update: function (data) {
+                //if an autoresume timer is running, decrease it and resume when it is done
+                if (autoResumeTimer > -1){
+                    autoResumeTimer--;
+                    if (autoResumeTimer === 0){
+                        tween.resume();
+                        autoResumeTimer = -1;
+                    }
+                }
                 if (!running) {
                     return;
                 }
@@ -14185,17 +14194,14 @@ bento.define('bento/tween', [
              * @function
              * @instance
              * @param {Number} [duration] - time after which to autoresume. If not provided the tween is paused indefinitely.
-             * @param {Number} [updateWhenPaused] - Should pause duration keep decreasing when game is paused
              * @returns {Entity} Returns self
              * @name pause
              */
-            pause: function (duration, updateWhenPaused) {
+            pause: function (duration) {
                 running = false;
                 //if a duration is provided, resume the tween after that duration.
                 if (duration) {
-                    Utils.timeout(duration, function () {
-                        tween.resume();
-                    }, updateWhenPaused || 0);
+                   autoResumeTimer = duration;
                 }
                 return tween;
             },
