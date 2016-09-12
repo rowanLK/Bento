@@ -73,6 +73,10 @@ bento.define('bento/managers/savestate', [
          */
         save: function (elementKey, element) {
             var keys;
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
             if (typeof elementKey !== 'string') {
                 elementKey = JSON.stringify(elementKey);
             }
@@ -101,6 +105,10 @@ bento.define('bento/managers/savestate', [
          * @name add
          */
         add: function (elementKey, element) {
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
             var value = this.load(elementKey, 0);
             value += element;
             this.save(elementKey, value);
@@ -116,6 +124,12 @@ bento.define('bento/managers/savestate', [
          */
         load: function (elementKey, defaultValue) {
             var element;
+            
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
+
             element = storage.getItem(uniqueID + elementKey);
             if (element === null || element === undefined) {
                 return defaultValue;
@@ -135,6 +149,10 @@ bento.define('bento/managers/savestate', [
          * @name remove
          */
         remove: function (elementKey) {
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
             storage.removeItem(uniqueID + elementKey);
         },
         /**
