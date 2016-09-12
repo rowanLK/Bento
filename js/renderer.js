@@ -17,6 +17,7 @@ bento.define('bento/renderer', [
             fillRect: function (color, x, y, w, h) {},
             fillCircle: function (color, x, y, radius) {},
             strokeRect: function (color, x, y, w, h) {},
+            drawLine : function(color, ax, ay, bx, by, width){},
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
             flush: function () {},

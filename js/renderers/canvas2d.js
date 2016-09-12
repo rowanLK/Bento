@@ -66,6 +66,29 @@ bento.define('bento/renderers/canvas2d', [
                         context.globalAlpha = oldOpacity;
                     }
                 },
+                drawLine: function (colorArray, ax, ay, bx, by, width) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
+                    if (!Utils.isDefined(width)) {
+                        width = 1;
+                    }
+
+                    context.strokeStyle = colorStr;
+                    context.strokeWidth = width;
+                    
+                    context.beginPath();
+                    context.moveTo(ax, ay);
+                    context.lineTo(bx, by);
+                    context.stroke();
+                    context.closePath();
+
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
                 drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                     context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
                 },
