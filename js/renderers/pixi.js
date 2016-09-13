@@ -127,6 +127,26 @@ bento.define('bento/renderers/pixi', [
                 graphicsRenderer.render(graphics);
 
             },
+            drawLine: function (color, ax, ay, bx, by, width) {
+                var graphics = getGraphics(color);
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+
+                if (!Utils.isDefined(width)) {
+                    width = 1;
+                }
+                if (!Utils.isDefined(color[3])) {
+                    color[3] = 1;
+                }
+
+                graphics
+                    .lineStyle(width, colorInt, color[3])
+                    .moveTo(ax, ay)
+                    .lineTo(bx, by)
+                    .endFill();
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
             drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
                 var image = packedImage.image;
                 var px = packedImage.x;
@@ -152,7 +172,7 @@ bento.define('bento/renderers/pixi', [
                 texture._updateUvs();
                 sprite = new PIXI.Sprite(texture);
                 */
-                
+
                 // with spritepool
                 texture = image.frame;
                 rectangle = texture._frame;
