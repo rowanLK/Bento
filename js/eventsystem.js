@@ -55,8 +55,6 @@ bento.define('bento/eventsystem', [
         removeEventListener = function (eventName, callback, context) {
             var listeners = events[eventName];
             if (!listeners || listeners.length === 0) {
-                // could use Utils.log here, but I find it not necessary to throw errors for cleaning non-existing events
-                Utils.log('WARNING: event listeners for ' + eventName + ' is empty.', true);
                 return;
             }
             removedEvents.push({
@@ -68,7 +66,6 @@ bento.define('bento/eventsystem', [
         clearEventListeners = function (eventName) {
             var listeners = events[eventName];
             if (!listeners || listeners.length === 0) {
-                Utils.log('WARNING: event listeners for ' + eventName + ' is empty.', true);
                 return;
             }
             removedEvents.push({
