@@ -17,8 +17,7 @@ bento.define('bento/eventsystem', [
         var i, j, l, listeners, eventName, callback, context;
 
         if (isLoopingEvents) {
-            // TODO: shouldn't be cleaning during the for loop
-            // return;
+            return;
         }
         for (j = 0; j < removedEvents.length; ++j) {
             eventName = removedEvents[j].eventName;

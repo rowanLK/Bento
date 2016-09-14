@@ -75,7 +75,7 @@ bento.define('bento/managers/audio', [
                     var audio = assetManager.getAudio(name);
 
                     if (name.substring(0, 3) !== 'sfx') {
-                        console.log("Warning: file names of sound effects should start with 'sfx_'");
+                        Utils.log("Warning: file names of sound effects should start with 'sfx_'");
                     }
 
                     if (!mutedSound && !preventSounds) {
@@ -117,7 +117,7 @@ bento.define('bento/managers/audio', [
                         obj.stopAllMusic();
 
                     if (name.substring(0, 3) !== 'bgm') {
-                        console.log("Warning: file names of music tracks should start with 'bgm_'");
+                        Utils.log("Warning: file names of music tracks should start with 'bgm_'");
                     }
 
                     lastMusicPlayed = name;
