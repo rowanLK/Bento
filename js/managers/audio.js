@@ -34,7 +34,9 @@ bento.define('bento/managers/audio', [
                     // reload audio preferences and replay music if necessary
                     mutedSound = saveMuteSound;
                     mutedMusic = saveMuteMusic;
-                    obj.playMusic(lastMusicPlayed, musicLoop);
+                    if (lastMusicPlayed) {
+                        obj.playMusic(lastMusicPlayed, musicLoop);
+                    }
                 }
             },
             obj = {
@@ -269,7 +271,6 @@ bento.define('bento/managers/audio', [
             window.addEventListener('focus', function () {
                 onVisibilityChanged(false);
             }, false);
-            visHandled = true;
         } else if ('onfocusout' in document) {
             window.addEventListener('focusout', function () {
                 onVisibilityChanged(true);

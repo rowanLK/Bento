@@ -7,72 +7,88 @@
 bento.define('bento/eventsystem', [
     'bento/utils'
 ], function (Utils) {
-    var events = {},
-        /*events = {
+    var isLoopingEvents = false;
+    var events = {};
+    /*events = {
             [String eventName]: [Array listeners = {callback: Function, context: this}]
         }*/
-        removedEvents = [],
-        cleanEventListeners = function () {
-            var i, j, l, listeners, eventName, callback, context;
-            for (j = 0; j < removedEvents.length; ++j) {
-                eventName = removedEvents[j].eventName;
-                if (removedEvents[j].reset === true) {
-                    // reset the whole event listener
-                    events[eventName] = [];
-                    continue;
-                }
-                callback = removedEvents[j].callback;
-                context = removedEvents[j].context;
-                if (Utils.isUndefined(events[eventName])) {
-                    continue;
-                }
-                listeners = events[eventName];
-                for (i = listeners.length - 1; i >= 0; --i) {
-                    if (listeners[i].callback === callback) {
-                        if (context) {
-                            if (listeners[i].context === context) {
-                                events[eventName].splice(i, 1);
-                                break;
-                            }
-                        } else {
+    var removedEvents = [];
+    var cleanEventListeners = function () {
+        var i, j, l, listeners, eventName, callback, context;
+
+        if (isLoopingEvents) {
+            // TODO: shouldn't be cleaning during the for loop
+            // return;
+        }
+        for (j = 0; j < removedEvents.length; ++j) {
+            eventName = removedEvents[j].eventName;
+            if (removedEvents[j].reset === true) {
+                // reset the whole event listener
+                events[eventName] = [];
+                continue;
+            }
+            callback = removedEvents[j].callback;
+            context = removedEvents[j].context;
+            if (Utils.isUndefined(events[eventName])) {
+                continue;
+            }
+            listeners = events[eventName];
+            for (i = listeners.length - 1; i >= 0; --i) {
+                if (listeners[i].callback === callback) {
+                    if (context) {
+                        if (listeners[i].context === context) {
                             events[eventName].splice(i, 1);
                             break;
                         }
+                    } else {
+                        events[eventName].splice(i, 1);
+                        break;
                     }
                 }
             }
-            removedEvents = [];
-        },
-        addEventListener = function (eventName, callback, context) {
-            if (Utils.isUndefined(events[eventName])) {
-                events[eventName] = [];
-            }
-            events[eventName].push({
-                callback: callback,
-                context: context
-            });
-        },
-        removeEventListener = function (eventName, callback, context) {
-            var listeners = events[eventName];
-            if (!listeners || listeners.length === 0) {
-                return;
-            }
-            removedEvents.push({
-                eventName: eventName,
-                callback: callback,
-                context: context
-            });
-        },
-        clearEventListeners = function (eventName) {
-            var listeners = events[eventName];
-            if (!listeners || listeners.length === 0) {
-                return;
-            }
-            removedEvents.push({
-                eventName: eventName,
-                reset: true
-            });
-        };
+        }
+        removedEvents = [];
+    };
+    var addEventListener = function (eventName, callback, context) {
+        if (Utils.isUndefined(events[eventName])) {
+            events[eventName] = [];
+        }
+        events[eventName].push({
+            callback: callback,
+            context: context
+        });
+    };
+    var removeEventListener = function (eventName, callback, context) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            callback: callback,
+            context: context
+        });
+
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
+    };
+    var clearEventListeners = function (eventName) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            reset: true
+        });
+
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
+    };
 
     return {
         /**
@@ -91,7 +107,10 @@ bento.define('bento/eventsystem', [
          */
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
+
+            // clean up before firing event
             cleanEventListeners();
+
             if (!Utils.isString(eventName)) {
                 eventName = eventName.toString();
             }
@@ -100,6 +119,7 @@ bento.define('bento/eventsystem', [
             }
             listeners = events[eventName];
             for (i = 0, l = listeners.length; i < l; ++i) {
+                isLoopingEvents = true;
                 listener = listeners[i];
                 if (listener) {
                     if (listener.context) {
@@ -115,6 +135,7 @@ bento.define('bento/eventsystem', [
                     console.log('Warning: listener is not a function');
                 }
             }
+            isLoopingEvents = false;
         },
         addEventListener: addEventListener,
         removeEventListener: removeEventListener,
@@ -151,6 +172,6 @@ bento.define('bento/eventsystem', [
          * @param {String} eventName - Name of the event
          * @name clear
          */
-        clear: clearEventListeners,
+        clear: clearEventListeners
     };
 });
