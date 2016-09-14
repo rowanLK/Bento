@@ -34,7 +34,9 @@ bento.define('bento/managers/audio', [
                     // reload audio preferences and replay music if necessary
                     mutedSound = saveMuteSound;
                     mutedMusic = saveMuteMusic;
-                    obj.playMusic(lastMusicPlayed, musicLoop);
+                    if (lastMusicPlayed) {
+                        obj.playMusic(lastMusicPlayed, musicLoop);
+                    }
                 }
             },
             obj = {
@@ -73,7 +75,7 @@ bento.define('bento/managers/audio', [
                     var audio = assetManager.getAudio(name);
 
                     if (name.substring(0, 3) !== 'sfx') {
-                        console.log("Warning: file names of sound effects should start with 'sfx_'");
+                        Utils.log("Warning: file names of sound effects should start with 'sfx_'");
                     }
 
                     if (!mutedSound && !preventSounds) {
@@ -115,7 +117,7 @@ bento.define('bento/managers/audio', [
                         obj.stopAllMusic();
 
                     if (name.substring(0, 3) !== 'bgm') {
-                        console.log("Warning: file names of music tracks should start with 'bgm_'");
+                        Utils.log("Warning: file names of music tracks should start with 'bgm_'");
                     }
 
                     lastMusicPlayed = name;
@@ -269,7 +271,6 @@ bento.define('bento/managers/audio', [
             window.addEventListener('focus', function () {
                 onVisibilityChanged(false);
             }, false);
-            visHandled = true;
         } else if ('onfocusout' in document) {
             window.addEventListener('focusout', function () {
                 onVisibilityChanged(true);
