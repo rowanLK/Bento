@@ -251,6 +251,9 @@ bento.define('bento/tween', [
         var added = false;
         var running = true;
         var onUpdate = settings.onUpdate || settings.do;
+        var onComplete = settings.onComplete;
+        var onStart = settings.onStart;
+        var hasStarted = false;
         var ease = settings.ease || 'linear';
         var startVal = settings.from || 0;
         var delay = settings.delay || 0;
@@ -281,6 +284,13 @@ bento.define('bento/tween', [
                 } else {
                     time += data.speed;
                 }
+                // run onStart once
+                if (!hasStarted) {
+                    hasStarted = true;
+                    if (onStart) {
+                        onStart.apply(this);
+                    }
+                }
                 // run update
                 if (onUpdate) {
                     onUpdate.apply(this, [interpolate(
@@ -294,8 +304,8 @@ bento.define('bento/tween', [
                 }
                 // end
                 if (time >= deltaT && !stay) {
-                    if (settings.onComplete) {
-                        settings.onComplete.apply(this);
+                    if (onComplete) {
+                        onComplete.apply(this);
                     }
                     Bento.objects.remove(tween);
                     added = false;
