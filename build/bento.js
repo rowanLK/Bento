@@ -13904,6 +13904,7 @@ bento.define('bento/tiledreader', [], function () {
  * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
  * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
  * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
+ * @param {Function} [settings.onStart] - Called before the first tween update and after a delay (if any).
  * @param {Function} [settings.onUpdate] - Called every tick during the tween lifetime. Callback parameters: (value, time)
  * @param {Function} [settings.onComplete] - Called when tween ends
  * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
@@ -14144,6 +14145,9 @@ bento.define('bento/tween', [
         var added = false;
         var running = true;
         var onUpdate = settings.onUpdate || settings.do;
+        var onComplete = settings.onComplete;
+        var onStart = settings.onStart;
+        var hasStarted = false;
         var ease = settings.ease || 'linear';
         var startVal = settings.from || 0;
         var delay = settings.delay || 0;
@@ -14174,6 +14178,13 @@ bento.define('bento/tween', [
                 } else {
                     time += data.speed;
                 }
+                // run onStart once
+                if (!hasStarted) {
+                    hasStarted = true;
+                    if (onStart) {
+                        onStart.apply(this);
+                    }
+                }
                 // run update
                 if (onUpdate) {
                     onUpdate.apply(this, [interpolate(
@@ -14187,8 +14198,8 @@ bento.define('bento/tween', [
                 }
                 // end
                 if (time >= deltaT && !stay) {
-                    if (settings.onComplete) {
-                        settings.onComplete.apply(this);
+                    if (onComplete) {
+                        onComplete.apply(this);
                     }
                     Bento.objects.remove(tween);
                     added = false;
