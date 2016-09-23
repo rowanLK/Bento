@@ -4,7 +4,8 @@ var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var jshint = require('gulp-jshint');
 var addsrc = require('gulp-add-src');
-var exec = require('gulp-exec');
+// var exec = require('gulp-exec');
+var exec = require('child_process').exec;
 var fs = require('fs');
 var webpack = require("webpack");
 
@@ -25,8 +26,8 @@ gulp.task('webgl', function () {
             console.log(err);
         }
         gulp.src([
-            'build/bento-webgl.js'
-        ])
+                'build/bento-webgl.js'
+            ])
             .pipe(uglify())
             .pipe(rename('bento-webgl.min.js'))
             .pipe(gulp.dest('build'));
@@ -89,9 +90,12 @@ gulp.task('watch', function () {
     gulp.watch(['js/**/*.js'], ['default']);
 });
 
-gulp.task('doc', function () {
-    gulp.src('./js/**/*.js')
-        .pipe(exec('jsdoc -r -c conf.json ./readme.md -d docs -t ./node_modules/minami'));
+gulp.task('doc', function (cb) {
+    exec('jsdoc --verbose -r -c conf.json ./readme.md -d docs -t ./node_modules/minami', function (err, stdout, stderr) {
+        console.log(stdout);
+        console.log(stderr);
+        cb(err);
+    });
 });
 
 gulp.task('docwatch', function () {
