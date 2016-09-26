@@ -49,7 +49,11 @@ bento.define('bento/managers/audio', [
                  * @param {String} name - name of the sound to change volume
                  */
                 setVolume: function (value, name) {
-                    assetManager.getAudio(name).volume = value;
+                    var audio = assetManager.getAudio(name);
+                    if (!audio) {
+                        return;
+                    }
+                    audio.volume = value;
                 },
                 /**
                  * Gets the volume (0 = minimum, 1 = maximum)
@@ -59,7 +63,12 @@ bento.define('bento/managers/audio', [
                  * @param {String} name - name of the sound
                  */
                 getVolume: function (name) {
-                    return assetManager.getAudio(name).volume;
+                    var audio = assetManager.getAudio(name);
+                    if (!audio) {
+                        Utils.log('ERROR: Could not find audio file');
+                        return 0;
+                    }
+                    return audio.volume;
                 },
                 /**
                  * Plays a sound effect
@@ -73,6 +82,10 @@ bento.define('bento/managers/audio', [
                  */
                 playSound: function (name, loop, onEnd, stopSound) {
                     var audio = assetManager.getAudio(name);
+                    if (!audio) {
+                        Utils.log('ERROR: Could not find audio file');
+                        return;
+                    }
 
                     if (name.substring(0, 3) !== 'sfx') {
                         Utils.log("Warning: file names of sound effects should start with 'sfx_'");
@@ -98,7 +111,12 @@ bento.define('bento/managers/audio', [
                  */
                 stopSound: function (name) {
                     var i, l, node;
-                    assetManager.getAudio(name).stop();
+                    var audio = assetManager.getAudio(name);
+                    if (!audio) {
+                        Utils.log('ERROR: Could not find audio file');
+                        return;
+                    }
+                    audio.stop();
                 },
                 /**
                  * Plays a music
@@ -129,6 +147,10 @@ bento.define('bento/managers/audio', [
                     // set end event
                     if (!mutedMusic && lastMusicPlayed !== '') {
                         audio = assetManager.getAudio(name);
+                        if (!audio) {
+                            Utils.log('ERROR: Could not find audio file');
+                            return;
+                        }
                         if (onEnd) {
                             audio.onended = onEnd;
                         }
