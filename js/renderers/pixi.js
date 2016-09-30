@@ -10,7 +10,7 @@ bento.define('bento/renderers/pixi', [
     var PIXI = window.PIXI;
     var SpritePool = function (initialSize) {
         var i;
-        // initialize        
+        // initialize
         this.sprites = [];
         for (i = 0; i < initialSize; ++i) {
             this.sprites.push(new PIXI.Sprite());

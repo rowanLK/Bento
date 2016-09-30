@@ -165,7 +165,7 @@ bento.define('bento', [
 
             //the tenth parameter of initMouseEvent sets ctrl key
             evt.initMouseEvent(
-                "click",    // type 
+                "click",    // type
                 true,       // canBubble
                 true,       // canceable
                 window,     // view

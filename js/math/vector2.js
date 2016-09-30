@@ -220,7 +220,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
      * Returns the distance from another vector
      * @function
      * @param {Vector2} vector - Other vector
-     * @returns {Vector2} Returns new Vector2 instance
+     * @returns {Number} Distance between the two vectors
      * @instance
      * @name distance
      */
