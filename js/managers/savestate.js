@@ -124,7 +124,7 @@ bento.define('bento/managers/savestate', [
          */
         load: function (elementKey, defaultValue) {
             var element;
-            
+
             if (!elementKey) {
                 Utils.log("ERROR: savestate key is not defined.");
                 return;

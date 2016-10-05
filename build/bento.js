@@ -11176,7 +11176,7 @@ bento.define('bento/managers/savestate', [
          */
         load: function (elementKey, defaultValue) {
             var element;
-            
+
             if (!elementKey) {
                 Utils.log("ERROR: savestate key is not defined.");
                 return;
@@ -14424,7 +14424,7 @@ bento.define('bento/renderers/canvas2d', [
 
                     context.strokeStyle = colorStr;
                     context.strokeWidth = width;
-                    
+
                     context.beginPath();
                     context.moveTo(ax, ay);
                     context.lineTo(bx, by);
