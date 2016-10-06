@@ -9605,12 +9605,13 @@ bento.define('bento/managers/audio', [
                  */
                 playSound: function (name, loop, onEnd, stopSound) {
                     var audio = assetManager.getAudio(name);
+                    var slashIndex = name.lastIndexOf('/');
                     if (!audio) {
                         Utils.log('ERROR: Could not find audio file');
                         return;
                     }
 
-                    if (name.substring(0, 3) !== 'sfx') {
+                    if (name.substr(slashIndex + 1, 4) !== 'sfx_') {
                         Utils.log("Warning: file names of sound effects should start with 'sfx_'");
                     }
 
@@ -9653,11 +9654,13 @@ bento.define('bento/managers/audio', [
                  */
                 playMusic: function (name, loop, onEnd, stopAllMusic) {
                     var audio;
+                    var slashIndex = name.lastIndexOf('/');
 
-                    if (stopAllMusic)
+                    if (stopAllMusic) {
                         obj.stopAllMusic();
+                    }
 
-                    if (name.substring(0, 3) !== 'bgm') {
+                    if (name.substr(slashIndex + 1, 4) !== 'bgm_') {
                         Utils.log("Warning: file names of music tracks should start with 'bgm_'");
                     }
 
@@ -11173,7 +11176,7 @@ bento.define('bento/managers/savestate', [
          */
         load: function (elementKey, defaultValue) {
             var element;
-            
+
             if (!elementKey) {
                 Utils.log("ERROR: savestate key is not defined.");
                 return;
@@ -14421,7 +14424,7 @@ bento.define('bento/renderers/canvas2d', [
 
                     context.strokeStyle = colorStr;
                     context.strokeWidth = width;
-                    
+
                     context.beginPath();
                     context.moveTo(ax, ay);
                     context.lineTo(bx, by);

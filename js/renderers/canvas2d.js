@@ -78,7 +78,7 @@ bento.define('bento/renderers/canvas2d', [
 
                     context.strokeStyle = colorStr;
                     context.strokeWidth = width;
-                    
+
                     context.beginPath();
                     context.moveTo(ax, ay);
                     context.lineTo(bx, by);
