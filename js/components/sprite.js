@@ -138,6 +138,10 @@ bento.define('bento/components/sprite', [
             // no image specified
             return;
         }
+        if (!this.spriteImage) {
+            Utils.log("ERROR: something went wrong with loading the sprite.");
+            return;
+        }
         // use frameWidth if specified (overrides frameCountX and frameCountY)
         if (this.animationSettings.frameWidth) {
             this.frameWidth = this.animationSettings.frameWidth;

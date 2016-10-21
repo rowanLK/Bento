@@ -277,7 +277,11 @@ bento.define('bento/tween', [
                     return;
                 }
                 if (delayTimer < delay) {
-                    delayTimer += 1;
+                    if (ignoreGameSpeed) {
+                        delayTimer += 1;
+                    } else {
+                        delayTimer += data.speed;
+                    }
                     return;
                 }
                 if (ignoreGameSpeed) {

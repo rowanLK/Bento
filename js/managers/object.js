@@ -209,6 +209,9 @@ bento.define('bento/managers/object', [
                         if (object.destroy) {
                             object.destroy(data);
                         }
+                        if (object.removed) {
+                            object.removed(data);
+                        }
                         object.isAdded = false;
                     }
                     // remove from access pools

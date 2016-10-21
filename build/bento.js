@@ -4546,87 +4546,6 @@ bento.define('bento/entity', [
         return true;
     };
 
-    Entity.prototype.start = function (data) {
-        var i,
-            l,
-            component;
-        data = data || {};
-        // update components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
-            if (component && component.start) {
-                data.entity = this;
-                component.start(data);
-            }
-        }
-    };
-    Entity.prototype.destroy = function (data) {
-        var i,
-            l,
-            component,
-            components = this.components;
-        data = data || {};
-        // update components
-        for (i = 0, l = components.length; i < l; ++i) {
-            component = components[i];
-            if (component && component.destroy) {
-                data.entity = this;
-                component.destroy(data);
-            }
-        }
-    };
-    Entity.prototype.update = function (data) {
-        var i,
-            l,
-            component,
-            components = this.components;
-
-        data = data || Bento.getGameData();
-        // update components
-        for (i = 0, l = components.length; i < l; ++i) {
-            component = components[i];
-            if (component && component.update) {
-                data.entity = this;
-                component.update(data);
-            }
-        }
-
-        this.timer += data.speed;
-
-        // clean up
-        cleanComponents(this);
-    };
-    Entity.prototype.draw = function (data) {
-        var i, l, component;
-        var components = this.components;
-        var matrix;
-        if (!this.visible) {
-            return;
-        }
-        data = data || Bento.getGameData();
-
-        this.transform.draw(data);
-
-        // call components
-        for (i = 0, l = components.length; i < l; ++i) {
-            component = components[i];
-            if (component && component.draw) {
-                data.entity = this;
-                component.draw(data);
-            }
-        }
-        // post draw
-        for (i = components.length - 1; i >= 0; i--) {
-            component = components[i];
-            if (component && component.postDraw) {
-                data.entity = this;
-                component.postDraw(data);
-            }
-        }
-
-        this.transform.postDraw(data);
-    };
-
     /**
      * Extends properties of entity
      * @function
@@ -4702,62 +4621,7 @@ entity.addX(10);
         this.origin.x = value.x * this.dimension.width;
         this.origin.y = value.y * this.dimension.height;
     };
-    /*
-     * Entity was attached, calls onParentAttach to all children
-     */
-    Entity.prototype.attached = function (data) {
-        var i,
-            l,
-            component;
 
-        if (data) {
-            data.entity = this;
-            data.parent = this.parent;
-        } else {
-            data = {
-                entity: this,
-                parent: this.parent
-            };
-        }
-        // update components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
-            if (component) {
-                if (component.onParentAttached) {
-                    data.entity = this;
-                    component.onParentAttached(data);
-                }
-            }
-        }
-    };
-    /*
-     * Calls onParentCollided on every child, additionally calls onCollide on self afterwards
-     */
-    Entity.prototype.collided = function (data) {
-        var i,
-            l,
-            component;
-
-        if (data) {
-            data.entity = this;
-            data.parent = this.parent;
-        } else {
-            throw "Must pass a data object";
-        }
-        // update components
-        for (i = 0, l = this.components.length; i < l; ++i) {
-            component = this.components[i];
-            if (component) {
-                if (component.onParentCollided) {
-                    data.entity = this;
-                    component.onParentCollided(data);
-                }
-            }
-        }
-        if (this.onCollide) {
-            this.onCollide(data.other);
-        }
-    };
     /**
      * Attaches a child object to the entity. Entities can form a scenegraph this way.
      * This is one of the most important functions in Bento. It allows you to attach new behaviors
@@ -4796,39 +4660,40 @@ Bento.objects.attach(entity);
      * @returns {Entity} Returns itself (useful for chaining attach calls)
      */
     Entity.prototype.attach = function (child, force) {
-        var mixin = {},
-            parent = this;
+        var parent = this,
+            data = Bento.getGameData();
 
         if (!force && (child.isAdded || child.parent)) {
             Utils.log("ERROR: Child " + child.name + " was already attached.");
             return;
         }
 
-        this.components.push(child);
+        data.entity = this;
 
+        // attach the child
         child.parent = this;
-
-        if (child.init) {
-            child.init();
-        }
+        this.components.push(child);
+        // call child.attached
         if (child.attached) {
-            child.attached({
-                entity: this
-            });
+            child.attached(data);
         }
+
+        // the parent entity was already added: call start on the child
         if (this.isAdded) {
             if (child.start) {
-                child.start();
+                child.start(data);
             }
         } else {
+            // maybe the parent entity itself is a child, search for any grandparent that's added
             if (parent.parent) {
                 parent = parent.parent;
             }
             while (parent) {
                 if (parent.isAdded) {
                     if (child.start) {
-                        child.start();
+                        child.start(data);
                     }
+                    break;
                 }
                 parent = parent.parent;
             }
@@ -4845,18 +4710,57 @@ Bento.objects.attach(entity);
      */
     Entity.prototype.remove = function (child) {
         var i, type, index;
+        var parent = this;
+        var data = Bento.getGameData();
+
         if (!child) {
             return;
         }
         index = this.components.indexOf(child);
         if (index >= 0) {
-            if (child.destroy) {
-                child.destroy();
+            // the parent entity is an added entity: call destroy on the child
+            if (this.isAdded) {
+                if (child.destroy) {
+                    child.destroy(data);
+                }
+            } else {
+                // maybe the parent entity itself is a child, search for any grandparent that's added
+                if (parent.parent) {
+                    parent = parent.parent;
+                }
+                while (parent) {
+                    if (parent.isAdded) {
+                        if (child.destroy) {
+                            child.destroy(data);
+                        }
+                        break;
+                    }
+                    parent = parent.parent;
+                }
+            }
+
+            if (child.removed) {
+                child.removed(data);
             }
             child.parent = null;
-            // TODO: clean child
             this.components[index] = null;
         }
+        return this;
+    };
+    /**
+     * Searches a child with certain name and removes the first result. Does nothing if not found
+     * @function
+     * @param {String} name - The name of the child object to remove
+     * @instance
+     * @name removeByName
+     * @returns {Entity} Returns itself
+     */
+    Entity.prototype.removeByName = function (name) {
+        var entity = this;
+
+        entity.getComponent(name, function (component) {
+            entity.remove(component);
+        });
         return this;
     };
     /**
@@ -4889,6 +4793,7 @@ Bento.objects.attach(entity);
         }
         return null;
     };
+
     /**
      * Moves a child to a certain index in the array
      * @function
@@ -5080,6 +4985,167 @@ Bento.objects.attach(entity);
      */
     Entity.prototype.getLocalPosition = function (worldPosition) {
         return this.transform.getLocalPosition(worldPosition);
+    };
+
+    /*
+     * Implementations of callback functions from here on.
+     * These are the functions that the Entity passes to it's children (components).
+     * The developer shouldn't need to call these functions themselves.
+     * Overwrite only if you know what you're doing
+     */
+    Entity.prototype.start = function (data) {
+        var i,
+            l,
+            component;
+        data = data || Bento.getGameData();
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component && component.start) {
+                data.entity = this;
+                component.start(data);
+            }
+        }
+    };
+    Entity.prototype.destroy = function (data) {
+        var i,
+            l,
+            component,
+            components = this.components;
+        data = data || Bento.getGameData();
+        // update components
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
+            if (component && component.destroy) {
+                data.entity = this;
+                component.destroy(data);
+            }
+        }
+    };
+    Entity.prototype.update = function (data) {
+        var i,
+            l,
+            component,
+            components = this.components;
+
+        data = data || Bento.getGameData();
+        // update components
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
+            if (component && component.update) {
+                data.entity = this;
+                component.update(data);
+            }
+        }
+
+        this.timer += data.speed;
+
+        // clean up
+        cleanComponents(this);
+    };
+    Entity.prototype.draw = function (data) {
+        var i, l, component;
+        var components = this.components;
+        var matrix;
+        if (!this.visible) {
+            return;
+        }
+        data = data || Bento.getGameData();
+
+        this.transform.draw(data);
+
+        // call components
+        for (i = 0, l = components.length; i < l; ++i) {
+            component = components[i];
+            if (component && component.draw) {
+                data.entity = this;
+                component.draw(data);
+            }
+        }
+        // post draw
+        for (i = components.length - 1; i >= 0; i--) {
+            component = components[i];
+            if (component && component.postDraw) {
+                data.entity = this;
+                component.postDraw(data);
+            }
+        }
+
+        this.transform.postDraw(data);
+    };
+    /*
+     * Entity was attached, calls onParentAttach to all children
+     */
+    Entity.prototype.attached = function (data) {
+        var i,
+            l,
+            component;
+
+        data = data || Bento.getGameData();
+        data.entity = this;
+        data.parent = this.parent;
+
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component) {
+                if (component.onParentAttached) {
+                    data.entity = this;
+                    component.onParentAttached(data);
+                }
+            }
+        }
+    };
+    /*
+     * Entity was removed, calls onParentRemoved to all children
+     */
+    Entity.prototype.removed = function (data) {
+        var i,
+            l,
+            component;
+
+        data = data || Bento.getGameData();
+        data.entity = this;
+        data.parent = this.parent;
+
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component) {
+                if (component.onParentRemoved) {
+                    data.entity = this;
+                    component.onParentRemoved(data);
+                }
+            }
+        }
+    };
+    /* DEPRECATED
+     * Calls onParentCollided on every child, additionally calls onCollide on self afterwards
+     */
+    Entity.prototype.collided = function (data) {
+        var i,
+            l,
+            component;
+
+        if (data) {
+            data.entity = this;
+            data.parent = this.parent;
+        } else {
+            throw "Must pass a data object";
+        }
+        // update components
+        for (i = 0, l = this.components.length; i < l; ++i) {
+            component = this.components[i];
+            if (component) {
+                if (component.onParentCollided) {
+                    data.entity = this;
+                    component.onParentCollided(data);
+                }
+            }
+        }
+        if (this.onCollide) {
+            this.onCollide(data.other);
+        }
     };
 
     Entity.prototype.toString = function () {
@@ -7034,6 +7100,10 @@ bento.define('bento/components/sprite', [
             }
         } else {
             // no image specified
+            return;
+        }
+        if (!this.spriteImage) {
+            Utils.log("ERROR: something went wrong with loading the sprite.");
             return;
         }
         // use frameWidth if specified (overrides frameCountX and frameCountY)
@@ -10798,6 +10868,9 @@ bento.define('bento/managers/object', [
                         if (object.destroy) {
                             object.destroy(data);
                         }
+                        if (object.removed) {
+                            object.removed(data);
+                        }
                         object.isAdded = false;
                     }
                     // remove from access pools
@@ -14195,7 +14268,11 @@ bento.define('bento/tween', [
                     return;
                 }
                 if (delayTimer < delay) {
-                    delayTimer += 1;
+                    if (ignoreGameSpeed) {
+                        delayTimer += 1;
+                    } else {
+                        delayTimer += data.speed;
+                    }
                     return;
                 }
                 if (ignoreGameSpeed) {
