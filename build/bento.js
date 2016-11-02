@@ -14998,6 +14998,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonDown', {
+                        entity: entity,
+                        event: 'onClick'
+                    });
                 },
                 onHoldEnter: function () {
                     if (!active) {
@@ -15007,6 +15011,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonDown', {
+                        entity: entity,
+                        event: 'onHoldEnter'
+                    });
                 },
                 onHoldLeave: function () {
                     if (!active) {
@@ -15016,6 +15024,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonUp', {
+                        entity: entity,
+                        event: 'onHoldLeave'
+                    });
                 },
                 pointerUp: function () {
                     if (!active) {
@@ -15025,6 +15037,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonUp', {
+                        entity: entity,
+                        event: 'pointerUp'
+                    });
                 },
                 onHoldEnd: function () {
                     if (active && settings.onClick) {
@@ -15033,7 +15049,11 @@ bento.define('bento/gui/clickbutton', [
                             Bento.audio.stopSound(settings.sfx);
                             Bento.audio.playSound(settings.sfx);
                         }
-                        EventSystem.fire('clickButton', entity);
+                        EventSystem.fire('clickButton', entity); // DEPRECATED
+                        EventSystem.fire('clickButton-onClick', {
+                            entity: entity,
+                            event: 'onHoldEnd'
+                        });
                     }
                 }
             }),
@@ -15097,16 +15117,20 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS and Windows
-        if (window.ejecta || window.Windows)
-            entity.attach({
-                start: function () {
-                    EventSystem.fire('clickbuttonAdded', entity);
-                },
-                destroy: function () {
-                    EventSystem.fire('clickbuttonRemoved', entity);
-                }
-            });
+        // events for the button becoming active
+        entity.attach({
+            name: 'attachComponent',
+            start: function () {
+                EventSystem.fire('clickButton-start', {
+                    entity: entity
+                });
+            },
+            destroy: function () {
+                EventSystem.fire('clickButton-destroy', {
+                    entity: entity
+                });
+            }
+        });
 
         return entity;
     };
@@ -16098,7 +16122,7 @@ bento.define('bento/gui/togglebutton', [
             }),
             entitySettings = Utils.extend({
                 z: 0,
-                name: '',
+                name: 'toggleButton',
                 originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
                 components: [
@@ -16106,15 +16130,31 @@ bento.define('bento/gui/togglebutton', [
                     new Clickable({
                         onClick: function () {
                             sprite.setAnimation('down');
+                            EventSystem.fire('toggleButton-toggle-down', {
+                                entity: entity,
+                                event: 'onClick'
+                            });
                         },
                         onHoldEnter: function () {
                             sprite.setAnimation('down');
+                            EventSystem.fire('toggleButton-toggle-down', {
+                                entity: entity,
+                                event: 'onHoldEnter'
+                            });
                         },
                         onHoldLeave: function () {
                             sprite.setAnimation(toggled ? 'down' : 'up');
+                            EventSystem.fire('toggleButton-toggle-' +  (toggled ? 'down' : 'up'), {
+                                entity: entity,
+                                event: 'onHoldLeave'
+                            });
                         },
                         pointerUp: function () {
                             sprite.setAnimation(toggled ? 'down' : 'up');
+                            EventSystem.fire('toggleButton-toggle-' +  (toggled ? 'down' : 'up'), {
+                                entity: entity,
+                                event: 'pointerUp'
+                            });
                         },
                         onHoldEnd: function () {
                             if (!active) {
@@ -16133,6 +16173,10 @@ bento.define('bento/gui/togglebutton', [
                                 }
                             }
                             sprite.setAnimation(toggled ? 'down' : 'up');
+                            EventSystem.fire('toggleButton-onToggle', {
+                                entity: entity,
+                                event: 'onHoldEnd'
+                            });
                         }
                     })
                 ],
@@ -16228,16 +16272,20 @@ bento.define('bento/gui/togglebutton', [
             sprite.setAnimation(toggled ? 'down' : 'up');
         }
 
-        // keep track of togglebuttons on tvOS and Windows
-        if (window.ejecta || window.Windows)
-            entity.attach({
-                start: function () {
-                    EventSystem.fire('clickbuttonAdded', entity);
-                },
-                destroy: function () {
-                    EventSystem.fire('clickbuttonRemoved', entity);
-                }
-            });
+        // events for the button becoming active
+        entity.attach({
+            name: 'attachComponent',
+            start: function () {
+                EventSystem.fire('toggleButton-start', {
+                    entity: entity
+                });
+            },
+            destroy: function () {
+                EventSystem.fire('toggleButton-destroy', {
+                    entity: entity
+                });
+            }
+        });
 
         return entity;
     };
