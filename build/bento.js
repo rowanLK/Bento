@@ -10102,7 +10102,7 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('mouseup', mouseUp);
                 isListening = true;
 
-                document.body.addEventListener('touchstart', function (evt) {
+                canvas.addEventListener('touchstart', function (evt) {
                     if (evt && evt.preventDefault) {
                         evt.preventDefault();
                     }
@@ -10111,7 +10111,7 @@ bento.define('bento/managers/input', [
                     }
                     return false;
                 });
-                document.body.addEventListener('touchmove', function (evt) {
+                canvas.addEventListener('touchmove', function (evt) {
                     if (evt && evt.preventDefault) {
                         evt.preventDefault();
                     }
@@ -10186,17 +10186,17 @@ bento.define('bento/managers/input', [
                 offsetTop = canvas.offsetTop;
             },
             initMouseClicks = function () {
-                if (!document || !document.addEventListener) {
+                if (!canvas || !canvas.addEventListener) {
                     return;
                 }
-                document.addEventListener('contextmenu', function (e) {
+                canvas.addEventListener('contextmenu', function (e) {
                     EventSystem.fire('mouseDown-right');
                     // prevent context menu
                     if (settings.preventContextMenu) {
                         e.preventDefault();
                     }
                 }, false);
-                document.addEventListener('click', function (e) {
+                canvas.addEventListener('click', function (e) {
                     if (e.which === 1) {
                         EventSystem.fire('mouseDown-left');
                         e.preventDefault();
