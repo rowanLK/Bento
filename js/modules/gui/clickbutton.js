@@ -64,6 +64,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonDown', {
+                        entity: entity,
+                        event: 'onClick'
+                    });
                 },
                 onHoldEnter: function () {
                     if (!active) {
@@ -73,6 +77,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonDown', {
+                        entity: entity,
+                        event: 'onHoldEnter'
+                    });
                 },
                 onHoldLeave: function () {
                     if (!active) {
@@ -82,6 +90,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonUp', {
+                        entity: entity,
+                        event: 'onHoldLeave'
+                    });
                 },
                 pointerUp: function () {
                     if (!active) {
@@ -91,6 +103,10 @@ bento.define('bento/gui/clickbutton', [
                     if (settings.onButtonUp) {
                         settings.onButtonUp.apply(entity);
                     }
+                    EventSystem.fire('clickButton-onButtonUp', {
+                        entity: entity,
+                        event: 'pointerUp'
+                    });
                 },
                 onHoldEnd: function () {
                     if (active && settings.onClick) {
@@ -99,7 +115,11 @@ bento.define('bento/gui/clickbutton', [
                             Bento.audio.stopSound(settings.sfx);
                             Bento.audio.playSound(settings.sfx);
                         }
-                        EventSystem.fire('clickButton', entity);
+                        EventSystem.fire('clickButton', entity); // DEPRECATED
+                        EventSystem.fire('clickButton-onClick', {
+                            entity: entity,
+                            event: 'onHoldEnd'
+                        });
                     }
                 }
             }),
@@ -163,16 +183,20 @@ bento.define('bento/gui/clickbutton', [
             active = settings.active;
         }
 
-        // keep track of clickbuttons on tvOS and Windows
-        if (window.ejecta || window.Windows)
-            entity.attach({
-                start: function () {
-                    EventSystem.fire('clickbuttonAdded', entity);
-                },
-                destroy: function () {
-                    EventSystem.fire('clickbuttonRemoved', entity);
-                }
-            });
+        // events for the button becoming active
+        entity.attach({
+            name: 'attachComponent',
+            start: function () {
+                EventSystem.fire('clickButton-start', {
+                    entity: entity
+                });
+            },
+            destroy: function () {
+                EventSystem.fire('clickButton-destroy', {
+                    entity: entity
+                });
+            }
+        });
 
         return entity;
     };
