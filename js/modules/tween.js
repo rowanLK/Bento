@@ -309,6 +309,17 @@ bento.define('bento/tween', [
                 }
                 // end
                 if (time >= deltaT && !stay) {
+                    if (time > deltaT && onUpdate) {
+                        //the tween didn't end neatly, so run onUpdate once more with a t of 1
+                        onUpdate.apply(this, [interpolate(
+                            ease,
+                            startVal,
+                            endVal,
+                            1,
+                            alpha,
+                            beta
+                        ), time]);
+                    }
                     if (onComplete) {
                         onComplete.apply(this);
                     }
