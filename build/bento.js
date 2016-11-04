@@ -15581,7 +15581,10 @@ bento.define('bento/gui/text', [
                 if (!Utils.isArray(textSettings.lineWidth)) {
                     lineWidth = [textSettings.lineWidth * sharpness];
                 } else {
-                    lineWidth = textSettings.lineWidth * sharpness;
+                    lineWidth = textSettings.lineWidth;
+                    Utils.forEach(lineWidth, function (item, i, l, breakLoop) {
+                        lineWidth[i] *= sharpness;
+                    });
                 }
             }
             if (textSettings.strokeStyle) {
@@ -15702,7 +15705,6 @@ bento.define('bento/gui/text', [
 
             // set alignment by setting the origin
             switch (align) {
-                default:
             case 'left':
                 origin.x = 0;
                 break;
@@ -15712,9 +15714,10 @@ bento.define('bento/gui/text', [
             case 'right':
                 origin.x = margin.x + canvasWidth;
                 break;
+            default:
+                break;
             }
             switch (textBaseline) {
-                default:
             case 'top':
                 origin.y = 0;
                 break;
@@ -15723,6 +15726,8 @@ bento.define('bento/gui/text', [
                 break;
             case 'bottom':
                 origin.y = (centerByCanvas ? canvas.height : canvasHeight);
+                break;
+            default:
                 break;
             }
 
@@ -15919,7 +15924,6 @@ bento.define('bento/gui/text', [
             bottom = (fontSize + ySpacing) * (index + 1);
 
             switch (gradient) {
-                default:
             case 'top-down':
                 startGrd.x = 0;
                 startGrd.y = top;
@@ -15967,6 +15971,8 @@ bento.define('bento/gui/text', [
                 startGrd.y = bottom;
                 endGrd.x = 0;
                 endGrd.y = top;
+                break;
+            default:
                 break;
             }
             // offset with the linewidth
