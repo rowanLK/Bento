@@ -6935,7 +6935,7 @@ bento.define('bento/components/nineslice', [
             return;
         }
 
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
 
         //top left corner
         this.fillArea(data.renderer, 0, 0, 0);
@@ -7300,7 +7300,7 @@ bento.define('bento/components/sprite', [
 
         this.updateFrame();
 
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
         data.renderer.drawImage(
             this.spriteImage,
             this.sourceX,
@@ -14912,7 +14912,7 @@ bento.define('bento/components/pixi/sprite', [
         );
 
         // draw with pixi
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
         data.renderer.drawPixi(this.sprite);
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };

@@ -34,7 +34,7 @@ bento.define('bento/components/pixi/sprite', [
         );
 
         // draw with pixi
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
         data.renderer.drawPixi(this.sprite);
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
