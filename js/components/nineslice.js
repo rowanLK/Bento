@@ -149,7 +149,7 @@ bento.define('bento/components/nineslice', [
             return;
         }
 
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
 
         //top left corner
         this.fillArea(data.renderer, 0, 0, 0);

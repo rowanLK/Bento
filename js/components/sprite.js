@@ -336,7 +336,7 @@ bento.define('bento/components/sprite', [
 
         this.updateFrame();
 
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
         data.renderer.drawImage(
             this.spriteImage,
             this.sourceX,
