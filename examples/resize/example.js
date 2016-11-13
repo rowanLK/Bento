@@ -63,6 +63,13 @@ bento.require([
             320, // minimum height
             320 // maximum height
         );
+        // max/min width
+        if (canvasDimension.width > 240) {
+            canvasDimension.width = 240;
+        }
+        if (canvasDimension.width < 180) {
+            canvasDimension.width = 180;
+        }
         canvas.width = canvasDimension.width * 3;
         canvas.height = canvasDimension.height * 3;
         viewport.width = canvasDimension.width;
@@ -74,6 +81,7 @@ bento.require([
     };
     window.addEventListener('resize', onResize, false);
     window.addEventListener('orientationchange', onResize, false);
+    onResize();
 
     Bento.setup({
         canvasId: 'canvas',
@@ -82,11 +90,6 @@ bento.require([
             'assets': 'assets/assets.json'
         },
         renderer: 'canvas2d',
-        reload: {
-            simple: 'mouseDown-right',
-            assets: 'buttonDown-1',
-            jump: 'buttonDown-2'
-        },
         pixelSize: 3,
         manualResize: true
     }, function () {
