@@ -3840,10 +3840,8 @@ bento.define('bento', [
     var context;
     var renderer;
     var bentoSettings;
-    var styleScaling = true;
     var canvasRatio = 0;
     var windowRatio;
-    var manualResize = false;
     var throttle = 1;
     var canvasScale = {
         x: 1,
@@ -3880,14 +3878,14 @@ bento.define('bento', [
         button.innerHTML = 'button';
         debug.debugBar.appendChild(button);
     };
-    var setupCanvas = function (settings, onComplete) {
+    var setupCanvas = function (settings) {
         var parent;
+        var pixelSize = settings.pixelSize;
         var pixelRatio = window.devicePixelRatio || 1;
         var windowWidth = window.innerWidth * pixelRatio;
         var windowHeight = window.innerHeight * pixelRatio;
-        var rendererName;
 
-        canvas = document.getElementById(settings.canvasId);
+        canvas = settings.canvasElement || document.getElementById(settings.canvasId);
 
         if (!canvas) {
             // no canvas, create it
@@ -3900,10 +3898,12 @@ bento.define('bento', [
             canvas.id = settings.canvasId;
             parent.appendChild(canvas);
         }
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        canvas.width = viewport.width * pixelSize;
+        canvas.height = viewport.height * pixelSize;
         canvasRatio = viewport.height / viewport.width;
-
+    };
+    var setupRenderer = function (settings, onComplete) {
+        var rendererName;
         settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
 
         // canvas2d and pixi are reserved names
@@ -3924,34 +3924,29 @@ bento.define('bento', [
             onComplete();
         });
     };
+    /**
+     * Bento's default behavior to resize to fit
+     */
     var onResize = function () {
-        var width,
-            height,
+        var clientWidth,
+            clientHeight,
             innerWidth = window.innerWidth,
             innerHeight = window.innerHeight;
 
-        if (manualResize) {
-            return;
-        }
-
         windowRatio = innerHeight / innerWidth;
-        // resize to fill screen
+        // resize to fit screen
         if (windowRatio < canvasRatio) {
-            width = innerHeight / canvasRatio;
-            height = innerHeight;
+            clientWidth = innerHeight / canvasRatio;
+            clientHeight = innerHeight;
         } else {
-            width = innerWidth;
-            height = innerWidth * canvasRatio;
+            clientWidth = innerWidth;
+            clientHeight = innerWidth * canvasRatio;
         }
-        if (styleScaling) {
-            canvas.style.width = width + 'px';
-            canvas.style.height = height + 'px';
-        } else {
-            canvas.width = width;
-            canvas.height = height;
-        }
-        canvasScale.x = width / viewport.width;
-        canvasScale.y = height / viewport.height;
+        canvas.style.width = clientWidth + 'px';
+        canvas.style.height = clientHeight + 'px';
+
+        canvasScale.x = clientWidth / viewport.width;
+        canvasScale.y = clientHeight / viewport.height;
     };
     var setScreenshotListener = function (evtName) {
         var takeScreenshot = false;
@@ -3963,21 +3958,21 @@ bento.define('bento', [
 
             //the tenth parameter of initMouseEvent sets ctrl key
             evt.initMouseEvent(
-                "click",    // type
-                true,       // canBubble
-                true,       // canceable
-                window,     // view
-                0,          // detail
-                0,          // screenX
-                0,          // screenY
-                0,          // clientX
-                0,          // clientY
-                false,      // ctrlKey
-                true,       // altKey
-                false,      // shiftKey
-                false,      // metaKey
-                0,          // button
-                null        // relatedTarget
+                "click", // type
+                true, // canBubble
+                true, // canceable
+                window, // view
+                0, // detail
+                0, // screenX
+                0, // screenY
+                0, // clientX
+                0, // clientY
+                false, // ctrlKey
+                true, // altKey
+                false, // shiftKey
+                false, // metaKey
+                0, // button
+                null // relatedTarget
             );
             a.dispatchEvent(evt);
         };
@@ -4043,14 +4038,16 @@ bento.define('bento', [
                     }
                 }
                 settings.sortMode = settings.sortMode || 0;
-                setupCanvas(settings, function () {
+                setupCanvas(settings);
+                setupRenderer(settings, function () {
                     dev = settings.dev || false;
                     Utils.setDev(dev);
                     // window resize listeners
-                    manualResize = settings.manualResize;
-                    window.addEventListener('resize', onResize, false);
-                    window.addEventListener('orientationchange', onResize, false);
-                    onResize();
+                    if (!settings.manualResize) {
+                        window.addEventListener('resize', onResize, false);
+                        window.addEventListener('orientationchange', onResize, false);
+                        onResize();
+                    }
 
                     Bento.input = new InputManager(gameData, settings);
                     Bento.objects = new ObjectManager(Bento.getGameData, settings);
@@ -9994,10 +9991,10 @@ bento.define('bento/managers/input', [
                 pointerUp(evt);
             },
             addTouchPosition = function (evt, n, type) {
-                var touch = evt.changedTouches[n],
-                    x = (touch.pageX - offsetLeft) / canvasScale.x,
-                    y = (touch.pageY - offsetTop) / canvasScale.y,
-                    startPos = {};
+                var touch = evt.changedTouches[n];
+                var x = (touch.pageX - offsetLeft) / canvasScale.x;
+                var y = (touch.pageY - offsetTop) / canvasScale.y;
+                var startPos = {};
 
                 evt.preventDefault();
                 evt.id = 0;
@@ -10182,8 +10179,18 @@ bento.define('bento/managers/input', [
              * @name onResize
              */
             onResize = function () {
-                offsetLeft = canvas.offsetLeft;
-                offsetTop = canvas.offsetTop;
+                if (Utils.isCocoonJs()) {
+                    // assumes full screen
+                    canvasScale.x = window.innerWidth / viewport.width;
+                    canvasScale.y = window.innerHeight / viewport.height;
+                } else {
+                    // use offsetWidth and offsetHeight to determine visual size
+                    canvasScale.x = canvas.offsetWidth / viewport.width;
+                    canvasScale.y = canvas.offsetHeight / viewport.height;
+                    // get the topleft position
+                    offsetLeft = canvas.offsetLeft;
+                    offsetTop = canvas.offsetTop;
+                }
             },
             initMouseClicks = function () {
                 if (!canvas || !canvas.addEventListener) {
@@ -10443,9 +10450,6 @@ bento.define('bento/managers/input', [
                 }
             };
 
-        window.addEventListener('resize', onResize, false);
-        window.addEventListener('orientationchange', onResize, false);
-
         if (!gameData) {
             throw 'Supply a gameData object';
         }
@@ -10454,9 +10458,10 @@ bento.define('bento/managers/input', [
         canvas = gameData.canvas;
         viewport = gameData.viewport;
 
-        if (canvas && !Utils.isCocoonJS()) {
-            offsetLeft = canvas.offsetLeft;
-            offsetTop = canvas.offsetTop;
+        if (canvas) {
+            window.addEventListener('resize', onResize, false);
+            window.addEventListener('orientationchange', onResize, false);
+            onResize();
         }
 
         // touch device
@@ -10471,6 +10476,7 @@ bento.define('bento/managers/input', [
         initGamepad();
 
         return {
+            onResize: onResize,
             /**
              * Returns all current pointers down
              * @function
@@ -14575,10 +14581,6 @@ bento.define('bento/renderers/canvas2d', [
                 return colorStr;
             };
 
-        // resize canvas according to pixelSize
-        canvas.width *= pixelSize;
-        canvas.height *= pixelSize;
-
         if (!settings.smoothing) {
             if (context.imageSmoothingEnabled) {
                 context.imageSmoothingEnabled = false;
@@ -14846,9 +14848,6 @@ bento.define('bento/renderers/pixi', [
             // Matrix = PIXI.Matrix;
             matrix = new TransformMatrix();
             // additional scale
-            // resize canvas according to pixelSize
-            canvas.width *= pixelSize;
-            canvas.height *= pixelSize;
             if (Utils.isCocoonJs()) {
                 cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
                 canvas.width *= cocoonScale;

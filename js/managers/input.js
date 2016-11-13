@@ -92,10 +92,10 @@ bento.define('bento/managers/input', [
                 pointerUp(evt);
             },
             addTouchPosition = function (evt, n, type) {
-                var touch = evt.changedTouches[n],
-                    x = (touch.pageX - offsetLeft) / canvasScale.x,
-                    y = (touch.pageY - offsetTop) / canvasScale.y,
-                    startPos = {};
+                var touch = evt.changedTouches[n];
+                var x = (touch.pageX - offsetLeft) / canvasScale.x;
+                var y = (touch.pageY - offsetTop) / canvasScale.y;
+                var startPos = {};
 
                 evt.preventDefault();
                 evt.id = 0;
@@ -280,8 +280,18 @@ bento.define('bento/managers/input', [
              * @name onResize
              */
             onResize = function () {
-                offsetLeft = canvas.offsetLeft;
-                offsetTop = canvas.offsetTop;
+                if (Utils.isCocoonJs()) {
+                    // assumes full screen
+                    canvasScale.x = window.innerWidth / viewport.width;
+                    canvasScale.y = window.innerHeight / viewport.height;
+                } else {
+                    // use offsetWidth and offsetHeight to determine visual size
+                    canvasScale.x = canvas.offsetWidth / viewport.width;
+                    canvasScale.y = canvas.offsetHeight / viewport.height;
+                    // get the topleft position
+                    offsetLeft = canvas.offsetLeft;
+                    offsetTop = canvas.offsetTop;
+                }
             },
             initMouseClicks = function () {
                 if (!canvas || !canvas.addEventListener) {
@@ -541,9 +551,6 @@ bento.define('bento/managers/input', [
                 }
             };
 
-        window.addEventListener('resize', onResize, false);
-        window.addEventListener('orientationchange', onResize, false);
-
         if (!gameData) {
             throw 'Supply a gameData object';
         }
@@ -552,9 +559,10 @@ bento.define('bento/managers/input', [
         canvas = gameData.canvas;
         viewport = gameData.viewport;
 
-        if (canvas && !Utils.isCocoonJS()) {
-            offsetLeft = canvas.offsetLeft;
-            offsetTop = canvas.offsetTop;
+        if (canvas) {
+            window.addEventListener('resize', onResize, false);
+            window.addEventListener('orientationchange', onResize, false);
+            onResize();
         }
 
         // touch device
@@ -569,6 +577,7 @@ bento.define('bento/managers/input', [
         initGamepad();
 
         return {
+            onResize: onResize,
             /**
              * Returns all current pointers down
              * @function
