@@ -42,7 +42,9 @@ bento.define('bento/managers/screen', [
                  */
                 show: function (name, data, callback) {
                     if (currentScreen !== null) {
-                        screenManager.hide();
+                        screenManager.hide({
+                            next: name
+                        });
                     }
                     currentScreen = screens[name];
                     if (currentScreen) {
