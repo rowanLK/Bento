@@ -10174,11 +10174,8 @@ bento.define('bento/managers/input', [
             },
             /**
              * Changes the offsets after resizing or screen re-orientation.
-             * @function
-             * @instance
-             * @name onResize
              */
-            onResize = function () {
+            updateCanvas = function () {
                 if (Utils.isCocoonJs()) {
                     // assumes full screen
                     canvasScale.x = window.innerWidth / viewport.width;
@@ -10458,10 +10455,11 @@ bento.define('bento/managers/input', [
         canvas = gameData.canvas;
         viewport = gameData.viewport;
 
+        // TODO: it's a bit tricky with order of event listeners
         if (canvas) {
-            window.addEventListener('resize', onResize, false);
-            window.addEventListener('orientationchange', onResize, false);
-            onResize();
+            window.addEventListener('resize', updateCanvas, false);
+            window.addEventListener('orientationchange', updateCanvas, false);
+            updateCanvas();
         }
 
         // touch device
@@ -10476,7 +10474,6 @@ bento.define('bento/managers/input', [
         initGamepad();
 
         return {
-            onResize: onResize,
             /**
              * Returns all current pointers down
              * @function
@@ -10659,7 +10656,14 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('mousemove', mouseMove);
                 canvas.addEventListener('mouseup', mouseUp);
                 isListening = true;
-            }
+            },
+            /**
+             * Changes the offsets after resizing or screen re-orientation.
+             * @function
+             * @instance
+             * @name updateCanvas
+             */
+            updateCanvas: updateCanvas,
         };
     };
 });
