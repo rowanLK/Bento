@@ -141,10 +141,6 @@ bento.define('bento/renderers/canvas2d', [
                 return colorStr;
             };
 
-        // resize canvas according to pixelSize
-        canvas.width *= pixelSize;
-        canvas.height *= pixelSize;
-
         if (!settings.smoothing) {
             if (context.imageSmoothingEnabled) {
                 context.imageSmoothingEnabled = false;
