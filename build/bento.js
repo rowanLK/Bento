@@ -8924,7 +8924,7 @@ bento.define('bento/managers/asset', [
             }
         };
         var loadJSON = function (name, source, callback) {
-            var xhr = new XMLHttpRequest();
+            var xhr = new window.XMLHttpRequest();
             if (xhr.overrideMimeType) {
                 xhr.overrideMimeType('application/json');
             }
@@ -8955,7 +8955,7 @@ bento.define('bento/managers/asset', [
             xhr.send(null);
         };
         var loadBinary = function (name, source, success, failure) {
-            var xhr = new XMLHttpRequest();
+            var xhr = new window.XMLHttpRequest();
             var arrayBuffer;
             var byteArray;
             var buffer;
@@ -8984,6 +8984,10 @@ bento.define('bento/managers/asset', [
         };
         var loadImage = function (name, source, callback) {
             var img = new Image();
+
+            // cocoon lazy load, might be useful some day?
+            // img.cocoonLazyLoad = true;
+
             img.src = source;
             img.addEventListener('load', function () {
                 callback(null, name, img);
@@ -9337,13 +9341,45 @@ bento.define('bento/managers/asset', [
             loadAudio(name, url, onLoadAudio);
         };
         /**
-         * Unloads assets (not implemented yet)
+         * Unloads assets
          * @function
          * @instance
          * @param {String} groupName - Name of asset group
+         * @param {Boolean} dispose - Should use Canvas+ dispose
          * @name unload
          */
-        var unload = function (groupName) {};
+        var unload = function (groupName, dispose) {
+            // find all assets in this group
+            var assetGroup = assetGroups[groupName];
+
+            if (!assetGroup) {
+                Utils.log('ERROR: asset group ' + groupName + ' does not exist');
+                return;
+            }
+            Utils.forEach(assetGroup, function (group, type) {
+                if (typeof group !== "object") {
+                    return;
+                }
+                Utils.forEach(group, function (assetPath, name) {
+                    // find the corresponding asset from the assets object
+                    var assetTypeGroup = assets[type] || {};
+                    var asset = assetTypeGroup[name];
+
+                    if (asset) {
+                        // remove reference to it
+                        assetTypeGroup[name] = undefined;
+                        // delete could be bad for performance(?)
+                        delete assetTypeGroup[name];
+
+                        // Canvas+ only: dispose if possible
+                        // https://blog.ludei.com/techniques-to-optimize-memory-use-in-ludeis-canvas-environment/
+                        if (dispose && asset.dispose) {
+                            asset.dispose();
+                        }
+                    }
+                });
+            });
+        };
         /**
          * Returns a previously loaded image
          * @function
@@ -11398,7 +11434,9 @@ bento.define('bento/managers/screen', [
                  */
                 show: function (name, data, callback) {
                     if (currentScreen !== null) {
-                        screenManager.hide();
+                        screenManager.hide({
+                            next: name
+                        });
                     }
                     currentScreen = screens[name];
                     if (currentScreen) {
