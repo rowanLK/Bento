@@ -248,9 +248,6 @@ bento.define('bento/renderers/pixi', [
             // Matrix = PIXI.Matrix;
             matrix = new TransformMatrix();
             // additional scale
-            // resize canvas according to pixelSize
-            canvas.width *= pixelSize;
-            canvas.height *= pixelSize;
             if (Utils.isCocoonJs()) {
                 cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
                 canvas.width *= cocoonScale;
