@@ -15019,7 +15019,7 @@ bento.define('bento/gui/clickbutton', [
     EventSystem
 ) {
     'use strict';
-    return function (settings) {
+    var ClickButton = function (settings) {
         var viewport = Bento.getViewport(),
             active = true,
             animations = settings.animations || {
@@ -15043,9 +15043,10 @@ bento.define('bento/gui/clickbutton', [
             }),
             clickable = new Clickable({
                 onClick: function () {
-                    if (!active) {
+                    if (!active || ClickButton.currentlyPressing) {
                         return;
                     }
+                    ClickButton.currentlyPressing = entity;
                     sprite.setAnimation('down');
                     if (settings.onButtonDown) {
                         settings.onButtonDown.apply(entity);
@@ -15093,9 +15094,10 @@ bento.define('bento/gui/clickbutton', [
                         entity: entity,
                         event: 'pointerUp'
                     });
+                    ClickButton.currentlyPressing = null;
                 },
                 onHoldEnd: function () {
-                    if (active && settings.onClick) {
+                    if (active && settings.onClick && !ClickButton.currentlyPressing) {
                         settings.onClick.apply(entity);
                         if (settings.sfx) {
                             Bento.audio.stopSound(settings.sfx);
@@ -15107,6 +15109,7 @@ bento.define('bento/gui/clickbutton', [
                             event: 'onHoldEnd'
                         });
                     }
+                    ClickButton.currentlyPressing = null;
                 }
             }),
             entitySettings = Utils.extend({
@@ -15181,11 +15184,18 @@ bento.define('bento/gui/clickbutton', [
                 EventSystem.fire('clickButton-destroy', {
                     entity: entity
                 });
+                if (ClickButton.currentlyPressing === entity) {
+                    ClickButton.currentlyPressing = null;
+                }
             }
         });
 
         return entity;
     };
+
+    ClickButton.currentlyPressing = null;
+
+    return ClickButton;
 });
 /**
  * An entity that behaves like a counter.
