@@ -108,7 +108,10 @@ bento.define('bento/gui/clickbutton', [
                         entity: entity,
                         event: 'pointerUp'
                     });
-                    ClickButton.currentlyPressing = null;
+                    // TODO: issue with pressing the button and then moving the pointer away
+                    // currently no harm in letting onHoldEnd set currentlyPressing to null
+                    // pointerUp is triggered before onHoldEnd, so setting null here is problematic
+                    // ClickButton.currentlyPressing = null;
                 },
                 onHoldEnd: function () {
                     if (active && settings.onClick && ClickButton.currentlyPressing === entity) {
