@@ -111,7 +111,7 @@ bento.define('bento/gui/clickbutton', [
                     ClickButton.currentlyPressing = null;
                 },
                 onHoldEnd: function () {
-                    if (active && settings.onClick && !ClickButton.currentlyPressing) {
+                    if (active && settings.onClick && ClickButton.currentlyPressing === entity) {
                         settings.onClick.apply(entity);
                         if (settings.sfx) {
                             Bento.audio.stopSound(settings.sfx);
