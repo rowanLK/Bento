@@ -24,6 +24,7 @@ bento.define('bento/managers/asset', [
         };
         var texturePacker = {};
         var packs = [];
+        var useNativeAudio = false;
         var loadAudio = function (name, source, callback) {
             var i;
             var failed = true;
@@ -41,15 +42,65 @@ bento.define('bento/managers/asset', [
                 }
                 return false;
             };
+            var loadNativeAudio = function (src) {
+                var audio = {
+                    id: name,
+                    path: src,
+                    play: function () {
+                        window.plugins.NativeAudio.play(audio.id, function () {}, function () {}, audio.onended);
+                    },
+                    stop: function () {
+                        window.plugins.NativeAudio.stop(audio.id, function () {}, function () {});
+                    },
+                    onended: function () {},
+                };
+                var loop = false;
+                var volume = 1;
+                Object.defineProperty(audio, 'loop', {
+                    get: function () {
+                        return loop;
+                    },
+                    set: function (bool) {
+                        loop = bool;
+                        // cannot turn off a loop...
+                        if (bool) {
+                            window.plugins.NativeAudio.loop(audio.id, function () {}, function () {});
+                        }
+                    }
+                });
+                Object.defineProperty(audio, 'volume', {
+                    get: function () {
+                        return volume;
+                    },
+                    set: function (number) {
+                        volume = number;
+                        window.plugins.NativeAudio.setVolumeForComplexAsset(
+                            audio.id, 
+                            volume, 
+                            function () {}, 
+                            function () {}
+                        );
+                    }
+                });
+                window.plugins.NativeAudio.preloadComplex(audio.src, audio.path, volume, 1, 0, function () {
+                    callback(null, name, audio);
+                }, function (error) {
+                    callback("Failed loading audio: " + error);
+                });
+            };
             if (!Utils.isArray(source)) {
                 // source = [path + 'audio/' + source];
                 source = [source];
             }
             // try every type
-            for (i = 0; i < source.length; ++i) {
-                if (loadAudioFile(i, path + 'audio/' + source[i])) {
-                    break;
+            if (!useNativeAudio) {
+                for (i = 0; i < source.length; ++i) {
+                    if (loadAudioFile(i, path + 'audio/' + source[i])) {
+                        break;
+                    }
                 }
+            } else {
+                loadNativeAudio(path + 'audio/' + source[0]);
             }
             if (failed) {
                 callback('This audio type is not supported:', name, source);
@@ -737,6 +788,9 @@ bento.define('bento/managers/asset', [
             }
         };
         return {
+            useNativeAudio: function (bool) {
+                useNativeAudio = bool;
+            },
             reload: reload,
             loadAllAssets: loadAllAssets,
             loadAssetGroups: loadAssetGroups,
