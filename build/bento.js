@@ -6561,6 +6561,22 @@ bento.define('bento/components/clickable', [
     'use strict';
 
     var clickables = [];
+    var isPaused = function (entity) {
+        var highestPause = 0;
+        if (!Bento.objects || !entity) {
+            return false;
+        }
+        highestPause = entity.updateWhenPaused;
+        // loop through all parents and find the highest pauselevel
+        while (entity.parent) {
+            entity = entity.parent;
+            if (entity.updateWhenPaused > highestPause) {
+                highestPause = entity.updateWhenPaused;
+            }
+        }
+
+        return highestPause < Bento.objects.isPaused();
+    };
 
     var Clickable = function (settings) {
         var nothing = function () {};
@@ -6661,7 +6677,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerDown = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+        if (isPaused(this.entity)) {
             return;
         }
         this.isPointerDown = true;
@@ -6675,9 +6691,13 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-        // if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-        //     return;
-        // }
+
+        // PointerUp callback should alway runs, even if object is paused (?)
+        // because it can be problematic for clickables that pause the game -> its pointerUp is never called
+
+        if (isPaused(this.entity)) {
+            return;
+        }
         mousePosition = e.localPosition;
         this.isPointerDown = false;
         if (this.callbacks.pointerUp) {
@@ -6694,7 +6714,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerMove = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+        if (isPaused(this.entity)) {
             return;
         }
         if (this.callbacks.pointerMove) {
@@ -14056,7 +14076,7 @@ bento.define('bento/tiledreader', [], function () {
  * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
  * @param {Number} [settings.delay] - Wait an amount of ticks before starting
  * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
- * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional)
+ * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
  * @returns Entity
  */
@@ -14429,6 +14449,10 @@ bento.define('bento/tween', [
 
         if (!Utils.isDefined(settings.ease)) {
             Utils.log("WARNING: settings.ease is undefined.");
+        }
+
+        if (!Utils.isDefined(settings.updateWhenPaused)) {
+            tween.updateWhenPaused = Bento.objects.isPaused();
         }
 
         // tween automatically starts
