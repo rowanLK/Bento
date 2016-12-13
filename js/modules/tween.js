@@ -17,7 +17,7 @@
  * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
  * @param {Number} [settings.delay] - Wait an amount of ticks before starting
  * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
- * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional)
+ * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
  * @returns Entity
  */
@@ -390,6 +390,10 @@ bento.define('bento/tween', [
 
         if (!Utils.isDefined(settings.ease)) {
             Utils.log("WARNING: settings.ease is undefined.");
+        }
+
+        if (!Utils.isDefined(settings.updateWhenPaused)) {
+            tween.updateWhenPaused = Bento.objects.isPaused();
         }
 
         // tween automatically starts
