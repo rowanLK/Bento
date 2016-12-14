@@ -69,6 +69,7 @@ bento.define('bento/renderers/canvas2d', [
                 drawLine: function (colorArray, ax, ay, bx, by, width) {
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
+                    var widthMultiplier = Utils.isCocoonJs() ? 1 : pixelSize;
                     if (colorArray[3] !== 1) {
                         context.globalAlpha = colorArray[3];
                     }
@@ -77,7 +78,7 @@ bento.define('bento/renderers/canvas2d', [
                     }
 
                     context.strokeStyle = colorStr;
-                    context.strokeWidth = width;
+                    context.lineWidth = width * widthMultiplier;
 
                     context.beginPath();
                     context.moveTo(ax, ay);

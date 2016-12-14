@@ -130,7 +130,8 @@ bento.define('bento/renderers/pixi', [
             drawLine: function (color, ax, ay, bx, by, width) {
                 var graphics = getGraphics(color);
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-
+                var widthMultiplier = Utils.isCocoonJs() ? 1 : pixelSize;
+                
                 if (!Utils.isDefined(width)) {
                     width = 1;
                 }
@@ -139,7 +140,7 @@ bento.define('bento/renderers/pixi', [
                 }
 
                 graphics
-                    .lineStyle(width, colorInt, color[3])
+                    .lineStyle(width * widthMultiplier, colorInt, color[3])
                     .moveTo(ax, ay)
                     .lineTo(bx, by)
                     .endFill();
