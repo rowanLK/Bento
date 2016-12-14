@@ -248,6 +248,10 @@ bento.define('bento/renderers/pixi', [
             },
             getPixiRenderer: function () {
                 return pixiRenderer;
+            },
+            // pixi specific: update the webgl view, needed if the canvas changed size
+            updateSize: function () {
+                pixiRenderer.resize(canvas.width, canvas.height);
             }
         };
 
