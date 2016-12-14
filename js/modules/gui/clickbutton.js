@@ -34,156 +34,163 @@ bento.define('bento/gui/clickbutton', [
 ) {
     'use strict';
     var ClickButton = function (settings) {
-        var viewport = Bento.getViewport(),
-            active = true,
-            animations = settings.animations || {
-                'up': {
-                    speed: 0,
-                    frames: [0]
-                },
-                'down': {
-                    speed: 0,
-                    frames: [1]
-                }
+        var viewport = Bento.getViewport();
+        var active = true;
+        var animations = settings.animations || {
+            'up': {
+                speed: 0,
+                frames: [0]
             },
-            sprite = settings.sprite || new Sprite({
-                image: settings.image,
-                imageName: settings.imageName,
-                frameWidth: settings.frameWidth,
-                frameHeight: settings.frameHeight,
-                frameCountX: settings.frameCountX,
-                frameCountY: settings.frameCountY,
-                animations: animations
-            }),
-            clickable = new Clickable({
-                onClick: function () {
-                    if (!active || ClickButton.currentlyPressing) {
-                        return;
-                    }
-                    ClickButton.currentlyPressing = entity;
-                    sprite.setAnimation('down');
-                    if (settings.onButtonDown) {
-                        settings.onButtonDown.apply(entity);
-                    }
-                    EventSystem.fire('clickButton-onButtonDown', {
-                        entity: entity,
-                        event: 'onClick'
-                    });
-                },
-                onHoldEnter: function () {
-                    if (!active) {
-                        return;
-                    }
-                    sprite.setAnimation('down');
-                    if (settings.onButtonDown) {
-                        settings.onButtonDown.apply(entity);
-                    }
-                    EventSystem.fire('clickButton-onButtonDown', {
-                        entity: entity,
-                        event: 'onHoldEnter'
-                    });
-                },
-                onHoldLeave: function () {
-                    if (!active) {
-                        return;
-                    }
-                    sprite.setAnimation('up');
-                    if (settings.onButtonUp) {
-                        settings.onButtonUp.apply(entity);
-                    }
-                    EventSystem.fire('clickButton-onButtonUp', {
-                        entity: entity,
-                        event: 'onHoldLeave'
-                    });
-                },
-                pointerUp: function () {
-                    if (!active) {
-                        return;
-                    }
-                    sprite.setAnimation('up');
-                    if (settings.onButtonUp) {
-                        settings.onButtonUp.apply(entity);
-                    }
-                    EventSystem.fire('clickButton-onButtonUp', {
-                        entity: entity,
-                        event: 'pointerUp'
-                    });
-                    // TODO: issue with pressing the button and then moving the pointer away
-                    // currently no harm in letting onHoldEnd set currentlyPressing to null
-                    // pointerUp is triggered before onHoldEnd, so setting null here is problematic
-                    // ClickButton.currentlyPressing = null;
-                },
-                onHoldEnd: function () {
-                    if (active && settings.onClick && ClickButton.currentlyPressing === entity) {
-                        settings.onClick.apply(entity);
-                        if (settings.sfx) {
-                            Bento.audio.stopSound(settings.sfx);
-                            Bento.audio.playSound(settings.sfx);
-                        }
-                        EventSystem.fire('clickButton', entity); // DEPRECATED
-                        EventSystem.fire('clickButton-onClick', {
-                            entity: entity,
-                            event: 'onHoldEnd'
-                        });
-                    }
+            'down': {
+                speed: 0,
+                frames: [1]
+            }
+        };
+        var sprite = settings.sprite || new Sprite({
+            image: settings.image,
+            imageName: settings.imageName,
+            frameWidth: settings.frameWidth,
+            frameHeight: settings.frameHeight,
+            frameCountX: settings.frameCountX,
+            frameCountY: settings.frameCountY,
+            animations: animations
+        });
+        // workaround for pointerUp/onHoldEnd order of events
+        var wasHoldingThis = false;
+        var clickable = new Clickable({
+            onClick: function () {
+                wasHoldingThis = false;
+                if (!active || ClickButton.currentlyPressing) {
+                    return;
+                }
+                ClickButton.currentlyPressing = entity;
+                sprite.setAnimation('down');
+                if (settings.onButtonDown) {
+                    settings.onButtonDown.apply(entity);
+                }
+                EventSystem.fire('clickButton-onButtonDown', {
+                    entity: entity,
+                    event: 'onClick'
+                });
+            },
+            onHoldEnter: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation('down');
+                if (settings.onButtonDown) {
+                    settings.onButtonDown.apply(entity);
+                }
+                EventSystem.fire('clickButton-onButtonDown', {
+                    entity: entity,
+                    event: 'onHoldEnter'
+                });
+            },
+            onHoldLeave: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation('up');
+                if (settings.onButtonUp) {
+                    settings.onButtonUp.apply(entity);
+                }
+                EventSystem.fire('clickButton-onButtonUp', {
+                    entity: entity,
+                    event: 'onHoldLeave'
+                });
+            },
+            pointerUp: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation('up');
+                if (settings.onButtonUp) {
+                    settings.onButtonUp.apply(entity);
+                }
+                EventSystem.fire('clickButton-onButtonUp', {
+                    entity: entity,
+                    event: 'pointerUp'
+                });
+                // TODO: issue with pressing the button and then moving the pointer away
+                // currently no harm in letting onHoldEnd set currentlyPressing to null
+                // pointerUp is triggered before onHoldEnd, so setting null here is problematic
+                if (ClickButton.currentlyPressing === entity) {
+                    wasHoldingThis = true;
                     ClickButton.currentlyPressing = null;
                 }
-            }),
-            entitySettings = Utils.extend({
-                z: 0,
-                name: 'clickButton',
-                originRelative: new Vector2(0.5, 0.5),
-                position: new Vector2(0, 0),
-                components: [
-                    sprite,
-                    clickable
-                ],
-                family: ['buttons'],
-                init: function () {
-                    animations = sprite.animations || animations;
-                    if (!active && animations.inactive) {
-                        sprite.setAnimation('inactive');
-                    } else {
-                        sprite.setAnimation('up');
-                    }
-                }
-            }, settings),
-            entity = new Entity(entitySettings).extend({
-                /**
-                 * Activates or deactives the button. Deactivated buttons cannot be pressed.
-                 * @function
-                 * @param {Bool} active - Should be active or not
-                 * @instance
-                 * @name setActive
-                 */
-                setActive: function (bool) {
-                    active = bool;
-                    if (!active && animations.inactive) {
-                        sprite.setAnimation('inactive');
-                    } else {
-                        sprite.setAnimation('up');
-                    }
-                },
-                /**
-                 * Performs the callback as if the button was clicked
-                 * @function
-                 * @instance
-                 * @name doCallback
-                 */
-                doCallback: function () {
+            },
+            onHoldEnd: function () {
+                if (active && settings.onClick && (ClickButton.currentlyPressing === entity || wasHoldingThis)) {
+                    wasHoldingThis = false;
                     settings.onClick.apply(entity);
-                },
-                /**
-                 * Check if the button is active
-                 * @function
-                 * @instance
-                 * @name isActive
-                 * @returns {Bool} Whether the button is active
-                 */
-                isActive: function () {
-                    return active;
+                    if (settings.sfx) {
+                        Bento.audio.stopSound(settings.sfx);
+                        Bento.audio.playSound(settings.sfx);
+                    }
+                    EventSystem.fire('clickButton', entity); // DEPRECATED
+                    EventSystem.fire('clickButton-onClick', {
+                        entity: entity,
+                        event: 'onHoldEnd'
+                    });
                 }
-            });
+                ClickButton.currentlyPressing = null;
+            }
+        });
+        var entitySettings = Utils.extend({
+            z: 0,
+            name: 'clickButton',
+            originRelative: new Vector2(0.5, 0.5),
+            position: new Vector2(0, 0),
+            components: [
+                sprite,
+                clickable
+            ],
+            family: ['buttons'],
+            init: function () {
+                animations = sprite.animations || animations;
+                if (!active && animations.inactive) {
+                    sprite.setAnimation('inactive');
+                } else {
+                    sprite.setAnimation('up');
+                }
+            }
+        }, settings);
+        var entity = new Entity(entitySettings).extend({
+            /**
+             * Activates or deactives the button. Deactivated buttons cannot be pressed.
+             * @function
+             * @param {Bool} active - Should be active or not
+             * @instance
+             * @name setActive
+             */
+            setActive: function (bool) {
+                active = bool;
+                if (!active && animations.inactive) {
+                    sprite.setAnimation('inactive');
+                } else {
+                    sprite.setAnimation('up');
+                }
+            },
+            /**
+             * Performs the callback as if the button was clicked
+             * @function
+             * @instance
+             * @name doCallback
+             */
+            doCallback: function () {
+                settings.onClick.apply(entity);
+            },
+            /**
+             * Check if the button is active
+             * @function
+             * @instance
+             * @name isActive
+             * @returns {Bool} Whether the button is active
+             */
+            isActive: function () {
+                return active;
+            }
+        });
 
         if (Utils.isDefined(settings.active)) {
             active = settings.active;

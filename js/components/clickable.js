@@ -157,10 +157,7 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-
-        // PointerUp callback should alway runs, even if object is paused (?)
-        // because it can be problematic for clickables that pause the game -> its pointerUp is never called
-
+            
         if (isPaused(this.entity)) {
             return;
         }
