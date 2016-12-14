@@ -378,6 +378,11 @@ Bento.objects.attach(entity);
         var parent = this,
             data = Bento.getGameData();
 
+        if (!child) {
+            Utils.log("ERROR: trying to attach " + child);
+            return;
+        }
+
         if (!force && (child.isAdded || child.parent)) {
             Utils.log("ERROR: Child " + child.name + " was already attached.");
             return;
