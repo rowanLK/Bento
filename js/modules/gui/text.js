@@ -223,9 +223,7 @@ bento.define('bento/gui/text', [
                     innerStroke = textSettings.innerStroke;
                 }
             }
-            if (navigator.isCocoonJS) {
-                pixelStroke = textSettings.pixelStroke || false;
-            }
+            pixelStroke = textSettings.pixelStroke || false;
             // align array lengths
             maxLength = Math.max(lineWidth.length, strokeStyle.length, innerStroke.length);
             while (lineWidth.length < maxLength) {
