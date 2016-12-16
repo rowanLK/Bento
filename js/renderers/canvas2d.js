@@ -66,6 +66,23 @@ bento.define('bento/renderers/canvas2d', [
                         context.globalAlpha = oldOpacity;
                     }
                 },
+                strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+
+                    sAngle = sAngle || 0;
+                    eAngle = eAngle || 0;
+
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
+                    context.strokeStyle = colorStr;
+                    context.lineWidth = lineWidth || 0;
+                    context.beginPath();
+                    context.arc(x, y, radius, sAngle, eAngle, false);
+                    context.stroke();
+                    context.closePath();
+                },
                 drawLine: function (colorArray, ax, ay, bx, by, width) {
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
