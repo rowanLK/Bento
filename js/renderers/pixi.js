@@ -127,15 +127,36 @@ bento.define('bento/renderers/pixi', [
                 graphicsRenderer.render(graphics);
 
             },
+            strokeRect: function (colorArray, x, y, w, h, lineWidth) {
+                var graphics = new PIXI.Graphics();
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+                var alphaColor = color[3];
+                graphics.worldTransform = getPixiMatrix();
+                graphics.worldAlpha = alpha * alphaColor;
+
+                graphics.lineStyle(lineWidth, colorInt, alphaColor);
+                // graphics.moveTo(x, y);
+                // graphics.lineTo(x + w, y);
+                // graphics.lineTo(x + w, y + h);
+                // graphics.lineTo(x, y + h);
+                // graphics.lineTo(x, y);
+
+                // TODO: not working for some reason, problem with PIXI?
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
             strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
                 var graphics = new PIXI.Graphics();
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
                 var alphaColor = color[3];
-                graphics.lineStyle(lineWidth, colorInt);
                 graphics.worldTransform = getPixiMatrix();
                 graphics.worldAlpha = alpha * alphaColor;
 
-                graphics.arc(x, y, radius, sAngle, eAngle);
+                graphics
+                    .lineStyle(lineWidth, colorInt, alphaColor)
+                    .arc(x, y, radius, sAngle, eAngle);
 
                 pixiRenderer.setObjectRenderer(graphicsRenderer);
                 graphicsRenderer.render(graphics);
@@ -144,7 +165,6 @@ bento.define('bento/renderers/pixi', [
             drawLine: function (color, ax, ay, bx, by, width) {
                 var graphics = getGraphics(color);
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-                var widthMultiplier = Utils.isCocoonJs() ? 1 : pixelSize;
 
                 if (!Utils.isDefined(width)) {
                     width = 1;
@@ -154,7 +174,7 @@ bento.define('bento/renderers/pixi', [
                 }
 
                 graphics
-                    .lineStyle(width * widthMultiplier, colorInt, color[3])
+                    .lineStyle(width, colorInt, color[3])
                     .moveTo(ax, ay)
                     .lineTo(bx, by)
                     .endFill();
