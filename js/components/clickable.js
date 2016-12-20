@@ -27,6 +27,22 @@ bento.define('bento/components/clickable', [
     'use strict';
 
     var clickables = [];
+    var isPaused = function (entity) {
+        var highestPause = 0;
+        if (!Bento.objects || !entity) {
+            return false;
+        }
+        highestPause = entity.updateWhenPaused;
+        // loop through all parents and find the highest pauselevel
+        while (entity.parent) {
+            entity = entity.parent;
+            if (entity.updateWhenPaused > highestPause) {
+                highestPause = entity.updateWhenPaused;
+            }
+        }
+
+        return highestPause < Bento.objects.isPaused();
+    };
 
     var Clickable = function (settings) {
         var nothing = function () {};
@@ -127,7 +143,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerDown = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+        if (isPaused(this.entity)) {
             return;
         }
         this.isPointerDown = true;
@@ -141,9 +157,10 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-        // if (Bento.objects && Bento.objects.isPaused(this.entity)) {
-        //     return;
-        // }
+            
+        if (isPaused(this.entity)) {
+            return;
+        }
         mousePosition = e.localPosition;
         this.isPointerDown = false;
         if (this.callbacks.pointerUp) {
@@ -160,7 +177,7 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerMove = function (evt) {
         var e = this.transformEvent(evt);
-        if (Bento.objects && Bento.objects.isPaused(this.entity)) {
+        if (isPaused(this.entity)) {
             return;
         }
         if (this.callbacks.pointerMove) {

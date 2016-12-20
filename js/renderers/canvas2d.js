@@ -54,17 +54,35 @@ bento.define('bento/renderers/canvas2d', [
                     context.closePath();
 
                 },
-                strokeRect: function (colorArray, x, y, w, h) {
+                strokeRect: function (colorArray, x, y, w, h, lineWidth) {
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
                         context.globalAlpha = colorArray[3];
                     }
+                    context.lineWidth = lineWidth || 0;
                     context.strokeStyle = colorStr;
                     context.strokeRect(x, y, w, h);
                     if (colorArray[3] !== 1) {
                         context.globalAlpha = oldOpacity;
                     }
+                },
+                strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+
+                    sAngle = sAngle || 0;
+                    eAngle = eAngle || 0;
+
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = colorArray[3];
+                    }
+                    context.strokeStyle = colorStr;
+                    context.lineWidth = lineWidth || 0;
+                    context.beginPath();
+                    context.arc(x, y, radius, sAngle, eAngle, false);
+                    context.stroke();
+                    context.closePath();
                 },
                 drawLine: function (colorArray, ax, ay, bx, by, width) {
                     var colorStr = getColor(colorArray),
@@ -77,7 +95,7 @@ bento.define('bento/renderers/canvas2d', [
                     }
 
                     context.strokeStyle = colorStr;
-                    context.strokeWidth = width;
+                    context.lineWidth = width;
 
                     context.beginPath();
                     context.moveTo(ax, ay);

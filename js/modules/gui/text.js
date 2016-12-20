@@ -15,6 +15,10 @@
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
  * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
+ * @param {Number} [settings.maxWidth] - Maximum width for the text. If the the text goes over this, it will first start adding linebreaks. If that doesn't help it will start scaling ifself down.
+ * @param {Number} [settings.maxHeight] - Maximum height for the text. If the the text goes over this, it will start scaling itself down.
+ * @param {Number} [settings.linebreaks] - Allow the module to add linebreaks to fit text with maxWidth (default true)
+ * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
  * @returns Entity
  */
@@ -58,7 +62,7 @@ bento.define('bento/gui/text', [
         return false;
     };
 
-    return function (settings) {
+    var Text = function (settings) {
         /*settings = {
             font: string,
             align: string,
@@ -106,6 +110,7 @@ bento.define('bento/gui/text', [
         var sharpness = 4; // extra scaling to counter blurriness in chrome
         var invSharpness = 1 / sharpness;
         var fontSizeCache = {};
+        var drawDebug = settings.drawDebug || false;
         /*
          * Prepare font settings, gradients, max width/height etc.
          */
@@ -218,9 +223,7 @@ bento.define('bento/gui/text', [
                     innerStroke = textSettings.innerStroke;
                 }
             }
-            if (navigator.isCocoonJS) {
-                pixelStroke = textSettings.pixelStroke || false;
-            }
+            pixelStroke = textSettings.pixelStroke || false;
             // align array lengths
             maxLength = Math.max(lineWidth.length, strokeStyle.length, innerStroke.length);
             while (lineWidth.length < maxLength) {
@@ -309,7 +312,7 @@ bento.define('bento/gui/text', [
             // clear
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // update baseobject
-            entity.dimension = new Rectangle(0, 0, canvas.width, canvas.height);
+            entity.dimension = new Rectangle(0, 0, canvas.width / sharpness, canvas.height / sharpness);
 
             // TODO: fix this if needed
             // fit overlay onto canvas
@@ -612,8 +615,33 @@ bento.define('bento/gui/text', [
             return grd;
         };
         var scaler = {
+            name: 'sharpnessScaler',
             draw: function (data) {
                 data.renderer.scale(invSharpness, invSharpness);
+
+                // draw the debug box while we're at it
+                var entity;
+                var box;
+                if (
+                    (Text.drawDebug || drawDebug) &&
+                    (maxWidth !== null || maxHeight !== null)
+                ) {
+                    entity = data.entity;
+                    box = new Rectangle(-entity.origin.x || 0, -entity.origin.y || 0,
+                        maxWidth || entity.dimension.width,
+                        maxHeight || entity.dimension.height
+                    );
+                    data.renderer.fillRect([0, 0, 1, 0.25], box.x, box.y, box.width, box.height);
+                    // draw edges
+                    if (maxWidth !== null) {
+                        data.renderer.drawLine([0, 0, 1, 0.5], box.x, box.y, box.x, box.y + box.height, 1);
+                        data.renderer.drawLine([0, 0, 1, 0.5], box.x + box.width, box.y, box.x + box.width, box.y + box.height, 1);
+                    }
+                    if (maxHeight !== null) {
+                        data.renderer.drawLine([0, 0, 1, 0.5], box.x, box.y, box.x + box.width, box.y, 1);
+                        data.renderer.drawLine([0, 0, 1, 0.5], box.x, box.y + box.height, box.x + box.width, box.y + box.height, 1);
+                    }
+                }
             }
         };
         var sprite = new Sprite({
@@ -626,11 +654,12 @@ bento.define('bento/gui/text', [
         }, settings, true);
         var entity;
 
-        // add the scaler and sprite as top components
+        // add the scaler, debugDraw and sprite as top components
         entitySettings.components = [
-            scaler,
-            sprite
-        ].concat(entitySettings.components || []);
+                scaler,
+                sprite
+            ]
+            .concat(entitySettings.components || []);
 
         entity = new Entity(entitySettings).extend({
             /**
@@ -696,4 +725,9 @@ bento.define('bento/gui/text', [
 
         return entity;
     };
+
+    // static value drawDebug
+    Text.drawDebug = false;
+
+    return Text;
 });

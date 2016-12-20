@@ -74,10 +74,10 @@ bento.define('bento/renderers/pixi', [
         var getGraphics = function (color) {
             var graphics = new PIXI.Graphics();
             var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-            var alpha = color[3];
+            var alphaColor = color[3];
             graphics.beginFill(colorInt, alpha);
             graphics.worldTransform = getPixiMatrix();
-            graphics.worldAlpha = alpha;
+            graphics.worldAlpha = alpha * alphaColor;
             return graphics;
         };
         var renderer = {
@@ -127,6 +127,41 @@ bento.define('bento/renderers/pixi', [
                 graphicsRenderer.render(graphics);
 
             },
+            strokeRect: function (colorArray, x, y, w, h, lineWidth) {
+                var graphics = new PIXI.Graphics();
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+                var alphaColor = color[3];
+                graphics.worldTransform = getPixiMatrix();
+                graphics.worldAlpha = alpha * alphaColor;
+
+                graphics.lineStyle(lineWidth, colorInt, alphaColor);
+                // graphics.moveTo(x, y);
+                // graphics.lineTo(x + w, y);
+                // graphics.lineTo(x + w, y + h);
+                // graphics.lineTo(x, y + h);
+                // graphics.lineTo(x, y);
+
+                // TODO: not working for some reason, problem with PIXI?
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
+                var graphics = new PIXI.Graphics();
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+                var alphaColor = color[3];
+                graphics.worldTransform = getPixiMatrix();
+                graphics.worldAlpha = alpha * alphaColor;
+
+                graphics
+                    .lineStyle(lineWidth, colorInt, alphaColor)
+                    .arc(x, y, radius, sAngle, eAngle);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+
+            },
             drawLine: function (color, ax, ay, bx, by, width) {
                 var graphics = getGraphics(color);
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
@@ -157,7 +192,7 @@ bento.define('bento/renderers/pixi', [
                 // If image and frame size don't correspond Pixi will throw an error and break the game.
                 // This check tries to prevent that.
                 if (px + sx + sw > image.width || py + sy + sh > image.height) {
-                    console.log("Warning: image and frame size do not correspond.", image);
+                    console.error("Warning: image and frame size do not correspond.", image);
                     return;
                 }
                 if (!image.texture) {
@@ -183,12 +218,19 @@ bento.define('bento/renderers/pixi', [
                 texture._updateUvs();
                 sprite._texture = texture;
 
+                // apply x, y, w, h
+                renderer.save();
+                renderer.translate(x, y);
+                renderer.scale(w / sw, h / sh);
+
                 sprite.worldTransform = matrix;
                 sprite.worldAlpha = alpha;
 
                 // push into batch
                 pixiRenderer.setObjectRenderer(spriteRenderer);
                 spriteRenderer.render(sprite);
+
+                renderer.restore();
 
                 // did the spriteRenderer flush in the meantime?
                 if (spriteRenderer.currentBatchSize === 0) {
@@ -240,6 +282,10 @@ bento.define('bento/renderers/pixi', [
             },
             getPixiRenderer: function () {
                 return pixiRenderer;
+            },
+            // pixi specific: update the webgl view, needed if the canvas changed size
+            updateSize: function () {
+                pixiRenderer.resize(canvas.width, canvas.height);
             }
         };
 

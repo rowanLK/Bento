@@ -299,7 +299,6 @@ entity.addX(10);
     Entity.prototype.getBoundingBox = function () {
         var scale, x1, x2, y1, y2, box;
         if (!this.boundingBox) {
-            // TODO get rid of scale component dependency
             scale = this.scale ? this.scale : new Vector2(1, 1);
             x1 = this.position.x - this.origin.x * scale.x;
             y1 = this.position.y - this.origin.y * scale.y;
@@ -378,6 +377,11 @@ Bento.objects.attach(entity);
     Entity.prototype.attach = function (child, force) {
         var parent = this,
             data = Bento.getGameData();
+
+        if (!child) {
+            Utils.log("ERROR: trying to attach " + child);
+            return;
+        }
 
         if (!force && (child.isAdded || child.parent)) {
             Utils.log("ERROR: Child " + child.name + " was already attached.");

@@ -61,16 +61,19 @@ bento.define('bento/utils', [], function () {
                 }
             }
         },
-        extend = function (obj1, obj2, overwrite) {
+        extend = function (obj1, obj2, force, onConflict) {
             var prop, temp;
             for (prop in obj2) {
                 if (obj2.hasOwnProperty(prop)) {
-                    if (obj1.hasOwnProperty(prop) && !overwrite) {
+                    if (obj1.hasOwnProperty(prop) && !force) {
                         // property already exists, move it up
                         obj1.base = obj1.base || {};
                         temp = {};
                         temp[prop] = obj1[prop];
                         extend(obj1.base, temp);
+                        if (onConflict) {
+                            onConflict(prop);
+                        }
                     }
                     if (isObjLiteral(obj2[prop])) {
                         obj1[prop] = extend({}, obj2[prop]);
@@ -453,7 +456,8 @@ bento.define('bento/utils', [], function () {
          * @name extend
          * @param {Object} object1 - original object
          * @param {Object} object2 - new object
-         * @param {Bool} [overwrite] - Overwrites properties
+         * @param {Bool} [force] - Overwrites properties (defaults to false)
+         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
          * @return {Array} The updated array
          */
         extend: extend,
@@ -600,7 +604,7 @@ bento.define('bento/utils', [], function () {
             }
             for (i = 0; i < count; ++i) {
                 if (params) {
-                    action.apply(window, params)
+                    action.apply(window, params);
                 } else {
                     action();
                 }

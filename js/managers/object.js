@@ -141,6 +141,11 @@ bento.define('bento/managers/object', [
                     family,
                     data = getGameData();
 
+                if (!object) {
+                    Utils.log("ERROR: trying to attach " + object);
+                    return;
+                }
+
                 if (object.isAdded || object.parent) {
                     Utils.log("ERROR: Entity " + object.name + " was already added.");
                     return;
