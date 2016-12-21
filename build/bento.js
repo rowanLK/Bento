@@ -4765,6 +4765,24 @@ Bento.objects.attach(entity);
         return this;
     };
     /**
+     * Removes self from game (either from Bento.objects or its parent)
+     * @function
+     * @instance
+     * @name removeSelf
+     * @returns {Entity} Returns itself
+     */
+    Entity.prototype.removeSelf = function (name) {
+        var entity = this;
+
+        if (entity.parent) {
+            entity.parent.remove(entity);
+        } else if (Bento.objects) {
+            Bento.objects.remove(entity);
+        }
+
+        return this;
+    };
+    /**
      * Callback when component is found
      * this: refers to the component
      *
@@ -16160,12 +16178,28 @@ bento.define('bento/gui/text', [
                 // draw the debug box while we're at it
                 var entity;
                 var box;
+                var relativeOrigin = new Vector2(0, 0);
+                var absoluteOrigin = new Vector2(0, 0);
                 if (
                     (Text.drawDebug || drawDebug) &&
                     (maxWidth !== null || maxHeight !== null)
                 ) {
                     entity = data.entity;
-                    box = new Rectangle(-entity.origin.x || 0, -entity.origin.y || 0,
+
+                    // predict where the origin will be if max is reached
+                    relativeOrigin.x = entity.origin.x / entity.dimension.width;
+                    relativeOrigin.y = entity.origin.y / entity.dimension.height;
+                    absoluteOrigin = entity.origin.clone();
+                    if (maxWidth !== null) {
+                        absoluteOrigin.x = relativeOrigin.x * maxWidth;
+                    }
+                    if (maxHeight !== null) {
+                        absoluteOrigin.y = relativeOrigin.y * maxHeight;
+                    }
+
+                    box = new Rectangle(
+                        absoluteOrigin.x * -1 || 0,
+                        absoluteOrigin.y * -1 || 0,
                         maxWidth || entity.dimension.width,
                         maxHeight || entity.dimension.height
                     );
