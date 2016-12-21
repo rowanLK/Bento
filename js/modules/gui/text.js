@@ -630,7 +630,7 @@ bento.define('bento/gui/text', [
                 ) {
                     entity = data.entity;
 
-                    // predict where the origin will be if max is reached
+                    // predict where the origin will be if max is not reached
                     relativeOrigin.x = entity.origin.x / entity.dimension.width;
                     relativeOrigin.y = entity.origin.y / entity.dimension.height;
                     absoluteOrigin = entity.origin.clone();

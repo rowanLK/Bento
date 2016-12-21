@@ -71,13 +71,13 @@ bento.define('bento/renderers/pixi', [
             pixiMatrix.ty = matrix.ty;
             return pixiMatrix;
         };
-        var getGraphics = function (color) {
+        var getFillGraphics = function (color) {
             var graphics = new PIXI.Graphics();
             var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
             var alphaColor = color[3];
-            graphics.beginFill(colorInt, alpha);
+            graphics.beginFill(colorInt, alphaColor);
             graphics.worldTransform = getPixiMatrix();
-            graphics.worldAlpha = alpha * alphaColor;
+            graphics.worldAlpha = alpha;
             return graphics;
         };
         var renderer = {
@@ -113,35 +113,28 @@ bento.define('bento/renderers/pixi', [
                 matrix.multiplyWith(transform.rotate(angle));
             },
             fillRect: function (color, x, y, w, h) {
-                var graphics = getGraphics(color);
+                var graphics = getFillGraphics(color);
                 graphics.drawRect(x, y, w, h);
 
                 pixiRenderer.setObjectRenderer(graphicsRenderer);
                 graphicsRenderer.render(graphics);
             },
             fillCircle: function (color, x, y, radius) {
-                var graphics = getGraphics(color);
+                var graphics = getFillGraphics(color);
                 graphics.drawCircle(x, y, radius);
 
                 pixiRenderer.setObjectRenderer(graphicsRenderer);
                 graphicsRenderer.render(graphics);
 
             },
-            strokeRect: function (colorArray, x, y, w, h, lineWidth) {
+            strokeRect: function (color, x, y, w, h, lineWidth) {
                 var graphics = new PIXI.Graphics();
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
                 var alphaColor = color[3];
                 graphics.worldTransform = getPixiMatrix();
-                graphics.worldAlpha = alpha * alphaColor;
+                graphics.worldAlpha = alpha;
 
                 graphics.lineStyle(lineWidth, colorInt, alphaColor);
-                // graphics.moveTo(x, y);
-                // graphics.lineTo(x + w, y);
-                // graphics.lineTo(x + w, y + h);
-                // graphics.lineTo(x, y + h);
-                // graphics.lineTo(x, y);
-
-                // TODO: not working for some reason, problem with PIXI?
                 graphics.drawRect(x, y, w, h);
 
                 pixiRenderer.setObjectRenderer(graphicsRenderer);
@@ -152,7 +145,7 @@ bento.define('bento/renderers/pixi', [
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
                 var alphaColor = color[3];
                 graphics.worldTransform = getPixiMatrix();
-                graphics.worldAlpha = alpha * alphaColor;
+                graphics.worldAlpha = alpha;
 
                 graphics
                     .lineStyle(lineWidth, colorInt, alphaColor)
@@ -163,7 +156,7 @@ bento.define('bento/renderers/pixi', [
 
             },
             drawLine: function (color, ax, ay, bx, by, width) {
-                var graphics = getGraphics(color);
+                var graphics = getFillGraphics(color);
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
 
                 if (!Utils.isDefined(width)) {
