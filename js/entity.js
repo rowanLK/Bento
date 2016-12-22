@@ -484,6 +484,26 @@ Bento.objects.attach(entity);
         return this;
     };
     /**
+     * Removes self from game (either from Bento.objects or its parent)
+     * @function
+     * @instance
+     * @name removeSelf
+     * @returns {Entity} Returns itself
+     */
+    Entity.prototype.removeSelf = function (name) {
+        var entity = this;
+        
+        if (entity.parent) {
+            // remove from parent
+            entity.parent.remove(entity);
+        } else if (entity.isAdded) {
+            // remove from Bento.objects
+            Bento.objects.remove(entity);
+        }
+
+        return this;
+    };
+    /**
      * Callback when component is found
      * this: refers to the component
      *
