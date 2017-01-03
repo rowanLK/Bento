@@ -220,7 +220,7 @@ bento.define('bento/managers/audio', [
                     var sound,
                         sounds = assetManager.getAssets().audio;
                     for (sound in sounds) {
-                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'sfx') {
+                        if (sounds.hasOwnProperty(sound) && sound.indexOf('sfx_') >= 0) {
                             sounds[sound].stop();
                         }
                     }
@@ -235,7 +235,7 @@ bento.define('bento/managers/audio', [
                     var sound,
                         sounds = assetManager.getAssets().audio;
                     for (sound in sounds) {
-                        if (sounds.hasOwnProperty(sound) && sound.substring(0, 3) === 'bgm') {
+                        if (sounds.hasOwnProperty(sound) && sound.indexOf('bgm_') >= 0) {
                             sounds[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
                         }
                     }
