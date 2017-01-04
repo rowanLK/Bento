@@ -5308,7 +5308,7 @@ bento.define('bento/eventsystem', [
                     // during another listener being triggered. For example, removing an entity
                     // while that entity was listening to the same event.
                     // In a lot of cases, this is normal... Consider removing this warning?
-                    console.log('Warning: listener is not a function');
+                    // console.log('Warning: listener is not a function');
                 }
             }
             isLoopingEvents = false;
@@ -9100,7 +9100,7 @@ bento.define('bento/managers/asset', [
                     // * the font was already loaded (can happen in reloading in Cocoon devapp)
                     // either way we continue as if nothing happened, not loading the font shouldn't crash the game
                     window.clearInterval(intervalId);
-                    Utils.log('Warning: font "' + name + '" timed out with loading.');
+                    console.log('Warning: font "' + name + '" timed out with loading.');
                     if (callback) {
                         callback(null, name, name);
                     }

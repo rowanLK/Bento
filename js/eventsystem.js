@@ -131,7 +131,7 @@ bento.define('bento/eventsystem', [
                     // during another listener being triggered. For example, removing an entity
                     // while that entity was listening to the same event.
                     // In a lot of cases, this is normal... Consider removing this warning?
-                    console.log('Warning: listener is not a function');
+                    // console.log('Warning: listener is not a function');
                 }
             }
             isLoopingEvents = false;

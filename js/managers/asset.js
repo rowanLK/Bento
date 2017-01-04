@@ -187,7 +187,7 @@ bento.define('bento/managers/asset', [
                     // * the font was already loaded (can happen in reloading in Cocoon devapp)
                     // either way we continue as if nothing happened, not loading the font shouldn't crash the game
                     window.clearInterval(intervalId);
-                    Utils.log('Warning: font "' + name + '" timed out with loading.');
+                    console.log('Warning: font "' + name + '" timed out with loading.');
                     if (callback) {
                         callback(null, name, name);
                     }
