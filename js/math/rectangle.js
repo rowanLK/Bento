@@ -85,7 +85,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
      * Returns true if 2 rectangles intersect
      * @function
      * @param {Rectangle} other - Other rectangle
-     * @returns {Boolean} True of 2 rectangles intersect
+     * @returns {Boolean} True if 2 rectangles intersect
      * @instance
      * @name intersect
      */
@@ -116,6 +116,35 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
             inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
         }
         return inter;
+    };
+    /**
+     * Checks if rectangle intersects with the provided circle
+     * @function
+     * @param {Vector2} circleCenter
+     * @param {Number} radius
+     * @returns {Boolean} True if rectangle and circle intersect
+     * @instance
+     * @name intersectCircle
+     */
+    Rectangle.prototype.intersectsCircle = function (circleCenter, radius) {
+        var rectHalfWidth = this.width * 0.5;
+        var rectHalfHeight = this.height * 0.5;
+        var rectCenter = new Vector2(this.x + rectHalfWidth, this.y + rectHalfHeight);
+        var distanceX = Math.abs(circleCenter.x - rectCenter.x);
+        var distanceY = Math.abs(circleCenter.y - rectCenter.y);
+        var cornerDistanceSq = 0;
+
+        if (distanceX > rectHalfWidth + radius || distanceY > rectHalfHeight + radius) {
+            return false;
+        }
+
+        if (distanceX <= rectHalfWidth || distanceY <= rectHalfHeight) {
+            return true;
+        }
+
+        cornerDistanceSq = (distanceX - rectHalfWidth) * (distanceX - rectHalfWidth) + (distanceY - rectHalfHeight) * (distanceY - rectHalfHeight);
+
+        return cornerDistanceSq <= radius * radius;
     };
     /**
      * Returns a new rectangle that has been moved by the offset
