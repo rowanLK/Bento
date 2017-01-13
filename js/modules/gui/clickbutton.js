@@ -130,6 +130,11 @@ bento.define('bento/gui/clickbutton', [
                     });
                 }
                 ClickButton.currentlyPressing = null;
+            },
+            onClickMiss: function (data) {
+                if (settings.onClickMiss) {
+                    settings.onClickMiss(data);
+                }
             }
         });
         var entitySettings = Utils.extend({
