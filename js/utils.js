@@ -807,6 +807,46 @@ bento.define('bento/utils', [], function () {
             return false;
         },
         /**
+         * Checks if environment is Android (using Cordova Device plugin)
+         * @function
+         * @instance
+         * @name isAndroidDevice
+         */
+        isAndroidDevice: function () {
+            var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
+            if (platform === 'android') {
+                return true;
+            }
+            return false;
+        },
+        /**
+         * Checks if environment is iOS (using Cordova Device plugin)
+         * @function
+         * @instance
+         * @name isIosDevice
+         */
+        isIosDevice: function () {
+            var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
+            if (platform === 'ios') {
+                return true;
+            }
+            return false;
+        },
+        /**
+         * Checks if environment is Amazon/Fire OS (using Cordova Device plugin)
+         * @function
+         * @instance
+         * @name isAmazonDevice
+         */
+        isAmazonDevice: function () {
+            var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
+            // platform can be either 'amazon-fireos' or 'Amazon'
+            if (platform.indexOf('amazon') > -1) {
+                return true;
+            }
+            return false;
+        },
+        /**
          * Turn dev mode on or off to use throws or console.logs
          * @function
          * @instance
