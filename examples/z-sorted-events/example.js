@@ -36,7 +36,8 @@ bento.require([
                 frameCountX: 1,
                 frameCountY: 2,
                 position: settings.position,
-                onClick: settings.onClick
+                onClick: settings.onClick,
+                sort: true
             });
             if (settings.addNow) {
                 Bento.objects.attach(button);
@@ -88,8 +89,11 @@ bento.require([
                 }),
                 makeButton({
                     name: 'buttonAttached1',
-                    position: new Vector2(0, 16)
-                }),
+                    position: new Vector2(-8, 16)
+                }).attach(makeButton({
+                    name: 'buttonAttached1-1',
+                    position: new Vector2(16, 0)
+                })),
                 makeButton({
                     name: 'buttonAttached2',
                     position: new Vector2(0, 24)

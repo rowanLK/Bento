@@ -79,6 +79,13 @@ bento.define('bento/components/clickable', [
         this.holdId = null;
         this.isPointerDown = false;
         this.initialized = false;
+        /**
+         * Should the clickable care about (z)order of objects?
+         * @instance
+         * @default false
+         * @name sort
+         */
+        this.sort = settings.sort || false;
 
         this.callbacks = {
             pointerDown: settings.pointerDown || nothing,
@@ -117,9 +124,15 @@ bento.define('bento/components/clickable', [
                 clickables.length = 0;
         }
 
-        SortedEventSystem.off('pointerDown', this.pointerDown, this);
-        SortedEventSystem.off('pointerUp', this.pointerUp, this);
-        SortedEventSystem.off('pointerMove', this.pointerMove, this);
+        if (this.sort) {
+            SortedEventSystem.off('pointerDown', this.pointerDown, this);
+            SortedEventSystem.off('pointerUp', this.pointerUp, this);
+            SortedEventSystem.off('pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.off('pointerDown', this.pointerDown, this);
+            EventSystem.off('pointerUp', this.pointerUp, this);
+            EventSystem.off('pointerMove', this.pointerMove, this);            
+        }
         this.initialized = false;
     };
     Clickable.prototype.start = function () {
@@ -129,9 +142,15 @@ bento.define('bento/components/clickable', [
 
         clickables.push(this);
 
-        SortedEventSystem.on(this, 'pointerDown', this.pointerDown, this);
-        SortedEventSystem.on(this, 'pointerUp', this.pointerUp, this);
-        SortedEventSystem.on(this, 'pointerMove', this.pointerMove, this);
+        if (this.sort) {
+            SortedEventSystem.on(this, 'pointerDown', this.pointerDown, this);
+            SortedEventSystem.on(this, 'pointerUp', this.pointerUp, this);
+            SortedEventSystem.on(this, 'pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.on('pointerDown', this.pointerDown, this);
+            EventSystem.on('pointerUp', this.pointerUp, this);
+            EventSystem.on('pointerMove', this.pointerMove, this);            
+        }
         this.initialized = true;
     };
     Clickable.prototype.update = function () {

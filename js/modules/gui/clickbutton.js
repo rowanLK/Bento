@@ -58,6 +58,7 @@ bento.define('bento/gui/clickbutton', [
         // workaround for pointerUp/onHoldEnd order of events
         var wasHoldingThis = false;
         var clickable = new Clickable({
+            sort: settings.sort,
             onClick: function () {
                 wasHoldingThis = false;
                 if (!active || ClickButton.currentlyPressing) {
