@@ -4,14 +4,70 @@
  * @module bento/sortedeventsystem
  */
 bento.define('bento/sortedeventsystem', [
-    'bento/managers/object',
+    'bento',
     'bento/eventsystem',
     'bento/utils'
 ], function (
-    ObjectManager,
+    Bento,
     EventSystem,
     Utils
 ) {
+    // sorting data class: its purpose is to cache variables useful for sorting
+    var SortingData = function (component) {
+        var rootIndex = -1; // index of root parent in object manager
+        var componentIndex = -1; // index of component in entity
+        var depth = -1; // how many grandparents
+        var parent = component.parent; // component's direct parent
+        var parentIndex = -1;
+        var parents = [];
+        var rootParent = null;
+        var rootZ;
+
+        // init objects if needed
+        if (objects === null) {
+            objects = Bento.objects.getObjects();
+        }
+
+        if (!parent) {
+            // either the component itself a rootParent, or it wasn't attached yet
+            rootParent = component;
+        } else {
+            // get index of component
+            componentIndex = parent.components.indexOf(component);
+            // grandparent?
+            if (parent.parent) {
+                parentIndex = parent.parent.components.indexOf(parent);
+            }
+
+            // find the root
+            while (parent) {
+                parents.unshift(parent);
+                depth += 1;
+                if (!parent.parent) {
+                    // current parent must be the root
+                    rootParent = parent;
+                }
+                // next iteration
+                parent = parent.parent;
+            }
+        }
+
+        // collect data
+        rootIndex = objects.indexOf(rootParent);
+        rootZ = rootParent.z;
+
+        this.isDirty = false;
+        this.component = component;
+        this.parent = parent;
+        this.parentIndex = parentIndex;
+        this.parents = parents;
+        this.componentIndex = componentIndex;
+        this.depth = depth;
+        this.rootParent = rootParent;
+        this.rootIndex = rootIndex;
+        this.rootZ = rootZ;
+    };
+
     var isLoopingEvents = false;
     var objects = null;
     var events = {};
@@ -55,8 +111,12 @@ bento.define('bento/sortedeventsystem', [
         removedEvents = [];
     };
     var addEventListener = function (component, eventName, callback, context) {
-        var sortingData = getSortingData(component);
+        var sortingData = new SortingData(component);
 
+        if (Utils.isString(component)) {
+            Utils.log('ERROR: First parameter of SortedEventSystem.on is the component!');
+            return;
+        }
         if (Utils.isUndefined(events[eventName])) {
             events[eventName] = [];
         }
@@ -97,88 +157,58 @@ bento.define('bento/sortedeventsystem', [
             cleanEventListeners();
         }
     };
-    var getSortingData = function (component) {
-        // cached data for sorting purposes
-        var rootIndex = -1; // index of root parent in object manager
-        var componentIndex = -1; // index of component in entity
-        var depth = -1; // how many grandparents
-        var parent = component.parent; // component's direct parent
-        var parents = [];
-        var rootParent = null;
-        var rootZ;
-
-        // init objects if needed
-        if (objects === null) {
-            objects = ObjectManager.getObjects();
-        }
-
-        if (!parent) {
-            // either the component itself a rootParent, or it wasn't attached yet
-            rootParent = component;
-        } else {
-            // get index of component
-            if (parent.components) {
-                componentIndex = parent.components.indexOf(component);
-            }
-
-            // find the root
-            while (parent) {
-                parents.push(parent);
-                depth += 1;
-                if (!parent.parent) {
-                    // current parent must be the root
-                    rootParent = parent;
-                }
-                // next iteration
-                parent = parent.parent;
-            }
-        }
-
-        // collect data
-        rootIndex = objects.indexOf(rootParent);
-        rootZ = rootParent.z;
-
-        return {
-            isDirty: false,
-            component: component,
-            parent: parent,
-            parents: parents,
-            componentIndex: componentIndex,
-            depth: depth,
-            rootParent: rootParent,
-            rootIndex: rootIndex,
-            rootZ: rootZ
-        };
-    };
     var sortFunction = function (a, b) {
         // sort event listeners by the component location in the scenegraph
         var sortA = a.sortingData;
         var sortB = b.sortingData;
         // refresh sorting data
         if (sortA.isDirty) {
-            a.sortingData = getSortingData(sortA.component);
+            a.sortingData = new SortingData(sortA.component);
             sortA = a.sortingData;
         }
         if (sortB.isDirty) {
-            b.sortingData = getSortingData(sortB.component);
+            b.sortingData = new SortingData(sortB.component);
             sortB = b.sortingData;
         }
 
-        // sort by root parents
-        var rootDiff = sortA.rootIndex - sortB.rootIndex;
+        // 0. A === B
+        if (sortA.component === sortB.component) {
+            // no preference.
+            return 0;
+        }
+
+        // 1. Sort by z
+        var zDiff = sortB.rootZ - sortA.rootZ;
+        if (zDiff) {
+            return zDiff;
+        }
+
+        // 2. Same z: sort by index of the root entity
+        var rootDiff = sortB.rootIndex - sortA.rootIndex;
         if (rootDiff) {
             // different roots: sort by root
             return rootDiff;
-        } else {
-            // components have a root parent
-            if (sortA.parent === sortB.parent) {
-                // quickest check: are the components siblings?
-                return sortA.componentIndex - sortB.componentIndex;
-            } else {
-                // need to find the earliest common parent
-                return findCommonParentIndex(sortA, sortB);
-            }
         }
+
+        // 3. Same index: the components must have common (grand)parents, aka in the same scenegraph
+        // NOTE: there might be a better way to sort scenegraphs than this
+        // 3A. are the components siblings?
+        var parentA = sortA.component.parent;
+        var parentB = sortB.component.parent;
+        if (parentA === parentB) {
+            return sortB.componentIndex - sortA.componentIndex;
+        }
+        // 3B. common grandparent? This should be a pretty common case
+        if (parentA && parentB && parentA.parent === parentB.parent) {
+            return sortB.parentIndex - sortA.parentIndex;
+        }
+
+        // 3C. one of the components is a (grand)parent of the other?
+        if (sortA.parents.indexOf(sortB.component) >= 0 || sortB.parents.indexOf(sortA.component) >= 0) {
+            return sortB.depth - sortA.depth;
+        }
+        // 3D. last resort: find the earliest common parent and compare their component index
+        return findCommonParentIndex(sortA, sortB);
     };
     var findCommonParentIndex = function (sortA, sortB) {
         // used when components have a common parent, but that common parent is not the root
@@ -200,8 +230,12 @@ bento.define('bento/sortedeventsystem', [
                 break;
             }
         }
+        if (!commonParent || !commonParent.components) {
+            // error: couldn't find common parent
+            return 0;
+        }
         // compare indices
-        return commonParent.indexOf(componentA) - commonParent.indexOf(componentB);
+        return commonParent.components.indexOf(componentB) - commonParent.components.indexOf(componentA);
     };
     var inspectSortingData = function (listeners) {
         // go through all sortingData and check if their z index didnt change in the meantime

@@ -22,8 +22,16 @@ bento.define('bento/components/clickable', [
     'bento/utils',
     'bento/math/vector2',
     'bento/math/transformmatrix',
-    'bento/eventsystem'
-], function (Bento, Utils, Vector2, Matrix, EventSystem) {
+    'bento/eventsystem',
+    'bento/sortedeventsystem'
+], function (
+    Bento, 
+    Utils, 
+    Vector2, 
+    Matrix, 
+    EventSystem,
+    SortedEventSystem
+) {
     'use strict';
 
     var clickables = [];
@@ -109,9 +117,9 @@ bento.define('bento/components/clickable', [
                 clickables.length = 0;
         }
 
-        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
+        SortedEventSystem.off('pointerDown', this.pointerDown, this);
+        SortedEventSystem.off('pointerUp', this.pointerUp, this);
+        SortedEventSystem.off('pointerMove', this.pointerMove, this);
         this.initialized = false;
     };
     Clickable.prototype.start = function () {
@@ -121,9 +129,9 @@ bento.define('bento/components/clickable', [
 
         clickables.push(this);
 
-        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
+        SortedEventSystem.on(this, 'pointerDown', this.pointerDown, this);
+        SortedEventSystem.on(this, 'pointerUp', this.pointerUp, this);
+        SortedEventSystem.on(this, 'pointerMove', this.pointerMove, this);
         this.initialized = true;
     };
     Clickable.prototype.update = function () {

@@ -121,6 +121,11 @@ bento.define('bento/eventsystem', [
          */
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
+            // TODO: sorted events before or after unsorted event listeners??
+            var SortedEventSystem = EventSystem.SortedEventSystem;
+            if (SortedEventSystem) {
+                SortedEventSystem.fire(eventName, eventData);
+            }
 
             stopPropagation = false;
 
@@ -157,12 +162,6 @@ bento.define('bento/eventsystem', [
 
             }
             isLoopingEvents = false;
-
-            // TODO: sorted events before or after unsorted event listeners??
-            var SortedEventSystem = EventSystem.SortedEventSystem;
-            if (SortedEventSystem) {
-                SortedEventSystem.fire(eventName);
-            }
         },
         addEventListener: addEventListener,
         removeEventListener: removeEventListener,
