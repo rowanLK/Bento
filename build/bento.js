@@ -5791,7 +5791,8 @@ bento.define('bento/sortedeventsystem', [
             if (sortingData.rootZ !== sortingData.rootParent.z) {
                 sortingData.isDirty = true;
             }
-            // are there other causes of changing order??
+            // recalculate rootIndex
+            sortingData.rootIndex = objects.indexOf(sortingData.rootParent);
         }
     };
     var sortListeners = function (listeners) {
@@ -6994,1701 +6995,6 @@ bento.define('bento/utils', [], function () {
         }
     };
     return Utils;
-});
-/**
- * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
- * unless entity.updateWhenPaused is turned on.
- * <br>Exports: Constructor
- * @module bento/components/clickable
- * @param {Object} settings - Settings
- * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
- * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
- * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
- * @param {Function} settings.onClick - Called when pointer taps on the parent entity
- * @param {Function} settings.onClickUp - The pointer was released above the parent entity
- * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
- * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
- * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
- * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
- * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
- * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/clickable', [
-    'bento',
-    'bento/utils',
-    'bento/math/vector2',
-    'bento/math/transformmatrix',
-    'bento/eventsystem',
-    'bento/sortedeventsystem'
-], function (
-    Bento, 
-    Utils, 
-    Vector2, 
-    Matrix, 
-    EventSystem,
-    SortedEventSystem
-) {
-    'use strict';
-
-    var clickables = [];
-    var isPaused = function (entity) {
-        var highestPause = 0;
-        if (!Bento.objects || !entity) {
-            return false;
-        }
-        highestPause = entity.updateWhenPaused;
-        // loop through all parents and find the highest pauselevel
-        while (entity.parent) {
-            entity = entity.parent;
-            if (entity.updateWhenPaused > highestPause) {
-                highestPause = entity.updateWhenPaused;
-            }
-        }
-
-        return highestPause < Bento.objects.isPaused();
-    };
-
-    var Clickable = function (settings) {
-        var nothing = function () {};
-        this.entity = null;
-        /**
-         * Name of the component
-         * @instance
-         * @default 'clickable'
-         * @name name
-         */
-        this.name = 'clickable';
-        /**
-         * Whether the pointer is over the entity
-         * @instance
-         * @default false
-         * @name isHovering
-         */
-        this.isHovering = false;
-        this.hasTouched = false;
-        /**
-         * Id number of the pointer holding entity
-         * @instance
-         * @default null
-         * @name holdId
-         */
-        this.holdId = null;
-        this.isPointerDown = false;
-        this.initialized = false;
-        /**
-         * Should the clickable care about (z)order of objects?
-         * @instance
-         * @default false
-         * @name sort
-         */
-        this.sort = settings.sort || false;
-
-        this.callbacks = {
-            pointerDown: settings.pointerDown || nothing,
-            pointerUp: settings.pointerUp || nothing,
-            pointerMove: settings.pointerMove || nothing,
-            // when clicking on the object
-            onClick: settings.onClick || nothing,
-            onClickUp: settings.onClickUp || nothing,
-            onClickMiss: settings.onClickMiss || nothing,
-            onHold: settings.onHold || nothing,
-            onHoldLeave: settings.onHoldLeave || nothing,
-            onHoldEnter: settings.onHoldEnter || nothing,
-            onHoldEnd: settings.onHoldEnd || nothing,
-            onHoverLeave: settings.onHoverLeave || nothing,
-            onHoverEnter: settings.onHoverEnter || nothing
-        };
-        /**
-         * Static array that holds a reference to all currently active Clickables
-         * @type {Array}
-         */
-        this.clickables = clickables;
-    };
-
-    Clickable.prototype.destroy = function () {
-        var index = clickables.indexOf(this),
-            i = 0,
-            len = 0;
-
-        if (index > -1)
-            clickables[index] = null;
-        // clear the array if it consists of only null's
-        for (i = 0, len = clickables.length; i < len; ++i) {
-            if (clickables[i])
-                break;
-            if (i === len - 1)
-                clickables.length = 0;
-        }
-
-        if (this.sort) {
-            SortedEventSystem.off('pointerDown', this.pointerDown, this);
-            SortedEventSystem.off('pointerUp', this.pointerUp, this);
-            SortedEventSystem.off('pointerMove', this.pointerMove, this);
-        } else {
-            EventSystem.off('pointerDown', this.pointerDown, this);
-            EventSystem.off('pointerUp', this.pointerUp, this);
-            EventSystem.off('pointerMove', this.pointerMove, this);            
-        }
-        this.initialized = false;
-    };
-    Clickable.prototype.start = function () {
-        if (this.initialized) {
-            return;
-        }
-
-        clickables.push(this);
-
-        if (this.sort) {
-            SortedEventSystem.on(this, 'pointerDown', this.pointerDown, this);
-            SortedEventSystem.on(this, 'pointerUp', this.pointerUp, this);
-            SortedEventSystem.on(this, 'pointerMove', this.pointerMove, this);
-        } else {
-            EventSystem.on('pointerDown', this.pointerDown, this);
-            EventSystem.on('pointerUp', this.pointerUp, this);
-            EventSystem.on('pointerMove', this.pointerMove, this);            
-        }
-        this.initialized = true;
-    };
-    Clickable.prototype.update = function () {
-        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
-            this.callbacks.onHold();
-        }
-    };
-    Clickable.prototype.cloneEvent = function (evt) {
-        return {
-            id: evt.id,
-            position: evt.position.clone(),
-            eventType: evt.eventType,
-            localPosition: evt.localPosition.clone(),
-            worldPosition: evt.worldPosition.clone(),
-            diffPosition: evt.diffPosition ? evt.diffPosition.clone() : undefined
-        };
-    };
-    Clickable.prototype.pointerDown = function (evt) {
-        var e = this.transformEvent(evt);
-        if (isPaused(this.entity)) {
-            return;
-        }
-        this.isPointerDown = true;
-        if (this.callbacks.pointerDown) {
-            this.callbacks.pointerDown.call(this, e);
-        }
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e, true);
-        }
-    };
-    Clickable.prototype.pointerUp = function (evt) {
-        var e = this.transformEvent(evt),
-            mousePosition;
-            
-        if (isPaused(this.entity)) {
-            return;
-        }
-        mousePosition = e.localPosition;
-        this.isPointerDown = false;
-        if (this.callbacks.pointerUp) {
-            this.callbacks.pointerUp.call(this, e);
-        }
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            this.callbacks.onClickUp.call(this, [e]);
-            if (this.hasTouched && this.holdId === e.id) {
-                this.holdId = null;
-                this.callbacks.onHoldEnd.call(this, e);
-            }
-        }
-        this.hasTouched = false;
-    };
-    Clickable.prototype.pointerMove = function (evt) {
-        var e = this.transformEvent(evt);
-        if (isPaused(this.entity)) {
-            return;
-        }
-        if (this.callbacks.pointerMove) {
-            this.callbacks.pointerMove.call(this, e);
-        }
-        // hovering?
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e);
-        }
-    };
-    Clickable.prototype.checkHovering = function (evt, clicked) {
-        var mousePosition = evt.localPosition;
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldEnter.call(this, evt);
-            }
-            if (!this.isHovering) {
-                this.callbacks.onHoverEnter.call(this, evt);
-            }
-            this.isHovering = true;
-            if (clicked) {
-                this.hasTouched = true;
-                this.holdId = evt.id;
-                this.callbacks.onClick.call(this, evt);
-            }
-        } else {
-            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldLeave.call(this, evt);
-            }
-            if (this.isHovering) {
-                this.callbacks.onHoverLeave.call(this, evt);
-            }
-            this.isHovering = false;
-            if (clicked) {
-                this.callbacks.onClickMiss.call(this, evt);
-            }
-        }
-    };
-
-    Clickable.prototype.transformEvent = function (evt) {
-        evt.localPosition = this.entity.getLocalPosition(evt.worldPosition);
-        return evt;
-    };
-    Clickable.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Clickable.prototype.toString = function () {
-        return '[object Clickable]';
-    };
-
-    return Clickable;
-});
-/**
- * Component that fills a square.
- * <br>Exports: Constructor
- * @module bento/components/fill
- * @param {Object} settings - Settings
- * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
- * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/fill', [
-    'bento/utils',
-    'bento'
-], function (Utils, Bento) {
-    'use strict';
-    var Fill = function (settings) {
-        var viewport = Bento.getViewport();
-        settings = settings || {};
-        this.name = 'fill';
-        this.color = settings.color || [0, 0, 0, 1];
-        this.dimension = settings.dimension || viewport;
-    };
-    Fill.prototype.draw = function (data) {
-        var dimension = this.dimension;
-        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
-    };
-    Fill.prototype.setup = function (settings) {
-        this.color = settings.color;
-    };
-    Fill.prototype.toString = function () {
-        return '[object Fill]';
-    };
-
-    return Fill;
-});
-/**
- * Nineslice component
- */
-bento.define('bento/components/nineslice', [
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/entity',
-    'bento/eventsystem',
-    'bento/utils',
-    'bento/tween'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Entity,
-    EventSystem,
-    Utils,
-    Tween
-) {
-    'use strict';
-    /**
-     * Describe your settings object parameters
-     * @param {Object} settings
-     */
-    var NineSlice = function (settings) {
-        this.entity = null;
-        this.name = 'nineslice';
-        this.visible = true;
-
-        //component settings
-        this.width = 0;
-        this.height = 0;
-
-        // sprite settings
-        this.spriteImage = null;
-        this.padding = 0;
-
-        // drawing internals
-        this.sliceWidth = 0;
-        this.sliceHeight = 0;
-
-        this.setup(settings);
-    };
-
-    NineSlice.prototype.setup = function (settings) {
-        var self = this;
-
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-
-        this.padding = settings.padding || 0;
-
-        if (this.spriteImage) {
-            this.sliceWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
-            this.sliceHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
-        }
-
-        if (settings.width) {
-            this.width = Math.max(settings.width || 0, this.sliceWidth * 2);
-        }
-        if (settings.height) {
-            this.height = Math.max(settings.height || 0, this.sliceHeight * 2);
-        }
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.width;
-            this.entity.dimension.height = this.height;
-        }
-    };
-
-    NineSlice.prototype.attached = function (data) {
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.width;
-        this.entity.dimension.height = this.height;
-    };
-
-    NineSlice.prototype.setWidth = function (width) {
-        this.width = Math.max(width || this.width, this.sliceWidth * 2);
-        if (this.entity) {
-            var relOriginX = this.entity.origin.x / this.entity.dimension.width;
-            this.entity.dimension.width = this.width;
-            this.entity.origin.x = relOriginX * this.width;
-        }
-    };
-
-    NineSlice.prototype.setHeight = function (height) {
-        this.height = Math.max(height || this.height, this.sliceHeight * 2);
-        if (this.entity) {
-            var relOriginY = this.entity.origin.y / this.entity.dimension.height;
-            this.entity.dimension.height = this.height;
-            this.entity.origin.y = relOriginY * this.height;
-        }
-    };
-
-    NineSlice.prototype.fillArea = function (renderer, frame, x, y, width, height) {
-        var sx = (this.sliceWidth + this.padding) * (frame % 3);
-        var sy = (this.sliceHeight + this.padding) * Math.floor(frame / 3);
-
-        if (width === 0 || height === 0) {
-            return;
-        }
-
-        if (!width) {
-            width = this.sliceWidth;
-        }
-        if (!height) {
-            height = this.sliceHeight;
-        }
-
-        renderer.drawImage(this.spriteImage, sx, sy, this.sliceWidth, this.sliceHeight, x, y, width, height);
-    };
-
-    NineSlice.prototype.draw = function (data) {
-        var entity = data.entity;
-        var origin = data.entity.origin;
-
-        var innerWidth = this.width - this.sliceWidth * 2;
-        var innerHeight = this.height - this.sliceHeight * 2;
-
-        if (this.width === 0 || this.height === 0) {
-            return;
-        }
-
-        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
-
-        //top left corner
-        this.fillArea(data.renderer, 0, 0, 0);
-        //top stretch
-        this.fillArea(data.renderer, 1, this.sliceWidth, 0, innerWidth, this.sliceHeight);
-        //top right corner
-        this.fillArea(data.renderer, 2, this.width - this.sliceWidth, 0);
-        //left stretch
-        this.fillArea(data.renderer, 3, 0, this.sliceHeight, this.sliceWidth, innerHeight);
-        //center stretch
-        this.fillArea(data.renderer, 4, this.sliceWidth, this.sliceHeight, innerWidth, innerHeight);
-        //right stretch
-        this.fillArea(data.renderer, 5, this.width - this.sliceWidth, this.sliceHeight, this.sliceWidth, innerHeight);
-        //bottom left corner
-        this.fillArea(data.renderer, 6, 0, this.height - this.sliceHeight);
-        //bottom stretch
-        this.fillArea(data.renderer, 7, this.sliceWidth, this.height - this.sliceHeight, innerWidth, this.sliceHeight);
-        //bottom right corner
-        this.fillArea(data.renderer, 8, this.width - this.sliceWidth, this.height - this.sliceHeight);
-
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-
-
-    return NineSlice;
-});
-/**
- * Sprite component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Constructor
- * @module bento/components/sprite
- * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
- * @param {Function} settings.onLoad - Called when image is loaded through URL
- * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
- * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
- * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
- * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
- * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
- * @example
-// Defines a 3 x 3 spritesheet with several animations
-// Note: The default is automatically defined if no animations object is passed
-var sprite = new Sprite({
-        imageName: "mySpriteSheet",
-        frameCountX: 3,
-        frameCountY: 3,
-        animations: {
-            "default": {
-                frames: [0]
-            },
-            "walk": {
-                speed: 0.2,
-                frames: [1, 2, 3, 4, 5, 6]
-            },
-            "jump": {
-                speed: 0.2,
-                frames: [7, 8]
-            }
-        }
-     }),
-    entity = new Entity({
-        components: [sprite] // attach sprite to entity
-                             // alternative to passing a components array is by calling entity.attach(sprite);
-    });
-
-// attach entity to game
-Bento.objects.attach(entity);
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/sprite', [
-    'bento',
-    'bento/utils',
-], function (Bento, Utils) {
-    'use strict';
-    var Sprite = function (settings) {
-        this.entity = null;
-        this.name = 'sprite';
-        this.visible = true;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        // sprite settings
-        this.spriteImage = null;
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-        this.padding = 0;
-
-        // drawing internals
-        this.frameIndex = 0;
-        this.sourceFrame = 0;
-        this.sourceX = 0;
-        this.sourceY = 0;
-
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-        this.currentAnimationLength = 0;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
-    };
-    /**
-     * Sets up Sprite. This can be used to overwrite the settings object passed to the constructor.
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     */
-    Sprite.prototype.setup = function (settings) {
-        var self = this,
-            padding = 0;
-
-        this.animationSettings = settings || this.animationSettings;
-        padding = this.animationSettings.padding || 0;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        if (!this.spriteImage) {
-            Utils.log("ERROR: something went wrong with loading the sprite.");
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        this.padding = this.animationSettings.padding || 0;
-
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
-        }
-    };
-
-    Sprite.prototype.attached = function (data) {
-        var animation,
-            animations = this.animationSettings.animations,
-            i = 0,
-            len = 0,
-            highestFrame = 0;
-
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-
-        // check if the frames of animation go out of bounds
-        for (animation in animations) {
-            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
-                if (animations[animation].frames[i] > highestFrame) {
-                    highestFrame = animations[animation].frames[i];
-                }
-            }
-            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
-            }
-
-        }
-    };
-    /**
-     * Set component to a different animation. The animation won't change if it's already playing.
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     */
-    Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!Sprite.suppressWarnings && !anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            this.currentAnimationLength = this.currentAnimation.frames.length;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-            if (!Sprite.suppressWarnings && this.currentAnimation.backTo > this.currentAnimationLength) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimationLength;
-            }
-        }
-    };
-    /**
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     */
-    Sprite.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /**
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     */
-    Sprite.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /**
-     * Get speed of the current animation.
-     * @function
-     * @instance
-     * @returns {Number} Speed of the current animation
-     * @name getCurrentSpeed
-     */
-    Sprite.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-    /**
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     */
-    Sprite.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /**
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     */
-    Sprite.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /**
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     */
-    Sprite.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    Sprite.prototype.update = function (data) {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-        // no need for update
-        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
-            return;
-        }
-
-        reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-        }
-    };
-
-    Sprite.prototype.updateFrame = function () {
-        this.frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        this.sourceFrame = this.currentAnimation.frames[this.frameIndex];
-        this.sourceX = (this.sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.sourceY = Math.floor(this.sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
-    };
-
-    Sprite.prototype.draw = function (data) {
-        var entity = data.entity,
-            origin = entity.origin;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-
-        this.updateFrame();
-
-        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
-        data.renderer.drawImage(
-            this.spriteImage,
-            this.sourceX,
-            this.sourceY,
-            this.frameWidth,
-            this.frameHeight,
-            0,
-            0,
-            this.frameWidth,
-            this.frameHeight
-        );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-    Sprite.prototype.toString = function () {
-        return '[object Sprite]';
-    };
-
-    /**
-     * Ignore warnings about invalid animation frames
-     * @instance
-     * @static
-     * @name suppressWarnings
-     */
-    Sprite.suppressWarnings = false;
-
-    return Sprite;
-});
-/*
- * Animation component. Draws an animated sprite on screen at the entity position.
- * <br>Exports: Constructor
- * @module bento/components/animation
- * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
- * @param {Function} settings.onLoad - Called when image is loaded through URL
- * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
- * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
- * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
- * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
- * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
- * @example
-// Defines a 3 x 3 spritesheet with several animations
-// Note: The default is automatically defined if no animations object is passed
-var sprite = new Sprite({
-        imageName: "mySpriteSheet",
-        frameCountX: 3,
-        frameCountY: 3,
-        animations: {
-            "default": {
-                frames: [0]
-            },
-            "walk": {
-                speed: 0.2,
-                frames: [1, 2, 3, 4, 5, 6]
-            },
-            "jump": {
-                speed: 0.2,
-                frames: [7, 8]
-            }
-        }
-     }),
-    entity = new Entity({
-        components: [sprite] // attach sprite to entity
-                             // alternative to passing a components array is by calling entity.attach(sprite);
-    });
-
-// attach entity to game
-Bento.objects.attach(entity);
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/animation', [
-    'bento',
-    'bento/utils',
-], function (Bento, Utils) {
-    'use strict';
-    var Animation = function (settings) {
-        this.entity = null;
-        this.name = 'animation';
-        this.visible = true;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        this.spriteImage = null;
-
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-        this.padding = 0;
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
-    };
-    /*
-     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     */
-    Animation.prototype.setup = function (settings) {
-        var self = this,
-            padding = 0;
-
-        this.animationSettings = settings || this.animationSettings;
-        padding = this.animationSettings.padding || 0;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        this.padding = this.animationSettings.padding || 0;
-
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
-        }
-    };
-
-    Animation.prototype.attached = function (data) {
-        var animation,
-            animations = this.animationSettings.animations,
-            i = 0,
-            len = 0,
-            highestFrame = 0;
-
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-
-        // check if the frames of animation go out of bounds
-        for (animation in animations) {
-            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
-                if (animations[animation].frames[i] > highestFrame) {
-                    highestFrame = animations[animation].frames[i];
-                }
-            }
-            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
-            }
-
-        }
-    };
-    /*
-     * Set component to a different animation. The animation won't change if it's already playing.
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     */
-    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimation.frames.length;
-            }
-        }
-    };
-    /*
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     */
-    Animation.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /*
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     */
-    Animation.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /*
-     * Get speed of the current animation.
-     * @function
-     * @instance
-     * @returns {Number} Speed of the current animation
-     * @name getCurrentSpeed
-     */
-    Animation.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-    /*
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     */
-    Animation.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /*
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     */
-    Animation.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /*
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     */
-    Animation.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    Animation.prototype.update = function (data) {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-        reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-        }
-    };
-    Animation.prototype.draw = function (data) {
-        var frameIndex,
-            sourceFrame,
-            sourceX,
-            sourceY,
-            entity = data.entity,
-            origin = entity.origin;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        sourceFrame = this.currentAnimation.frames[frameIndex];
-        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
-
-        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
-        data.renderer.drawImage(
-            this.spriteImage,
-            sourceX,
-            sourceY,
-            this.frameWidth,
-            this.frameHeight,
-            0,
-            0,
-            this.frameWidth,
-            this.frameHeight
-        );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-    Animation.prototype.toString = function () {
-        return '[object Animation]';
-    };
-
-    /*
-     * Ignore warnings about invalid animation frames
-     * @instance
-     * @static
-     * @name suppressWarnings
-     */
-    Animation.suppressWarnings = false;
-
-    return Animation;
-});
-/*
- * Component that sets the opacity
- * <br>Exports: Constructor
- * @module bento/components/opacity
- * @param {Entity} entity - The entity to attach the component to
- * @param {Object} settings - Settings
- * @param {Number} settings.opacity - Opacity value (1 is opaque)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/opacity', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Opacity = function (settings) {
-            settings = settings || {};
-            this.name = 'opacity';
-            this.oldOpacity = 1;
-            this.opacity = 1;
-            if (Utils.isDefined(settings.opacity)) {
-                this.opacity = settings.opacity;
-            }
-        };
-    Opacity.prototype.draw = function (data) {
-        // this.oldOpacity = data.renderer.getOpacity();
-        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
-    };
-    Opacity.prototype.postDraw = function (data) {
-        // data.renderer.setOpacity(this.oldOpacity);
-    };
-    Opacity.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-
-    /*
-     * Set entity opacity
-     * @function
-     * @instance
-     * @param {Number} opacity - Opacity value
-     * @name setOpacity
-     */
-    Opacity.prototype.setOpacity = function (value) {
-        // this.opacity = value;
-        this.entity.alpha = value;
-    };
-    /*
-     * Get entity opacity
-     * @function
-     * @instance
-     * @name getOpacity
-     */
-    Opacity.prototype.getOpacity = function () {
-        return this.entity.alpha;
-        // return this.opacity;
-    };
-    Opacity.prototype.toString = function () {
-        return '[object Opacity]';
-    };
-
-    return Opacity;
-});
-/*
- * Component that sets the context rotation for drawing.
- * <br>Exports: Constructor
- * @module bento/components/rotation
- * @param {Object} settings - Settings (unused)
- * @returns Returns a component object.
- */
-bento.define('bento/components/rotation', [
-    'bento/utils',
-], function (Utils) {
-    'use strict';
-    var Rotation = function (settings) {
-        settings = settings || {};
-        this.name = 'rotation';
-        this.entity = null;
-    };
-
-    Rotation.prototype.draw = function (data) {
-        // data.renderer.save();
-        // data.renderer.rotate(data.entity.rotation);
-    };
-    Rotation.prototype.postDraw = function (data) {
-        // data.renderer.restore();
-    };
-    Rotation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-
-    /*
-     * Rotates the parent entity in degrees
-     * @function
-     * @param {Number} degrees - Angle in degrees
-     * @instance
-     * @name addAngleDegree
-     */
-    Rotation.prototype.addAngleDegree = function (value) {
-        this.entity.rotation += value * Math.PI / 180;
-    };
-    /*
-     * Rotates the parent entity in radians
-     * @function
-     * @param {Number} radians - Angle in radians
-     * @instance
-     * @name addAngleRadian
-     */
-    Rotation.prototype.addAngleRadian = function (value) {
-        this.entity.rotation += value;
-    };
-    /*
-     * Rotates the parent entity in degrees
-     * @function
-     * @param {Number} degrees - Angle in degrees
-     * @instance
-     * @name setAngleDegree
-     */
-    Rotation.prototype.setAngleDegree = function (value) {
-        this.entity.rotation = value * Math.PI / 180;
-    };
-    /*
-     * Rotates the parent entity in radians
-     * @function
-     * @param {Number} radians - Angle in radians
-     * @instance
-     * @name setAngleRadian
-     */
-    Rotation.prototype.setAngleRadian = function (value) {
-        this.entity.rotation = value;
-    };
-    /*
-     * Returns the parent entity rotation in degrees
-     * @function
-     * @instance
-     * @name getAngleDegree
-     */
-    Rotation.prototype.getAngleDegree = function () {
-        return this.entity.rotation * 180 / Math.PI;
-    };
-    /*
-     * Returns the parent entity rotation in radians
-     * @function
-     * @instance
-     * @name getAngleRadian
-     */
-    Rotation.prototype.getAngleRadian = function () {
-        return this.entity.rotation;
-    };
-    Rotation.prototype.toString = function () {
-        return '[object Rotation]';
-    };
-
-    return Rotation;
-});
-/*
- * Component that sets the context scale for drawing.
- * <br>Exports: Constructor
- * @module bento/components/scale
- * @param {Object} settings - Settings (unused)
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/scale', [
-    'bento/utils',
-    'bento/math/vector2'
-], function (Utils, Vector2) {
-    'use strict';
-    var Scale = function (settings) {
-        this.entity = null;
-        this.name = 'scale';
-    };
-    Scale.prototype.draw = function (data) {
-        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
-    };
-    Scale.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    /*
-     * Scales the parent entity in x direction
-     * @function
-     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
-     * @instance
-     * @name setScaleX
-     */
-    Scale.prototype.setScaleX = function (value) {
-        this.entity.scale.x = value;
-    };
-    /*
-     * Scales the parent entity in y direction
-     * @function
-     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
-     * @instance
-     * @name setScaleY
-     */
-    Scale.prototype.setScaleY = function (value) {
-        this.entity.scale.y = value;
-    };
-    Scale.prototype.toString = function () {
-        return '[object Scale]';
-    };
-
-    return Scale;
-});
-/*
- * Helper component that attaches the Translation, Scale, Rotation, Opacity
- * and Animation (or Pixi) components. Automatically detects the renderer.
- * <br>Exports: Constructor
- * @module bento/components/sprite
- * @param {Object} settings - Settings object, this object is passed to all other components
- * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
- * the Animation component is attached. Same as Sprite.insertBefore.
- * @param {} settings.... - See other components
- * @returns Returns a component object.
- */
-bento.define('bento/components/sprite_old', [
-    'bento',
-    'bento/utils',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/components/opacity',
-    'bento/components/animation'
-], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation) {
-    'use strict';
-    var renderer,
-        component = function (settings) {
-            this.entity = null;
-            this.settings = settings;
-
-            /*
-             * Reference to the Translation component
-             * @instance
-             * @name translation
-             */
-            this.translation = new Translation(settings);
-            /*
-             * Reference to the Rotation component
-             * @instance
-             * @name rotation
-             */
-            this.rotation = new Rotation(settings);
-            /*
-             * Reference to the Scale component
-             * @instance
-             * @name scale
-             */
-            this.scale = new Scale(settings);
-            /*
-             * Reference to the Opacity component
-             * @instance
-             * @name rotation
-             */
-            this.opacity = new Opacity(settings);
-            /*
-             * If renderer is set to pixi, this property is the Pixi component.
-             * Otherwise it's the Animation component
-             * @instance
-             * @name animation
-             */
-            this.animation = new Animation(settings);
-
-
-            this.components = settings.components || [];
-        };
-
-    component.prototype.attached = function (data) {
-        var i = 0;
-        this.entity = data.entity;
-        // attach all components!
-        if (this.translation) {
-            this.entity.attach(this.translation);
-        }
-        if (this.rotation) {
-            this.entity.attach(this.rotation);
-        }
-        if (this.scale) {
-            this.entity.attach(this.scale);
-        }
-        this.entity.attach(this.opacity);
-
-        // wedge in extra components in before the animation component
-        for (i = 0; i < this.components.length; ++i) {
-            this.entity.attach(this.components[i]);
-        }
-        this.entity.attach(this.animation);
-
-        // remove self?
-        this.entity.remove(this);
-    };
-    /*
-     * Allows you to insert components/children entities BEFORE the animation component.
-     * This way you can draw objects behind the sprite.
-     * This function should be called before you attach the Sprite to the Entity.
-     * @function
-     * @param {Array} array - Array of entities to attach
-     * @instance
-     * @name insertBefore
-     */
-    component.prototype.insertBefore = function (array) {
-        if (!Utils.isArray(array)) {
-            array = [array];
-        }
-        this.components = array;
-        return this;
-    };
-
-    component.prototype.toString = function () {
-        return '[object Sprite]';
-    };
-
-    component.prototype.getSettings = function () {
-        return this.settings;
-    };
-
-    return component;
-});
-/*
- * Component that sets the context translation for drawing.
- * <br>Exports: Constructor
- * @module bento/components/translation
- * @param {Object} settings - Settings
- * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
- * @returns Returns a component object.
- */
-bento.define('bento/components/translation', [
-    'bento',
-    'bento/utils',
-    'bento/math/vector2'
-], function (Bento, Utils, Vector2) {
-    'use strict';
-    var bentoSettings;
-    var Translation = function (settings) {
-        if (!bentoSettings) {
-            bentoSettings = Bento.getSettings();
-        }
-        settings = settings || {};
-        this.name = 'translation';
-        this.subPixel = settings.subPixel || false;
-        this.entity = null;
-        /*
-         * Additional x translation (superposed on the entity position)
-         * @instance
-         * @default 0
-         * @name x
-         */
-        this.x = 0;
-        /*
-         * Additional y translation (superposed on the entity position)
-         * @instance
-         * @default 0
-         * @name y
-         */
-        this.y = 0;
-    };
-    Translation.prototype.draw = function (data) {
-        var entity = data.entity,
-            parent = entity.parent,
-            position = entity.position,
-            origin = entity.origin,
-            scroll = data.viewport;
-
-        entity.transform.x = this.x;
-        entity.transform.y = this.y;
-        /*data.renderer.save();
-        if (this.subPixel || bentoSettings.subPixel) {
-            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
-        } else {
-            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
-        }
-        // scroll (only applies to parent objects)
-        if (!parent && !entity.float) {
-            data.renderer.translate(-scroll.x, -scroll.y);
-        }*/
-    };
-    Translation.prototype.postDraw = function (data) {
-        // data.renderer.restore();
-    };
-    Translation.prototype.attached = function (data) {
-        this.entity = data.entity;
-    };
-    Translation.prototype.toString = function () {
-        return '[object Translation]';
-    };
-
-    return Translation;
-});
-/*
- * DEPRECATED: performance is sub par, recommended to use Canvas2d or Pixi renderer
- * WebGL renderer using gl-sprites by Matt DesLauriers
- * @copyright (C) 2015 LuckyKat
- */
-bento.define('bento/renderers/webgl', [
-    'bento/utils',
-    'bento/renderers/canvas2d'
-], function (Utils, Canvas2d) {
-    return function (canvas, settings) {
-        var canWebGl = (function () {
-                // try making a canvas
-                try {
-                    var canvas = document.createElement('canvas');
-                    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
-                } catch (e) {
-                    return false;
-                }
-            })(),
-            context,
-            glRenderer,
-            original,
-            pixelSize = settings.pixelSize || 1,
-            renderer = {
-                name: 'webgl',
-                save: function () {
-                    glRenderer.save();
-                },
-                restore: function () {
-                    glRenderer.restore();
-                },
-                setTransform: function (a, b, c, d, tx, ty) {
-                    // not sure, untested
-                    glRenderer.transform = glRenderer.transform.clone([
-                        a, b, 0, tx,
-                        c, d, 0, ty,
-                        0, 0, 1, 0,
-                        0, 0, 0, 1
-                    ]);
-                },
-                translate: function (x, y) {
-                    glRenderer.translate(x, y);
-                },
-                scale: function (x, y) {
-                    glRenderer.scale(x, y);
-                },
-                rotate: function (angle) {
-                    glRenderer.rotate(angle);
-                },
-                fillRect: function (color, x, y, w, h) {
-                    var oldColor = glRenderer.color;
-                    //
-                    renderer.setColor(color);
-                    glRenderer.fillRect(x, y, w, h);
-                    glRenderer.color = oldColor;
-                },
-                fillCircle: function (color, x, y, radius) {},
-                strokeRect: function (color, x, y, w, h) {
-                    var oldColor = glRenderer.color;
-                    //
-                    renderer.setColor(color);
-                    glRenderer.strokeRect(x, y, w, h);
-                    glRenderer.color = oldColor;
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    var image = packedImage.image;
-                    if (!image.texture) {
-                        image.texture = window.GlSprites.createTexture2D(context, image);
-                    }
-                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
-                },
-                begin: function () {
-                    glRenderer.begin();
-                },
-                flush: function () {
-                    glRenderer.end();
-                },
-                setColor: function (color) {
-                    glRenderer.color = color;
-                },
-                getOpacity: function () {
-                    return glRenderer.color[3];
-                },
-                setOpacity: function (value) {
-                    glRenderer.color[3] = value;
-                },
-                createSurface: function (width, height) {
-                    var newCanvas = document.createElement('canvas'),
-                        newContext,
-                        newGlRenderer;
-
-                    newCanvas.width = width;
-                    newCanvas.height = height;
-
-                    newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    newGlRenderer = new window.GlSprites.SpriteRenderer(newContext);
-                    newGlRenderer.ortho(canvas.width, canvas.height);
-
-                    return {
-                        canvas: newCanvas,
-                        context: newGlRenderer
-                    };
-                },
-                setContext: function (ctx) {
-                    glRenderer = ctx;
-                },
-                restoreContext: function () {
-                    glRenderer = original;
-                }
-            };
-
-        // fallback
-        if (canWebGl && Utils.isDefined(window.GlSprites)) {
-            // resize canvas according to pixelSize
-            canvas.width *= pixelSize;
-            canvas.height *= pixelSize;
-            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-
-            glRenderer = new window.GlSprites.SpriteRenderer(context);
-            glRenderer.ortho(canvas.width / pixelSize, canvas.height / pixelSize);
-            original = glRenderer;
-            return renderer;
-        } else {
-            console.log('webgl failed, revert to canvas');
-            return Canvas2d(canvas, settings);
-        }
-    };
 });
 /**
  * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
@@ -12025,1415 +10331,1700 @@ bento.define('bento/managers/screen', [
 
     };
 });
-/**
- * A 2-dimensional array
+/*
+ * Animation component. Draws an animated sprite on screen at the entity position.
  * <br>Exports: Constructor
- * @module bento/math/array2d
- * @param {Number} width - horizontal size of array
- * @param {Number} height - vertical size of array
- * @returns {Array} Returns 2d array.
- */
-bento.define('bento/math/array2d', [], function () {
-    'use strict';
-    return function (width, height) {
-        var array = [],
-            i,
-            j;
-
-        // init array
-        for (i = 0; i < width; ++i) {
-            array[i] = [];
-            for (j = 0; j < height; ++j) {
-                array[i][j] = null;
+ * @module bento/components/animation
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
+ * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between frames
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+// Defines a 3 x 3 spritesheet with several animations
+// Note: The default is automatically defined if no animations object is passed
+var sprite = new Sprite({
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3,
+        animations: {
+            "default": {
+                frames: [0]
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
             }
         }
+     }),
+    entity = new Entity({
+        components: [sprite] // attach sprite to entity
+                             // alternative to passing a components array is by calling entity.attach(sprite);
+    });
 
-        return {
-            /**
-             * Returns true
-             * @function
-             * @returns {Boolean} Is always true
-             * @instance
-             * @name isArray2d
-             */
-            isArray2d: function () {
-                return true;
-            },
-            /**
-             * Callback at every iteration.
-             *
-             * @callback IterationCallBack
-             * @param {Number} x - The current x index
-             * @param {Number} y - The current y index
-             * @param {Number} value - The value at the x,y index
-             */
-            /**
-             * Iterate through 2d array
-             * @function
-             * @param {IterationCallback} callback - Callback function to be called every iteration
-             * @instance
-             * @name iterate
-             */
-            iterate: function (callback) {
-                var i, j;
-                for (j = 0; j < height; ++j) {
-                    for (i = 0; i < width; ++i) {
-                        callback(i, j, array[i][j]);
-                    }
-                }
-            },
-            /**
-             * Get the value inside array
-             * @function
-             * @param {Number} x - x index
-             * @param {Number} y - y index
-             * @returns {Object} The value at the index
-             * @instance
-             * @name get
-             */
-            get: function (x, y) {
-                return array[x][y];
-            },
-            /**
-             * Set the value inside array
-             * @function
-             * @param {Number} x - x index
-             * @param {Number} y - y index
-             * @param {Number} value - new value
-             * @instance
-             * @name set
-             */
-            set: function (x, y, value) {
-                array[x][y] = value;
-            }
-        };
-    };
-});
-/* DEPRECATED: use transformmatrix
- * Matrix
- * <br>Exports: Constructor
- * @module bento/math/matrix
- * @param {Number} width - horizontal size of matrix
- * @param {Number} height - vertical size of matrix
- * @returns {Matrix} Returns a matrix object.
+// attach entity to game
+Bento.objects.attach(entity);
+ * @returns Returns a component object to be attached to an entity.
  */
-bento.define('bento/math/matrix', [
-    'bento/utils'
-], function (Utils) {
-    'use strict';
-    var add = function (other) {
-            var newMatrix = this.clone();
-            newMatrix.addTo(other);
-            return newMatrix;
-        },
-        multiply = function (matrix1, matrix2) {
-            var newMatrix = this.clone();
-            newMatrix.multiplyWith(other);
-            return newMatrix;
-        },
-        module = function (width, height) {
-            var matrix = [],
-                n = width || 0,
-                m = height || 0,
-                i,
-                j,
-                set = function (x, y, value) {
-                    matrix[y * n + x] = value;
-                },
-                get = function (x, y) {
-                    return matrix[y * n + x];
-                };
-
-            // initialize as identity matrix
-            for (j = 0; j < m; ++j) {
-                for (i = 0; i < n; ++i) {
-                    if (i === j) {
-                        set(i, j, 1);
-                    } else {
-                        set(i, j, 0);
-                    }
-                }
-            }
-
-            return {
-                /*
-                 * Returns true
-                 * @function
-                 * @returns {Boolean} Is always true
-                 * @instance
-                 * @name isMatrix
-                 */
-                isMatrix: function () {
-                    return true;
-                },
-                /*
-                 * Returns a string representation of the matrix (useful for debugging purposes)
-                 * @function
-                 * @returns {String} String matrix
-                 * @instance
-                 * @name stringify
-                 */
-                stringify: function () {
-                    var i,
-                        j,
-                        str = '',
-                        row = '';
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            row += get(i, j) + '\t';
-                        }
-                        str += row + '\n';
-                        row = '';
-                    }
-                    return str;
-                },
-                /*
-                 * Get the value inside matrix
-                 * @function
-                 * @param {Number} x - x index
-                 * @param {Number} y - y index
-                 * @returns {Number} The value at the index
-                 * @instance
-                 * @name get
-                 */
-                get: function (x, y) {
-                    return get(x, y);
-                },
-                /*
-                 * Set the value inside matrix
-                 * @function
-                 * @param {Number} x - x index
-                 * @param {Number} y - y index
-                 * @param {Number} value - new value
-                 * @instance
-                 * @name set
-                 */
-                set: function (x, y, value) {
-                    set(x, y, value);
-                },
-                /*
-                 * Set the values inside matrix using an array.
-                 * If the matrix is 2x2 in size, then supplying an array with
-                 * values [1, 2, 3, 4] will result in a matrix
-                 * <br>[1 2]
-                 * <br>[3 4]
-                 * <br>If the array has more elements than the matrix, the
-                 * rest of the array is ignored.
-                 * @function
-                 * @param {Array} array - array with Numbers
-                 * @returns {Matrix} Returns self
-                 * @instance
-                 * @name setValues
-                 */
-                setValues: function (array) {
-                    var i, l = Math.min(matrix.length, array.length);
-                    for (i = 0; i < l; ++i) {
-                        matrix[i] = array[i];
-                    }
-                    return this;
-                },
-                /*
-                 * Get the matrix width
-                 * @function
-                 * @returns {Number} The width of the matrix
-                 * @instance
-                 * @name getWidth
-                 */
-                getWidth: function () {
-                    return n;
-                },
-                /*
-                 * Get the matrix height
-                 * @function
-                 * @returns {Number} The height of the matrix
-                 * @instance
-                 * @name getHeight
-                 */
-                getHeight: function () {
-                    return m;
-                },
-                /*
-                 * Callback at every iteration.
-                 *
-                 * @callback IterationCallBack
-                 * @param {Number} x - The current x index
-                 * @param {Number} y - The current y index
-                 * @param {Number} value - The value at the x,y index
-                 */
-                /*
-                 * Iterate through matrix
-                 * @function
-                 * @param {IterationCallback} callback - Callback function to be called every iteration
-                 * @instance
-                 * @name iterate
-                 */
-                iterate: function (callback) {
-                    var i, j;
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            if (!Utils.isFunction(callback)) {
-                                throw ('Please supply a callback function');
-                            }
-                            callback(i, j, get(i, j));
-                        }
-                    }
-                },
-                /*
-                 * Transposes the current matrix
-                 * @function
-                 * @returns {Matrix} Returns self
-                 * @instance
-                 * @name transpose
-                 */
-                transpose: function () {
-                    var i, j, newMat = [];
-                    // reverse loop so m becomes n
-                    for (i = 0; i < n; ++i) {
-                        for (j = 0; j < m; ++j) {
-                            newMat[i * m + j] = get(i, j);
-                        }
-                    }
-                    // set new matrix
-                    matrix = newMat;
-                    // swap width and height
-                    m = [n, n = m][0];
-                    return this;
-                },
-                /*
-                 * Addition of another matrix
-                 * @function
-                 * @param {Matrix} matrix - matrix to add
-                 * @returns {Matrix} Updated matrix
-                 * @instance
-                 * @name addTo
-                 */
-                addTo: function (other) {
-                    var i, j;
-                    if (m != other.getHeight() || n != other.getWidth()) {
-                        throw 'Matrix sizes incorrect';
-                    }
-                    for (j = 0; j < m; ++j) {
-                        for (i = 0; i < n; ++i) {
-                            set(i, j, get(i, j) + other.get(i, j));
-                        }
-                    }
-                    return this;
-                },
-                /*
-                 * Addition of another matrix
-                 * @function
-                 * @param {Matrix} matrix - matrix to add
-                 * @returns {Matrix} A new matrix
-                 * @instance
-                 * @name add
-                 */
-                add: add,
-                /*
-                 * Multiply with another matrix
-                 * If a new matrix C is the result of A * B = C
-                 * then B is the current matrix and becomes C, A is the input matrix
-                 * @function
-                 * @param {Matrix} matrix - input matrix to multiply with
-                 * @returns {Matrix} Updated matrix
-                 * @instance
-                 * @name multiplyWith
-                 */
-                multiplyWith: function (other) {
-                    var i, j,
-                        newMat = [],
-                        newWidth = n, // B.n
-                        oldHeight = m, // B.m
-                        newHeight = other.getHeight(), // A.m
-                        oldWidth = other.getWidth(), // A.n
-                        newValue = 0,
-                        k;
-                    if (oldHeight != oldWidth) {
-                        throw 'Matrix sizes incorrect';
-                    }
-
-                    for (j = 0; j < newHeight; ++j) {
-                        for (i = 0; i < newWidth; ++i) {
-                            newValue = 0;
-                            // loop through matbentos
-                            for (k = 0; k < oldWidth; ++k) {
-                                newValue += other.get(k, j) * get(i, k);
-                            }
-                            newMat[j * newWidth + i] = newValue;
-                        }
-                    }
-                    // set to new matrix
-                    matrix = newMat;
-                    // update matrix size
-                    n = newWidth;
-                    m = newHeight;
-                    return this;
-                },
-                /*
-                 * Multiply with another matrix
-                 * If a new matrix C is the result of A * B = C
-                 * then B is the current matrix and becomes C, A is the input matrix
-                 * @function
-                 * @param {Matrix} matrix - input matrix to multiply with
-                 * @returns {Matrix} A new matrix
-                 * @instance
-                 * @name multiply
-                 */
-                multiply: multiply,
-                /*
-                 * Returns a clone of the current matrix
-                 * @function
-                 * @returns {Matrix} A new matrix
-                 * @instance
-                 * @name clone
-                 */
-                clone: function () {
-                    var newMatrix = module(n, m);
-                    newMatrix.setValues(matrix);
-                    return newMatrix;
-                }
-            };
-        };
-    return module;
-});
-/**
- * Polygon
- * <br>Exports: Constructor
- * @module bento/math/polygon
- * @param {Array} points - An array of Vector2 with positions of all points
- * @returns {Polygon} Returns a polygon.
- */
-// TODO: cleanup, change to prototype object
-bento.define('bento/math/polygon', [
+bento.define('bento/components/animation', [
+    'bento',
     'bento/utils',
-    'bento/math/rectangle'
-], function (Utils, Rectangle) {
+], function (Bento, Utils) {
     'use strict';
-    var isPolygon = function () {
-            return true;
-        },
-        clone = function () {
-            var clone = [],
-                points = this.points,
-                i = points.length;
-            // clone the array
-            while (i--) {
-                clone[i] = points[i];
-            }
-            return module(clone);
-        },
-        offset = function (pos) {
-            var clone = [],
-                points = this.points,
-                i = points.length;
-            while (i--) {
-                clone[i] = points[i];
-                clone[i].x += pos.x;
-                clone[i].y += pos.y;
-            }
-            return module(clone);
-        },
-        doLineSegmentsIntersect = function (p, p2, q, q2) {
-            // based on https://github.com/pgkelley4/line-segments-intersect
-            var crossProduct = function (p1, p2) {
-                    return p1.x * p2.y - p1.y * p2.x;
-                },
-                subtractPoints = function (p1, p2) {
-                    return {
-                        x: p1.x - p2.x,
-                        y: p1.y - p2.y
-                    };
-                },
-                r = subtractPoints(p2, p),
-                s = subtractPoints(q2, q),
-                uNumerator = crossProduct(subtractPoints(q, p), r),
-                denominator = crossProduct(r, s),
-                u,
-                t;
-            if (uNumerator === 0 && denominator === 0) {
-                return ((q.x - p.x < 0) !== (q.x - p2.x < 0) !== (q2.x - p.x < 0) !== (q2.x - p2.x < 0)) ||
-                    ((q.y - p.y < 0) !== (q.y - p2.y < 0) !== (q2.y - p.y < 0) !== (q2.y - p2.y < 0));
-            }
-            if (denominator === 0) {
-                return false;
-            }
-            u = uNumerator / denominator;
-            t = crossProduct(subtractPoints(q, p), s) / denominator;
-            return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
-        },
-        intersect = function (polygon) {
-            var intersect = false,
-                other = [],
-                points = this.points,
-                p1,
-                p2,
-                q1,
-                q2,
-                i,
-                j;
+    var Animation = function (settings) {
+        this.entity = null;
+        this.name = 'animation';
+        this.visible = true;
 
-            // is other really a polygon?
-            if (polygon.isRectangle) {
-                // before constructing a polygon, check if boxes collide in the first place
-                if (!this.getBoundingBox().intersect(polygon)) {
-                    return false;
-                }
-                // construct a polygon out of rectangle
-                other.push({
-                    x: polygon.x,
-                    y: polygon.y
-                });
-                other.push({
-                    x: polygon.getX2(),
-                    y: polygon.y
-                });
-                other.push({
-                    x: polygon.getX2(),
-                    y: polygon.getY2()
-                });
-                other.push({
-                    x: polygon.x,
-                    y: polygon.getY2()
-                });
-                polygon = module(other);
-            } else {
-                // simplest check first: regard polygons as boxes and check collision
-                if (!this.getBoundingBox().intersect(polygon.getBoundingBox())) {
-                    return false;
-                }
-                // get polygon points
-                other = polygon.points;
-            }
-
-            // precision check
-            for (i = 0; i < points.length; ++i) {
-                for (j = 0; j < other.length; ++j) {
-                    p1 = points[i];
-                    p2 = points[(i + 1) % points.length];
-                    q1 = other[j];
-                    q2 = other[(j + 1) % other.length];
-                    if (doLineSegmentsIntersect(p1, p2, q1, q2)) {
-                        return true;
-                    }
-                }
-            }
-            // check inside one or another
-            if (this.hasPosition(other[0]) || polygon.hasPosition(points[0])) {
-                return true;
-            } else {
-                return false;
-            }
-        },
-        hasPosition = function (p) {
-            var points = this.points,
-                has = false,
-                i = 0,
-                j = points.length - 1,
-                bounds = this.getBoundingBox();
-
-            if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
-                return false;
-            }
-            for (i, j; i < points.length; j = i++) {
-                if ((points[i].y > p.y) != (points[j].y > p.y) &&
-                    p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
-                    (points[j].y - points[i].y) + points[i].x) {
-                    has = !has;
-                }
-            }
-            return has;
-        },
-        module = function (points) {
-            var minX = points[0].x,
-                maxX = points[0].x,
-                minY = points[0].y,
-                maxY = points[0].y,
-                n = 1,
-                q;
-
-            for (n = 1; n < points.length; ++n) {
-                q = points[n];
-                minX = Math.min(q.x, minX);
-                maxX = Math.max(q.x, maxX);
-                minY = Math.min(q.y, minY);
-                maxY = Math.max(q.y, maxY);
-            }
-
-            return {
-                // TODO: use x and y as offset, widht and height as boundingbox
-                x: minX,
-                y: minY,
-                width: maxX - minX,
-                height: maxY - minY,
-                /**
-                 * Array of Vector2 points
-                 * @instance
-                 * @name points
-                 */
-                points: points,
-                /**
-                 * Returns true
-                 * @function
-                 * @returns {Boolean} Is always true
-                 * @instance
-                 * @name isPolygon
-                 */
-                isPolygon: isPolygon,
-                /**
-                 * Get the rectangle containing the polygon
-                 * @function
-                 * @returns {Rectangle} Rectangle containing the polygon
-                 * @instance
-                 * @name getBoundingBox
-                 */
-                getBoundingBox: function () {
-                    return new Rectangle(minX, minY, maxX - minX, maxY - minY);
-                },
-                /**
-                 * Checks if Vector2 lies within the polygon
-                 * @function
-                 * @returns {Boolean} true if position is inside
-                 * @instance
-                 * @name hasPosition
-                 */
-                hasPosition: hasPosition,
-                /**
-                 * Checks if other polygon/rectangle overlaps.
-                 * Note that this may be computationally expensive.
-                 * @function
-                 * @param {Polygon/Rectangle} other - Other polygon or rectangle
-                 * @returns {Boolean} true if polygons overlap
-                 * @instance
-                 * @name intersect
-                 */
-                intersect: intersect,
-                /**
-                 * Moves polygon by an offset
-                 * @function
-                 * @param {Vector2} vector - Position to offset
-                 * @returns {Polygon} Returns a new polygon instance
-                 * @instance
-                 * @name offset
-                 */
-                offset: offset,
-                /**
-                 * Clones polygon
-                 * @function
-                 * @returns {Polygon} a clone of the current polygon
-                 * @instance
-                 * @name clone
-                 */
-                clone: clone
-            };
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
         };
-    return module;
-});
-/**
- * Rectangle
- * <br>Exports: Constructor
- * @module bento/math/rectangle
- * @param {Number} x - Top left x position
- * @param {Number} y - Top left y position
- * @param {Number} width - Width of the rectangle
- * @param {Number} height - Height of the rectangle
- * @returns {Rectangle} Returns a rectangle.
- */
-bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], function (Utils, Vector2) {
-    'use strict';
-    var Rectangle = function (x, y, width, height) {
-        /**
-         * X position
-         * @instance
-         * @name x
-         */
-        this.x = x;
-        /**
-         * Y position
-         * @instance
-         * @name y
-         */
-        this.y = y;
-        /**
-         * Width of the rectangle
-         * @instance
-         * @name width
-         */
-        this.width = width;
-        /**
-         * Height of the rectangle
-         * @instance
-         * @name height
-         */
-        this.height = height;
+
+        this.spriteImage = null;
+
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.padding = 0;
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
     };
-    /**
-     * Returns true
+    /*
+     * Sets up animation. This can be used to overwrite the settings object passed to the constructor.
      * @function
-     * @returns {Boolean} Is always true
      * @instance
-     * @name isRectangle
+     * @param {Object} settings - Settings object
+     * @name setup
      */
-    Rectangle.prototype.isRectangle = function () {
-        return true;
-    };
-    /**
-     * Gets the lower right x position
-     * @function
-     * @returns {Number} Coordinate of the lower right position
-     * @instance
-     * @name getX2
-     */
-    Rectangle.prototype.getX2 = function () {
-        return this.x + this.width;
-    };
-    /**
-     * Gets the lower right y position
-     * @function
-     * @returns {Number} Coordinate of the lower right position
-     * @instance
-     * @name getY2
-     */
-    Rectangle.prototype.getY2 = function () {
-        return this.y + this.height;
-    };
-    /**
-     * Returns the union of 2 rectangles
-     * @function
-     * @param {Rectangle} other - Other rectangle
-     * @returns {Rectangle} Union of the 2 rectangles
-     * @instance
-     * @name union
-     */
-    Rectangle.prototype.union = function (rectangle) {
-        var x1 = Math.min(this.x, rectangle.x),
-            y1 = Math.min(this.y, rectangle.y),
-            x2 = Math.max(this.getX2(), rectangle.getX2()),
-            y2 = Math.max(this.getY2(), rectangle.getY2());
-        return new Rectangle(x1, y1, x2 - x1, y2 - y1);
-    };
-    /**
-     * Returns true if 2 rectangles intersect
-     * @function
-     * @param {Rectangle} other - Other rectangle
-     * @returns {Boolean} True if 2 rectangles intersect
-     * @instance
-     * @name intersect
-     */
-    Rectangle.prototype.intersect = function (other) {
-        if (other.isPolygon) {
-            return other.intersect(this);
+    Animation.prototype.setup = function (settings) {
+        var self = this,
+            padding = 0;
+
+        this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
         } else {
-            return !(this.x + this.width <= other.x ||
-                this.y + this.height <= other.y ||
-                this.x >= other.x + other.width ||
-                this.y >= other.y + other.height);
+            // no image specified
+            return;
         }
-    };
-    /**
-     * Returns the intersection of 2 rectangles
-     * @function
-     * @param {Rectangle} other - Other rectangle
-     * @returns {Rectangle} Intersection of the 2 rectangles
-     * @instance
-     * @name intersection
-     */
-    Rectangle.prototype.intersection = function (rectangle) {
-        var inter = new Rectangle(0, 0, 0, 0);
-        if (this.intersect(rectangle)) {
-            inter.x = Math.max(this.x, rectangle.x);
-            inter.y = Math.max(this.y, rectangle.y);
-            inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
-            inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
         }
-        return inter;
-    };
-    /**
-     * Checks if rectangle intersects with the provided circle
-     * @function
-     * @param {Vector2} circleCenter
-     * @param {Number} radius
-     * @returns {Boolean} True if rectangle and circle intersect
-     * @instance
-     * @name intersectCircle
-     */
-    Rectangle.prototype.intersectsCircle = function (circleCenter, radius) {
-        var rectHalfWidth = this.width * 0.5;
-        var rectHalfHeight = this.height * 0.5;
-        var rectCenter = new Vector2(this.x + rectHalfWidth, this.y + rectHalfHeight);
-        var distanceX = Math.abs(circleCenter.x - rectCenter.x);
-        var distanceY = Math.abs(circleCenter.y - rectCenter.y);
-        var cornerDistanceSq = 0;
-
-        if (distanceX > rectHalfWidth + radius || distanceY > rectHalfHeight + radius) {
-            return false;
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
         }
 
-        if (distanceX <= rectHalfWidth || distanceY <= rectHalfHeight) {
-            return true;
+        this.padding = this.animationSettings.padding || 0;
+
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
         }
+    };
 
-        cornerDistanceSq = (distanceX - rectHalfWidth) * (distanceX - rectHalfWidth) + (distanceY - rectHalfHeight) * (distanceY - rectHalfHeight);
+    Animation.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
 
-        return cornerDistanceSq <= radius * radius;
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            if (!Animation.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
+        }
     };
-    /**
-     * Returns a new rectangle that has been moved by the offset
+    /*
+     * Set component to a different animation. The animation won't change if it's already playing.
      * @function
-     * @param {Vector2} vector - Position to offset
-     * @returns {Rectangle} Returns a new rectangle instance
      * @instance
-     * @name offset
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
      */
-    Rectangle.prototype.offset = function (pos) {
-        return new Rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
+    Animation.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimation.frames.length) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimation.frames.length;
+            }
+        }
     };
-    /**
-     * Clones rectangle
+    /*
+     * Returns the name of current animation playing
      * @function
-     * @returns {Rectangle} a clone of the current rectangle
      * @instance
-     * @name clone
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
      */
-    Rectangle.prototype.clone = function () {
-        return new Rectangle(this.x, this.y, this.width, this.height);
+    Animation.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
     };
-    /**
-     * Checks if Vector2 lies within the rectangle
+    /*
+     * Set current animation to a certain frame
      * @function
-     * @returns {Boolean} true if position is inside
      * @instance
-     * @name hasPosition
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
      */
-    Rectangle.prototype.hasPosition = function (vector) {
-        return !(
-            vector.x < this.x ||
-            vector.y < this.y ||
-            vector.x >= this.x + this.width ||
-            vector.y >= this.y + this.height
+    Animation.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /*
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     */
+    Animation.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /*
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Animation.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /*
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Animation.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /*
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Animation.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    Animation.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        reachedEnd = false;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+    Animation.prototype.draw = function (data) {
+        var frameIndex,
+            sourceFrame,
+            sourceX,
+            sourceY,
+            entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+        frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        sourceFrame = this.currentAnimation.frames[frameIndex];
+        sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+
+        data.renderer.translate(Math.round(-origin.x), Math.round(-origin.y));
+        data.renderer.drawImage(
+            this.spriteImage,
+            sourceX,
+            sourceY,
+            this.frameWidth,
+            this.frameHeight,
+            0,
+            0,
+            this.frameWidth,
+            this.frameHeight
         );
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
-    /**
-     * Increases rectangle size from the center.
-     * @function
-     * param {Number} size - by how much to scale the rectangle
-     * param {Boolean} skipWidth - optional. If true, the width won't be scaled
-     * param {Boolean} skipHeight - optional. If true, the height won't be scaled
-     * @returns {Rectangle} the resized rectangle
-     * @instance
-     * @name grow
-     */
-    Rectangle.prototype.grow = function (size, skipWidth, skipHeight) {
-        if (!skipWidth) {
-            this.x -= size / 2;
-            this.width += size;
-        }
-        if (!skipHeight) {
-            this.y -= size / 2;
-            this.height += size;
-        }
-        return this;
-    };
-    /**
-     * Returns one of the corners are vector position
-     * @function
-     * param {Number} corner - 0: topleft, 1: topright, 2: bottomleft, 3: bottomright, 4: center
-     * @returns {Vector2} Vector position
-     * @instance
-     * @name getCorner
-     */
-    Rectangle.prototype.getCorner = function (corner) {
-        if (!corner) {
-            return new Vector2(this.x, this.y);
-        } else if (corner === 1) {
-            return new Vector2(this.x + this.width, this.y);
-        } else if (corner === 2) {
-            return new Vector2(this.x, this.y + this.height);
-        } else if (corner === 3) {
-            return new Vector2(this.x + this.width, this.y + this.height);
-        }
-        //
-        return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
-    };
-    /**
-     * Returns the center position of the rectangle
-     * @function
-     * @returns {Vector2} Vector position
-     * @instance
-     * @name getCenter
-     */
-    Rectangle.prototype.getCenter = function () {
-        return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
-    };
-    Rectangle.prototype.toString = function () {
-        return '[object Rectangle]';
+    Animation.prototype.toString = function () {
+        return '[object Animation]';
     };
 
-    return Rectangle;
+    /*
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Animation.suppressWarnings = false;
+
+    return Animation;
 });
-/**
- * 3x 3 Matrix specifically used for transformations
- * <br>[ a c tx ]
- * <br>[ b d ty ]
- * <br>[ 0 0 1  ]
+/*
+ * Component that sets the opacity
  * <br>Exports: Constructor
- * @module bento/math/transformmatrix
- * @returns {Matrix} Returns a matrix object.
+ * @module bento/components/opacity
+ * @param {Entity} entity - The entity to attach the component to
+ * @param {Object} settings - Settings
+ * @param {Number} settings.opacity - Opacity value (1 is opaque)
+ * @returns Returns a component object to be attached to an entity.
  */
-bento.define('bento/math/transformmatrix', [
+bento.define('bento/components/opacity', [
     'bento/utils',
     'bento/math/vector2'
 ], function (Utils, Vector2) {
     'use strict';
-
-    function Matrix() {
-        this.a = 1;
-        this.b = 0;
-        this.c = 0;
-        this.d = 1;
-        this.tx = 0;
-        this.ty = 0;
-    }
-
-    /**
-     * Applies matrix on a vector
-     * @function
-     * @returns {Vector2} Transformed vector
-     * @instance
-     * @name multiplyWithVector
-     */
-    Matrix.prototype.multiplyWithVector = function (vector) {
-        var x = vector.x;
-        var y = vector.y;
-
-        vector.x = this.a * x + this.c * y + this.tx;
-        vector.y = this.b * x + this.d * y + this.ty;
-
-        return vector;
+    var Opacity = function (settings) {
+            settings = settings || {};
+            this.name = 'opacity';
+            this.oldOpacity = 1;
+            this.opacity = 1;
+            if (Utils.isDefined(settings.opacity)) {
+                this.opacity = settings.opacity;
+            }
+        };
+    Opacity.prototype.draw = function (data) {
+        // this.oldOpacity = data.renderer.getOpacity();
+        // data.renderer.setOpacity(this.opacity * this.oldOpacity);
+    };
+    Opacity.prototype.postDraw = function (data) {
+        // data.renderer.setOpacity(this.oldOpacity);
+    };
+    Opacity.prototype.attached = function (data) {
+        this.entity = data.entity;
     };
 
-    Matrix.prototype.inverseMultiplyWithVector = function (vector) {
-        var x = vector.x;
-        var y = vector.y;
-        var determinant = 1 / (this.a * this.d - this.c * this.b);
-
-        vector.x = this.d * x * determinant + -this.c * y * determinant + (this.ty * this.c - this.tx * this.d) * determinant;
-        vector.y = this.a * y * determinant + -this.b * x * determinant + (-this.ty * this.a + this.tx * this.b) * determinant;
-
-        return vector;
+    /*
+     * Set entity opacity
+     * @function
+     * @instance
+     * @param {Number} opacity - Opacity value
+     * @name setOpacity
+     */
+    Opacity.prototype.setOpacity = function (value) {
+        // this.opacity = value;
+        this.entity.alpha = value;
+    };
+    /*
+     * Get entity opacity
+     * @function
+     * @instance
+     * @name getOpacity
+     */
+    Opacity.prototype.getOpacity = function () {
+        return this.entity.alpha;
+        // return this.opacity;
+    };
+    Opacity.prototype.toString = function () {
+        return '[object Opacity]';
     };
 
-    /**
-     * Apply translation transformation on the matrix
-     * @function
-     * @param {Number} x - Translation in x axis
-     * @param {Number} y - Translation in y axis
-     * @returns {Matrix} Matrix with translation transform
-     * @instance
-     * @name translate
-     */
-    Matrix.prototype.translate = function (x, y) {
-        this.tx += x;
-        this.ty += y;
-
-        return this;
+    return Opacity;
+});
+/*
+ * Component that sets the context rotation for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/rotation
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/rotation', [
+    'bento/utils',
+], function (Utils) {
+    'use strict';
+    var Rotation = function (settings) {
+        settings = settings || {};
+        this.name = 'rotation';
+        this.entity = null;
     };
 
-    /**
-     * Apply scale transformation on the matrix
-     * @function
-     * @param {Number} x - Scale in x axis
-     * @param {Number} y - Scale in y axis
-     * @returns {Matrix} Matrix with scale transform
-     * @instance
-     * @name scale
-     */
-    Matrix.prototype.scale = function (x, y) {
-        this.a *= x;
-        this.b *= y;
-        this.c *= x;
-        this.d *= y;
-        this.tx *= x;
-        this.ty *= y;
-
-        return this;
+    Rotation.prototype.draw = function (data) {
+        // data.renderer.save();
+        // data.renderer.rotate(data.entity.rotation);
+    };
+    Rotation.prototype.postDraw = function (data) {
+        // data.renderer.restore();
+    };
+    Rotation.prototype.attached = function (data) {
+        this.entity = data.entity;
     };
 
-    /**
-     * Apply rotation transformation on the matrix
+    /*
+     * Rotates the parent entity in degrees
      * @function
-     * @param {Number} angle - Angle to rotate in radians
-     * @param {Number} [sin] - Precomputed sin(angle) if known
-     * @param {Number} [cos] - Precomputed cos(angle) if known
-     * @returns {Matrix} Matrix with rotation transform
+     * @param {Number} degrees - Angle in degrees
      * @instance
-     * @name rotate
+     * @name addAngleDegree
      */
-    Matrix.prototype.rotate = function (angle, sin, cos) {
-        var a = this.a;
-        var b = this.b;
-        var c = this.c;
-        var d = this.d;
-        var tx = this.tx;
-        var ty = this.ty;
+    Rotation.prototype.addAngleDegree = function (value) {
+        this.entity.rotation += value * Math.PI / 180;
+    };
+    /*
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name addAngleRadian
+     */
+    Rotation.prototype.addAngleRadian = function (value) {
+        this.entity.rotation += value;
+    };
+    /*
+     * Rotates the parent entity in degrees
+     * @function
+     * @param {Number} degrees - Angle in degrees
+     * @instance
+     * @name setAngleDegree
+     */
+    Rotation.prototype.setAngleDegree = function (value) {
+        this.entity.rotation = value * Math.PI / 180;
+    };
+    /*
+     * Rotates the parent entity in radians
+     * @function
+     * @param {Number} radians - Angle in radians
+     * @instance
+     * @name setAngleRadian
+     */
+    Rotation.prototype.setAngleRadian = function (value) {
+        this.entity.rotation = value;
+    };
+    /*
+     * Returns the parent entity rotation in degrees
+     * @function
+     * @instance
+     * @name getAngleDegree
+     */
+    Rotation.prototype.getAngleDegree = function () {
+        return this.entity.rotation * 180 / Math.PI;
+    };
+    /*
+     * Returns the parent entity rotation in radians
+     * @function
+     * @instance
+     * @name getAngleRadian
+     */
+    Rotation.prototype.getAngleRadian = function () {
+        return this.entity.rotation;
+    };
+    Rotation.prototype.toString = function () {
+        return '[object Rotation]';
+    };
 
-        if (sin === undefined) {
-            sin = Math.sin(angle);
+    return Rotation;
+});
+/*
+ * Component that sets the context scale for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/scale
+ * @param {Object} settings - Settings (unused)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/scale', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+    var Scale = function (settings) {
+        this.entity = null;
+        this.name = 'scale';
+    };
+    Scale.prototype.draw = function (data) {
+        // data.renderer.scale(data.entity.scale.x, data.entity.scale.y);
+    };
+    Scale.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    /*
+     * Scales the parent entity in x direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleX
+     */
+    Scale.prototype.setScaleX = function (value) {
+        this.entity.scale.x = value;
+    };
+    /*
+     * Scales the parent entity in y direction
+     * @function
+     * @param {Number} value - Scale value (1 is normal, -1 is mirrored etc.)
+     * @instance
+     * @name setScaleY
+     */
+    Scale.prototype.setScaleY = function (value) {
+        this.entity.scale.y = value;
+    };
+    Scale.prototype.toString = function () {
+        return '[object Scale]';
+    };
+
+    return Scale;
+});
+/*
+ * Helper component that attaches the Translation, Scale, Rotation, Opacity
+ * and Animation (or Pixi) components. Automatically detects the renderer.
+ * <br>Exports: Constructor
+ * @module bento/components/sprite
+ * @param {Object} settings - Settings object, this object is passed to all other components
+ * @param {Array} settings.components - This array of objects is attached to the entity BEFORE
+ * the Animation component is attached. Same as Sprite.insertBefore.
+ * @param {} settings.... - See other components
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/sprite_old', [
+    'bento',
+    'bento/utils',
+    'bento/components/translation',
+    'bento/components/rotation',
+    'bento/components/scale',
+    'bento/components/opacity',
+    'bento/components/animation'
+], function (Bento, Utils, Translation, Rotation, Scale, Opacity, Animation) {
+    'use strict';
+    var renderer,
+        component = function (settings) {
+            this.entity = null;
+            this.settings = settings;
+
+            /*
+             * Reference to the Translation component
+             * @instance
+             * @name translation
+             */
+            this.translation = new Translation(settings);
+            /*
+             * Reference to the Rotation component
+             * @instance
+             * @name rotation
+             */
+            this.rotation = new Rotation(settings);
+            /*
+             * Reference to the Scale component
+             * @instance
+             * @name scale
+             */
+            this.scale = new Scale(settings);
+            /*
+             * Reference to the Opacity component
+             * @instance
+             * @name rotation
+             */
+            this.opacity = new Opacity(settings);
+            /*
+             * If renderer is set to pixi, this property is the Pixi component.
+             * Otherwise it's the Animation component
+             * @instance
+             * @name animation
+             */
+            this.animation = new Animation(settings);
+
+
+            this.components = settings.components || [];
+        };
+
+    component.prototype.attached = function (data) {
+        var i = 0;
+        this.entity = data.entity;
+        // attach all components!
+        if (this.translation) {
+            this.entity.attach(this.translation);
         }
-        if (cos === undefined) {
-            cos = Math.cos(angle);
+        if (this.rotation) {
+            this.entity.attach(this.rotation);
         }
+        if (this.scale) {
+            this.entity.attach(this.scale);
+        }
+        this.entity.attach(this.opacity);
 
-        this.a = a * cos - b * sin;
-        this.b = a * sin + b * cos;
-        this.c = c * cos - d * sin;
-        this.d = c * sin + d * cos;
-        this.tx = tx * cos - ty * sin;
-        this.ty = tx * sin + ty * cos;
+        // wedge in extra components in before the animation component
+        for (i = 0; i < this.components.length; ++i) {
+            this.entity.attach(this.components[i]);
+        }
+        this.entity.attach(this.animation);
 
+        // remove self?
+        this.entity.remove(this);
+    };
+    /*
+     * Allows you to insert components/children entities BEFORE the animation component.
+     * This way you can draw objects behind the sprite.
+     * This function should be called before you attach the Sprite to the Entity.
+     * @function
+     * @param {Array} array - Array of entities to attach
+     * @instance
+     * @name insertBefore
+     */
+    component.prototype.insertBefore = function (array) {
+        if (!Utils.isArray(array)) {
+            array = [array];
+        }
+        this.components = array;
         return this;
     };
 
-    /**
-     * Multiplies matrix
-     * @function
-     * @param {Matrix} matrix - Matrix to multiply with
-     * @returns {Matrix} Self
-     * @instance
-     * @name multiplyWith
-     */
-    Matrix.prototype.multiplyWith = function (matrix) {
-        var a = this.a;
-        var b = this.b;
-        var c = this.c;
-        var d = this.d;
-
-        this.a = matrix.a * a + matrix.b * c;
-        this.b = matrix.a * b + matrix.b * d;
-        this.c = matrix.c * a + matrix.d * c;
-        this.d = matrix.c * b + matrix.d * d;
-        this.tx = matrix.tx * a + matrix.ty * c + this.tx;
-        this.ty = matrix.tx * b + matrix.ty * d + this.ty;
-
-        return this;
-    };
-    /**
-     * Multiplies matrix
-     * @function
-     * @param {Matrix} matrix - Matrix to multiply with
-     * @returns {Matrix} Cloned matrix
-     * @instance
-     * @name multiply
-     */
-    Matrix.prototype.multiply = function (matrix) {
-        return this.clone().multiplyWith(matrix);
+    component.prototype.toString = function () {
+        return '[object Sprite]';
     };
 
-    /**
-     * Clones matrix
-     * @function
-     * @returns {Matrix} Cloned matrix
-     * @instance
-     * @name clone
-     */
-    Matrix.prototype.clone = function () {
-        var matrix = new Matrix();
-        matrix.a = this.a;
-        matrix.b = this.b;
-        matrix.c = this.c;
-        matrix.d = this.d;
-        matrix.tx = this.tx;
-        matrix.ty = this.ty;
-
-        return matrix;
+    component.prototype.getSettings = function () {
+        return this.settings;
     };
 
-    /**
-     * Resets matrix to identity matrix
-     * @function
-     * @returns {Matrix} Self
-     * @instance
-     * @name reset
-     */
-    Matrix.prototype.reset = function () {
-        this.a = 1;
-        this.b = 0;
-        this.c = 0;
-        this.d = 1;
-        this.tx = 0;
-        this.ty = 0;
-        return this;
+    return component;
+});
+/*
+ * Component that sets the context translation for drawing.
+ * <br>Exports: Constructor
+ * @module bento/components/translation
+ * @param {Object} settings - Settings
+ * @param {Boolean} settings.subPixel - Turn on to prevent drawing positions to be rounded down
+ * @returns Returns a component object.
+ */
+bento.define('bento/components/translation', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2'
+], function (Bento, Utils, Vector2) {
+    'use strict';
+    var bentoSettings;
+    var Translation = function (settings) {
+        if (!bentoSettings) {
+            bentoSettings = Bento.getSettings();
+        }
+        settings = settings || {};
+        this.name = 'translation';
+        this.subPixel = settings.subPixel || false;
+        this.entity = null;
+        /*
+         * Additional x translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name x
+         */
+        this.x = 0;
+        /*
+         * Additional y translation (superposed on the entity position)
+         * @instance
+         * @default 0
+         * @name y
+         */
+        this.y = 0;
     };
-    Matrix.prototype.identity = Matrix.prototype.reset;
+    Translation.prototype.draw = function (data) {
+        var entity = data.entity,
+            parent = entity.parent,
+            position = entity.position,
+            origin = entity.origin,
+            scroll = data.viewport;
 
-    /**
-     * Prepend matrix
-     * @function
-     * @param {Matrix} Other matrix
-     * @instance
-     * @returns {Matrix} Self
-     */
-    Matrix.prototype.prependWith = function (matrix) {
-        var selfTx = this.tx;
-        var selfA = this.a;
-        var selfC = this.c;
-
-        this.a = selfA * matrix.a + this.b * matrix.c;
-        this.b = selfA * matrix.b + this.b * matrix.d;
-        this.c = selfC * matrix.a + this.d * matrix.c;
-        this.d = selfC * matrix.b + this.d * matrix.d;
-
-        this.tx = selfTx * matrix.a + this.ty * matrix.c + matrix.tx;
-        this.ty = selfTx * matrix.b + this.ty * matrix.d + matrix.ty;
-
-        return this;
+        entity.transform.x = this.x;
+        entity.transform.y = this.y;
+        /*data.renderer.save();
+        if (this.subPixel || bentoSettings.subPixel) {
+            data.renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
+        } else {
+            data.renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
+        }
+        // scroll (only applies to parent objects)
+        if (!parent && !entity.float) {
+            data.renderer.translate(-scroll.x, -scroll.y);
+        }*/
+    };
+    Translation.prototype.postDraw = function (data) {
+        // data.renderer.restore();
+    };
+    Translation.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Translation.prototype.toString = function () {
+        return '[object Translation]';
     };
 
-    /**
-     * Prepends matrix
-     * @function
-     * @param {Matrix} matrix - Matrix to prepend
-     * @returns {Matrix} Cloned matrix
-     * @instance
-     * @name prepend
-     */
-    Matrix.prototype.prepend = function (matrix) {
-        return this.clone().prependWith(matrix);
+    return Translation;
+});
+/*
+ * DEPRECATED: performance is sub par, recommended to use Canvas2d or Pixi renderer
+ * WebGL renderer using gl-sprites by Matt DesLauriers
+ * @copyright (C) 2015 LuckyKat
+ */
+bento.define('bento/renderers/webgl', [
+    'bento/utils',
+    'bento/renderers/canvas2d'
+], function (Utils, Canvas2d) {
+    return function (canvas, settings) {
+        var canWebGl = (function () {
+                // try making a canvas
+                try {
+                    var canvas = document.createElement('canvas');
+                    return !!window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                } catch (e) {
+                    return false;
+                }
+            })(),
+            context,
+            glRenderer,
+            original,
+            pixelSize = settings.pixelSize || 1,
+            renderer = {
+                name: 'webgl',
+                save: function () {
+                    glRenderer.save();
+                },
+                restore: function () {
+                    glRenderer.restore();
+                },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    // not sure, untested
+                    glRenderer.transform = glRenderer.transform.clone([
+                        a, b, 0, tx,
+                        c, d, 0, ty,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1
+                    ]);
+                },
+                translate: function (x, y) {
+                    glRenderer.translate(x, y);
+                },
+                scale: function (x, y) {
+                    glRenderer.scale(x, y);
+                },
+                rotate: function (angle) {
+                    glRenderer.rotate(angle);
+                },
+                fillRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    //
+                    renderer.setColor(color);
+                    glRenderer.fillRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                fillCircle: function (color, x, y, radius) {},
+                strokeRect: function (color, x, y, w, h) {
+                    var oldColor = glRenderer.color;
+                    //
+                    renderer.setColor(color);
+                    glRenderer.strokeRect(x, y, w, h);
+                    glRenderer.color = oldColor;
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    var image = packedImage.image;
+                    if (!image.texture) {
+                        image.texture = window.GlSprites.createTexture2D(context, image);
+                    }
+                    glRenderer.drawImage(image.texture, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, sw, sh);
+                },
+                begin: function () {
+                    glRenderer.begin();
+                },
+                flush: function () {
+                    glRenderer.end();
+                },
+                setColor: function (color) {
+                    glRenderer.color = color;
+                },
+                getOpacity: function () {
+                    return glRenderer.color[3];
+                },
+                setOpacity: function (value) {
+                    glRenderer.color[3] = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext,
+                        newGlRenderer;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    newGlRenderer = new window.GlSprites.SpriteRenderer(newContext);
+                    newGlRenderer.ortho(canvas.width, canvas.height);
+
+                    return {
+                        canvas: newCanvas,
+                        context: newGlRenderer
+                    };
+                },
+                setContext: function (ctx) {
+                    glRenderer = ctx;
+                },
+                restoreContext: function () {
+                    glRenderer = original;
+                }
+            };
+
+        // fallback
+        if (canWebGl && Utils.isDefined(window.GlSprites)) {
+            // resize canvas according to pixelSize
+            canvas.width *= pixelSize;
+            canvas.height *= pixelSize;
+            context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+            glRenderer = new window.GlSprites.SpriteRenderer(context);
+            glRenderer.ortho(canvas.width / pixelSize, canvas.height / pixelSize);
+            original = glRenderer;
+            return renderer;
+        } else {
+            console.log('webgl failed, revert to canvas');
+            return Canvas2d(canvas, settings);
+        }
     };
-
-    // aliases
-    Matrix.prototype.appendWith = Matrix.prototype.multiplyWith;
-    Matrix.prototype.append = Matrix.prototype.multiply;
-
-
-    Matrix.prototype.toString = function () {
-        return '[object Matrix]';
-    };
-    return Matrix;
 });
 /**
- * 2 dimensional vector
- * (Note: to perform matrix multiplications, one must use toMatrix)
+ * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
+ * unless entity.updateWhenPaused is turned on.
  * <br>Exports: Constructor
- * @module bento/math/vector2
- * @param {Number} x - x position
- * @param {Number} y - y position
- * @returns {Vector2} Returns a 2d vector.
+ * @module bento/components/clickable
+ * @param {Object} settings - Settings
+ * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
+ * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
+ * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
+ * @param {Function} settings.onClick - Called when pointer taps on the parent entity
+ * @param {Function} settings.onClickUp - The pointer was released above the parent entity
+ * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
+ * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
+ * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
+ * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
+ * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
+ * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @returns Returns a component object to be attached to an entity.
  */
-bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
+bento.define('bento/components/clickable', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/math/transformmatrix',
+    'bento/eventsystem',
+    'bento/sortedeventsystem'
+], function (
+    Bento, 
+    Utils, 
+    Vector2, 
+    Matrix, 
+    EventSystem,
+    SortedEventSystem
+) {
     'use strict';
-    var Vector2 = function (x, y) {
-        this.x = x || 0;
-        this.y = y || 0;
+
+    var clickables = [];
+    var isPaused = function (entity) {
+        var highestPause = 0;
+        if (!Bento.objects || !entity) {
+            return false;
+        }
+        highestPause = entity.updateWhenPaused;
+        // loop through all parents and find the highest pauselevel
+        while (entity.parent) {
+            entity = entity.parent;
+            if (entity.updateWhenPaused > highestPause) {
+                highestPause = entity.updateWhenPaused;
+            }
+        }
+
+        return highestPause < Bento.objects.isPaused();
     };
 
-    Vector2.prototype.isVector2 = function () {
-        return true;
+    var Clickable = function (settings) {
+        var nothing = function () {};
+        this.entity = null;
+        /**
+         * Name of the component
+         * @instance
+         * @default 'clickable'
+         * @name name
+         */
+        this.name = 'clickable';
+        /**
+         * Whether the pointer is over the entity
+         * @instance
+         * @default false
+         * @name isHovering
+         */
+        this.isHovering = false;
+        this.hasTouched = false;
+        /**
+         * Id number of the pointer holding entity
+         * @instance
+         * @default null
+         * @name holdId
+         */
+        this.holdId = null;
+        this.isPointerDown = false;
+        this.initialized = false;
+        /**
+         * Should the clickable care about (z)order of objects?
+         * @instance
+         * @default false
+         * @name sort
+         */
+        this.sort = settings.sort || false;
+
+        this.callbacks = {
+            pointerDown: settings.pointerDown || nothing,
+            pointerUp: settings.pointerUp || nothing,
+            pointerMove: settings.pointerMove || nothing,
+            // when clicking on the object
+            onClick: settings.onClick || nothing,
+            onClickUp: settings.onClickUp || nothing,
+            onClickMiss: settings.onClickMiss || nothing,
+            onHold: settings.onHold || nothing,
+            onHoldLeave: settings.onHoldLeave || nothing,
+            onHoldEnter: settings.onHoldEnter || nothing,
+            onHoldEnd: settings.onHoldEnd || nothing,
+            onHoverLeave: settings.onHoverLeave || nothing,
+            onHoverEnter: settings.onHoverEnter || nothing
+        };
+        /**
+         * Static array that holds a reference to all currently active Clickables
+         * @type {Array}
+         */
+        this.clickables = clickables;
+    };
+
+    Clickable.prototype.destroy = function () {
+        var index = clickables.indexOf(this),
+            i = 0,
+            len = 0;
+
+        if (index > -1)
+            clickables[index] = null;
+        // clear the array if it consists of only null's
+        for (i = 0, len = clickables.length; i < len; ++i) {
+            if (clickables[i])
+                break;
+            if (i === len - 1)
+                clickables.length = 0;
+        }
+
+        if (this.sort) {
+            SortedEventSystem.off('pointerDown', this.pointerDown, this);
+            SortedEventSystem.off('pointerUp', this.pointerUp, this);
+            SortedEventSystem.off('pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.off('pointerDown', this.pointerDown, this);
+            EventSystem.off('pointerUp', this.pointerUp, this);
+            EventSystem.off('pointerMove', this.pointerMove, this);            
+        }
+        this.initialized = false;
+    };
+    Clickable.prototype.start = function () {
+        if (this.initialized) {
+            return;
+        }
+
+        clickables.push(this);
+
+        if (this.sort) {
+            SortedEventSystem.on(this, 'pointerDown', this.pointerDown, this);
+            SortedEventSystem.on(this, 'pointerUp', this.pointerUp, this);
+            SortedEventSystem.on(this, 'pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.on('pointerDown', this.pointerDown, this);
+            EventSystem.on('pointerUp', this.pointerUp, this);
+            EventSystem.on('pointerMove', this.pointerMove, this);            
+        }
+        this.initialized = true;
+    };
+    Clickable.prototype.update = function () {
+        if (this.isHovering && this.isPointerDown && this.callbacks.onHold) {
+            this.callbacks.onHold();
+        }
+    };
+    Clickable.prototype.cloneEvent = function (evt) {
+        return {
+            id: evt.id,
+            position: evt.position.clone(),
+            eventType: evt.eventType,
+            localPosition: evt.localPosition.clone(),
+            worldPosition: evt.worldPosition.clone(),
+            diffPosition: evt.diffPosition ? evt.diffPosition.clone() : undefined
+        };
+    };
+    Clickable.prototype.pointerDown = function (evt) {
+        var e = this.transformEvent(evt);
+        if (isPaused(this.entity)) {
+            return;
+        }
+        this.isPointerDown = true;
+        if (this.callbacks.pointerDown) {
+            this.callbacks.pointerDown.call(this, e);
+        }
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e, true);
+        }
+    };
+    Clickable.prototype.pointerUp = function (evt) {
+        var e = this.transformEvent(evt),
+            mousePosition;
+            
+        if (isPaused(this.entity)) {
+            return;
+        }
+        mousePosition = e.localPosition;
+        this.isPointerDown = false;
+        if (this.callbacks.pointerUp) {
+            this.callbacks.pointerUp.call(this, e);
+        }
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            this.callbacks.onClickUp.call(this, [e]);
+            if (this.hasTouched && this.holdId === e.id) {
+                this.holdId = null;
+                this.callbacks.onHoldEnd.call(this, e);
+            }
+        }
+        this.hasTouched = false;
+    };
+    Clickable.prototype.pointerMove = function (evt) {
+        var e = this.transformEvent(evt);
+        if (isPaused(this.entity)) {
+            return;
+        }
+        if (this.callbacks.pointerMove) {
+            this.callbacks.pointerMove.call(this, e);
+        }
+        // hovering?
+        if (this.entity.getBoundingBox) {
+            this.checkHovering(e);
+        }
+    };
+    Clickable.prototype.checkHovering = function (evt, clicked) {
+        var mousePosition = evt.localPosition;
+        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldEnter.call(this, evt);
+            }
+            if (!this.isHovering) {
+                this.callbacks.onHoverEnter.call(this, evt);
+            }
+            this.isHovering = true;
+            if (clicked) {
+                this.hasTouched = true;
+                this.holdId = evt.id;
+                this.callbacks.onClick.call(this, evt);
+            }
+        } else {
+            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
+                this.callbacks.onHoldLeave.call(this, evt);
+            }
+            if (this.isHovering) {
+                this.callbacks.onHoverLeave.call(this, evt);
+            }
+            this.isHovering = false;
+            if (clicked) {
+                this.callbacks.onClickMiss.call(this, evt);
+            }
+        }
+    };
+
+    Clickable.prototype.transformEvent = function (evt) {
+        evt.localPosition = this.entity.getLocalPosition(evt.worldPosition);
+        return evt;
+    };
+    Clickable.prototype.attached = function (data) {
+        this.entity = data.entity;
+    };
+    Clickable.prototype.toString = function () {
+        return '[object Clickable]';
+    };
+
+    return Clickable;
+});
+/**
+ * Component that fills a square.
+ * <br>Exports: Constructor
+ * @module bento/components/fill
+ * @param {Object} settings - Settings
+ * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
+ * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/fill', [
+    'bento/utils',
+    'bento'
+], function (Utils, Bento) {
+    'use strict';
+    var Fill = function (settings) {
+        var viewport = Bento.getViewport();
+        settings = settings || {};
+        this.name = 'fill';
+        this.color = settings.color || [0, 0, 0, 1];
+        this.dimension = settings.dimension || viewport;
+    };
+    Fill.prototype.draw = function (data) {
+        var dimension = this.dimension;
+        data.renderer.fillRect(this.color, dimension.x, dimension.y, dimension.width, dimension.height);
+    };
+    Fill.prototype.setup = function (settings) {
+        this.color = settings.color;
+    };
+    Fill.prototype.toString = function () {
+        return '[object Fill]';
+    };
+
+    return Fill;
+});
+/**
+ * Nineslice component
+ */
+bento.define('bento/components/nineslice', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween
+) {
+    'use strict';
+    /**
+     * Describe your settings object parameters
+     * @param {Object} settings
+     */
+    var NineSlice = function (settings) {
+        this.entity = null;
+        this.name = 'nineslice';
+        this.visible = true;
+
+        //component settings
+        this.width = 0;
+        this.height = 0;
+
+        // sprite settings
+        this.spriteImage = null;
+        this.padding = 0;
+
+        // drawing internals
+        this.sliceWidth = 0;
+        this.sliceHeight = 0;
+
+        this.setup(settings);
+    };
+
+    NineSlice.prototype.setup = function (settings) {
+        var self = this;
+
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+
+        this.padding = settings.padding || 0;
+
+        if (this.spriteImage) {
+            this.sliceWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
+            this.sliceHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
+        }
+
+        if (settings.width) {
+            this.width = Math.max(settings.width || 0, this.sliceWidth * 2);
+        }
+        if (settings.height) {
+            this.height = Math.max(settings.height || 0, this.sliceHeight * 2);
+        }
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.width;
+            this.entity.dimension.height = this.height;
+        }
+    };
+
+    NineSlice.prototype.attached = function (data) {
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.width;
+        this.entity.dimension.height = this.height;
+    };
+
+    NineSlice.prototype.setWidth = function (width) {
+        this.width = Math.max(width || this.width, this.sliceWidth * 2);
+        if (this.entity) {
+            var relOriginX = this.entity.origin.x / this.entity.dimension.width;
+            this.entity.dimension.width = this.width;
+            this.entity.origin.x = relOriginX * this.width;
+        }
+    };
+
+    NineSlice.prototype.setHeight = function (height) {
+        this.height = Math.max(height || this.height, this.sliceHeight * 2);
+        if (this.entity) {
+            var relOriginY = this.entity.origin.y / this.entity.dimension.height;
+            this.entity.dimension.height = this.height;
+            this.entity.origin.y = relOriginY * this.height;
+        }
+    };
+
+    NineSlice.prototype.fillArea = function (renderer, frame, x, y, width, height) {
+        var sx = (this.sliceWidth + this.padding) * (frame % 3);
+        var sy = (this.sliceHeight + this.padding) * Math.floor(frame / 3);
+
+        if (width === 0 || height === 0) {
+            return;
+        }
+
+        if (!width) {
+            width = this.sliceWidth;
+        }
+        if (!height) {
+            height = this.sliceHeight;
+        }
+
+        renderer.drawImage(this.spriteImage, sx, sy, this.sliceWidth, this.sliceHeight, x, y, width, height);
+    };
+
+    NineSlice.prototype.draw = function (data) {
+        var entity = data.entity;
+        var origin = data.entity.origin;
+
+        var innerWidth = this.width - this.sliceWidth * 2;
+        var innerHeight = this.height - this.sliceHeight * 2;
+
+        if (this.width === 0 || this.height === 0) {
+            return;
+        }
+
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
+
+        //top left corner
+        this.fillArea(data.renderer, 0, 0, 0);
+        //top stretch
+        this.fillArea(data.renderer, 1, this.sliceWidth, 0, innerWidth, this.sliceHeight);
+        //top right corner
+        this.fillArea(data.renderer, 2, this.width - this.sliceWidth, 0);
+        //left stretch
+        this.fillArea(data.renderer, 3, 0, this.sliceHeight, this.sliceWidth, innerHeight);
+        //center stretch
+        this.fillArea(data.renderer, 4, this.sliceWidth, this.sliceHeight, innerWidth, innerHeight);
+        //right stretch
+        this.fillArea(data.renderer, 5, this.width - this.sliceWidth, this.sliceHeight, this.sliceWidth, innerHeight);
+        //bottom left corner
+        this.fillArea(data.renderer, 6, 0, this.height - this.sliceHeight);
+        //bottom stretch
+        this.fillArea(data.renderer, 7, this.sliceWidth, this.height - this.sliceHeight, innerWidth, this.sliceHeight);
+        //bottom right corner
+        this.fillArea(data.renderer, 8, this.width - this.sliceWidth, this.height - this.sliceHeight);
+
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+
+
+    return NineSlice;
+});
+/**
+ * Sprite component. Draws an animated sprite on screen at the entity position.
+ * <br>Exports: Constructor
+ * @module bento/components/sprite
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
+ * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
+ * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between frames
+ * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ * @example
+// Defines a 3 x 3 spritesheet with several animations
+// Note: The default is automatically defined if no animations object is passed
+var sprite = new Sprite({
+        imageName: "mySpriteSheet",
+        frameCountX: 3,
+        frameCountY: 3,
+        animations: {
+            "default": {
+                frames: [0]
+            },
+            "walk": {
+                speed: 0.2,
+                frames: [1, 2, 3, 4, 5, 6]
+            },
+            "jump": {
+                speed: 0.2,
+                frames: [7, 8]
+            }
+        }
+     }),
+    entity = new Entity({
+        components: [sprite] // attach sprite to entity
+                             // alternative to passing a components array is by calling entity.attach(sprite);
+    });
+
+// attach entity to game
+Bento.objects.attach(entity);
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/sprite', [
+    'bento',
+    'bento/utils',
+], function (Bento, Utils) {
+    'use strict';
+    var Sprite = function (settings) {
+        this.entity = null;
+        this.name = 'sprite';
+        this.visible = true;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        // sprite settings
+        this.spriteImage = null;
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.padding = 0;
+
+        // drawing internals
+        this.frameIndex = 0;
+        this.sourceFrame = 0;
+        this.sourceX = 0;
+        this.sourceY = 0;
+
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+        this.currentAnimationLength = 0;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
     };
     /**
-     * Adds 2 vectors and returns the result
+     * Sets up Sprite. This can be used to overwrite the settings object passed to the constructor.
      * @function
-     * @param {Vector2} vector - Vector to add
-     * @returns {Vector2} Returns a new Vector2 instance
      * @instance
-     * @name add
+     * @param {Object} settings - Settings object
+     * @name setup
      */
-    Vector2.prototype.add = function (vector) {
-        var v = this.clone();
-        v.addTo(vector);
-        return v;
+    Sprite.prototype.setup = function (settings) {
+        var self = this,
+            padding = 0;
+
+        this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        if (!this.spriteImage) {
+            Utils.log("ERROR: something went wrong with loading the sprite.");
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        this.padding = this.animationSettings.padding || 0;
+
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.width = this.frameWidth;
+            this.entity.dimension.height = this.frameHeight;
+        }
+    };
+
+    Sprite.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
+
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
+        }
     };
     /**
-     * Adds vector to current vector
+     * Set component to a different animation. The animation won't change if it's already playing.
      * @function
-     * @param {Vector2} vector - Vector to add
-     * @returns {Vector2} Returns self
      * @instance
-     * @name addTo
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
      */
-    Vector2.prototype.addTo = function (vector) {
-        this.x += vector.x;
-        this.y += vector.y;
-        return this;
+    Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!Sprite.suppressWarnings && !anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (!Sprite.suppressWarnings && this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
+            }
+        }
     };
     /**
-     * Subtracts a vector and returns the result
+     * Returns the name of current animation playing
      * @function
-     * @param {Vector2} vector - Vector to subtract
-     * @returns {Vector2} Returns a new Vector2 instance
      * @instance
-     * @name subtract
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
      */
-    Vector2.prototype.subtract = function (vector) {
-        var v = this.clone();
-        v.substractFrom(vector);
-        return v;
+    Sprite.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
     };
     /**
-     * Subtract from the current vector
+     * Set current animation to a certain frame
      * @function
-     * @param {Vector2} vector - Vector to subtract
-     * @returns {Vector2} Returns self
      * @instance
-     * @name subtractFrom
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
      */
-    Vector2.prototype.subtractFrom = function (vector) {
-        this.x -= vector.x;
-        this.y -= vector.y;
-        return this;
-    };
-    Vector2.prototype.substract = Vector2.prototype.subtract;
-    Vector2.prototype.substractFrom = Vector2.prototype.subtractFrom;
-    /**
-     * Gets the angle of the vector
-     * @function
-     * @returns {Number} Angle in radians
-     * @instance
-     * @name angle
-     */
-    Vector2.prototype.angle = function () {
-        return Math.atan2(this.y, this.x);
+    Sprite.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
     };
     /**
-     * Gets the angle between 2 vectors
+     * Get speed of the current animation.
      * @function
-     * @param {Vector2} vector - Other vector
-     * @returns {Number} Angle in radians
      * @instance
-     * @name angleBetween
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
      */
-    Vector2.prototype.angleBetween = function (vector) {
-        return Math.atan2(
-            vector.y - this.y,
-            vector.x - this.x
+    Sprite.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     */
+    Sprite.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     */
+    Sprite.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     */
+    Sprite.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    Sprite.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+        // no need for update
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+
+        reachedEnd = false;
+        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+        }
+    };
+
+    Sprite.prototype.updateFrame = function () {
+        this.frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        this.sourceFrame = this.currentAnimation.frames[this.frameIndex];
+        this.sourceX = (this.sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.sourceY = Math.floor(this.sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+    };
+
+    Sprite.prototype.draw = function (data) {
+        var entity = data.entity,
+            origin = entity.origin;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+
+        this.updateFrame();
+
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
+        data.renderer.drawImage(
+            this.spriteImage,
+            this.sourceX,
+            this.sourceY,
+            this.frameWidth,
+            this.frameHeight,
+            0,
+            0,
+            this.frameWidth,
+            this.frameHeight
         );
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
-    /**
-     * Gets the inner product between 2 vectors
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @returns {Number} Dot product of 2 vectors
-     * @instance
-     * @name dotProduct
-     */
-    Vector2.prototype.dotProduct = function (vector) {
-        return this.x * vector.x + this.y * vector.y;
-    };
-    /**
-     * Multiplies 2 vectors (not a matrix multiplication)
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @returns {Vector2} Returns a new Vector2 instance
-     * @instance
-     * @name multiply
-     */
-    Vector2.prototype.multiply = function (vector) {
-        var v = this.clone();
-        v.multiplyWith(vector);
-        return v;
-    };
-    /**
-     * Multiply with the current vector (not a matrix multiplication)
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @returns {Vector2} Returns self
-     * @instance
-     * @name multiplyWith
-     */
-    Vector2.prototype.multiplyWith = function (vector) {
-        this.x *= vector.x;
-        this.y *= vector.y;
-        return this;
-    };
-    /**
-     * Divides 2 vectors
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @returns {Vector2} Returns a new Vector2 instance
-     * @instance
-     * @name divide
-     */
-    Vector2.prototype.divide = function (vector) {
-        var v = this.clone();
-        v.divideBy(vector);
-        return v;
-    };
-    /**
-     * Divides current vector
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @returns {Vector2} Returns a new Vector2 instance
-     * @instance
-     * @name divideBy
-     */
-    Vector2.prototype.divideBy = function (vector) {
-        this.x /= vector.x;
-        this.y /= vector.y;
-        return this;
-    };
-    /**
-     * Multiplies vector with a scalar value
-     * @function
-     * @param {Number} value - scalar value
-     * @returns {Vector2} Returns a new Vector2 instance
-     * @instance
-     * @name scalarMultiply
-     */
-    Vector2.prototype.scalarMultiply = function (value) {
-        var v = this.clone();
-        v.scalarMultiplyWith(value);
-        return v;
-    };
-    /**
-     * Multiplies current vector with a scalar value
-     * @function
-     * @param {Number} value - scalar value
-     * @returns {Vector2} Returns self
-     * @instance
-     * @name scalarMultiplyWith
-     */
-    Vector2.prototype.scalarMultiplyWith = function (value) {
-        this.x *= value;
-        this.y *= value;
-        return this;
-    };
-    /**
-     * Same as scalarMultiplyWith
-     * @function
-     * @param {Number} value - scalar value
-     * @returns {Vector2} Returns self
-     * @instance
-     * @name scale
-     */
-    Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith;
-    /**
-     * Returns the magnitude of the vector
-     * @function
-     * @returns {Number} Modulus of the vector
-     * @instance
-     * @name magnitude
-     */
-    Vector2.prototype.magnitude = function () {
-        return Math.sqrt(this.dotProduct(this));
-    };
-    /**
-     * Normalizes the vector by its magnitude
-     * @function
-     * @returns {Vector2} Returns self
-     * @instance
-     * @name normalize
-     */
-    Vector2.prototype.normalize = function () {
-        var magnitude = this.magnitude();
-        this.x /= magnitude;
-        this.y /= magnitude;
-        return this;
-    };
-    /**
-     * Returns the distance from another vector
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @returns {Number} Distance between the two vectors
-     * @instance
-     * @name distance
-     */
-    Vector2.prototype.distance = function (vector) {
-        return vector.substract(this).magnitude();
-    };
-    /**
-     * Check if distance between 2 vector is farther than a certain value
-     * This function is more performant than using Vector2.distance()
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @param {Number} distance - Distance
-     * @returns {Boolean} Returns true if farther than distance
-     * @instance
-     * @name isFartherThan
-     */
-    Vector2.prototype.isFartherThan = function (vector, distance) {
-        var diff = vector.substract(this);
-        return diff.x * diff.x + diff.y * diff.y > distance * distance;
-    };
-    /**
-     * Check if distance between 2 vector is closer than a certain value
-     * This function is more performant than using Vector2.distance()
-     * @function
-     * @param {Vector2} vector - Other vector
-     * @param {Number} distance - Distance
-     * @returns {Boolean} Returns true if farther than distance
-     * @instance
-     * @name isCloserThan
-     */
-    Vector2.prototype.isCloserThan = function (vector, distance) {
-        var diff = vector.substract(this);
-        return diff.x * diff.x + diff.y * diff.y < distance * distance;
-    };
-    /**
-     * Rotates the vector by a certain amount of radians
-     * @function
-     * @param {Number} angle - Angle in radians
-     * @returns {Vector2} Returns self
-     * @instance
-     * @name rotateRadian
-     */
-    Vector2.prototype.rotateRadian = function (angle) {
-        var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
-            y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
-        this.x = x;
-        this.y = y;
-        return this;
-    };
-    /**
-     * Rotates the vector by a certain amount of degrees
-     * @function
-     * @param {Number} angle - Angle in degrees
-     * @returns {Vector2} Returns self
-     * @instance
-     * @name rotateDegree
-     */
-    Vector2.prototype.rotateDegree = function (angle) {
-        return this.rotateRadian(angle * Math.PI / 180);
-    };
-    /**
-     * Clones the current vector
-     * @function
-     * @param {Number} angle - Angle in degrees
-     * @returns {Vector2} Returns new Vector2 instance
-     * @instance
-     * @name clone
-     */
-    Vector2.prototype.clone = function () {
-        return new Vector2(this.x, this.y);
-    };
-    /* DEPRECATED
-     * Represent the vector as a 1x3 matrix
-     * @function
-     * @returns {Matrix} Returns a 1x3 Matrix
-     * @instance
-     * @name toMatrix
-     */
-    Vector2.prototype.toMatrix = function () {
-        var matrix = new Matrix(1, 3);
-        matrix.set(0, 0, this.x);
-        matrix.set(0, 1, this.y);
-        matrix.set(0, 2, 1);
-        return matrix;
-    };
-    /**
-     * Reflects the vector using the parameter as the 'mirror'
-     * @function
-     * @param {Vector2} mirror - Vector2 through which the current vector is reflected.
-     * @instance
-     * @name reflect
-     */
-    Vector2.prototype.reflect = function (mirror) {
-        var normal = mirror.normalize(); // reflect through this normal
-        var dot = this.dotProduct(normal);
-        return this.substractFrom(normal.scalarMultiplyWith(dot + dot));
-    };
-    Vector2.prototype.toString = function () {
-        return '[object Vector2]';
+    Sprite.prototype.toString = function () {
+        return '[object Sprite]';
     };
 
-    return Vector2;
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Sprite.suppressWarnings = false;
+
+    return Sprite;
 });
 /**
  * A helper module that returns a rectangle with the same aspect ratio as the screen size.
@@ -15527,6 +14118,1416 @@ bento.define('bento/renderers/pixi', [
             return Canvas2d(canvas, settings);
         }
     };
+});
+/**
+ * A 2-dimensional array
+ * <br>Exports: Constructor
+ * @module bento/math/array2d
+ * @param {Number} width - horizontal size of array
+ * @param {Number} height - vertical size of array
+ * @returns {Array} Returns 2d array.
+ */
+bento.define('bento/math/array2d', [], function () {
+    'use strict';
+    return function (width, height) {
+        var array = [],
+            i,
+            j;
+
+        // init array
+        for (i = 0; i < width; ++i) {
+            array[i] = [];
+            for (j = 0; j < height; ++j) {
+                array[i][j] = null;
+            }
+        }
+
+        return {
+            /**
+             * Returns true
+             * @function
+             * @returns {Boolean} Is always true
+             * @instance
+             * @name isArray2d
+             */
+            isArray2d: function () {
+                return true;
+            },
+            /**
+             * Callback at every iteration.
+             *
+             * @callback IterationCallBack
+             * @param {Number} x - The current x index
+             * @param {Number} y - The current y index
+             * @param {Number} value - The value at the x,y index
+             */
+            /**
+             * Iterate through 2d array
+             * @function
+             * @param {IterationCallback} callback - Callback function to be called every iteration
+             * @instance
+             * @name iterate
+             */
+            iterate: function (callback) {
+                var i, j;
+                for (j = 0; j < height; ++j) {
+                    for (i = 0; i < width; ++i) {
+                        callback(i, j, array[i][j]);
+                    }
+                }
+            },
+            /**
+             * Get the value inside array
+             * @function
+             * @param {Number} x - x index
+             * @param {Number} y - y index
+             * @returns {Object} The value at the index
+             * @instance
+             * @name get
+             */
+            get: function (x, y) {
+                return array[x][y];
+            },
+            /**
+             * Set the value inside array
+             * @function
+             * @param {Number} x - x index
+             * @param {Number} y - y index
+             * @param {Number} value - new value
+             * @instance
+             * @name set
+             */
+            set: function (x, y, value) {
+                array[x][y] = value;
+            }
+        };
+    };
+});
+/* DEPRECATED: use transformmatrix
+ * Matrix
+ * <br>Exports: Constructor
+ * @module bento/math/matrix
+ * @param {Number} width - horizontal size of matrix
+ * @param {Number} height - vertical size of matrix
+ * @returns {Matrix} Returns a matrix object.
+ */
+bento.define('bento/math/matrix', [
+    'bento/utils'
+], function (Utils) {
+    'use strict';
+    var add = function (other) {
+            var newMatrix = this.clone();
+            newMatrix.addTo(other);
+            return newMatrix;
+        },
+        multiply = function (matrix1, matrix2) {
+            var newMatrix = this.clone();
+            newMatrix.multiplyWith(other);
+            return newMatrix;
+        },
+        module = function (width, height) {
+            var matrix = [],
+                n = width || 0,
+                m = height || 0,
+                i,
+                j,
+                set = function (x, y, value) {
+                    matrix[y * n + x] = value;
+                },
+                get = function (x, y) {
+                    return matrix[y * n + x];
+                };
+
+            // initialize as identity matrix
+            for (j = 0; j < m; ++j) {
+                for (i = 0; i < n; ++i) {
+                    if (i === j) {
+                        set(i, j, 1);
+                    } else {
+                        set(i, j, 0);
+                    }
+                }
+            }
+
+            return {
+                /*
+                 * Returns true
+                 * @function
+                 * @returns {Boolean} Is always true
+                 * @instance
+                 * @name isMatrix
+                 */
+                isMatrix: function () {
+                    return true;
+                },
+                /*
+                 * Returns a string representation of the matrix (useful for debugging purposes)
+                 * @function
+                 * @returns {String} String matrix
+                 * @instance
+                 * @name stringify
+                 */
+                stringify: function () {
+                    var i,
+                        j,
+                        str = '',
+                        row = '';
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            row += get(i, j) + '\t';
+                        }
+                        str += row + '\n';
+                        row = '';
+                    }
+                    return str;
+                },
+                /*
+                 * Get the value inside matrix
+                 * @function
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 * @returns {Number} The value at the index
+                 * @instance
+                 * @name get
+                 */
+                get: function (x, y) {
+                    return get(x, y);
+                },
+                /*
+                 * Set the value inside matrix
+                 * @function
+                 * @param {Number} x - x index
+                 * @param {Number} y - y index
+                 * @param {Number} value - new value
+                 * @instance
+                 * @name set
+                 */
+                set: function (x, y, value) {
+                    set(x, y, value);
+                },
+                /*
+                 * Set the values inside matrix using an array.
+                 * If the matrix is 2x2 in size, then supplying an array with
+                 * values [1, 2, 3, 4] will result in a matrix
+                 * <br>[1 2]
+                 * <br>[3 4]
+                 * <br>If the array has more elements than the matrix, the
+                 * rest of the array is ignored.
+                 * @function
+                 * @param {Array} array - array with Numbers
+                 * @returns {Matrix} Returns self
+                 * @instance
+                 * @name setValues
+                 */
+                setValues: function (array) {
+                    var i, l = Math.min(matrix.length, array.length);
+                    for (i = 0; i < l; ++i) {
+                        matrix[i] = array[i];
+                    }
+                    return this;
+                },
+                /*
+                 * Get the matrix width
+                 * @function
+                 * @returns {Number} The width of the matrix
+                 * @instance
+                 * @name getWidth
+                 */
+                getWidth: function () {
+                    return n;
+                },
+                /*
+                 * Get the matrix height
+                 * @function
+                 * @returns {Number} The height of the matrix
+                 * @instance
+                 * @name getHeight
+                 */
+                getHeight: function () {
+                    return m;
+                },
+                /*
+                 * Callback at every iteration.
+                 *
+                 * @callback IterationCallBack
+                 * @param {Number} x - The current x index
+                 * @param {Number} y - The current y index
+                 * @param {Number} value - The value at the x,y index
+                 */
+                /*
+                 * Iterate through matrix
+                 * @function
+                 * @param {IterationCallback} callback - Callback function to be called every iteration
+                 * @instance
+                 * @name iterate
+                 */
+                iterate: function (callback) {
+                    var i, j;
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            if (!Utils.isFunction(callback)) {
+                                throw ('Please supply a callback function');
+                            }
+                            callback(i, j, get(i, j));
+                        }
+                    }
+                },
+                /*
+                 * Transposes the current matrix
+                 * @function
+                 * @returns {Matrix} Returns self
+                 * @instance
+                 * @name transpose
+                 */
+                transpose: function () {
+                    var i, j, newMat = [];
+                    // reverse loop so m becomes n
+                    for (i = 0; i < n; ++i) {
+                        for (j = 0; j < m; ++j) {
+                            newMat[i * m + j] = get(i, j);
+                        }
+                    }
+                    // set new matrix
+                    matrix = newMat;
+                    // swap width and height
+                    m = [n, n = m][0];
+                    return this;
+                },
+                /*
+                 * Addition of another matrix
+                 * @function
+                 * @param {Matrix} matrix - matrix to add
+                 * @returns {Matrix} Updated matrix
+                 * @instance
+                 * @name addTo
+                 */
+                addTo: function (other) {
+                    var i, j;
+                    if (m != other.getHeight() || n != other.getWidth()) {
+                        throw 'Matrix sizes incorrect';
+                    }
+                    for (j = 0; j < m; ++j) {
+                        for (i = 0; i < n; ++i) {
+                            set(i, j, get(i, j) + other.get(i, j));
+                        }
+                    }
+                    return this;
+                },
+                /*
+                 * Addition of another matrix
+                 * @function
+                 * @param {Matrix} matrix - matrix to add
+                 * @returns {Matrix} A new matrix
+                 * @instance
+                 * @name add
+                 */
+                add: add,
+                /*
+                 * Multiply with another matrix
+                 * If a new matrix C is the result of A * B = C
+                 * then B is the current matrix and becomes C, A is the input matrix
+                 * @function
+                 * @param {Matrix} matrix - input matrix to multiply with
+                 * @returns {Matrix} Updated matrix
+                 * @instance
+                 * @name multiplyWith
+                 */
+                multiplyWith: function (other) {
+                    var i, j,
+                        newMat = [],
+                        newWidth = n, // B.n
+                        oldHeight = m, // B.m
+                        newHeight = other.getHeight(), // A.m
+                        oldWidth = other.getWidth(), // A.n
+                        newValue = 0,
+                        k;
+                    if (oldHeight != oldWidth) {
+                        throw 'Matrix sizes incorrect';
+                    }
+
+                    for (j = 0; j < newHeight; ++j) {
+                        for (i = 0; i < newWidth; ++i) {
+                            newValue = 0;
+                            // loop through matbentos
+                            for (k = 0; k < oldWidth; ++k) {
+                                newValue += other.get(k, j) * get(i, k);
+                            }
+                            newMat[j * newWidth + i] = newValue;
+                        }
+                    }
+                    // set to new matrix
+                    matrix = newMat;
+                    // update matrix size
+                    n = newWidth;
+                    m = newHeight;
+                    return this;
+                },
+                /*
+                 * Multiply with another matrix
+                 * If a new matrix C is the result of A * B = C
+                 * then B is the current matrix and becomes C, A is the input matrix
+                 * @function
+                 * @param {Matrix} matrix - input matrix to multiply with
+                 * @returns {Matrix} A new matrix
+                 * @instance
+                 * @name multiply
+                 */
+                multiply: multiply,
+                /*
+                 * Returns a clone of the current matrix
+                 * @function
+                 * @returns {Matrix} A new matrix
+                 * @instance
+                 * @name clone
+                 */
+                clone: function () {
+                    var newMatrix = module(n, m);
+                    newMatrix.setValues(matrix);
+                    return newMatrix;
+                }
+            };
+        };
+    return module;
+});
+/**
+ * Polygon
+ * <br>Exports: Constructor
+ * @module bento/math/polygon
+ * @param {Array} points - An array of Vector2 with positions of all points
+ * @returns {Polygon} Returns a polygon.
+ */
+// TODO: cleanup, change to prototype object
+bento.define('bento/math/polygon', [
+    'bento/utils',
+    'bento/math/rectangle'
+], function (Utils, Rectangle) {
+    'use strict';
+    var isPolygon = function () {
+            return true;
+        },
+        clone = function () {
+            var clone = [],
+                points = this.points,
+                i = points.length;
+            // clone the array
+            while (i--) {
+                clone[i] = points[i];
+            }
+            return module(clone);
+        },
+        offset = function (pos) {
+            var clone = [],
+                points = this.points,
+                i = points.length;
+            while (i--) {
+                clone[i] = points[i];
+                clone[i].x += pos.x;
+                clone[i].y += pos.y;
+            }
+            return module(clone);
+        },
+        doLineSegmentsIntersect = function (p, p2, q, q2) {
+            // based on https://github.com/pgkelley4/line-segments-intersect
+            var crossProduct = function (p1, p2) {
+                    return p1.x * p2.y - p1.y * p2.x;
+                },
+                subtractPoints = function (p1, p2) {
+                    return {
+                        x: p1.x - p2.x,
+                        y: p1.y - p2.y
+                    };
+                },
+                r = subtractPoints(p2, p),
+                s = subtractPoints(q2, q),
+                uNumerator = crossProduct(subtractPoints(q, p), r),
+                denominator = crossProduct(r, s),
+                u,
+                t;
+            if (uNumerator === 0 && denominator === 0) {
+                return ((q.x - p.x < 0) !== (q.x - p2.x < 0) !== (q2.x - p.x < 0) !== (q2.x - p2.x < 0)) ||
+                    ((q.y - p.y < 0) !== (q.y - p2.y < 0) !== (q2.y - p.y < 0) !== (q2.y - p2.y < 0));
+            }
+            if (denominator === 0) {
+                return false;
+            }
+            u = uNumerator / denominator;
+            t = crossProduct(subtractPoints(q, p), s) / denominator;
+            return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
+        },
+        intersect = function (polygon) {
+            var intersect = false,
+                other = [],
+                points = this.points,
+                p1,
+                p2,
+                q1,
+                q2,
+                i,
+                j;
+
+            // is other really a polygon?
+            if (polygon.isRectangle) {
+                // before constructing a polygon, check if boxes collide in the first place
+                if (!this.getBoundingBox().intersect(polygon)) {
+                    return false;
+                }
+                // construct a polygon out of rectangle
+                other.push({
+                    x: polygon.x,
+                    y: polygon.y
+                });
+                other.push({
+                    x: polygon.getX2(),
+                    y: polygon.y
+                });
+                other.push({
+                    x: polygon.getX2(),
+                    y: polygon.getY2()
+                });
+                other.push({
+                    x: polygon.x,
+                    y: polygon.getY2()
+                });
+                polygon = module(other);
+            } else {
+                // simplest check first: regard polygons as boxes and check collision
+                if (!this.getBoundingBox().intersect(polygon.getBoundingBox())) {
+                    return false;
+                }
+                // get polygon points
+                other = polygon.points;
+            }
+
+            // precision check
+            for (i = 0; i < points.length; ++i) {
+                for (j = 0; j < other.length; ++j) {
+                    p1 = points[i];
+                    p2 = points[(i + 1) % points.length];
+                    q1 = other[j];
+                    q2 = other[(j + 1) % other.length];
+                    if (doLineSegmentsIntersect(p1, p2, q1, q2)) {
+                        return true;
+                    }
+                }
+            }
+            // check inside one or another
+            if (this.hasPosition(other[0]) || polygon.hasPosition(points[0])) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        hasPosition = function (p) {
+            var points = this.points,
+                has = false,
+                i = 0,
+                j = points.length - 1,
+                bounds = this.getBoundingBox();
+
+            if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
+                return false;
+            }
+            for (i, j; i < points.length; j = i++) {
+                if ((points[i].y > p.y) != (points[j].y > p.y) &&
+                    p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
+                    (points[j].y - points[i].y) + points[i].x) {
+                    has = !has;
+                }
+            }
+            return has;
+        },
+        module = function (points) {
+            var minX = points[0].x,
+                maxX = points[0].x,
+                minY = points[0].y,
+                maxY = points[0].y,
+                n = 1,
+                q;
+
+            for (n = 1; n < points.length; ++n) {
+                q = points[n];
+                minX = Math.min(q.x, minX);
+                maxX = Math.max(q.x, maxX);
+                minY = Math.min(q.y, minY);
+                maxY = Math.max(q.y, maxY);
+            }
+
+            return {
+                // TODO: use x and y as offset, widht and height as boundingbox
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY,
+                /**
+                 * Array of Vector2 points
+                 * @instance
+                 * @name points
+                 */
+                points: points,
+                /**
+                 * Returns true
+                 * @function
+                 * @returns {Boolean} Is always true
+                 * @instance
+                 * @name isPolygon
+                 */
+                isPolygon: isPolygon,
+                /**
+                 * Get the rectangle containing the polygon
+                 * @function
+                 * @returns {Rectangle} Rectangle containing the polygon
+                 * @instance
+                 * @name getBoundingBox
+                 */
+                getBoundingBox: function () {
+                    return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+                },
+                /**
+                 * Checks if Vector2 lies within the polygon
+                 * @function
+                 * @returns {Boolean} true if position is inside
+                 * @instance
+                 * @name hasPosition
+                 */
+                hasPosition: hasPosition,
+                /**
+                 * Checks if other polygon/rectangle overlaps.
+                 * Note that this may be computationally expensive.
+                 * @function
+                 * @param {Polygon/Rectangle} other - Other polygon or rectangle
+                 * @returns {Boolean} true if polygons overlap
+                 * @instance
+                 * @name intersect
+                 */
+                intersect: intersect,
+                /**
+                 * Moves polygon by an offset
+                 * @function
+                 * @param {Vector2} vector - Position to offset
+                 * @returns {Polygon} Returns a new polygon instance
+                 * @instance
+                 * @name offset
+                 */
+                offset: offset,
+                /**
+                 * Clones polygon
+                 * @function
+                 * @returns {Polygon} a clone of the current polygon
+                 * @instance
+                 * @name clone
+                 */
+                clone: clone
+            };
+        };
+    return module;
+});
+/**
+ * Rectangle
+ * <br>Exports: Constructor
+ * @module bento/math/rectangle
+ * @param {Number} x - Top left x position
+ * @param {Number} y - Top left y position
+ * @param {Number} width - Width of the rectangle
+ * @param {Number} height - Height of the rectangle
+ * @returns {Rectangle} Returns a rectangle.
+ */
+bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], function (Utils, Vector2) {
+    'use strict';
+    var Rectangle = function (x, y, width, height) {
+        /**
+         * X position
+         * @instance
+         * @name x
+         */
+        this.x = x;
+        /**
+         * Y position
+         * @instance
+         * @name y
+         */
+        this.y = y;
+        /**
+         * Width of the rectangle
+         * @instance
+         * @name width
+         */
+        this.width = width;
+        /**
+         * Height of the rectangle
+         * @instance
+         * @name height
+         */
+        this.height = height;
+    };
+    /**
+     * Returns true
+     * @function
+     * @returns {Boolean} Is always true
+     * @instance
+     * @name isRectangle
+     */
+    Rectangle.prototype.isRectangle = function () {
+        return true;
+    };
+    /**
+     * Gets the lower right x position
+     * @function
+     * @returns {Number} Coordinate of the lower right position
+     * @instance
+     * @name getX2
+     */
+    Rectangle.prototype.getX2 = function () {
+        return this.x + this.width;
+    };
+    /**
+     * Gets the lower right y position
+     * @function
+     * @returns {Number} Coordinate of the lower right position
+     * @instance
+     * @name getY2
+     */
+    Rectangle.prototype.getY2 = function () {
+        return this.y + this.height;
+    };
+    /**
+     * Returns the union of 2 rectangles
+     * @function
+     * @param {Rectangle} other - Other rectangle
+     * @returns {Rectangle} Union of the 2 rectangles
+     * @instance
+     * @name union
+     */
+    Rectangle.prototype.union = function (rectangle) {
+        var x1 = Math.min(this.x, rectangle.x),
+            y1 = Math.min(this.y, rectangle.y),
+            x2 = Math.max(this.getX2(), rectangle.getX2()),
+            y2 = Math.max(this.getY2(), rectangle.getY2());
+        return new Rectangle(x1, y1, x2 - x1, y2 - y1);
+    };
+    /**
+     * Returns true if 2 rectangles intersect
+     * @function
+     * @param {Rectangle} other - Other rectangle
+     * @returns {Boolean} True if 2 rectangles intersect
+     * @instance
+     * @name intersect
+     */
+    Rectangle.prototype.intersect = function (other) {
+        if (other.isPolygon) {
+            return other.intersect(this);
+        } else {
+            return !(this.x + this.width <= other.x ||
+                this.y + this.height <= other.y ||
+                this.x >= other.x + other.width ||
+                this.y >= other.y + other.height);
+        }
+    };
+    /**
+     * Returns the intersection of 2 rectangles
+     * @function
+     * @param {Rectangle} other - Other rectangle
+     * @returns {Rectangle} Intersection of the 2 rectangles
+     * @instance
+     * @name intersection
+     */
+    Rectangle.prototype.intersection = function (rectangle) {
+        var inter = new Rectangle(0, 0, 0, 0);
+        if (this.intersect(rectangle)) {
+            inter.x = Math.max(this.x, rectangle.x);
+            inter.y = Math.max(this.y, rectangle.y);
+            inter.width = Math.min(this.x + this.width, rectangle.x + rectangle.width) - inter.x;
+            inter.height = Math.min(this.y + this.height, rectangle.y + rectangle.height) - inter.y;
+        }
+        return inter;
+    };
+    /**
+     * Checks if rectangle intersects with the provided circle
+     * @function
+     * @param {Vector2} circleCenter
+     * @param {Number} radius
+     * @returns {Boolean} True if rectangle and circle intersect
+     * @instance
+     * @name intersectCircle
+     */
+    Rectangle.prototype.intersectsCircle = function (circleCenter, radius) {
+        var rectHalfWidth = this.width * 0.5;
+        var rectHalfHeight = this.height * 0.5;
+        var rectCenter = new Vector2(this.x + rectHalfWidth, this.y + rectHalfHeight);
+        var distanceX = Math.abs(circleCenter.x - rectCenter.x);
+        var distanceY = Math.abs(circleCenter.y - rectCenter.y);
+        var cornerDistanceSq = 0;
+
+        if (distanceX > rectHalfWidth + radius || distanceY > rectHalfHeight + radius) {
+            return false;
+        }
+
+        if (distanceX <= rectHalfWidth || distanceY <= rectHalfHeight) {
+            return true;
+        }
+
+        cornerDistanceSq = (distanceX - rectHalfWidth) * (distanceX - rectHalfWidth) + (distanceY - rectHalfHeight) * (distanceY - rectHalfHeight);
+
+        return cornerDistanceSq <= radius * radius;
+    };
+    /**
+     * Returns a new rectangle that has been moved by the offset
+     * @function
+     * @param {Vector2} vector - Position to offset
+     * @returns {Rectangle} Returns a new rectangle instance
+     * @instance
+     * @name offset
+     */
+    Rectangle.prototype.offset = function (pos) {
+        return new Rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
+    };
+    /**
+     * Clones rectangle
+     * @function
+     * @returns {Rectangle} a clone of the current rectangle
+     * @instance
+     * @name clone
+     */
+    Rectangle.prototype.clone = function () {
+        return new Rectangle(this.x, this.y, this.width, this.height);
+    };
+    /**
+     * Checks if Vector2 lies within the rectangle
+     * @function
+     * @returns {Boolean} true if position is inside
+     * @instance
+     * @name hasPosition
+     */
+    Rectangle.prototype.hasPosition = function (vector) {
+        return !(
+            vector.x < this.x ||
+            vector.y < this.y ||
+            vector.x >= this.x + this.width ||
+            vector.y >= this.y + this.height
+        );
+    };
+    /**
+     * Increases rectangle size from the center.
+     * @function
+     * param {Number} size - by how much to scale the rectangle
+     * param {Boolean} skipWidth - optional. If true, the width won't be scaled
+     * param {Boolean} skipHeight - optional. If true, the height won't be scaled
+     * @returns {Rectangle} the resized rectangle
+     * @instance
+     * @name grow
+     */
+    Rectangle.prototype.grow = function (size, skipWidth, skipHeight) {
+        if (!skipWidth) {
+            this.x -= size / 2;
+            this.width += size;
+        }
+        if (!skipHeight) {
+            this.y -= size / 2;
+            this.height += size;
+        }
+        return this;
+    };
+    /**
+     * Returns one of the corners are vector position
+     * @function
+     * param {Number} corner - 0: topleft, 1: topright, 2: bottomleft, 3: bottomright, 4: center
+     * @returns {Vector2} Vector position
+     * @instance
+     * @name getCorner
+     */
+    Rectangle.prototype.getCorner = function (corner) {
+        if (!corner) {
+            return new Vector2(this.x, this.y);
+        } else if (corner === 1) {
+            return new Vector2(this.x + this.width, this.y);
+        } else if (corner === 2) {
+            return new Vector2(this.x, this.y + this.height);
+        } else if (corner === 3) {
+            return new Vector2(this.x + this.width, this.y + this.height);
+        }
+        //
+        return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
+    };
+    /**
+     * Returns the center position of the rectangle
+     * @function
+     * @returns {Vector2} Vector position
+     * @instance
+     * @name getCenter
+     */
+    Rectangle.prototype.getCenter = function () {
+        return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
+    };
+    Rectangle.prototype.toString = function () {
+        return '[object Rectangle]';
+    };
+
+    return Rectangle;
+});
+/**
+ * 3x 3 Matrix specifically used for transformations
+ * <br>[ a c tx ]
+ * <br>[ b d ty ]
+ * <br>[ 0 0 1  ]
+ * <br>Exports: Constructor
+ * @module bento/math/transformmatrix
+ * @returns {Matrix} Returns a matrix object.
+ */
+bento.define('bento/math/transformmatrix', [
+    'bento/utils',
+    'bento/math/vector2'
+], function (Utils, Vector2) {
+    'use strict';
+
+    function Matrix() {
+        this.a = 1;
+        this.b = 0;
+        this.c = 0;
+        this.d = 1;
+        this.tx = 0;
+        this.ty = 0;
+    }
+
+    /**
+     * Applies matrix on a vector
+     * @function
+     * @returns {Vector2} Transformed vector
+     * @instance
+     * @name multiplyWithVector
+     */
+    Matrix.prototype.multiplyWithVector = function (vector) {
+        var x = vector.x;
+        var y = vector.y;
+
+        vector.x = this.a * x + this.c * y + this.tx;
+        vector.y = this.b * x + this.d * y + this.ty;
+
+        return vector;
+    };
+
+    Matrix.prototype.inverseMultiplyWithVector = function (vector) {
+        var x = vector.x;
+        var y = vector.y;
+        var determinant = 1 / (this.a * this.d - this.c * this.b);
+
+        vector.x = this.d * x * determinant + -this.c * y * determinant + (this.ty * this.c - this.tx * this.d) * determinant;
+        vector.y = this.a * y * determinant + -this.b * x * determinant + (-this.ty * this.a + this.tx * this.b) * determinant;
+
+        return vector;
+    };
+
+    /**
+     * Apply translation transformation on the matrix
+     * @function
+     * @param {Number} x - Translation in x axis
+     * @param {Number} y - Translation in y axis
+     * @returns {Matrix} Matrix with translation transform
+     * @instance
+     * @name translate
+     */
+    Matrix.prototype.translate = function (x, y) {
+        this.tx += x;
+        this.ty += y;
+
+        return this;
+    };
+
+    /**
+     * Apply scale transformation on the matrix
+     * @function
+     * @param {Number} x - Scale in x axis
+     * @param {Number} y - Scale in y axis
+     * @returns {Matrix} Matrix with scale transform
+     * @instance
+     * @name scale
+     */
+    Matrix.prototype.scale = function (x, y) {
+        this.a *= x;
+        this.b *= y;
+        this.c *= x;
+        this.d *= y;
+        this.tx *= x;
+        this.ty *= y;
+
+        return this;
+    };
+
+    /**
+     * Apply rotation transformation on the matrix
+     * @function
+     * @param {Number} angle - Angle to rotate in radians
+     * @param {Number} [sin] - Precomputed sin(angle) if known
+     * @param {Number} [cos] - Precomputed cos(angle) if known
+     * @returns {Matrix} Matrix with rotation transform
+     * @instance
+     * @name rotate
+     */
+    Matrix.prototype.rotate = function (angle, sin, cos) {
+        var a = this.a;
+        var b = this.b;
+        var c = this.c;
+        var d = this.d;
+        var tx = this.tx;
+        var ty = this.ty;
+
+        if (sin === undefined) {
+            sin = Math.sin(angle);
+        }
+        if (cos === undefined) {
+            cos = Math.cos(angle);
+        }
+
+        this.a = a * cos - b * sin;
+        this.b = a * sin + b * cos;
+        this.c = c * cos - d * sin;
+        this.d = c * sin + d * cos;
+        this.tx = tx * cos - ty * sin;
+        this.ty = tx * sin + ty * cos;
+
+        return this;
+    };
+
+    /**
+     * Multiplies matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} Self
+     * @instance
+     * @name multiplyWith
+     */
+    Matrix.prototype.multiplyWith = function (matrix) {
+        var a = this.a;
+        var b = this.b;
+        var c = this.c;
+        var d = this.d;
+
+        this.a = matrix.a * a + matrix.b * c;
+        this.b = matrix.a * b + matrix.b * d;
+        this.c = matrix.c * a + matrix.d * c;
+        this.d = matrix.c * b + matrix.d * d;
+        this.tx = matrix.tx * a + matrix.ty * c + this.tx;
+        this.ty = matrix.tx * b + matrix.ty * d + this.ty;
+
+        return this;
+    };
+    /**
+     * Multiplies matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name multiply
+     */
+    Matrix.prototype.multiply = function (matrix) {
+        return this.clone().multiplyWith(matrix);
+    };
+
+    /**
+     * Clones matrix
+     * @function
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name clone
+     */
+    Matrix.prototype.clone = function () {
+        var matrix = new Matrix();
+        matrix.a = this.a;
+        matrix.b = this.b;
+        matrix.c = this.c;
+        matrix.d = this.d;
+        matrix.tx = this.tx;
+        matrix.ty = this.ty;
+
+        return matrix;
+    };
+
+    /**
+     * Resets matrix to identity matrix
+     * @function
+     * @returns {Matrix} Self
+     * @instance
+     * @name reset
+     */
+    Matrix.prototype.reset = function () {
+        this.a = 1;
+        this.b = 0;
+        this.c = 0;
+        this.d = 1;
+        this.tx = 0;
+        this.ty = 0;
+        return this;
+    };
+    Matrix.prototype.identity = Matrix.prototype.reset;
+
+    /**
+     * Prepend matrix
+     * @function
+     * @param {Matrix} Other matrix
+     * @instance
+     * @returns {Matrix} Self
+     */
+    Matrix.prototype.prependWith = function (matrix) {
+        var selfTx = this.tx;
+        var selfA = this.a;
+        var selfC = this.c;
+
+        this.a = selfA * matrix.a + this.b * matrix.c;
+        this.b = selfA * matrix.b + this.b * matrix.d;
+        this.c = selfC * matrix.a + this.d * matrix.c;
+        this.d = selfC * matrix.b + this.d * matrix.d;
+
+        this.tx = selfTx * matrix.a + this.ty * matrix.c + matrix.tx;
+        this.ty = selfTx * matrix.b + this.ty * matrix.d + matrix.ty;
+
+        return this;
+    };
+
+    /**
+     * Prepends matrix
+     * @function
+     * @param {Matrix} matrix - Matrix to prepend
+     * @returns {Matrix} Cloned matrix
+     * @instance
+     * @name prepend
+     */
+    Matrix.prototype.prepend = function (matrix) {
+        return this.clone().prependWith(matrix);
+    };
+
+    // aliases
+    Matrix.prototype.appendWith = Matrix.prototype.multiplyWith;
+    Matrix.prototype.append = Matrix.prototype.multiply;
+
+
+    Matrix.prototype.toString = function () {
+        return '[object Matrix]';
+    };
+    return Matrix;
+});
+/**
+ * 2 dimensional vector
+ * (Note: to perform matrix multiplications, one must use toMatrix)
+ * <br>Exports: Constructor
+ * @module bento/math/vector2
+ * @param {Number} x - x position
+ * @param {Number} y - y position
+ * @returns {Vector2} Returns a 2d vector.
+ */
+bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
+    'use strict';
+    var Vector2 = function (x, y) {
+        this.x = x || 0;
+        this.y = y || 0;
+    };
+
+    Vector2.prototype.isVector2 = function () {
+        return true;
+    };
+    /**
+     * Adds 2 vectors and returns the result
+     * @function
+     * @param {Vector2} vector - Vector to add
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name add
+     */
+    Vector2.prototype.add = function (vector) {
+        var v = this.clone();
+        v.addTo(vector);
+        return v;
+    };
+    /**
+     * Adds vector to current vector
+     * @function
+     * @param {Vector2} vector - Vector to add
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name addTo
+     */
+    Vector2.prototype.addTo = function (vector) {
+        this.x += vector.x;
+        this.y += vector.y;
+        return this;
+    };
+    /**
+     * Subtracts a vector and returns the result
+     * @function
+     * @param {Vector2} vector - Vector to subtract
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name subtract
+     */
+    Vector2.prototype.subtract = function (vector) {
+        var v = this.clone();
+        v.substractFrom(vector);
+        return v;
+    };
+    /**
+     * Subtract from the current vector
+     * @function
+     * @param {Vector2} vector - Vector to subtract
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name subtractFrom
+     */
+    Vector2.prototype.subtractFrom = function (vector) {
+        this.x -= vector.x;
+        this.y -= vector.y;
+        return this;
+    };
+    Vector2.prototype.substract = Vector2.prototype.subtract;
+    Vector2.prototype.substractFrom = Vector2.prototype.subtractFrom;
+    /**
+     * Gets the angle of the vector
+     * @function
+     * @returns {Number} Angle in radians
+     * @instance
+     * @name angle
+     */
+    Vector2.prototype.angle = function () {
+        return Math.atan2(this.y, this.x);
+    };
+    /**
+     * Gets the angle between 2 vectors
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Number} Angle in radians
+     * @instance
+     * @name angleBetween
+     */
+    Vector2.prototype.angleBetween = function (vector) {
+        return Math.atan2(
+            vector.y - this.y,
+            vector.x - this.x
+        );
+    };
+    /**
+     * Gets the inner product between 2 vectors
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Number} Dot product of 2 vectors
+     * @instance
+     * @name dotProduct
+     */
+    Vector2.prototype.dotProduct = function (vector) {
+        return this.x * vector.x + this.y * vector.y;
+    };
+    /**
+     * Multiplies 2 vectors (not a matrix multiplication)
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name multiply
+     */
+    Vector2.prototype.multiply = function (vector) {
+        var v = this.clone();
+        v.multiplyWith(vector);
+        return v;
+    };
+    /**
+     * Multiply with the current vector (not a matrix multiplication)
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name multiplyWith
+     */
+    Vector2.prototype.multiplyWith = function (vector) {
+        this.x *= vector.x;
+        this.y *= vector.y;
+        return this;
+    };
+    /**
+     * Divides 2 vectors
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name divide
+     */
+    Vector2.prototype.divide = function (vector) {
+        var v = this.clone();
+        v.divideBy(vector);
+        return v;
+    };
+    /**
+     * Divides current vector
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name divideBy
+     */
+    Vector2.prototype.divideBy = function (vector) {
+        this.x /= vector.x;
+        this.y /= vector.y;
+        return this;
+    };
+    /**
+     * Multiplies vector with a scalar value
+     * @function
+     * @param {Number} value - scalar value
+     * @returns {Vector2} Returns a new Vector2 instance
+     * @instance
+     * @name scalarMultiply
+     */
+    Vector2.prototype.scalarMultiply = function (value) {
+        var v = this.clone();
+        v.scalarMultiplyWith(value);
+        return v;
+    };
+    /**
+     * Multiplies current vector with a scalar value
+     * @function
+     * @param {Number} value - scalar value
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name scalarMultiplyWith
+     */
+    Vector2.prototype.scalarMultiplyWith = function (value) {
+        this.x *= value;
+        this.y *= value;
+        return this;
+    };
+    /**
+     * Same as scalarMultiplyWith
+     * @function
+     * @param {Number} value - scalar value
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name scale
+     */
+    Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith;
+    /**
+     * Returns the magnitude of the vector
+     * @function
+     * @returns {Number} Modulus of the vector
+     * @instance
+     * @name magnitude
+     */
+    Vector2.prototype.magnitude = function () {
+        return Math.sqrt(this.dotProduct(this));
+    };
+    /**
+     * Normalizes the vector by its magnitude
+     * @function
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name normalize
+     */
+    Vector2.prototype.normalize = function () {
+        var magnitude = this.magnitude();
+        this.x /= magnitude;
+        this.y /= magnitude;
+        return this;
+    };
+    /**
+     * Returns the distance from another vector
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @returns {Number} Distance between the two vectors
+     * @instance
+     * @name distance
+     */
+    Vector2.prototype.distance = function (vector) {
+        return vector.substract(this).magnitude();
+    };
+    /**
+     * Check if distance between 2 vector is farther than a certain value
+     * This function is more performant than using Vector2.distance()
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @param {Number} distance - Distance
+     * @returns {Boolean} Returns true if farther than distance
+     * @instance
+     * @name isFartherThan
+     */
+    Vector2.prototype.isFartherThan = function (vector, distance) {
+        var diff = vector.substract(this);
+        return diff.x * diff.x + diff.y * diff.y > distance * distance;
+    };
+    /**
+     * Check if distance between 2 vector is closer than a certain value
+     * This function is more performant than using Vector2.distance()
+     * @function
+     * @param {Vector2} vector - Other vector
+     * @param {Number} distance - Distance
+     * @returns {Boolean} Returns true if farther than distance
+     * @instance
+     * @name isCloserThan
+     */
+    Vector2.prototype.isCloserThan = function (vector, distance) {
+        var diff = vector.substract(this);
+        return diff.x * diff.x + diff.y * diff.y < distance * distance;
+    };
+    /**
+     * Rotates the vector by a certain amount of radians
+     * @function
+     * @param {Number} angle - Angle in radians
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name rotateRadian
+     */
+    Vector2.prototype.rotateRadian = function (angle) {
+        var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
+            y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
+        this.x = x;
+        this.y = y;
+        return this;
+    };
+    /**
+     * Rotates the vector by a certain amount of degrees
+     * @function
+     * @param {Number} angle - Angle in degrees
+     * @returns {Vector2} Returns self
+     * @instance
+     * @name rotateDegree
+     */
+    Vector2.prototype.rotateDegree = function (angle) {
+        return this.rotateRadian(angle * Math.PI / 180);
+    };
+    /**
+     * Clones the current vector
+     * @function
+     * @param {Number} angle - Angle in degrees
+     * @returns {Vector2} Returns new Vector2 instance
+     * @instance
+     * @name clone
+     */
+    Vector2.prototype.clone = function () {
+        return new Vector2(this.x, this.y);
+    };
+    /* DEPRECATED
+     * Represent the vector as a 1x3 matrix
+     * @function
+     * @returns {Matrix} Returns a 1x3 Matrix
+     * @instance
+     * @name toMatrix
+     */
+    Vector2.prototype.toMatrix = function () {
+        var matrix = new Matrix(1, 3);
+        matrix.set(0, 0, this.x);
+        matrix.set(0, 1, this.y);
+        matrix.set(0, 2, 1);
+        return matrix;
+    };
+    /**
+     * Reflects the vector using the parameter as the 'mirror'
+     * @function
+     * @param {Vector2} mirror - Vector2 through which the current vector is reflected.
+     * @instance
+     * @name reflect
+     */
+    Vector2.prototype.reflect = function (mirror) {
+        var normal = mirror.normalize(); // reflect through this normal
+        var dot = this.dotProduct(normal);
+        return this.substractFrom(normal.scalarMultiplyWith(dot + dot));
+    };
+    Vector2.prototype.toString = function () {
+        return '[object Vector2]';
+    };
+
+    return Vector2;
 });
 /**
  * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.

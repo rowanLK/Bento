@@ -247,7 +247,8 @@ bento.define('bento/sortedeventsystem', [
             if (sortingData.rootZ !== sortingData.rootParent.z) {
                 sortingData.isDirty = true;
             }
-            // are there other causes of changing order??
+            // recalculate rootIndex
+            sortingData.rootIndex = objects.indexOf(sortingData.rootParent);
         }
     };
     var sortListeners = function (listeners) {
