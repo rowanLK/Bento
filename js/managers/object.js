@@ -113,6 +113,10 @@ bento.define('bento/managers/object', [
                 if (object.update && (object.updateWhenPaused >= isPaused)) {
                     object.update(data);
                 }
+                // update its rootIndex
+                if (object.rootIndex !== undefined) {
+                    object.rootIndex = i;
+                }
             }
             EventSystem.fire('postUpdate', data);
         };

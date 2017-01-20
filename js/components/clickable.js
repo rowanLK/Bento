@@ -55,6 +55,8 @@ bento.define('bento/components/clickable', [
     var Clickable = function (settings) {
         var nothing = function () {};
         this.entity = null;
+        this.parent = null;
+        this.rootIndex = -1;
         /**
          * Name of the component
          * @instance

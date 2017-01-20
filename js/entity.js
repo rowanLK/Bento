@@ -69,6 +69,13 @@ bento.define('bento/entity', [
          */
         this.z = 0;
         /**
+         * Index position of its parent (if any)
+         * @instance
+         * @default -1
+         * @name rootIndex
+         */
+        this.rootIndex = -1;
+        /**
          * Timer value, incremented every update step
          * @instance
          * @default 0
@@ -391,7 +398,9 @@ Bento.objects.attach(entity);
         data.entity = this;
 
         // attach the child
+        // NOTE: attaching will always set the properties "parent" and "rootIndex"
         child.parent = this;
+        child.rootIndex = this.components.length;
         this.components.push(child);
         // call child.attached
         if (child.attached) {
@@ -463,6 +472,8 @@ Bento.objects.attach(entity);
                 child.removed(data);
             }
             child.parent = null;
+            child.rootIndex = -1; // note that sibling rootIndex may be incorrect until the next update loop
+
             this.components[index] = null;
         }
         return this;
@@ -774,6 +785,7 @@ Bento.objects.attach(entity);
             component = components[i];
             if (component && component.update) {
                 data.entity = this;
+                component.rootIndex = i;
                 component.update(data);
             }
         }

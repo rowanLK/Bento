@@ -33,10 +33,10 @@ bento.define('bento/sortedeventsystem', [
             rootParent = component;
         } else {
             // get index of component
-            componentIndex = parent.components.indexOf(component);
+            componentIndex = component.rootIndex;
             // grandparent?
             if (parent.parent) {
-                parentIndex = parent.parent.components.indexOf(parent);
+                parentIndex = parent.rootIndex;
             }
 
             // find the root
@@ -53,7 +53,7 @@ bento.define('bento/sortedeventsystem', [
         }
 
         // collect data
-        rootIndex = objects.indexOf(rootParent);
+        rootIndex = rootParent.rootIndex;
         rootZ = rootParent.z;
 
         this.isDirty = false;
@@ -247,8 +247,8 @@ bento.define('bento/sortedeventsystem', [
             if (sortingData.rootZ !== sortingData.rootParent.z) {
                 sortingData.isDirty = true;
             }
-            // recalculate rootIndex
-            sortingData.rootIndex = objects.indexOf(sortingData.rootParent);
+            // update rootIndex
+            sortingData.rootIndex = sortingData.rootParent.rootIndex;
         }
     };
     var sortListeners = function (listeners) {
