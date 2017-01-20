@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>modules/gui/counter.js - Documentation</title>
+    <title>modules/sortedeventsystem.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -29,7 +29,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">modules/gui/counter.js</h1>
+    <h1 class="page-title">modules/sortedeventsystem.js</h1>
     
 
     
@@ -40,239 +40,363 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * An entity that behaves like a counter.
- * TODO: document settings parameter
- * &lt;br>Exports: Constructor
- * @module bento/gui/counter
- * @returns Entity
+ * Sorted EventSystem is EventSystem's "little brother". It's functionality is the same as
+ * EventSystem, except you can pass a component to the event listener. The event listener will then
+ * be sorted by which component is visually "on top". Sorted EventSystem will listen to events fired by
+ * the normal EventSystem. Recommended to use this only when you need to.
+ * &lt;br>Exports: Object
+ * @module bento/sortedeventsystem
  */
-bento.define('bento/gui/counter', [
+bento.define('bento/sortedeventsystem', [
     'bento',
-    'bento/entity',
-    'bento/math/vector2',
-    'bento/components/sprite',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
+    'bento/eventsystem',
     'bento/utils'
 ], function (
     Bento,
-    Entity,
-    Vector2,
-    Sprite,
-    Translation,
-    Rotation,
-    Scale,
+    EventSystem,
     Utils
 ) {
-    'use strict';
-    return function (settings) {
-        /*{
-            value: Number,
-            spacing: Vector,
-            align: String,
-            image: Image, // lower priority
-            frameWidth: Number, // lower priority
-            frameHeight: Number, // lower priority
-            animations: Object, // only way to overwrite animations
-            sprite: Sprite({
-                image: Image,
-                imageName: String,
-                frameWidth: Number,
-                frameHeight: Number,
-                animations: Animation
-            }),
-            position: Vector
-        }*/
-        var value = settings.value || 0;
-        var spacing = settings.spacing || new Vector2(0, 0);
-        var alignment = settings.align || settings.alignment || 'right';
-        var digitWidth = 0;
-        var children = [];
-        var spriteSettings = {};
-        /*
-         * Counts the number of digits in the value
-         */
-        var getDigits = function () {
-            return value.toString().length;
-        };
-        /*
-         * Returns an entity with all digits as animation
-         */
-        var createDigit = function () {
-            var sprite = new Sprite({
-                image: spriteSettings.image,
-                imageName: spriteSettings.imageName,
-                frameWidth: spriteSettings.frameWidth,
-                frameHeight: spriteSettings.frameHeight,
-                frameCountX: spriteSettings.frameCountX,
-                frameCountY: spriteSettings.frameCountY,
-                animations: settings.animations || {
-                    '0': {
-                        frames: [0]
-                    },
-                    '1': {
-                        frames: [1]
-                    },
-                    '2': {
-                        frames: [2]
-                    },
-                    '3': {
-                        frames: [3]
-                    },
-                    '4': {
-                        frames: [4]
-                    },
-                    '5': {
-                        frames: [5]
-                    },
-                    '6': {
-                        frames: [6]
-                    },
-                    '7': {
-                        frames: [7]
-                    },
-                    '8': {
-                        frames: [8]
-                    },
-                    '9': {
-                        frames: [9]
-                    },
-                    '-': {
-                        frames: [10]
-                    }
-                }
-            });
-            // settings.digit can be used to change every digit entity constructor
-            var digitSettings = Utils.extend({
-                components: [sprite]
-            }, settings.digit || {});
-            var entity = new Entity(digitSettings);
+    // sorting data class: its purpose is to cache variables useful for sorting
+    var SortingData = function (component) {
+        var rootIndex = -1; // index of root parent in object manager
+        var componentIndex = -1; // index of component in entity
+        var depth = -1; // how many grandparents
+        var parent = component.parent; // component's direct parent
+        var parentIndex = -1;
+        var parents = [];
+        var rootParent = null;
+        var rootZ;
 
-            // update width
-            digitWidth = sprite.frameWidth;
-
-            return entity;
-        };
-        /*
-         * Adds or removes children depending on the value
-         * and number of current digits and updates
-         * the visualuzation of the digits
-         */
-        var updateDigits = function () {
-            // add or remove digits
-            var i,
-                valueStr = value.toString(),
-                pos,
-                digit,
-                digits = getDigits(),
-                difference = children.length - digits;
-            /* update number of children to be
-                    the same as number of digits*/
-            if (difference &lt; 0) {
-                // create new
-                for (i = 0; i &lt; Math.abs(difference); ++i) {
-                    digit = createDigit();
-                    children.push(digit);
-                    container.attach(digit);
-
-                }
-            } else if (difference > 0) {
-                // remove
-                for (i = 0; i &lt; Math.abs(difference); ++i) {
-                    digit = children.pop();
-                    container.remove(digit);
-                }
-            }
-            /* update animations */
-            for (i = 0; i &lt; children.length; ++i) {
-                digit = children[i];
-                digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
-                digit.getComponent('sprite', function (sprite) {
-                    sprite.setAnimation(valueStr.substr(i, 1));
-                });
-            }
-
-            /* alignment */
-            if (alignment === 'right') {
-                // move all the children
-                for (i = 0; i &lt; children.length; ++i) {
-                    digit = children[i];
-                    pos = digit.position;
-                    pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
-                }
-            } else if (alignment === 'center') {
-                for (i = 0; i &lt; children.length; ++i) {
-                    digit = children[i];
-                    pos = digit.position;
-                    pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
-                }
-            }
-        };
-        var entitySettings = {
-            z: settings.z,
-            name: settings.name,
-            position: settings.position,
-            components: []
-        };
-        var container;
-
-        // copy spritesettings
-        spriteSettings.image = settings.image;
-        spriteSettings.imageName = settings.imageName;
-        spriteSettings.frameWidth = settings.frameWidth;
-        spriteSettings.frameHeight = settings.frameHeight;
-        spriteSettings.frameCountX = settings.frameCountX;
-        spriteSettings.frameCountY = settings.frameCountY;
-        // can also use a predetermined sprite as base for every
-        if (settings.sprite) {
-            settings.sprite = settings.sprite.animationSettings;
-            spriteSettings.image = settings.sprite.image;
-            spriteSettings.imageName = settings.sprite.imageName;
-            spriteSettings.frameWidth = settings.sprite.frameWidth;
-            spriteSettings.frameHeight = settings.sprite.frameHeight;
-            spriteSettings.frameCountX = settings.sprite.frameCountX;
-            spriteSettings.frameCountY = settings.sprite.frameCountY;
+        // init objects if needed
+        if (objects === null) {
+            objects = Bento.objects.getObjects();
         }
 
-        Utils.extend(entitySettings, settings);
+        if (!parent) {
+            // either the component itself a rootParent, or it wasn't attached yet
+            rootParent = component;
+        } else {
+            // get index of component
+            componentIndex = component.rootIndex;
+            // grandparent?
+            if (parent.parent) {
+                parentIndex = parent.rootIndex;
+            }
 
-        /*
-         * Public interface
-         */
-        container = new Entity(entitySettings).extend({
-            /*
-             * Sets current value
-             */
-            setValue: function (val) {
-                value = val;
-                updateDigits();
-            },
-            /*
-             * Retrieves current value
-             */
-            getValue: function () {
-                return value;
-            },
-            addValue: function (val) {
-                value += val;
-                updateDigits();
-            },
-            getDigits: function () {
-                return getDigits();
-            },
-            loopDigits: function (callback) {
-                var i = 0;
-                for (i = 0; i &lt; children.length; ++i) {
-                    callback(children[i]);
+            // find the root
+            while (parent) {
+                parents.unshift(parent);
+                depth += 1;
+                if (!parent.parent) {
+                    // current parent must be the root
+                    rootParent = parent;
+                }
+                // next iteration
+                parent = parent.parent;
+            }
+        }
+
+        // collect data
+        rootIndex = rootParent.rootIndex;
+        rootZ = rootParent.z;
+
+        this.isDirty = false;
+        this.component = component;
+        this.parent = parent;
+        this.parentIndex = parentIndex;
+        this.parents = parents;
+        this.componentIndex = componentIndex;
+        this.depth = depth;
+        this.rootParent = rootParent;
+        this.rootIndex = rootIndex;
+        this.rootZ = rootZ;
+    };
+
+    var isLoopingEvents = false;
+    var objects = null;
+    var events = {};
+    /*events = {
+        [String eventName]: [Array listeners = {callback: Function, context: this}]
+    }*/
+    var removedEvents = [];
+    var cleanEventListeners = function () {
+        var i, j, l, listeners, eventName, callback, context;
+
+        if (isLoopingEvents) {
+            return;
+        }
+        for (j = 0; j &lt; removedEvents.length; ++j) {
+            eventName = removedEvents[j].eventName;
+            if (removedEvents[j].reset === true) {
+                // reset the whole event listener
+                events[eventName] = [];
+                continue;
+            }
+            callback = removedEvents[j].callback;
+            context = removedEvents[j].context;
+            if (Utils.isUndefined(events[eventName])) {
+                continue;
+            }
+            listeners = events[eventName];
+            for (i = listeners.length - 1; i >= 0; --i) {
+                if (listeners[i].callback === callback) {
+                    if (context) {
+                        if (listeners[i].context === context) {
+                            events[eventName].splice(i, 1);
+                            break;
+                        }
+                    } else {
+                        events[eventName].splice(i, 1);
+                        break;
+                    }
                 }
             }
+        }
+        removedEvents = [];
+    };
+    var addEventListener = function (component, eventName, callback, context) {
+        var sortingData = new SortingData(component);
+
+        if (Utils.isString(component)) {
+            Utils.log('ERROR: First parameter of SortedEventSystem.on is the component!');
+            return;
+        }
+        if (Utils.isUndefined(events[eventName])) {
+            events[eventName] = [];
+        }
+        events[eventName].push({
+            sortingData: sortingData,
+            callback: callback,
+            context: context
+        });
+    };
+    var removeEventListener = function (eventName, callback, context) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            callback: callback,
+            context: context
         });
 
-        updateDigits();
-
-        return container;
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
     };
+    var clearEventListeners = function (eventName) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            reset: true
+        });
+
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
+    };
+    var sortFunction = function (a, b) {
+        // sort event listeners by the component location in the scenegraph
+        var sortA = a.sortingData;
+        var sortB = b.sortingData;
+        // refresh sorting data
+        if (sortA.isDirty) {
+            a.sortingData = new SortingData(sortA.component);
+            sortA = a.sortingData;
+        }
+        if (sortB.isDirty) {
+            b.sortingData = new SortingData(sortB.component);
+            sortB = b.sortingData;
+        }
+
+        // 0. A === B
+        if (sortA.component === sortB.component) {
+            // no preference.
+            return 0;
+        }
+
+        // 1. Sort by z
+        var zDiff = sortB.rootZ - sortA.rootZ;
+        if (zDiff) {
+            return zDiff;
+        }
+
+        // 2. Same z: sort by index of the root entity
+        var rootDiff = sortB.rootIndex - sortA.rootIndex;
+        if (rootDiff) {
+            // different roots: sort by root
+            return rootDiff;
+        }
+
+        // 3. Same index: the components must have common (grand)parents, aka in the same scenegraph
+        // NOTE: there might be a better way to sort scenegraphs than this
+        // 3A. are the components siblings?
+        var parentA = sortA.component.parent;
+        var parentB = sortB.component.parent;
+        if (parentA === parentB) {
+            return sortB.componentIndex - sortA.componentIndex;
+        }
+        // 3B. common grandparent? This should be a pretty common case
+        if (parentA &amp;&amp; parentB &amp;&amp; parentA.parent === parentB.parent) {
+            return sortB.parentIndex - sortA.parentIndex;
+        }
+
+        // 3C. one of the component's parent entity is a (grand)parent of the other?
+        if (sortA.parents.indexOf(sortB.component.parent) >= 0 || sortB.parents.indexOf(sortA.component.parent) >= 0) {
+            return sortB.depth - sortA.depth;
+        }
+        // 3D. last resort: find the earliest common parent and compare their component index
+        return findCommonParentIndex(sortA, sortB);
+    };
+    var findCommonParentIndex = function (sortA, sortB) {
+        // used when components have a common parent, but that common parent is not the root
+        var parentsA = sortA.parents;
+        var parentsB = sortB.parents;
+        var min = Math.min(parentsA.length, parentsB.length);
+        var i;
+        var commonParent = null;
+        var componentA;
+        var componentB;
+        // find the last common parent
+        for (i = 0; i &lt; min; ++i) {
+            if (parentsA[i] === parentsB[i]) {
+                commonParent = parentsA[i];
+            } else {
+                // we found the last common parent, now we need to compare these children
+                componentA = parentsA[i];
+                componentB = parentsB[i];
+                break;
+            }
+        }
+        if (!commonParent || !commonParent.components) {
+            // error: couldn't find common parent
+            return 0;
+        }
+        // compare indices
+        return commonParent.components.indexOf(componentB) - commonParent.components.indexOf(componentA);
+    };
+    var inspectSortingData = function (listeners) {
+        // go through all sortingData and check if their z index didnt change in the meantime
+        var sortingData;
+        var i = 0,
+            l = listeners.length;
+        for (i = 0; i &lt; l; ++i) {
+            sortingData = listeners[i].sortingData;
+            if (sortingData.rootZ !== sortingData.rootParent.z) {
+                sortingData.isDirty = true;
+            }
+            // update rootIndex
+            sortingData.rootIndex = sortingData.rootParent.rootIndex;
+        }
+    };
+    var sortListeners = function (listeners) {
+        // sort the listeners
+        Utils.stableSort.inplace(listeners, sortFunction);
+    };
+    var stopPropagation = false;
+
+    var SortedEventSystem = {
+        suppressWarnings: false,
+        stopPropagation: function () {
+            stopPropagation = true;
+        },
+        fire: function (eventName, eventData) {
+            var i, l, listeners, listener;
+
+            stopPropagation = false;
+
+            // clean up before firing event
+            cleanEventListeners();
+
+            if (!Utils.isString(eventName)) {
+                eventName = eventName.toString();
+            }
+            if (Utils.isUndefined(events[eventName])) {
+                return;
+            }
+
+            listeners = events[eventName];
+
+            // leaving this for debugging purposes
+            // if (eventName === 'pointerDown') {
+            //     console.log(listeners);
+            // }
+
+            // sort before looping through listeners
+            inspectSortingData(listeners);
+            sortListeners(listeners);
+
+            for (i = 0, l = listeners.length; i &lt; l; ++i) {
+                isLoopingEvents = true;
+                listener = listeners[i];
+                if (listener) {
+                    if (listener.context) {
+                        listener.callback.apply(listener.context, [eventData]);
+                    } else {
+                        listener.callback(eventData);
+                    }
+                } else if (!this.suppressWarnings) {
+                    // TODO: this warning appears when event listeners are removed
+                    // during another listener being triggered. For example, removing an entity
+                    // while that entity was listening to the same event.
+                    // In a lot of cases, this is normal... Consider removing this warning?
+                    // console.log('Warning: listener is not a function');
+                }
+                if (stopPropagation) {
+                    stopPropagation = false;
+                    break;
+                }
+            }
+            isLoopingEvents = false;
+        },
+        addEventListener: addEventListener,
+        removeEventListener: removeEventListener,
+        /**
+         * Callback function
+         *
+         * @callback Callback
+         * @param {Object} eventData - Any data that is passed
+         */
+        /**
+         * Listen to event.
+         * @function
+         * @instance
+         * @param {Object} component - The component as sorting reference
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Callback function.
+         * Be careful about adding anonymous functions here, you should consider removing the event listener
+         * to prevent memory leaks.
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
+         * @name on
+         */
+        on: addEventListener,
+        /**
+         * Removes event listener
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Reference to the callback function
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
+         * @name off
+         */
+        off: removeEventListener,
+        clear: clearEventListeners,
+        sortListeners: sortListeners
+    };
+
+    // save reference in EventSystem
+    EventSystem.SortedEventSystem = SortedEventSystem;
+
+
+    return SortedEventSystem;
 });</code></pre>
         </article>
     </section>

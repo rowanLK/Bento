@@ -105,7 +105,7 @@ bento.define('bento/eventsystem', [
          */
         stopPropagation: function () {
             stopPropagation = true;
-
+            // also stop propagation of sorted events by calling this
             var SortedEventSystem = EventSystem.SortedEventSystem;
             if (SortedEventSystem) {
                 SortedEventSystem.stopPropagation();
@@ -121,7 +121,7 @@ bento.define('bento/eventsystem', [
          */
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
-            // TODO: sorted events before or after unsorted event listeners??
+            // Note: Sorted events are called before unsorted event listeners
             var SortedEventSystem = EventSystem.SortedEventSystem;
             if (SortedEventSystem) {
                 SortedEventSystem.fire(eventName, eventData);

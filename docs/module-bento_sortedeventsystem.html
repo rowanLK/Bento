@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>modules/gui/counter.js - Documentation</title>
+    <title>bento/sortedeventsystem - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -29,253 +29,715 @@
 
 <div id="main">
     
-    <h1 class="page-title">modules/gui/counter.js</h1>
+    <h1 class="page-title">bento/sortedeventsystem</h1>
     
 
     
 
 
 
+
+<section>
+
+<header>
     
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>/**
- * An entity that behaves like a counter.
- * TODO: document settings parameter
- * &lt;br>Exports: Constructor
- * @module bento/gui/counter
- * @returns Entity
- */
-bento.define('bento/gui/counter', [
-    'bento',
-    'bento/entity',
-    'bento/math/vector2',
-    'bento/components/sprite',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
-    'bento/utils'
-], function (
-    Bento,
-    Entity,
-    Vector2,
-    Sprite,
-    Translation,
-    Rotation,
-    Scale,
-    Utils
-) {
-    'use strict';
-    return function (settings) {
-        /*{
-            value: Number,
-            spacing: Vector,
-            align: String,
-            image: Image, // lower priority
-            frameWidth: Number, // lower priority
-            frameHeight: Number, // lower priority
-            animations: Object, // only way to overwrite animations
-            sprite: Sprite({
-                image: Image,
-                imageName: String,
-                frameWidth: Number,
-                frameHeight: Number,
-                animations: Animation
-            }),
-            position: Vector
-        }*/
-        var value = settings.value || 0;
-        var spacing = settings.spacing || new Vector2(0, 0);
-        var alignment = settings.align || settings.alignment || 'right';
-        var digitWidth = 0;
-        var children = [];
-        var spriteSettings = {};
-        /*
-         * Counts the number of digits in the value
-         */
-        var getDigits = function () {
-            return value.toString().length;
-        };
-        /*
-         * Returns an entity with all digits as animation
-         */
-        var createDigit = function () {
-            var sprite = new Sprite({
-                image: spriteSettings.image,
-                imageName: spriteSettings.imageName,
-                frameWidth: spriteSettings.frameWidth,
-                frameHeight: spriteSettings.frameHeight,
-                frameCountX: spriteSettings.frameCountX,
-                frameCountY: spriteSettings.frameCountY,
-                animations: settings.animations || {
-                    '0': {
-                        frames: [0]
-                    },
-                    '1': {
-                        frames: [1]
-                    },
-                    '2': {
-                        frames: [2]
-                    },
-                    '3': {
-                        frames: [3]
-                    },
-                    '4': {
-                        frames: [4]
-                    },
-                    '5': {
-                        frames: [5]
-                    },
-                    '6': {
-                        frames: [6]
-                    },
-                    '7': {
-                        frames: [7]
-                    },
-                    '8': {
-                        frames: [8]
-                    },
-                    '9': {
-                        frames: [9]
-                    },
-                    '-': {
-                        frames: [10]
-                    }
-                }
-            });
-            // settings.digit can be used to change every digit entity constructor
-            var digitSettings = Utils.extend({
-                components: [sprite]
-            }, settings.digit || {});
-            var entity = new Entity(digitSettings);
+        
+            
+        
+    
+</header>
 
-            // update width
-            digitWidth = sprite.frameWidth;
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Sorted EventSystem is EventSystem's "little brother". It's functionality is the same as
+EventSystem, except you can pass a component to the event listener. The event listener will then
+be sorted by which component is visually "on top". Sorted EventSystem will listen to events fired by
+the normal EventSystem. Recommended to use this only when you need to.
+<br>Exports: Object</div>
+        
 
-            return entity;
-        };
-        /*
-         * Adds or removes children depending on the value
-         * and number of current digits and updates
-         * the visualuzation of the digits
-         */
-        var updateDigits = function () {
-            // add or remove digits
-            var i,
-                valueStr = value.toString(),
-                pos,
-                digit,
-                digits = getDigits(),
-                difference = children.length - digits;
-            /* update number of children to be
-                    the same as number of digits*/
-            if (difference &lt; 0) {
-                // create new
-                for (i = 0; i &lt; Math.abs(difference); ++i) {
-                    digit = createDigit();
-                    children.push(digit);
-                    container.attach(digit);
+        
+            
 
-                }
-            } else if (difference > 0) {
-                // remove
-                for (i = 0; i &lt; Math.abs(difference); ++i) {
-                    digit = children.pop();
-                    container.remove(digit);
-                }
-            }
-            /* update animations */
-            for (i = 0; i &lt; children.length; ++i) {
-                digit = children[i];
-                digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
-                digit.getComponent('sprite', function (sprite) {
-                    sprite.setAnimation(valueStr.substr(i, 1));
-                });
-            }
 
-            /* alignment */
-            if (alignment === 'right') {
-                // move all the children
-                for (i = 0; i &lt; children.length; ++i) {
-                    digit = children[i];
-                    pos = digit.position;
-                    pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
-                }
-            } else if (alignment === 'center') {
-                for (i = 0; i &lt; children.length; ++i) {
-                    digit = children[i];
-                    pos = digit.position;
-                    pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
-                }
-            }
-        };
-        var entitySettings = {
-            z: settings.z,
-            name: settings.name,
-            position: settings.position,
-            components: []
-        };
-        var container;
 
-        // copy spritesettings
-        spriteSettings.image = settings.image;
-        spriteSettings.imageName = settings.imageName;
-        spriteSettings.frameWidth = settings.frameWidth;
-        spriteSettings.frameHeight = settings.frameHeight;
-        spriteSettings.frameCountX = settings.frameCountX;
-        spriteSettings.frameCountY = settings.frameCountY;
-        // can also use a predetermined sprite as base for every
-        if (settings.sprite) {
-            settings.sprite = settings.sprite.animationSettings;
-            spriteSettings.image = settings.sprite.image;
-            spriteSettings.imageName = settings.sprite.imageName;
-            spriteSettings.frameWidth = settings.sprite.frameWidth;
-            spriteSettings.frameHeight = settings.sprite.frameHeight;
-            spriteSettings.frameCountX = settings.sprite.frameCountX;
-            spriteSettings.frameCountY = settings.sprite.frameCountY;
-        }
 
-        Utils.extend(entitySettings, settings);
 
-        /*
-         * Public interface
-         */
-        container = new Entity(entitySettings).extend({
-            /*
-             * Sets current value
-             */
-            setValue: function (val) {
-                value = val;
-                updateDigits();
-            },
-            /*
-             * Retrieves current value
-             */
-            getValue: function () {
-                return value;
-            },
-            addValue: function (val) {
-                value += val;
-                updateDigits();
-            },
-            getDigits: function () {
-                return getDigits();
-            },
-            loopDigits: function (callback) {
-                var i = 0;
-                for (i = 0; i &lt; children.length; ++i) {
-                    callback(children[i]);
-                }
-            }
-        });
 
-        updateDigits();
 
-        return container;
-    };
-});</code></pre>
-        </article>
-    </section>
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="modules_sortedeventsystem.js.html">modules/sortedeventsystem.js</a>, <a href="modules_sortedeventsystem.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+     
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="off"><span class="type-signature"></span>off<span class="signature">(eventName, callback, context<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Removes event listener
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>eventName</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Name of the event</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Callback</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Reference to the callback function</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>context</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="modules_sortedeventsystem.js.html">modules/sortedeventsystem.js</a>, <a href="modules_sortedeventsystem.js.html#line339">line 339</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="on"><span class="type-signature"></span>on<span class="signature">(component, eventName, callback, context<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Listen to event.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>component</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The component as sorting reference</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>eventName</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Name of the event</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Callback</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Callback function.
+Be careful about adding anonymous functions here, you should consider removing the event listener
+to prevent memory leaks.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>context</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="modules_sortedeventsystem.js.html">modules/sortedeventsystem.js</a>, <a href="modules_sortedeventsystem.js.html#line325">line 325</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+        <h3 class="subsection-title">Type Definitions</h3>
+
+        
+                
+
+    
+
+    <h4 class="name" id="~Callback"><span class="type-signature"></span>Callback<span class="signature">(eventData)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Callback function
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>eventData</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Any data that is passed</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="modules_sortedeventsystem.js.html">modules/sortedeventsystem.js</a>, <a href="modules_sortedeventsystem.js.html#line319">line 319</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+    
+
+    
+</article>
+
+</section>
 
 
 

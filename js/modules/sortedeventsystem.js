@@ -1,5 +1,8 @@
 /**
- * Sorted EventSystem is EventSystem's little brother
+ * Sorted EventSystem is EventSystem's "little brother". It's functionality is the same as
+ * EventSystem, except you can pass a component to the event listener. The event listener will then
+ * be sorted by which component is visually "on top". Sorted EventSystem will listen to events fired by
+ * the normal EventSystem. Recommended to use this only when you need to.
  * <br>Exports: Object
  * @module bento/sortedeventsystem
  */
@@ -203,8 +206,8 @@ bento.define('bento/sortedeventsystem', [
             return sortB.parentIndex - sortA.parentIndex;
         }
 
-        // 3C. one of the components is a (grand)parent of the other?
-        if (sortA.parents.indexOf(sortB.component) >= 0 || sortB.parents.indexOf(sortA.component) >= 0) {
+        // 3C. one of the component's parent entity is a (grand)parent of the other?
+        if (sortA.parents.indexOf(sortB.component.parent) >= 0 || sortB.parents.indexOf(sortA.component.parent) >= 0) {
             return sortB.depth - sortA.depth;
         }
         // 3D. last resort: find the earliest common parent and compare their component index
@@ -258,11 +261,6 @@ bento.define('bento/sortedeventsystem', [
     var stopPropagation = false;
 
     var SortedEventSystem = {
-        /**
-         * Ignore warnings
-         * @instance
-         * @name suppressWarnings
-         */
         suppressWarnings: false,
         stopPropagation: function () {
             stopPropagation = true;
@@ -283,6 +281,11 @@ bento.define('bento/sortedeventsystem', [
             }
 
             listeners = events[eventName];
+
+            // leaving this for debugging purposes
+            // if (eventName === 'pointerDown') {
+            //     console.log(listeners);
+            // }
 
             // sort before looping through listeners
             inspectSortingData(listeners);
@@ -344,13 +347,6 @@ bento.define('bento/sortedeventsystem', [
          * @name off
          */
         off: removeEventListener,
-        /**
-         * Removes all listeners of an event
-         * @function
-         * @instance
-         * @param {String} eventName - Name of the event
-         * @name clear
-         */
         clear: clearEventListeners,
         sortListeners: sortListeners
     };

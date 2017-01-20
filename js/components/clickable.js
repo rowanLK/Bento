@@ -15,6 +15,8 @@
  * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
  * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
  * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top. 
+ Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/clickable', [
