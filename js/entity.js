@@ -207,6 +207,9 @@ bento.define('bento/entity', [
             if (settings.origin) {
                 this.origin = settings.origin;
             }
+            if (settings.dimension) {
+                this.dimension = settings.dimension;
+            }
             if (settings.scale) {
                 this.scale = settings.scale;
             }

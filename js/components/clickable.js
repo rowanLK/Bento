@@ -63,6 +63,16 @@ bento.define('bento/components/clickable', [
         this.isHovering = false;
         this.hasTouched = false;
         /**
+         * Ignore the pause during pointerUp event. If false, the pointerUp event will not be called if the parent entity is paused.
+         * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that. 
+         * Just make sure you know what you are doing!
+         * @instance
+         * @default true
+         * @name ignorePauseDuringPointerUpEvent
+         */
+        this.ignorePauseDuringPointerUpEvent = (settings && Utils.isDefined(settings.ignorePauseDuringPointerUpEvent)) ?
+            settings.ignorePauseDuringPointerUpEvent : true;
+        /**
          * Id number of the pointer holding entity
          * @instance
          * @default null
@@ -157,8 +167,9 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerUp = function (evt) {
         var e = this.transformEvent(evt),
             mousePosition;
-            
-        if (isPaused(this.entity)) {
+
+        // a pointer up could get missed during a pause 
+        if (!this.ignorePauseDuringPointerUpEvent && isPaused(this.entity)) {
             return;
         }
         mousePosition = e.localPosition;
