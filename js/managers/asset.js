@@ -636,8 +636,8 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} name - Name of spriteSheet
-         * @returns {Audia} spriteSheet object
-         * @name getAudio
+         * @returns {Object} spriteSheet object
+         * @name getSpriteSheet
          */
         var getSpriteSheet = function (name) {
             var asset = assets.spriteSheets[name];
