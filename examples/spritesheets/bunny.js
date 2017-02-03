@@ -18,9 +18,13 @@ bento.define('bunny', [
     Tween
 ) {
     'use strict';
+    var punches = ['punch1', 'punch2', 'uppercut'];
     return function () {
+        var punchIndex = 0;
+        var isPunching = false;
+
         var sprite = new Sprite({
-            spriteSheet: 'bunny'
+            spriteSheet: 'idle'
         });
         var entity = new Entity({
             z: 1,
@@ -29,6 +33,17 @@ bento.define('bunny', [
             components: [sprite],
             family: ['bunnies']
         });
+        entity.punch = function () {
+            if (isPunching) {
+                return;
+            }
+            sprite.setSpriteSheet(punches[punchIndex], function () {
+                sprite.setSpriteSheet('idle');
+                isPunching = false;
+            });
+            punchIndex = (punchIndex + 1) % punches.length;
+            isPunching = true;
+        };
 
         return entity;
     };

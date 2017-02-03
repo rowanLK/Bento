@@ -49,7 +49,14 @@ Bento.objects.attach(entity);
 bento.define('bento/components/sprite', [
     'bento',
     'bento/utils',
-], function (Bento, Utils) {
+    'bento/math/vector2',
+    'bento/packedimage'
+], function (
+    Bento,
+    Utils,
+    Vector2,
+    PackedImage
+) {
     'use strict';
     var Sprite = function (settings) {
         this.entity = null;
@@ -68,6 +75,7 @@ bento.define('bento/components/sprite', [
         this.frameWidth = 0;
         this.frameHeight = 0;
         this.padding = 0;
+        this.origin = new Vector2(0, 0);
 
         // drawing internals
         this.frameIndex = 0;
@@ -93,7 +101,20 @@ bento.define('bento/components/sprite', [
      */
     Sprite.prototype.setup = function (settings) {
         var self = this,
-            padding = 0;
+            padding = 0,
+            spriteSheet;
+
+        if (settings && settings.spriteSheet) {
+            //load settings from animation JSON, and set the correct image
+            spriteSheet = Bento.assets.getSpriteSheet(settings.spriteSheet);
+            settings = Utils.copyObject(spriteSheet.animation);
+            settings.image = PackedImage(spriteSheet.image); //TODO?: do not pack images repeatedly?
+            if (settings.animation) {
+                settings.animations = {
+                    default: settings.animation
+                };
+            }
+        }
 
         this.animationSettings = settings || this.animationSettings;
         padding = this.animationSettings.padding || 0;
@@ -231,6 +252,54 @@ bento.define('bento/components/sprite', [
                 this.currentAnimation.backTo = this.currentAnimationLength;
             }
         }
+    };
+    /**
+     * Bind another spritesheet to this sprite.
+     * @function
+     * @instance
+     * @param {String} name - Name of the spritesheet.
+     * @param {Function} callback - Called when animation ends.
+     * @name setAnimation
+     */
+    Sprite.prototype.setSpriteSheet = function (name, callback) {
+        var spriteSheet = Bento.assets.getSpriteSheet(name);
+        var anim = spriteSheet.animation;
+
+        this.spriteImage = PackedImage(spriteSheet.image); //TODO? don't pack images repeatedly
+
+        this.animations = {
+            default: {
+                frames: [0]
+            }
+        };
+
+        if (anim.animation) {
+            this.animations.default = anim.animation;
+        } else if (anim.animations) {
+            this.animations = anim.animations;
+        }
+
+        this.padding = anim.padding || 0;
+
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (anim.frameWidth) {
+            this.frameWidth = anim.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = anim.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - this.padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (anim.frameHeight) {
+            this.frameHeight = anim.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = anim.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - this.padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        //TODO origin and entity dimensions
+
+        this.setAnimation('default', callback);
     };
     /**
      * Returns the name of current animation playing

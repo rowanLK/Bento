@@ -87,6 +87,18 @@ bento.define('bento/utils', [], function () {
         getKeyLength = function (obj) {
             return Object.keys(obj).length;
         },
+        copyObject = function (obj) {
+            var newObject = {};
+            var key;
+            for (key in obj) {
+                if (!obj.hasOwnProperty(key)) {
+                    continue;
+                }
+                newObject[key] = obj[key];
+                //TODO? deep copy?
+            }
+            return newObject;
+        },
         setAnimationFrameTimeout = function (callback, timeout) {
             var now = new Date().getTime(),
                 rafID = null;
@@ -470,6 +482,15 @@ bento.define('bento/utils', [], function () {
          * @return {Number} Number of keys
          */
         getKeyLength: getKeyLength,
+        /**
+         * Returns a (shallow) copy of an object literal
+         * @function
+         * @instance
+         * @name copyObject
+         * @param {Object} object - object literal
+         * @return {Object} Shallow copy
+         */
+        copyObject: copyObject,
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         remoteMapping: remoteMapping,
