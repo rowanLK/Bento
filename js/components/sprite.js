@@ -366,13 +366,18 @@ bento.define('bento/components/sprite', [
         if (!this.currentAnimation) {
             return;
         }
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
+        }
+
         // no need for update
-        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+        if (this.currentAnimationLength <= 1 || frameSpeed === 0) {
             return;
         }
 
         reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        this.currentFrame += (frameSpeed) * data.speed;
         if (this.currentAnimation.loop) {
             while (this.currentFrame >= this.currentAnimation.frames.length) {
                 this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
@@ -385,6 +390,10 @@ bento.define('bento/components/sprite', [
         }
         if (reachedEnd && this.onCompleteCallback) {
             this.onCompleteCallback();
+            //don't repeat callback on non-looping animations
+            if (!this.currentAnimation.loop) {
+                this.onCompleteCallback = null;
+            }
         }
     };
 
