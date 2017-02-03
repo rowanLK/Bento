@@ -20,7 +20,8 @@ bento.define('bento/managers/asset', [
             json: {},
             images: {},
             binary: {},
-            fonts: {}
+            fonts: {},
+            spriteSheets: {}
         };
         var texturePacker = {};
         var packs = [];
@@ -195,6 +196,36 @@ bento.define('bento/managers/asset', [
                 checkCount += 1;
             }, 100);
         };
+        var loadSpriteSheet = function (name, source, callback) {
+            var spriteSheet = {
+                image: null,
+                animation: null
+            };
+
+            var checkForCompletion = function () {
+                if (spriteSheet.image !== null && spriteSheet.animation !== null) {
+                    callback(null, name, spriteSheet);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.animation = json;
+                checkForCompletion();
+            });
+
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.image = img;
+                checkForCompletion();
+            });
+        };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
          * If the assetGroup parameter is passed to Bento.setup, this function will be
@@ -315,6 +346,18 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            var onLoadSpriteSheet = function (err, name, spriteSheet) {
+                if (err) {
+                    Utils.log(err);
+                } else {
+                    assets.spriteSheets[name] = spriteSheet;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
             var readyForLoading = function (fn, asset, path, callback) {
                 toLoad.push({
                     fn: fn,
@@ -389,6 +432,16 @@ bento.define('bento/managers/asset', [
                         continue;
                     }
                     readyForLoading(loadTTF, asset, path + 'fonts/' + group.fonts[asset], onLoadTTF);
+                }
+            }
+            // get spritesheets
+            if (Utils.isDefined(group.spritesheets)) {
+                assetCount += Utils.getKeyLength(group.spritesheets);
+                for (asset in group.spritesheets) {
+                    if (!group.spritesheets.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
                 }
             }
 
@@ -552,7 +605,7 @@ bento.define('bento/managers/asset', [
          * Returns a previously loaded json object
          * @function
          * @instance
-         * @param {String} name - Name of image
+         * @param {String} name - Name of json file
          * @returns {Object} Json object
          * @name getJson
          */
@@ -575,6 +628,21 @@ bento.define('bento/managers/asset', [
             var asset = assets.audio[name];
             if (!Utils.isDefined(asset)) {
                 Utils.log("ERROR: Audio " + name + " could not be found");
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded spriteSheet element
+         * @function
+         * @instance
+         * @param {String} name - Name of spriteSheet
+         * @returns {Audia} spriteSheet object
+         * @name getAudio
+         */
+        var getSpriteSheet = function (name) {
+            var asset = assets.spriteSheets[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Sprite sheet " + name + " could not be found");
             }
             return asset;
         };
@@ -751,6 +819,7 @@ bento.define('bento/managers/asset', [
             getImageElement: getImageElement,
             getJson: getJson,
             getAudio: getAudio,
+            getSpriteSheet: getSpriteSheet,
             getAssets: getAssets,
             getAssetGroups: getAssetGroups
         };

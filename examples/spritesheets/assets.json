@@ -1,0 +1,15 @@
+{
+    "assets": {
+        "path": "assets/",
+        "images": {
+            "triangle": "triangle.png",
+            "buttona": "buttona.png",
+            "buttonb": "buttonb.png",
+            "buttonl": "buttonl.png",
+            "buttonr": "buttonr.png"
+        },
+        "spritesheets": {
+            "bunny": "bunny"
+        }
+    }
+}
