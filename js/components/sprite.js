@@ -56,6 +56,8 @@ bento.define('bento/components/sprite', [
         this.entity = null;
         this.name = 'sprite';
         this.visible = true;
+        this.parent = null;
+        this.rootIndex = -1;
 
         this.animationSettings = settings || {
             frameCountX: 1,
