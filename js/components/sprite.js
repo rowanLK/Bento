@@ -49,13 +49,11 @@ Bento.objects.attach(entity);
 bento.define('bento/components/sprite', [
     'bento',
     'bento/utils',
-    'bento/math/vector2',
-    'bento/packedimage'
+    'bento/math/vector2'
 ], function (
     Bento,
     Utils,
-    Vector2,
-    PackedImage
+    Vector2
 ) {
     'use strict';
     var Sprite = function (settings) {
@@ -108,7 +106,7 @@ bento.define('bento/components/sprite', [
             //load settings from animation JSON, and set the correct image
             spriteSheet = Bento.assets.getSpriteSheet(settings.spriteSheet);
             settings = Utils.copyObject(spriteSheet.animation);
-            settings.image = PackedImage(spriteSheet.image); //TODO?: do not pack images repeatedly?
+            settings.image = spriteSheet.image;
             if (settings.animation) {
                 settings.animations = {
                     default: settings.animation
@@ -275,7 +273,7 @@ bento.define('bento/components/sprite', [
         var spriteSheet = Bento.assets.getSpriteSheet(name);
         var anim = spriteSheet.animation;
 
-        this.spriteImage = PackedImage(spriteSheet.image); //TODO? don't pack images repeatedly
+        this.spriteImage = spriteSheet.image;
 
         this.animations = {
             default: {

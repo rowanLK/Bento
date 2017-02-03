@@ -222,7 +222,7 @@ bento.define('bento/managers/asset', [
                     callback(err, name, null);
                     return;
                 }
-                spriteSheet.image = img;
+                spriteSheet.image = PackedImage(img);
                 checkForCompletion();
             });
         };

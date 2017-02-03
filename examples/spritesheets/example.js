@@ -58,7 +58,8 @@ bento.require([
 
     Bento.setup({
         canvasId: 'canvas',
-        //pixelSize: 2,
+        //renderer: 'pixi',
+        pixelSize: 2,
         canvasDimension: new Rectangle(0, 0, 320, 240),
         onComplete: loadAssets
     });
