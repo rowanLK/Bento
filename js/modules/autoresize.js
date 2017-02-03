@@ -4,6 +4,7 @@
  * If the height goes over the max or minimum size, then the width gets adapted.
  * <br>Exports: Constructor
  * @module bento/autoresize
+ * @moduleName AutoResize
  * @param {Rectangle} canvasDimension - Default size
  * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
  * then autoresize will start filling up the width
@@ -50,8 +51,8 @@ bento.define('bento/autoresize', [
                     swap();
                 }
 
-                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
-                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
+                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' + innerHeight * devicePixelRatio);
+                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' + canvasDimension.height.toFixed(2));
                 return canvasDimension;
             },
             scrollAndResize = function () {

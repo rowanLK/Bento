@@ -2,6 +2,7 @@
  * A generic interpreter for Tiled map JSON files.
  * <br>Exports: Constructor
  * @module bento/tiledreader
+ * @moduleName TiledReader
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Tiled map JSON asset
  * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.

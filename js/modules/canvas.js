@@ -9,6 +9,7 @@
  * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
  * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
  * @module bento/canvas
+ * @moduleName Canvas
  * @returns Entity
  */
 bento.define('bento/canvas', [

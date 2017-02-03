@@ -4,6 +4,7 @@
  * assets to load, and where to find them.
  * <br>Exports: Constructor, can be accessed through Bento.assets namespace
  * @module bento/managers/asset
+ * @moduleName AssetManager
  * @returns AssetManager
  */
 bento.define('bento/managers/asset', [

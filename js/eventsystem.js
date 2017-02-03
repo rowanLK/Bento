@@ -3,6 +3,7 @@
  off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
+ * @moduleName EventSystem
  */
 bento.define('bento/eventsystem', [
     'bento/utils'
@@ -88,14 +89,29 @@ bento.define('bento/eventsystem', [
             cleanEventListeners();
         }
     };
-
-    return {
+    var stopPropagation = false;
+    var EventSystem = {
+        SortedEventSystem: null,
         /**
          * Ignore warnings
          * @instance
          * @name suppressWarnings
          */
         suppressWarnings: false,
+        /**
+         * Stops the current event from further propagating
+         * @function
+         * @instance
+         * @name stopPropagation
+         */
+        stopPropagation: function () {
+            stopPropagation = true;
+            // also stop propagation of sorted events by calling this
+            var SortedEventSystem = EventSystem.SortedEventSystem;
+            if (SortedEventSystem) {
+                SortedEventSystem.stopPropagation();
+            }
+        },
         /**
          * Fires an event
          * @function
@@ -106,6 +122,13 @@ bento.define('bento/eventsystem', [
          */
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
+            // Note: Sorted events are called before unsorted event listeners
+            var SortedEventSystem = EventSystem.SortedEventSystem;
+            if (SortedEventSystem) {
+                SortedEventSystem.fire(eventName, eventData);
+            }
+
+            stopPropagation = false;
 
             // clean up before firing event
             cleanEventListeners();
@@ -133,6 +156,11 @@ bento.define('bento/eventsystem', [
                     // In a lot of cases, this is normal... Consider removing this warning?
                     // console.log('Warning: listener is not a function');
                 }
+                if (stopPropagation) {
+                    stopPropagation = false;
+                    break;
+                }
+
             }
             isLoopingEvents = false;
         },
@@ -145,13 +173,15 @@ bento.define('bento/eventsystem', [
          * @param {Object} eventData - Any data that is passed
          */
         /**
-         * Listen to event
+         * Listen to event.
          * @function
          * @instance
          * @param {String} eventName - Name of the event
          * @param {Callback} callback - Callback function.
          * Be careful about adding anonymous functions here, you should consider removing the event listener
          * to prevent memory leaks.
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
          * @name on
          */
         on: addEventListener,
@@ -161,6 +191,8 @@ bento.define('bento/eventsystem', [
          * @instance
          * @param {String} eventName - Name of the event
          * @param {Callback} callback - Reference to the callback function
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
          * @name off
          */
         off: removeEventListener,
@@ -173,4 +205,6 @@ bento.define('bento/eventsystem', [
          */
         clear: clearEventListeners
     };
+
+    return EventSystem;
 });

@@ -9,6 +9,7 @@
  * • Bento.screen<br>
  * <br>Exports: Object
  * @module bento
+ * @moduleName Bento
  */
 bento.define('bento', [
     'bento/utils',

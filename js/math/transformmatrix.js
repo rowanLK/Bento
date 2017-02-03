@@ -5,6 +5,7 @@
  * <br>[ 0 0 1  ]
  * <br>Exports: Constructor
  * @module bento/math/transformmatrix
+ * @moduleName TransformMatrix
  * @returns {Matrix} Returns a matrix object.
  */
 bento.define('bento/math/transformmatrix', [

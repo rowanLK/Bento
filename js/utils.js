@@ -2,6 +2,7 @@
  * A collection of useful functions
  * <br>Exports: Object
  * @module bento/utils
+ * @moduleName Utils
  */
 bento.define('bento/utils', [], function () {
     'use strict';

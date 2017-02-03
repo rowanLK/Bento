@@ -1,5 +1,6 @@
 /**
  * Nineslice component
+ * @moduleName NineSlice
  */
 bento.define('bento/components/nineslice', [
     'bento',
@@ -25,6 +26,8 @@ bento.define('bento/components/nineslice', [
      */
     var NineSlice = function (settings) {
         this.entity = null;
+        this.parent = null;
+        this.rootIndex = -1;
         this.name = 'nineslice';
         this.visible = true;
 

@@ -3,6 +3,7 @@
  * unless entity.updateWhenPaused is turned on.
  * <br>Exports: Constructor
  * @module bento/components/clickable
+ * @moduleName Clickable
  * @param {Object} settings - Settings
  * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
  * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
@@ -15,6 +16,8 @@
  * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
  * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
  * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top. 
+ Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/clickable', [
@@ -22,8 +25,16 @@ bento.define('bento/components/clickable', [
     'bento/utils',
     'bento/math/vector2',
     'bento/math/transformmatrix',
-    'bento/eventsystem'
-], function (Bento, Utils, Vector2, Matrix, EventSystem) {
+    'bento/eventsystem',
+    'bento/sortedeventsystem'
+], function (
+    Bento, 
+    Utils, 
+    Vector2, 
+    Matrix, 
+    EventSystem,
+    SortedEventSystem
+) {
     'use strict';
 
     var clickables = [];
@@ -47,6 +58,8 @@ bento.define('bento/components/clickable', [
     var Clickable = function (settings) {
         var nothing = function () {};
         this.entity = null;
+        this.parent = null;
+        this.rootIndex = -1;
         /**
          * Name of the component
          * @instance
@@ -64,7 +77,7 @@ bento.define('bento/components/clickable', [
         this.hasTouched = false;
         /**
          * Ignore the pause during pointerUp event. If false, the pointerUp event will not be called if the parent entity is paused.
-         * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that. 
+         * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that.
          * Just make sure you know what you are doing!
          * @instance
          * @default true
@@ -81,6 +94,13 @@ bento.define('bento/components/clickable', [
         this.holdId = null;
         this.isPointerDown = false;
         this.initialized = false;
+        /**
+         * Should the clickable care about (z)order of objects?
+         * @instance
+         * @default false
+         * @name sort
+         */
+        this.sort = settings.sort || false;
 
         this.callbacks = {
             pointerDown: settings.pointerDown || nothing,
@@ -119,9 +139,15 @@ bento.define('bento/components/clickable', [
                 clickables.length = 0;
         }
 
-        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
+        if (this.sort) {
+            SortedEventSystem.off('pointerDown', this.pointerDown, this);
+            SortedEventSystem.off('pointerUp', this.pointerUp, this);
+            SortedEventSystem.off('pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.off('pointerDown', this.pointerDown, this);
+            EventSystem.off('pointerUp', this.pointerUp, this);
+            EventSystem.off('pointerMove', this.pointerMove, this);            
+        }
         this.initialized = false;
     };
     Clickable.prototype.start = function () {
@@ -131,9 +157,15 @@ bento.define('bento/components/clickable', [
 
         clickables.push(this);
 
-        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
+        if (this.sort) {
+            SortedEventSystem.on(this, 'pointerDown', this.pointerDown, this);
+            SortedEventSystem.on(this, 'pointerUp', this.pointerUp, this);
+            SortedEventSystem.on(this, 'pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.on('pointerDown', this.pointerDown, this);
+            EventSystem.on('pointerUp', this.pointerUp, this);
+            EventSystem.on('pointerMove', this.pointerMove, this);            
+        }
         this.initialized = true;
     };
     Clickable.prototype.update = function () {
@@ -168,7 +200,7 @@ bento.define('bento/components/clickable', [
         var e = this.transformEvent(evt),
             mousePosition;
 
-        // a pointer up could get missed during a pause 
+        // a pointer up could get missed during a pause
         if (!this.ignorePauseDuringPointerUpEvent && isPaused(this.entity)) {
             return;
         }

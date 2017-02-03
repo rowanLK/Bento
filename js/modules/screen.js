@@ -4,6 +4,7 @@
  * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
  * <br>Exports: Constructor
  * @module bento/screen
+ * @moduleName Screen
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Asset name of the json file
  * @param {String} settings.onShow - Callback when screen starts

@@ -3,6 +3,7 @@
  * (Note: to perform matrix multiplications, one must use toMatrix)
  * <br>Exports: Constructor
  * @module bento/math/vector2
+ * @moduleName Vector2
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.

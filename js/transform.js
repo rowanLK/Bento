@@ -1,5 +1,6 @@
 /**
  * Transform module
+ * @moduleName Transform
  */
 bento.define('bento/transform', [
     'bento',
