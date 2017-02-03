@@ -181,15 +181,26 @@ bento.define('bento/components/sprite', [
 
         this.padding = this.animationSettings.padding || 0;
 
+        if (this.animationSettings.origin) {
+            this.origin.x = this.animationSettings.origin.x;
+            this.origin.y = this.animationSettings.origin.y;
+        }
+
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
         this.setAnimation('default');
 
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
+        this.updateEntity();
+    };
+
+    Sprite.prototype.updateEntity = function () {
+        if (!this.entity) {
+            return;
         }
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+        //reset entity's origin
+        this.entity.setOriginRelative();
     };
 
     Sprite.prototype.attached = function (data) {
@@ -201,8 +212,7 @@ bento.define('bento/components/sprite', [
 
         this.entity = data.entity;
         // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
+        this.updateEntity();
 
         // check if the frames of animation go out of bounds
         for (animation in animations) {
@@ -297,7 +307,15 @@ bento.define('bento/components/sprite', [
             this.frameHeight = (this.spriteImage.height - this.padding * (this.frameCountY - 1)) / this.frameCountY;
         }
 
-        //TODO origin and entity dimensions
+        if (anim.origin) {
+            this.origin.x = anim.origin.x;
+            this.origin.y = anim.origin.y;
+        } else {
+            this.origin.x = 0;
+            this.origin.y = 0;
+        }
+
+        this.updateEntity();
 
         this.setAnimation('default', callback);
     };
@@ -406,7 +424,7 @@ bento.define('bento/components/sprite', [
 
     Sprite.prototype.draw = function (data) {
         var entity = data.entity,
-            origin = entity.origin;
+            eOrigin = entity.origin;
 
         if (!this.currentAnimation || !this.visible) {
             return;
@@ -414,19 +432,15 @@ bento.define('bento/components/sprite', [
 
         this.updateFrame();
 
-        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
         data.renderer.drawImage(
             this.spriteImage,
             this.sourceX,
             this.sourceY,
             this.frameWidth,
-            this.frameHeight,
-            0,
-            0,
+            this.frameHeight, -(eOrigin.x + this.origin.x), -(eOrigin.y + this.origin.y),
             this.frameWidth,
             this.frameHeight
         );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
     Sprite.prototype.toString = function () {
         return '[object Sprite]';

@@ -121,6 +121,13 @@ bento.define('bento/entity', [
          */
         this.origin = new Vector2(0, 0);
         /**
+         * Relative origin of the entity (anchor point)
+         * @instance
+         * @default Vector2(0, 0)
+         * @name originRelative
+         */
+        this.originRelative = new Vector2(0, 0);
+        /**
          * Families of the entity. Note: edit this before the entity is attached.
          * @instance
          * @default []
@@ -333,8 +340,10 @@ entity.addX(10);
      * @name setOriginRelative
      */
     Entity.prototype.setOriginRelative = function (value) {
-        this.origin.x = value.x * this.dimension.width;
-        this.origin.y = value.y * this.dimension.height;
+        this.originRelative = value || this.originRelative;
+
+        this.origin.x = this.originRelative.x * this.dimension.width;
+        this.origin.y = this.originRelative.y * this.dimension.height;
     };
 
     /**
@@ -492,7 +501,7 @@ Bento.objects.attach(entity);
      */
     Entity.prototype.removeSelf = function (name) {
         var entity = this;
-        
+
         if (entity.parent) {
             // remove from parent
             entity.parent.remove(entity);
