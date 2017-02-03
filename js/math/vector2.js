@@ -201,7 +201,17 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
      * @name magnitude
      */
     Vector2.prototype.magnitude = function () {
-        return Math.sqrt(this.dotProduct(this));
+        return Math.sqrt(this.sqrMagnitude());
+    };
+    /**
+     * Returns the magnitude of the vector without squarerooting it (which is an expensive operation)
+     * @function
+     * @returns {Number} Modulus squared of the vector
+     * @instance
+     * @name sqrMagnitude
+     */
+    Vector2.prototype.sqrMagnitude = function () {
+        return this.dotProduct(this);
     };
     /**
      * Normalizes the vector by its magnitude
