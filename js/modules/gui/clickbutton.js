@@ -8,6 +8,7 @@
  * @param {String} [settings.sfx] - Plays sound when pressed
  * @param {Function} [settings.onButtonDown] - When the user holds the mouse or touches the button
  * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
+ * @param {Boolean} [settings.sort] - Callbacks are executed first if the component/entity is visually on top. Other ClickButtons must also have "sort" to true.
  * @module bento/gui/clickbutton
  * @returns Entity
  */
@@ -58,6 +59,7 @@ bento.define('bento/gui/clickbutton', [
         // workaround for pointerUp/onHoldEnd order of events
         var wasHoldingThis = false;
         var clickable = new Clickable({
+            sort: settings.sort,
             onClick: function () {
                 wasHoldingThis = false;
                 if (!active || ClickButton.currentlyPressing) {

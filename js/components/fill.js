@@ -15,6 +15,8 @@ bento.define('bento/components/fill', [
     var Fill = function (settings) {
         var viewport = Bento.getViewport();
         settings = settings || {};
+        this.parent = null;
+        this.rootIndex = -1;
         this.name = 'fill';
         this.color = settings.color || [0, 0, 0, 1];
         this.dimension = settings.dimension || viewport;

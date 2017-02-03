@@ -4350,6 +4350,13 @@ bento.define('bento/entity', [
          */
         this.z = 0;
         /**
+         * Index position of its parent (if any)
+         * @instance
+         * @default -1
+         * @name rootIndex
+         */
+        this.rootIndex = -1;
+        /**
          * Timer value, incremented every update step
          * @instance
          * @default 0
@@ -4675,7 +4682,9 @@ Bento.objects.attach(entity);
         data.entity = this;
 
         // attach the child
+        // NOTE: attaching will always set the properties "parent" and "rootIndex"
         child.parent = this;
+        child.rootIndex = this.components.length;
         this.components.push(child);
         // call child.attached
         if (child.attached) {
@@ -4747,6 +4756,8 @@ Bento.objects.attach(entity);
                 child.removed(data);
             }
             child.parent = null;
+            child.rootIndex = -1; // note that sibling rootIndex may be incorrect until the next update loop
+
             this.components[index] = null;
         }
         return this;
@@ -5058,6 +5069,7 @@ Bento.objects.attach(entity);
             component = components[i];
             if (component && component.update) {
                 data.entity = this;
+                component.rootIndex = i;
                 component.update(data);
             }
         }
@@ -5268,14 +5280,29 @@ bento.define('bento/eventsystem', [
             cleanEventListeners();
         }
     };
-
-    return {
+    var stopPropagation = false;
+    var EventSystem = {
+        SortedEventSystem: null,
         /**
          * Ignore warnings
          * @instance
          * @name suppressWarnings
          */
         suppressWarnings: false,
+        /**
+         * Stops the current event from further propagating
+         * @function
+         * @instance
+         * @name stopPropagation
+         */
+        stopPropagation: function () {
+            stopPropagation = true;
+            // also stop propagation of sorted events by calling this
+            var SortedEventSystem = EventSystem.SortedEventSystem;
+            if (SortedEventSystem) {
+                SortedEventSystem.stopPropagation();
+            }
+        },
         /**
          * Fires an event
          * @function
@@ -5286,6 +5313,13 @@ bento.define('bento/eventsystem', [
          */
         fire: function (eventName, eventData) {
             var i, l, listeners, listener;
+            // Note: Sorted events are called before unsorted event listeners
+            var SortedEventSystem = EventSystem.SortedEventSystem;
+            if (SortedEventSystem) {
+                SortedEventSystem.fire(eventName, eventData);
+            }
+
+            stopPropagation = false;
 
             // clean up before firing event
             cleanEventListeners();
@@ -5313,6 +5347,11 @@ bento.define('bento/eventsystem', [
                     // In a lot of cases, this is normal... Consider removing this warning?
                     // console.log('Warning: listener is not a function');
                 }
+                if (stopPropagation) {
+                    stopPropagation = false;
+                    break;
+                }
+
             }
             isLoopingEvents = false;
         },
@@ -5325,13 +5364,15 @@ bento.define('bento/eventsystem', [
          * @param {Object} eventData - Any data that is passed
          */
         /**
-         * Listen to event
+         * Listen to event.
          * @function
          * @instance
          * @param {String} eventName - Name of the event
          * @param {Callback} callback - Callback function.
          * Be careful about adding anonymous functions here, you should consider removing the event listener
          * to prevent memory leaks.
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
          * @name on
          */
         on: addEventListener,
@@ -5341,6 +5382,8 @@ bento.define('bento/eventsystem', [
          * @instance
          * @param {String} eventName - Name of the event
          * @param {Callback} callback - Reference to the callback function
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
          * @name off
          */
         off: removeEventListener,
@@ -5353,6 +5396,8 @@ bento.define('bento/eventsystem', [
          */
         clear: clearEventListeners
     };
+
+    return EventSystem;
 });
 /**
  * A wrapper for HTML images, holds data for image atlas. Bento renderers only work with PackedImage and not plain
@@ -6620,6 +6665,8 @@ bento.define('bento/utils', [], function () {
  * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
  * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
  * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top. 
+ Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/clickable', [
@@ -6627,8 +6674,16 @@ bento.define('bento/components/clickable', [
     'bento/utils',
     'bento/math/vector2',
     'bento/math/transformmatrix',
-    'bento/eventsystem'
-], function (Bento, Utils, Vector2, Matrix, EventSystem) {
+    'bento/eventsystem',
+    'bento/sortedeventsystem'
+], function (
+    Bento, 
+    Utils, 
+    Vector2, 
+    Matrix, 
+    EventSystem,
+    SortedEventSystem
+) {
     'use strict';
 
     var clickables = [];
@@ -6652,6 +6707,8 @@ bento.define('bento/components/clickable', [
     var Clickable = function (settings) {
         var nothing = function () {};
         this.entity = null;
+        this.parent = null;
+        this.rootIndex = -1;
         /**
          * Name of the component
          * @instance
@@ -6686,6 +6743,13 @@ bento.define('bento/components/clickable', [
         this.holdId = null;
         this.isPointerDown = false;
         this.initialized = false;
+        /**
+         * Should the clickable care about (z)order of objects?
+         * @instance
+         * @default false
+         * @name sort
+         */
+        this.sort = settings.sort || false;
 
         this.callbacks = {
             pointerDown: settings.pointerDown || nothing,
@@ -6724,9 +6788,15 @@ bento.define('bento/components/clickable', [
                 clickables.length = 0;
         }
 
-        EventSystem.removeEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.removeEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.removeEventListener('pointerMove', this.pointerMove, this);
+        if (this.sort) {
+            SortedEventSystem.off('pointerDown', this.pointerDown, this);
+            SortedEventSystem.off('pointerUp', this.pointerUp, this);
+            SortedEventSystem.off('pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.off('pointerDown', this.pointerDown, this);
+            EventSystem.off('pointerUp', this.pointerUp, this);
+            EventSystem.off('pointerMove', this.pointerMove, this);            
+        }
         this.initialized = false;
     };
     Clickable.prototype.start = function () {
@@ -6736,9 +6806,15 @@ bento.define('bento/components/clickable', [
 
         clickables.push(this);
 
-        EventSystem.addEventListener('pointerDown', this.pointerDown, this);
-        EventSystem.addEventListener('pointerUp', this.pointerUp, this);
-        EventSystem.addEventListener('pointerMove', this.pointerMove, this);
+        if (this.sort) {
+            SortedEventSystem.on(this, 'pointerDown', this.pointerDown, this);
+            SortedEventSystem.on(this, 'pointerUp', this.pointerUp, this);
+            SortedEventSystem.on(this, 'pointerMove', this.pointerMove, this);
+        } else {
+            EventSystem.on('pointerDown', this.pointerDown, this);
+            EventSystem.on('pointerUp', this.pointerUp, this);
+            EventSystem.on('pointerMove', this.pointerMove, this);            
+        }
         this.initialized = true;
     };
     Clickable.prototype.update = function () {
@@ -6863,6 +6939,8 @@ bento.define('bento/components/fill', [
     var Fill = function (settings) {
         var viewport = Bento.getViewport();
         settings = settings || {};
+        this.parent = null;
+        this.rootIndex = -1;
         this.name = 'fill';
         this.color = settings.color || [0, 0, 0, 1];
         this.dimension = settings.dimension || viewport;
@@ -6907,6 +6985,8 @@ bento.define('bento/components/nineslice', [
      */
     var NineSlice = function (settings) {
         this.entity = null;
+        this.parent = null;
+        this.rootIndex = -1;
         this.name = 'nineslice';
         this.visible = true;
 
@@ -7115,6 +7195,8 @@ bento.define('bento/components/sprite', [
         this.entity = null;
         this.name = 'sprite';
         this.visible = true;
+        this.parent = null;
+        this.rootIndex = -1;
 
         this.animationSettings = settings || {
             frameCountX: 1,
@@ -10821,438 +10903,451 @@ bento.define('bento/managers/object', [
 ], function (Utils, EventSystem) {
     'use strict';
     return function (getGameData, settings) {
-        var objects = [],
-            lastTime = new Date().getTime(),
-            cumulativeTime = 0,
-            minimumFps = 30,
-            lastFrameTime = new Date().getTime(),
-            quickAccess = {},
-            isRunning = false,
-            sortMode = settings.sortMode || 0,
-            isPaused = 0,
-            isStopped = false,
-            fpsMeter,
-            sortDefault = function () {
-                // default array sorting method (unstable)
-                objects.sort(function (a, b) {
-                    return a.z - b.z;
-                });
-            },
-            sortStable = function () {
-                // default method for sorting: stable sort
-                Utils.stableSort.inplace(objects, function (a, b) {
-                    return a.z - b.z;
-                });
-            },
-            sort = sortStable,
-            cleanObjects = function () {
-                var i;
-                // loop objects array from end to start and remove null elements
-                for (i = objects.length - 1; i >= 0; --i) {
-                    if (objects[i] === null) {
-                        objects.splice(i, 1);
-                    }
+        var objects = [];
+        var lastTime = new Date().getTime();
+        var cumulativeTime = 0;
+        var minimumFps = 30;
+        var lastFrameTime = new Date().getTime();
+        var quickAccess = {};
+        var isRunning = false;
+        var sortMode = settings.sortMode || 0;
+        var isPaused = 0;
+        var isStopped = false;
+        var fpsMeter;
+        var sortDefault = function () {
+            // default array sorting method (unstable)
+            objects.sort(function (a, b) {
+                return a.z - b.z;
+            });
+        };
+        var sortStable = function () {
+            // default method for sorting: stable sort
+            Utils.stableSort.inplace(objects, function (a, b) {
+                return a.z - b.z;
+            });
+        };
+        var sort = sortStable;
+        var cleanObjects = function () {
+            var i;
+            // loop objects array from end to start and remove null elements
+            for (i = objects.length - 1; i >= 0; --i) {
+                if (objects[i] === null) {
+                    objects.splice(i, 1);
                 }
-            },
-            mainLoop = function (time) {
-                var object,
-                    i,
-                    currentTime = new Date().getTime(),
-                    deltaT = currentTime - lastTime,
-                    data = getGameData();
-
-                if (!isRunning) {
-                    return;
-                }
-
-                if (settings.debug && fpsMeter) {
-                    fpsMeter.tickStart();
-                }
-
-                lastTime = currentTime;
-                cumulativeTime += deltaT;
+            }
+        };
+        var mainLoop = function (time) {
+            var object,
+                i,
+                currentTime = new Date().getTime(),
+                deltaT = currentTime - lastTime,
                 data = getGameData();
-                data.deltaT = deltaT;
+
+            if (!isRunning) {
+                return;
+            }
+
+            if (settings.debug && fpsMeter) {
+                fpsMeter.tickStart();
+            }
+
+            lastTime = currentTime;
+            cumulativeTime += deltaT;
+            data = getGameData();
+            data.deltaT = deltaT;
+            if (settings.useDeltaT) {
+                cumulativeTime = 1000 / 60;
+            }
+            while (cumulativeTime >= 1000 / 60) {
+                cumulativeTime -= 1000 / 60;
+                if (cumulativeTime > 1000 / minimumFps) {
+                    // deplete cumulative time
+                    while (cumulativeTime >= 1000 / 60) {
+                        cumulativeTime -= 1000 / 60;
+                    }
+                }
                 if (settings.useDeltaT) {
-                    cumulativeTime = 1000 / 60;
+                    cumulativeTime = 0;
                 }
-                while (cumulativeTime >= 1000 / 60) {
-                    cumulativeTime -= 1000 / 60;
-                    if (cumulativeTime > 1000 / minimumFps) {
-                        // deplete cumulative time
-                        while (cumulativeTime >= 1000 / 60) {
-                            cumulativeTime -= 1000 / 60;
-                        }
-                    }
-                    if (settings.useDeltaT) {
-                        cumulativeTime = 0;
-                    }
-                    update(data);
-                }
-                cleanObjects();
-                if (sortMode === Utils.SortMode.ALWAYS) {
-                    sort();
-                }
-                draw(data);
+                update(data);
+            }
+            cleanObjects();
+            if (sortMode === Utils.SortMode.ALWAYS) {
+                sort();
+            }
+            draw(data);
 
-                lastFrameTime = time;
-                if (settings.debug && fpsMeter) {
-                    fpsMeter.tick();
+            lastFrameTime = time;
+            if (settings.debug && fpsMeter) {
+                fpsMeter.tick();
+            }
+
+            window.requestAnimationFrame(mainLoop);
+        };
+        var update = function (data) {
+            var object,
+                i;
+
+            data = data || getGameData();
+
+            EventSystem.fire('preUpdate', data);
+            for (i = 0; i < objects.length; ++i) {
+                object = objects[i];
+                if (!object) {
+                    continue;
                 }
-
-                window.requestAnimationFrame(mainLoop);
-            },
-            update = function (data) {
-                var object,
-                    i;
-
-                data = data || getGameData();
-
-                EventSystem.fire('preUpdate', data);
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (object.update && (object.updateWhenPaused >= isPaused)) {
-                        object.update(data);
-                    }
+                if (object.update && (object.updateWhenPaused >= isPaused)) {
+                    object.update(data);
                 }
-                EventSystem.fire('postUpdate', data);
-            },
-            draw = function (data) {
-                var object,
-                    i;
-                data = data || getGameData();
-
-                EventSystem.fire('preDraw', data);
-                data.renderer.begin();
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (object.draw) {
-                        object.draw(data);
-                    }
+                // update its rootIndex
+                if (object.rootIndex !== undefined) {
+                    object.rootIndex = i;
                 }
-                data.renderer.flush();
-                EventSystem.fire('postDraw', data);
-            },
-            attach = function (object) {
+            }
+            EventSystem.fire('postUpdate', data);
+        };
+        var draw = function (data) {
+            var object,
+                i;
+            data = data || getGameData();
+
+            EventSystem.fire('preDraw', data);
+            data.renderer.begin();
+            for (i = 0; i < objects.length; ++i) {
+                object = objects[i];
+                if (!object) {
+                    continue;
+                }
+                if (object.draw) {
+                    object.draw(data);
+                }
+            }
+            data.renderer.flush();
+            EventSystem.fire('postDraw', data);
+        };
+        var attach = function (object) {
+            var i,
+                type,
+                family,
+                data = getGameData();
+
+            if (!object) {
+                Utils.log("ERROR: trying to attach " + object);
+                return;
+            }
+
+            if (object.isAdded || object.parent) {
+                Utils.log("ERROR: Entity " + object.name + " was already added.");
+                return;
+            }
+
+            object.z = object.z || 0;
+            object.updateWhenPaused = object.updateWhenPaused || 0;
+            objects.push(object);
+            object.isAdded = true;
+            if (object.init) {
+                object.init();
+            }
+            // add object to access pools
+            if (object.family) {
+                family = object.family;
+                for (i = 0; i < family.length; ++i) {
+                    type = family[i];
+                    if (!quickAccess[type]) {
+                        quickAccess[type] = [];
+                    }
+                    quickAccess[type].push(object);
+                }
+            }
+
+            if (object.start) {
+                object.start(data);
+            }
+            if (object.attached) {
+                object.attached(data);
+            }
+            if (sortMode === Utils.SortMode.SORT_ON_ADD) {
+                sort();
+            }
+        };
+        var module = {
+            /**
+             * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
+             * has the functions update and draw, they will be called during the loop.
+             * @function
+             * @instance
+             * @param {Object} object - Any object, preferably an Entity
+             * @name attach
+             */
+            attach: attach,
+            add: attach,
+            /**
+             * Removes entity/object
+             * @function
+             * @instance
+             * @param {Object} object - Reference to the object to be removed
+             * @name remove
+             */
+            remove: function (object) {
                 var i,
                     type,
+                    index,
                     family,
+                    pool,
                     data = getGameData();
-
                 if (!object) {
-                    Utils.log("ERROR: trying to attach " + object);
                     return;
                 }
-
-                if (object.isAdded || object.parent) {
-                    Utils.log("ERROR: Entity " + object.name + " was already added.");
-                    return;
+                index = objects.indexOf(object);
+                if (index >= 0) {
+                    objects[index] = null;
+                    if (object.destroy) {
+                        object.destroy(data);
+                    }
+                    if (object.removed) {
+                        object.removed(data);
+                    }
+                    object.isAdded = false;
                 }
-
-                object.z = object.z || 0;
-                object.updateWhenPaused = object.updateWhenPaused || 0;
-                objects.push(object);
-                object.isAdded = true;
-                if (object.init) {
-                    object.init();
-                }
-                // add object to access pools
+                // remove from access pools
                 if (object.family) {
                     family = object.family;
                     for (i = 0; i < family.length; ++i) {
                         type = family[i];
-                        if (!quickAccess[type]) {
-                            quickAccess[type] = [];
+                        pool = quickAccess[type];
+                        if (pool) {
+                            Utils.removeObject(quickAccess[type], object);
                         }
-                        quickAccess[type].push(object);
                     }
-                }
-
-                if (object.start) {
-                    object.start(data);
-                }
-                if (object.attached) {
-                    object.attached(data);
-                }
-                if (sortMode === Utils.SortMode.SORT_ON_ADD) {
-                    sort();
                 }
             },
-            module = {
-                /**
-                 * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
-                 * has the functions update and draw, they will be called during the loop.
-                 * @function
-                 * @instance
-                 * @param {Object} object - Any object, preferably an Entity
-                 * @name attach
-                 */
-                attach: attach,
-                add: attach,
-                /**
-                 * Removes entity/object
-                 * @function
-                 * @instance
-                 * @param {Object} object - Reference to the object to be removed
-                 * @name remove
-                 */
-                remove: function (object) {
-                    var i,
-                        type,
-                        index,
-                        family,
-                        pool,
-                        data = getGameData();
+            /**
+             * Removes all entities/objects except ones that have the property "global"
+             * @function
+             * @instance
+             * @param {Boolean} removeGlobal - Also remove global objects
+             * @name removeAll
+             */
+            removeAll: function (removeGlobal) {
+                var i,
+                    object;
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
                     if (!object) {
-                        return;
+                        continue;
                     }
-                    index = objects.indexOf(object);
-                    if (index >= 0) {
-                        objects[index] = null;
-                        if (object.destroy) {
-                            object.destroy(data);
-                        }
-                        if (object.removed) {
-                            object.removed(data);
-                        }
-                        object.isAdded = false;
+                    if (!object.global || removeGlobal) {
+                        module.remove(object);
                     }
-                    // remove from access pools
-                    if (object.family) {
-                        family = object.family;
-                        for (i = 0; i < family.length; ++i) {
-                            type = family[i];
-                            pool = quickAccess[type];
-                            if (pool) {
-                                Utils.removeObject(quickAccess[type], object);
-                            }
-                        }
-                    }
-                },
-                /**
-                 * Removes all entities/objects except ones that have the property "global"
-                 * @function
-                 * @instance
-                 * @param {Boolean} removeGlobal - Also remove global objects
-                 * @name removeAll
-                 */
-                removeAll: function (removeGlobal) {
-                    var i,
-                        object;
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (!object.global || removeGlobal) {
-                            module.remove(object);
-                        }
-                    }
-                    // re-add all global objects
-                    cleanObjects();
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                    }
-                },
-                /**
-                 * Returns the first object it can find with this name. Safer to use with a callback.
-                 * The callback is called immediately if the object is found (it's not asynchronous).
-                 * @function
-                 * @instance
-                 * @param {String} objectName - Name of the object
-                 * @param {Function} [callback] - Called if the object is found
-                 * @returns {Object} null if not found
-                 * @name get
-                 */
-                get: function (objectName, callback) {
-                    // retrieves the first object it finds by its name
-                    var i,
-                        object;
-
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (!object.name) {
-                            continue;
-                        }
-                        if (object.name === objectName) {
-                            if (callback) {
-                                callback(object);
-                            }
-                            return object;
-                        }
-                    }
-                    return null;
-                },
-                /**
-                 * Returns an array of objects with a certain name
-                 * @function
-                 * @instance
-                 * @param {String} objectName - Name of the object
-                 * @param {Function} [callback] - Called with the object array
-                 * @returns {Array} An array of objects, empty if no objects found
-                 * @name getByName
-                 */
-                getByName: function (objectName, callback) {
-                    var i,
-                        object,
-                        array = [];
-
-                    for (i = 0; i < objects.length; ++i) {
-                        object = objects[i];
-                        if (!object) {
-                            continue;
-                        }
-                        if (!object.name) {
-                            continue;
-                        }
-                        if (object.name === objectName) {
-                            array.push(object);
-                        }
-                    }
-                    if (callback && array.length) {
-                        callback(array);
-                    }
-                    return array;
-                },
-                /**
-                 * Returns an array of objects by family name. Entities are added to pools
-                 * of each family you indicate in the Entity.family array the moment you call
-                 * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
-                 * This allows quick access of a group of similar entities. Families are cached so you
-                 * may get a reference to the array of objects even if it's not filled yet.
-                 * @function
-                 * @instance
-                 * @param {String} familyName - Name of the family
-                 * @param {Function} [callback] - Called with the object array
-                 * @returns {Array} An array of objects, empty if no objects found
-                 * @name getByFamily
-                 */
-                getByFamily: function (type, callback) {
-                    var array = quickAccess[type];
-                    if (!array) {
-                        // initialize it
-                        array = [];
-                        quickAccess[type] = array;
-                        // Utils.log('Warning: family called ' + type + ' does not exist', true);
-                    }
-                    if (callback && array.length) {
-                        callback(array);
-                    }
-                    return array;
-                },
-                /**
-                 * Stops the mainloop on the next tick
-                 * @function
-                 * @instance
-                 * @name stop
-                 */
-                stop: function () {
-                    isRunning = false;
-                },
-                /**
-                 * Starts the mainloop
-                 * @function
-                 * @instance
-                 * @name run
-                 */
-                run: function () {
-                    if (!isRunning) {
-                        isRunning = true;
-                        mainLoop();
-                    }
-                },
-                /**
-                 * Returns the number of objects
-                 * @function
-                 * @instance
-                 * @returns {Number} The number of objects
-                 * @name count
-                 */
-                count: function () {
-                    return objects.length;
-                },
-                /**
-                 * Stops calling update on every object. Note that draw is still
-                 * being called. Objects with the property updateWhenPaused
-                 * will still be updated.
-                 * @function
-                 * @instance
-                 * @param {Number} level - Level of pause state, defaults to 1
-                 * @name pause
-                 */
-                pause: function (level) {
-                    isPaused = level;
-                    if (Utils.isUndefined(level)) {
-                        isPaused = 1;
-                    }
-                },
-                /**
-                 * Cancels the pause and resume updating objects. (Sets pause level to 0)
-                 * @function
-                 * @instance
-                 * @name resume
-                 */
-                resume: function () {
-                    isPaused = 0;
-                },
-                /**
-                 * Returns pause level. If an object is passed to the function
-                 * it checks if that object should be paused or not
-                 * @function
-                 * @instance
-                 * @param {Object} [object] - Object to check if it's paused
-                 * @name isPaused
-                 */
-                isPaused: function (obj) {
-                    if (Utils.isDefined(obj)) {
-                        return obj.updateWhenPaused < isPaused;
-                    }
-                    return isPaused;
-                },
-                /**
-                 * Forces objects to be drawn (Don't call this unless you need it)
-                 * @function
-                 * @instance
-                 * @param {GameData} [data] - Data object (see Bento.getGameData)
-                 * @name draw
-                 */
-                draw: function (data) {
-                    draw(data);
-                },
-                /**
-                 * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
-                 * Utils.SortMode.ALWAYS - sort on every update tick<br>
-                 * Utils.SortMode.NEVER - don't sort at all<br>
-                 * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
-                 * @function
-                 * @instance
-                 * @param {Utils.SortMode} mode - Sorting mode
-                 * @name setSortMode
-                 */
-                setSortMode: function (mode) {
-                    sortMode = mode;
-                },
-                /**
-                 * Calls the update function. Be careful when using this in another
-                 * update loop, as it will result in an endless loop.
-                 * @function
-                 * @instance
-                 * @param {GameData} [data] - Data object (see Bento.getGameData)
-                 * @name update
-                 */
-                update: function (data) {
-                    update(data);
                 }
-            };
+                // re-add all global objects
+                cleanObjects();
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                }
+            },
+            /**
+             * Returns the first object it can find with this name. Safer to use with a callback.
+             * The callback is called immediately if the object is found (it's not asynchronous).
+             * @function
+             * @instance
+             * @param {String} objectName - Name of the object
+             * @param {Function} [callback] - Called if the object is found
+             * @returns {Object} null if not found
+             * @name get
+             */
+            get: function (objectName, callback) {
+                // retrieves the first object it finds by its name
+                var i,
+                    object;
+
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (!object.name) {
+                        continue;
+                    }
+                    if (object.name === objectName) {
+                        if (callback) {
+                            callback(object);
+                        }
+                        return object;
+                    }
+                }
+                return null;
+            },
+            /**
+             * Returns an array of objects with a certain name
+             * @function
+             * @instance
+             * @param {String} objectName - Name of the object
+             * @param {Function} [callback] - Called with the object array
+             * @returns {Array} An array of objects, empty if no objects found
+             * @name getByName
+             */
+            getByName: function (objectName, callback) {
+                var i,
+                    object,
+                    array = [];
+
+                for (i = 0; i < objects.length; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (!object.name) {
+                        continue;
+                    }
+                    if (object.name === objectName) {
+                        array.push(object);
+                    }
+                }
+                if (callback && array.length) {
+                    callback(array);
+                }
+                return array;
+            },
+            /**
+             * Returns an array of objects by family name. Entities are added to pools
+             * of each family you indicate in the Entity.family array the moment you call
+             * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
+             * This allows quick access of a group of similar entities. Families are cached so you
+             * may get a reference to the array of objects even if it's not filled yet.
+             * @function
+             * @instance
+             * @param {String} familyName - Name of the family
+             * @param {Function} [callback] - Called with the object array
+             * @returns {Array} An array of objects, empty if no objects found
+             * @name getByFamily
+             */
+            getByFamily: function (type, callback) {
+                var array = quickAccess[type];
+                if (!array) {
+                    // initialize it
+                    array = [];
+                    quickAccess[type] = array;
+                    // Utils.log('Warning: family called ' + type + ' does not exist', true);
+                }
+                if (callback && array.length) {
+                    callback(array);
+                }
+                return array;
+            },
+            /**
+             * Stops the mainloop on the next tick
+             * @function
+             * @instance
+             * @name stop
+             */
+            stop: function () {
+                isRunning = false;
+            },
+            /**
+             * Starts the mainloop
+             * @function
+             * @instance
+             * @name run
+             */
+            run: function () {
+                if (!isRunning) {
+                    isRunning = true;
+                    mainLoop();
+                }
+            },
+            /**
+             * Returns the number of objects
+             * @function
+             * @instance
+             * @returns {Number} The number of objects
+             * @name count
+             */
+            count: function () {
+                return objects.length;
+            },
+            /**
+             * Stops calling update on every object. Note that draw is still
+             * being called. Objects with the property updateWhenPaused
+             * will still be updated.
+             * @function
+             * @instance
+             * @param {Number} level - Level of pause state, defaults to 1
+             * @name pause
+             */
+            pause: function (level) {
+                isPaused = level;
+                if (Utils.isUndefined(level)) {
+                    isPaused = 1;
+                }
+            },
+            /**
+             * Cancels the pause and resume updating objects. (Sets pause level to 0)
+             * @function
+             * @instance
+             * @name resume
+             */
+            resume: function () {
+                isPaused = 0;
+            },
+            /**
+             * Returns pause level. If an object is passed to the function
+             * it checks if that object should be paused or not
+             * @function
+             * @instance
+             * @param {Object} [object] - Object to check if it's paused
+             * @name isPaused
+             */
+            isPaused: function (obj) {
+                if (Utils.isDefined(obj)) {
+                    return obj.updateWhenPaused < isPaused;
+                }
+                return isPaused;
+            },
+            /**
+             * Forces objects to be drawn (Don't call this unless you need it)
+             * @function
+             * @instance
+             * @param {GameData} [data] - Data object (see Bento.getGameData)
+             * @name draw
+             */
+            draw: function (data) {
+                draw(data);
+            },
+            /**
+             * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
+             * Utils.SortMode.ALWAYS - sort on every update tick<br>
+             * Utils.SortMode.NEVER - don't sort at all<br>
+             * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
+             * @function
+             * @instance
+             * @param {Utils.SortMode} mode - Sorting mode
+             * @name setSortMode
+             */
+            setSortMode: function (mode) {
+                sortMode = mode;
+            },
+            /**
+             * Calls the update function. Be careful when using this in another
+             * update loop, as it will result in an endless loop.
+             * @function
+             * @instance
+             * @param {GameData} [data] - Data object (see Bento.getGameData)
+             * @name update
+             */
+            update: function (data) {
+                update(data);
+            },
+            /**
+             * Retrieves array of all objects.
+             * @function
+             * @instance
+             * @name getObjects
+             */
+            getObjects: function () {
+                return objects;
+            }
+        };
 
         if (!window.performance) {
             window.performance = {
@@ -13478,6 +13573,365 @@ bento.define('bento/screen', [
     return Screen;
 });
 /**
+ * Sorted EventSystem is EventSystem's "little brother". It's functionality is the same as
+ * EventSystem, except you can pass a component to the event listener. The event listener will then
+ * be sorted by which component is visually "on top". Sorted EventSystem will listen to events fired by
+ * the normal EventSystem. Recommended to use this only when you need to.
+ * <br>Exports: Object
+ * @module bento/sortedeventsystem
+ */
+bento.define('bento/sortedeventsystem', [
+    'bento',
+    'bento/eventsystem',
+    'bento/utils'
+], function (
+    Bento,
+    EventSystem,
+    Utils
+) {
+    // sorting data class: its purpose is to cache variables useful for sorting
+    var SortingData = function (component) {
+        var rootIndex = -1; // index of root parent in object manager
+        var componentIndex = -1; // index of component in entity
+        var depth = -1; // how many grandparents
+        var parent = component.parent; // component's direct parent
+        var parentIndex = -1;
+        var parents = [];
+        var rootParent = null;
+        var rootZ;
+
+        // init objects if needed
+        if (objects === null) {
+            objects = Bento.objects.getObjects();
+        }
+
+        if (!parent) {
+            // either the component itself a rootParent, or it wasn't attached yet
+            rootParent = component;
+        } else {
+            // get index of component
+            componentIndex = component.rootIndex;
+            // grandparent?
+            if (parent.parent) {
+                parentIndex = parent.rootIndex;
+            }
+
+            // find the root
+            while (parent) {
+                parents.unshift(parent);
+                depth += 1;
+                if (!parent.parent) {
+                    // current parent must be the root
+                    rootParent = parent;
+                }
+                // next iteration
+                parent = parent.parent;
+            }
+        }
+
+        // collect data
+        rootIndex = rootParent.rootIndex;
+        rootZ = rootParent.z;
+
+        this.isDirty = false;
+        this.component = component;
+        this.parent = parent;
+        this.parentIndex = parentIndex;
+        this.parents = parents;
+        this.componentIndex = componentIndex;
+        this.depth = depth;
+        this.rootParent = rootParent;
+        this.rootIndex = rootIndex;
+        this.rootZ = rootZ;
+    };
+
+    var isLoopingEvents = false;
+    var objects = null;
+    var events = {};
+    /*events = {
+        [String eventName]: [Array listeners = {callback: Function, context: this}]
+    }*/
+    var removedEvents = [];
+    var cleanEventListeners = function () {
+        var i, j, l, listeners, eventName, callback, context;
+
+        if (isLoopingEvents) {
+            return;
+        }
+        for (j = 0; j < removedEvents.length; ++j) {
+            eventName = removedEvents[j].eventName;
+            if (removedEvents[j].reset === true) {
+                // reset the whole event listener
+                events[eventName] = [];
+                continue;
+            }
+            callback = removedEvents[j].callback;
+            context = removedEvents[j].context;
+            if (Utils.isUndefined(events[eventName])) {
+                continue;
+            }
+            listeners = events[eventName];
+            for (i = listeners.length - 1; i >= 0; --i) {
+                if (listeners[i].callback === callback) {
+                    if (context) {
+                        if (listeners[i].context === context) {
+                            events[eventName].splice(i, 1);
+                            break;
+                        }
+                    } else {
+                        events[eventName].splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+        removedEvents = [];
+    };
+    var addEventListener = function (component, eventName, callback, context) {
+        var sortingData = new SortingData(component);
+
+        if (Utils.isString(component)) {
+            Utils.log('ERROR: First parameter of SortedEventSystem.on is the component!');
+            return;
+        }
+        if (Utils.isUndefined(events[eventName])) {
+            events[eventName] = [];
+        }
+        events[eventName].push({
+            sortingData: sortingData,
+            callback: callback,
+            context: context
+        });
+    };
+    var removeEventListener = function (eventName, callback, context) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            callback: callback,
+            context: context
+        });
+
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
+    };
+    var clearEventListeners = function (eventName) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            reset: true
+        });
+
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
+    };
+    var sortFunction = function (a, b) {
+        // sort event listeners by the component location in the scenegraph
+        var sortA = a.sortingData;
+        var sortB = b.sortingData;
+        // refresh sorting data
+        if (sortA.isDirty) {
+            a.sortingData = new SortingData(sortA.component);
+            sortA = a.sortingData;
+        }
+        if (sortB.isDirty) {
+            b.sortingData = new SortingData(sortB.component);
+            sortB = b.sortingData;
+        }
+
+        // 0. A === B
+        if (sortA.component === sortB.component) {
+            // no preference.
+            return 0;
+        }
+
+        // 1. Sort by z
+        var zDiff = sortB.rootZ - sortA.rootZ;
+        if (zDiff) {
+            return zDiff;
+        }
+
+        // 2. Same z: sort by index of the root entity
+        var rootDiff = sortB.rootIndex - sortA.rootIndex;
+        if (rootDiff) {
+            // different roots: sort by root
+            return rootDiff;
+        }
+
+        // 3. Same index: the components must have common (grand)parents, aka in the same scenegraph
+        // NOTE: there might be a better way to sort scenegraphs than this
+        // 3A. are the components siblings?
+        var parentA = sortA.component.parent;
+        var parentB = sortB.component.parent;
+        if (parentA === parentB) {
+            return sortB.componentIndex - sortA.componentIndex;
+        }
+        // 3B. common grandparent? This should be a pretty common case
+        if (parentA && parentB && parentA.parent === parentB.parent) {
+            return sortB.parentIndex - sortA.parentIndex;
+        }
+
+        // 3C. one of the component's parent entity is a (grand)parent of the other?
+        if (sortA.parents.indexOf(sortB.component.parent) >= 0 || sortB.parents.indexOf(sortA.component.parent) >= 0) {
+            return sortB.depth - sortA.depth;
+        }
+        // 3D. last resort: find the earliest common parent and compare their component index
+        return findCommonParentIndex(sortA, sortB);
+    };
+    var findCommonParentIndex = function (sortA, sortB) {
+        // used when components have a common parent, but that common parent is not the root
+        var parentsA = sortA.parents;
+        var parentsB = sortB.parents;
+        var min = Math.min(parentsA.length, parentsB.length);
+        var i;
+        var commonParent = null;
+        var componentA;
+        var componentB;
+        // find the last common parent
+        for (i = 0; i < min; ++i) {
+            if (parentsA[i] === parentsB[i]) {
+                commonParent = parentsA[i];
+            } else {
+                // we found the last common parent, now we need to compare these children
+                componentA = parentsA[i];
+                componentB = parentsB[i];
+                break;
+            }
+        }
+        if (!commonParent || !commonParent.components) {
+            // error: couldn't find common parent
+            return 0;
+        }
+        // compare indices
+        return commonParent.components.indexOf(componentB) - commonParent.components.indexOf(componentA);
+    };
+    var inspectSortingData = function (listeners) {
+        // go through all sortingData and check if their z index didnt change in the meantime
+        var sortingData;
+        var i = 0,
+            l = listeners.length;
+        for (i = 0; i < l; ++i) {
+            sortingData = listeners[i].sortingData;
+            if (sortingData.rootZ !== sortingData.rootParent.z) {
+                sortingData.isDirty = true;
+            }
+            // update rootIndex
+            sortingData.rootIndex = sortingData.rootParent.rootIndex;
+        }
+    };
+    var sortListeners = function (listeners) {
+        // sort the listeners
+        Utils.stableSort.inplace(listeners, sortFunction);
+    };
+    var stopPropagation = false;
+
+    var SortedEventSystem = {
+        suppressWarnings: false,
+        stopPropagation: function () {
+            stopPropagation = true;
+        },
+        fire: function (eventName, eventData) {
+            var i, l, listeners, listener;
+
+            stopPropagation = false;
+
+            // clean up before firing event
+            cleanEventListeners();
+
+            if (!Utils.isString(eventName)) {
+                eventName = eventName.toString();
+            }
+            if (Utils.isUndefined(events[eventName])) {
+                return;
+            }
+
+            listeners = events[eventName];
+
+            // leaving this for debugging purposes
+            // if (eventName === 'pointerDown') {
+            //     console.log(listeners);
+            // }
+
+            // sort before looping through listeners
+            inspectSortingData(listeners);
+            sortListeners(listeners);
+
+            for (i = 0, l = listeners.length; i < l; ++i) {
+                isLoopingEvents = true;
+                listener = listeners[i];
+                if (listener) {
+                    if (listener.context) {
+                        listener.callback.apply(listener.context, [eventData]);
+                    } else {
+                        listener.callback(eventData);
+                    }
+                } else if (!this.suppressWarnings) {
+                    // TODO: this warning appears when event listeners are removed
+                    // during another listener being triggered. For example, removing an entity
+                    // while that entity was listening to the same event.
+                    // In a lot of cases, this is normal... Consider removing this warning?
+                    // console.log('Warning: listener is not a function');
+                }
+                if (stopPropagation) {
+                    stopPropagation = false;
+                    break;
+                }
+            }
+            isLoopingEvents = false;
+        },
+        addEventListener: addEventListener,
+        removeEventListener: removeEventListener,
+        /**
+         * Callback function
+         *
+         * @callback Callback
+         * @param {Object} eventData - Any data that is passed
+         */
+        /**
+         * Listen to event.
+         * @function
+         * @instance
+         * @param {Object} component - The component as sorting reference
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Callback function.
+         * Be careful about adding anonymous functions here, you should consider removing the event listener
+         * to prevent memory leaks.
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
+         * @name on
+         */
+        on: addEventListener,
+        /**
+         * Removes event listener
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Reference to the callback function
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
+         * @name off
+         */
+        off: removeEventListener,
+        clear: clearEventListeners,
+        sortListeners: sortListeners
+    };
+
+    // save reference in EventSystem
+    EventSystem.SortedEventSystem = SortedEventSystem;
+
+
+    return SortedEventSystem;
+});
+/**
  * Reads Tiled JSON file and draws layers.
  * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
  * the layer is split into multiple canvases. Easiest way to get started is to pass the asset name of the Tiled
@@ -15136,7 +15590,7 @@ bento.define('bento/components/pixi/sprite', [
     'use strict';
     var PixiSprite = function (settings) {
         Sprite.call(this, settings);
-        this.sprite = new PIXI.Sprite();
+        this.sprite = new window.PIXI.Sprite();
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
@@ -15173,10 +15627,10 @@ bento.define('bento/components/pixi/sprite', [
         image = packedImage.image;
         if (!image.texture) {
             // initialize pixi baseTexture
-            image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+            image.texture = new window.PIXI.BaseTexture(image, window.PIXI.SCALE_MODES.NEAREST);
         }
-        rectangle = new PIXI.Rectangle(sx, sy, sw, sh);
-        texture = new PIXI.Texture(image.texture, rectangle);
+        rectangle = new window.PIXI.Rectangle(sx, sy, sw, sh);
+        texture = new window.PIXI.Texture(image.texture, rectangle);
         texture._updateUvs();
 
         this.sprite.texture = texture;
@@ -15198,6 +15652,7 @@ bento.define('bento/components/pixi/sprite', [
  * @param {String} [settings.sfx] - Plays sound when pressed
  * @param {Function} [settings.onButtonDown] - When the user holds the mouse or touches the button
  * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
+ * @param {Boolean} [settings.sort] - Callbacks are executed first if the component/entity is visually on top. Other ClickButtons must also have "sort" to true.
  * @module bento/gui/clickbutton
  * @returns Entity
  */
@@ -15248,6 +15703,7 @@ bento.define('bento/gui/clickbutton', [
         // workaround for pointerUp/onHoldEnd order of events
         var wasHoldingThis = false;
         var clickable = new Clickable({
+            sort: settings.sort,
             onClick: function () {
                 wasHoldingThis = false;
                 if (!active || ClickButton.currentlyPressing) {
