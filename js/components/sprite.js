@@ -195,10 +195,13 @@ bento.define('bento/components/sprite', [
         if (!this.entity) {
             return;
         }
+        var relOriginX = this.entity.origin.x / this.entity.dimension.width;
+        var relOriginY = this.entity.origin.y / this.entity.dimension.height;
+
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
         //reset entity's origin
-        this.entity.setOriginRelative();
+        this.entity.setOriginRelative(relOriginX, relOriginY);
     };
 
     Sprite.prototype.attached = function (data) {
@@ -435,7 +438,9 @@ bento.define('bento/components/sprite', [
             this.sourceX,
             this.sourceY,
             this.frameWidth,
-            this.frameHeight, -(eOrigin.x + this.origin.x), -(eOrigin.y + this.origin.y),
+            this.frameHeight,
+            (-eOrigin.x - this.origin.x) | 0,
+            (-eOrigin.y - this.origin.y) | 0,
             this.frameWidth,
             this.frameHeight
         );
