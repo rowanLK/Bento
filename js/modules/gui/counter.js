@@ -3,6 +3,7 @@
  * TODO: document settings parameter
  * <br>Exports: Constructor
  * @module bento/gui/counter
+ * @moduleName Counter
  * @returns Entity
  */
 bento.define('bento/gui/counter', [

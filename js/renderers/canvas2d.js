@@ -1,6 +1,7 @@
 /**
  * Canvas 2d renderer
  * @copyright (C) 2015 LuckyKat
+ * @moduleName Canvas2DRenderer
  */
 bento.define('bento/renderers/canvas2d', [
     'bento/utils'

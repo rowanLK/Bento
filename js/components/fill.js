@@ -2,6 +2,7 @@
  * Component that fills a square.
  * <br>Exports: Constructor
  * @module bento/components/fill
+ * @moduleName Fill
  * @param {Object} settings - Settings
  * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
  * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)

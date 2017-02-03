@@ -1,5 +1,6 @@
 /*
  * Time profiler
+ * @moduleName Profiler
  */
 bento.define('bento/profiler', [
     'bento',

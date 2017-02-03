@@ -1,5 +1,6 @@
 /**
  * Renderer using PIXI by GoodBoyDigital
+ * @moduleName PixiRenderer
  */
 bento.define('bento/renderers/pixi', [
     'bento',

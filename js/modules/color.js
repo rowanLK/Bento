@@ -7,6 +7,7 @@
  * @param {Number} a - Alpha value [0...1]
  * @returns {Array} Returns a color array
  * @module bento/color
+ * @module Color
  */
 bento.define('bento/color', ['bento/utils'], function (Utils) {
     return function (r, g, b, a) {

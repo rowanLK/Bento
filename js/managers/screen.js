@@ -3,6 +3,7 @@
  * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
  * <br>Exports: Constructor, can be accessed through Bento.screens namespace.
  * @module bento/managers/screen
+ * @moudleName ScreenManager
  * @returns ScreenManager
  */
 bento.define('bento/managers/screen', [

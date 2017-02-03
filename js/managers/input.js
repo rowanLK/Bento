@@ -2,6 +2,7 @@
  * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
  * <br>Exports: Constructor, can be accessed through Bento.input namespace.
  * @module bento/managers/input
+ * @moduleName InputManager
  * @param {Object} gameData - gameData
  * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
  * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.

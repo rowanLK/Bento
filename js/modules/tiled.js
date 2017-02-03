@@ -5,6 +5,7 @@
  * JSON and set spawnBackground and spawnEntities to true.
  * <br>Exports: Constructor
  * @module bento/tiled
+ * @moduleName Tiled
  * @param {Object} settings - Settings object
  * @param {String} settings.assetName - Name of the Tiled JSON asset to load
  * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false

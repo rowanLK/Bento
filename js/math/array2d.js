@@ -2,6 +2,7 @@
  * A 2-dimensional array
  * <br>Exports: Constructor
  * @module bento/math/array2d
+ * @moduleName Array2D
  * @param {Number} width - horizontal size of array
  * @param {Number} height - vertical size of array
  * @returns {Array} Returns 2d array.

@@ -9,6 +9,7 @@
  * @param {Function} [settings.onButtonDown] - When the user holds the mouse or touches the button
  * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
  * @module bento/gui/clickbutton
+ * @moduleName ClickButton
  * @returns Entity
  */
 bento.define('bento/gui/clickbutton', [

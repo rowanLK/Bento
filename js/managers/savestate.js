@@ -3,6 +3,7 @@
  * save values and Bento.saveState.load() to retrieve them.
  * <br>Exports: Object, can be accessed through Bento.saveState namespace.
  * @module bento/managers/savestate
+ * @moduleName SaveStateManager
  * @returns SaveState
  */
 bento.define('bento/managers/savestate', [

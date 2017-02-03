@@ -3,6 +3,7 @@
  * unless entity.updateWhenPaused is turned on.
  * <br>Exports: Constructor
  * @module bento/components/clickable
+ * @moduleName Clickable
  * @param {Object} settings - Settings
  * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
  * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
@@ -64,7 +65,7 @@ bento.define('bento/components/clickable', [
         this.hasTouched = false;
         /**
          * Ignore the pause during pointerUp event. If false, the pointerUp event will not be called if the parent entity is paused.
-         * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that. 
+         * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that.
          * Just make sure you know what you are doing!
          * @instance
          * @default true
@@ -168,7 +169,7 @@ bento.define('bento/components/clickable', [
         var e = this.transformEvent(evt),
             mousePosition;
 
-        // a pointer up could get missed during a pause 
+        // a pointer up could get missed during a pause
         if (!this.ignorePauseDuringPointerUpEvent && isPaused(this.entity)) {
             return;
         }
