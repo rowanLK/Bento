@@ -5,6 +5,7 @@
  * If you plan to use a HTML Canvas as image source, always remember to wrap it in a PackedImage.
  * <br>Exports: Constructor
  * @module bento/packedimage
+ * @moduleName PackedImage
  * @param {HTMLImageElement} image - HTML Image Element or HTML Canvas Element
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property

@@ -2,6 +2,7 @@
  * Sprite component. Draws an animated sprite on screen at the entity position.
  * <br>Exports: Constructor
  * @module bento/components/sprite
+ * @moduleName Sprite
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
  * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)

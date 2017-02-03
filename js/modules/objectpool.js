@@ -6,6 +6,7 @@
  * @param {Function} settings.destructor - function that resets object for reuse
  * @param {Number} settings.poolSize - amount to pre-initialize
  * @module bento/objectpool
+ * @module ObjectPool
  * @returns ObjectPool
  */
 bento.define('bento/objectpool', [

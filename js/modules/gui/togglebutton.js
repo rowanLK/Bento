@@ -8,6 +8,7 @@
  * @param {String} settings.onToggle - Callback when user clicks on the toggle ("this" refers to the clickbutton entity).
  * @param {String} [settings.sfx] - Plays sound when pressed
  * @module bento/gui/togglebutton
+ * @moduleName ToggleButton
  * @returns Entity
  */
 bento.define('bento/gui/togglebutton', [
@@ -79,14 +80,14 @@ bento.define('bento/gui/togglebutton', [
                         },
                         onHoldLeave: function () {
                             sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' +  (toggled ? 'down' : 'up'), {
+                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
                                 event: 'onHoldLeave'
                             });
                         },
                         pointerUp: function () {
                             sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' +  (toggled ? 'down' : 'up'), {
+                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
                                 event: 'pointerUp'
                             });

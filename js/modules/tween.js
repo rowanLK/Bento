@@ -4,6 +4,7 @@
  * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
  * <br>Exports: Constructor
  * @module bento/tween
+ * @moduleName Tween
  * @param {Object} settings - Settings object
  * @param {Number} settings.from - Starting value
  * @param {Number} settings.to - End value

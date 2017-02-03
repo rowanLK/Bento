@@ -4,6 +4,7 @@
  * asset names with sfx_ and bgm_ respectively.
  * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
  * @module bento/managers/audio
+ * @moduleName AudioManager
  * @returns AudioManager
  */
 bento.define('bento/managers/audio', [

@@ -4,6 +4,7 @@
  Entities can be visualized by using the Sprite component, or you can attach your own component and add a draw function.
  * <br>Exports: Constructor
  * @module {Entity} bento/entity
+ * @moduleName Entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Array} settings.components - Array of component module functions
@@ -506,7 +507,7 @@ Bento.objects.attach(entity);
      */
     Entity.prototype.removeSelf = function (name) {
         var entity = this;
-        
+
         if (entity.parent) {
             // remove from parent
             entity.parent.remove(entity);

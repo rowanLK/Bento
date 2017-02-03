@@ -20,6 +20,7 @@
  * @param {Number} [settings.linebreaks] - Allow the module to add linebreaks to fit text with maxWidth (default true)
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
+ * @moduleName Text
  * @returns Entity
  */
 bento.define('bento/gui/text', [

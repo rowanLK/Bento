@@ -3,6 +3,7 @@
  * Useful if you want to use pixi features.
  * <br>Exports: Constructor
  * @module bento/components/pixi/sprite
+ * @moduleName PixiSprite
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/pixi/sprite', [

@@ -3,6 +3,7 @@
  off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
+ * @moduleName EventSystem
  */
 bento.define('bento/eventsystem', [
     'bento/utils'

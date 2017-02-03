@@ -1,5 +1,6 @@
 /**
  * Nineslice component
+ * @moduleName NineSlice
  */
 bento.define('bento/components/nineslice', [
     'bento',

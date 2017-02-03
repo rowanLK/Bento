@@ -4,6 +4,7 @@
  * draw functions. The settings object passed here is passed through Bento.setup().
  * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
  * @module bento/managers/object
+ * @moduleName ObjectManager
  * @param {Function} getGameData - Function that returns gameData object
  * @param {Object} settings - Settings object
  * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
