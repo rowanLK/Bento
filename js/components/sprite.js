@@ -204,7 +204,7 @@ bento.define('bento/components/sprite', [
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
         //reset entity's origin
-        this.entity.setOriginRelative(relOriginX, relOriginY);
+        this.entity.setOriginRelative(new Vector2(relOriginX, relOriginY));
     };
 
     Sprite.prototype.attached = function (data) {
@@ -388,14 +388,15 @@ bento.define('bento/components/sprite', [
         if (!this.currentAnimation) {
             return;
         }
-        var frameSpeed = this.currentAnimation.speed || 1;
-        if (this.currentAnimation.frameSpeeds) {
-            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
-        }
 
         // no need for update
-        if (this.currentAnimationLength <= 1 || frameSpeed === 0) {
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
             return;
+        }
+
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
         }
 
         reachedEnd = false;
