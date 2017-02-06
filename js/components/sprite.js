@@ -50,7 +50,12 @@ Bento.objects.attach(entity);
 bento.define('bento/components/sprite', [
     'bento',
     'bento/utils',
-], function (Bento, Utils) {
+    'bento/math/vector2'
+], function (
+    Bento,
+    Utils,
+    Vector2
+) {
     'use strict';
     var Sprite = function (settings) {
         this.entity = null;
@@ -71,6 +76,7 @@ bento.define('bento/components/sprite', [
         this.frameWidth = 0;
         this.frameHeight = 0;
         this.padding = 0;
+        this.origin = new Vector2(0, 0);
 
         // drawing internals
         this.frameIndex = 0;
@@ -96,7 +102,20 @@ bento.define('bento/components/sprite', [
      */
     Sprite.prototype.setup = function (settings) {
         var self = this,
-            padding = 0;
+            padding = 0,
+            spriteSheet;
+
+        if (settings && settings.spriteSheet) {
+            //load settings from animation JSON, and set the correct image
+            spriteSheet = Bento.assets.getSpriteSheet(settings.spriteSheet);
+            settings = Utils.copyObject(spriteSheet.animation);
+            settings.image = spriteSheet.image;
+            if (settings.animation) {
+                settings.animations = {
+                    default: settings.animation
+                };
+            }
+        }
 
         this.animationSettings = settings || this.animationSettings;
         padding = this.animationSettings.padding || 0;
@@ -163,15 +182,29 @@ bento.define('bento/components/sprite', [
 
         this.padding = this.animationSettings.padding || 0;
 
+        if (this.animationSettings.origin) {
+            this.origin.x = this.animationSettings.origin.x;
+            this.origin.y = this.animationSettings.origin.y;
+        }
+
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
         this.setAnimation('default');
 
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
+        this.updateEntity();
+    };
+
+    Sprite.prototype.updateEntity = function () {
+        if (!this.entity) {
+            return;
         }
+        var relOriginX = this.entity.origin.x / this.entity.dimension.width;
+        var relOriginY = this.entity.origin.y / this.entity.dimension.height;
+
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+        //reset entity's origin
+        this.entity.setOriginRelative(new Vector2(relOriginX, relOriginY));
     };
 
     Sprite.prototype.attached = function (data) {
@@ -183,8 +216,7 @@ bento.define('bento/components/sprite', [
 
         this.entity = data.entity;
         // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
+        this.updateEntity();
 
         // check if the frames of animation go out of bounds
         for (animation in animations) {
@@ -234,6 +266,62 @@ bento.define('bento/components/sprite', [
                 this.currentAnimation.backTo = this.currentAnimationLength;
             }
         }
+    };
+    /**
+     * Bind another spritesheet to this sprite.
+     * @function
+     * @instance
+     * @param {String} name - Name of the spritesheet.
+     * @param {Function} callback - Called when animation ends.
+     * @name setAnimation
+     */
+    Sprite.prototype.setSpriteSheet = function (name, callback) {
+        var spriteSheet = Bento.assets.getSpriteSheet(name);
+        var anim = spriteSheet.animation;
+
+        this.spriteImage = spriteSheet.image;
+
+        this.animations = {
+            default: {
+                frames: [0]
+            }
+        };
+
+        if (anim.animation) {
+            this.animations.default = anim.animation;
+        } else if (anim.animations) {
+            this.animations = anim.animations;
+        }
+
+        this.padding = anim.padding || 0;
+
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (anim.frameWidth) {
+            this.frameWidth = anim.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = anim.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - this.padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (anim.frameHeight) {
+            this.frameHeight = anim.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = anim.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - this.padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        if (anim.origin) {
+            this.origin.x = anim.origin.x;
+            this.origin.y = anim.origin.y;
+        } else {
+            this.origin.x = 0;
+            this.origin.y = 0;
+        }
+
+        this.updateEntity();
+
+        this.setAnimation('default', callback);
     };
     /**
      * Returns the name of current animation playing
@@ -300,13 +388,19 @@ bento.define('bento/components/sprite', [
         if (!this.currentAnimation) {
             return;
         }
+
         // no need for update
         if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
             return;
         }
 
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
+        }
+
         reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        this.currentFrame += (frameSpeed) * data.speed;
         if (this.currentAnimation.loop) {
             while (this.currentFrame >= this.currentAnimation.frames.length) {
                 this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
@@ -319,6 +413,10 @@ bento.define('bento/components/sprite', [
         }
         if (reachedEnd && this.onCompleteCallback) {
             this.onCompleteCallback();
+            //don't repeat callback on non-looping animations
+            if (!this.currentAnimation.loop) {
+                this.onCompleteCallback = null;
+            }
         }
     };
 
@@ -331,7 +429,7 @@ bento.define('bento/components/sprite', [
 
     Sprite.prototype.draw = function (data) {
         var entity = data.entity,
-            origin = entity.origin;
+            eOrigin = entity.origin;
 
         if (!this.currentAnimation || !this.visible) {
             return;
@@ -339,19 +437,17 @@ bento.define('bento/components/sprite', [
 
         this.updateFrame();
 
-        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
         data.renderer.drawImage(
             this.spriteImage,
             this.sourceX,
             this.sourceY,
             this.frameWidth,
             this.frameHeight,
-            0,
-            0,
+            (-eOrigin.x - this.origin.x) | 0,
+            (-eOrigin.y - this.origin.y) | 0,
             this.frameWidth,
             this.frameHeight
         );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
     Sprite.prototype.toString = function () {
         return '[object Sprite]';

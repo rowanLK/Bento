@@ -83,7 +83,7 @@ bento.define('bento', [
     };
     var setupCanvas = function (settings) {
         var parent;
-        var pixelSize = settings.pixelSize;
+        var pixelSize = settings.pixelSize || 1;
         var pixelRatio = window.devicePixelRatio || 1;
         var windowWidth = window.innerWidth * pixelRatio;
         var windowHeight = window.innerHeight * pixelRatio;

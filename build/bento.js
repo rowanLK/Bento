@@ -3807,6 +3807,7 @@ or implied, of the author(s).
  * • Bento.screen<br>
  * <br>Exports: Object
  * @module bento
+ * @moduleName Bento
  */
 bento.define('bento', [
     'bento/utils',
@@ -3880,7 +3881,7 @@ bento.define('bento', [
     };
     var setupCanvas = function (settings) {
         var parent;
-        var pixelSize = settings.pixelSize;
+        var pixelSize = settings.pixelSize || 1;
         var pixelRatio = window.devicePixelRatio || 1;
         var windowWidth = window.innerWidth * pixelRatio;
         var windowHeight = window.innerHeight * pixelRatio;
@@ -4285,6 +4286,7 @@ bento.define('bento', [
  Entities can be visualized by using the Sprite component, or you can attach your own component and add a draw function.
  * <br>Exports: Constructor
  * @module {Entity} bento/entity
+ * @moduleName Entity
  * @param {Object} settings - settings (all properties are optional)
  * @param {Function} settings.init - Called when entity is initialized
  * @param {Array} settings.components - Array of component module functions
@@ -4787,7 +4789,7 @@ Bento.objects.attach(entity);
      */
     Entity.prototype.removeSelf = function (name) {
         var entity = this;
-        
+
         if (entity.parent) {
             // remove from parent
             entity.parent.remove(entity);
@@ -5195,6 +5197,7 @@ Bento.objects.attach(entity);
  off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
  * <br>Exports: Object
  * @module bento/eventsystem
+ * @moduleName EventSystem
  */
 bento.define('bento/eventsystem', [
     'bento/utils'
@@ -5406,6 +5409,7 @@ bento.define('bento/eventsystem', [
  * If you plan to use a HTML Canvas as image source, always remember to wrap it in a PackedImage.
  * <br>Exports: Constructor
  * @module bento/packedimage
+ * @moduleName PackedImage
  * @param {HTMLImageElement} image - HTML Image Element or HTML Canvas Element
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
@@ -5423,6 +5427,7 @@ bento.define('bento/packedimage', [
 });
 /*
  * Time profiler
+ * @moduleName Profiler
  */
 bento.define('bento/profiler', [
     'bento',
@@ -5525,6 +5530,7 @@ bento.define('bento/profiler', [
  * Base functions for renderer. Has many equivalent functions to a canvas context.
  * <br>Exports: Constructor
  * @module bento/renderer
+ * @moduleName Renderer
  */
 bento.define('bento/renderer', [
     'bento/utils'
@@ -5540,7 +5546,7 @@ bento.define('bento/renderer', [
             fillRect: function (color, x, y, w, h) {},
             fillCircle: function (color, x, y, radius) {},
             strokeRect: function (color, x, y, w, h) {},
-            drawLine : function(color, ax, ay, bx, by, width){},
+            drawLine: function (color, ax, ay, bx, by, width) {},
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
             begin: function () {},
             flush: function () {},
@@ -5559,6 +5565,7 @@ bento.define('bento/renderer', [
 });
 /**
  * Transform module
+ * @moduleName Transform
  */
 bento.define('bento/transform', [
     'bento',
@@ -5762,6 +5769,7 @@ bento.define('bento/transform', [
  * A collection of useful functions
  * <br>Exports: Object
  * @module bento/utils
+ * @moduleName Utils
  */
 bento.define('bento/utils', [], function () {
     'use strict';
@@ -5846,6 +5854,18 @@ bento.define('bento/utils', [], function () {
         },
         getKeyLength = function (obj) {
             return Object.keys(obj).length;
+        },
+        copyObject = function (obj) {
+            var newObject = {};
+            var key;
+            for (key in obj) {
+                if (!obj.hasOwnProperty(key)) {
+                    continue;
+                }
+                newObject[key] = obj[key];
+                //TODO? deep copy?
+            }
+            return newObject;
         },
         setAnimationFrameTimeout = function (callback, timeout) {
             var now = new Date().getTime(),
@@ -6230,6 +6250,15 @@ bento.define('bento/utils', [], function () {
          * @return {Number} Number of keys
          */
         getKeyLength: getKeyLength,
+        /**
+         * Returns a (shallow) copy of an object literal
+         * @function
+         * @instance
+         * @name copyObject
+         * @param {Object} object - object literal
+         * @return {Object} Shallow copy
+         */
+        copyObject: copyObject,
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         remoteMapping: remoteMapping,
@@ -6653,6 +6682,7 @@ bento.define('bento/utils', [], function () {
  * unless entity.updateWhenPaused is turned on.
  * <br>Exports: Constructor
  * @module bento/components/clickable
+ * @moduleName Clickable
  * @param {Object} settings - Settings
  * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
  * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
@@ -6726,7 +6756,7 @@ bento.define('bento/components/clickable', [
         this.hasTouched = false;
         /**
          * Ignore the pause during pointerUp event. If false, the pointerUp event will not be called if the parent entity is paused.
-         * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that. 
+         * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that.
          * Just make sure you know what you are doing!
          * @instance
          * @default true
@@ -6849,7 +6879,7 @@ bento.define('bento/components/clickable', [
         var e = this.transformEvent(evt),
             mousePosition;
 
-        // a pointer up could get missed during a pause 
+        // a pointer up could get missed during a pause
         if (!this.ignorePauseDuringPointerUpEvent && isPaused(this.entity)) {
             return;
         }
@@ -6926,6 +6956,7 @@ bento.define('bento/components/clickable', [
  * Component that fills a square.
  * <br>Exports: Constructor
  * @module bento/components/fill
+ * @moduleName Fill
  * @param {Object} settings - Settings
  * @param {Array} settings.color - Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.
  * @param {Rectangle} settings.dimension - Size to fill up (defaults to viewport size)
@@ -6960,6 +6991,7 @@ bento.define('bento/components/fill', [
 });
 /**
  * Nineslice component
+ * @moduleName NineSlice
  */
 bento.define('bento/components/nineslice', [
     'bento',
@@ -7142,6 +7174,7 @@ bento.define('bento/components/nineslice', [
  * Sprite component. Draws an animated sprite on screen at the entity position.
  * <br>Exports: Constructor
  * @module bento/components/sprite
+ * @moduleName Sprite
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
  * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
@@ -7189,7 +7222,12 @@ Bento.objects.attach(entity);
 bento.define('bento/components/sprite', [
     'bento',
     'bento/utils',
-], function (Bento, Utils) {
+    'bento/math/vector2'
+], function (
+    Bento,
+    Utils,
+    Vector2
+) {
     'use strict';
     var Sprite = function (settings) {
         this.entity = null;
@@ -7210,6 +7248,7 @@ bento.define('bento/components/sprite', [
         this.frameWidth = 0;
         this.frameHeight = 0;
         this.padding = 0;
+        this.origin = new Vector2(0, 0);
 
         // drawing internals
         this.frameIndex = 0;
@@ -7235,7 +7274,20 @@ bento.define('bento/components/sprite', [
      */
     Sprite.prototype.setup = function (settings) {
         var self = this,
-            padding = 0;
+            padding = 0,
+            spriteSheet;
+
+        if (settings && settings.spriteSheet) {
+            //load settings from animation JSON, and set the correct image
+            spriteSheet = Bento.assets.getSpriteSheet(settings.spriteSheet);
+            settings = Utils.copyObject(spriteSheet.animation);
+            settings.image = spriteSheet.image;
+            if (settings.animation) {
+                settings.animations = {
+                    default: settings.animation
+                };
+            }
+        }
 
         this.animationSettings = settings || this.animationSettings;
         padding = this.animationSettings.padding || 0;
@@ -7302,15 +7354,29 @@ bento.define('bento/components/sprite', [
 
         this.padding = this.animationSettings.padding || 0;
 
+        if (this.animationSettings.origin) {
+            this.origin.x = this.animationSettings.origin.x;
+            this.origin.y = this.animationSettings.origin.y;
+        }
+
         // set default
         Utils.extend(this.animations, this.animationSettings.animations, true);
         this.setAnimation('default');
 
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.width = this.frameWidth;
-            this.entity.dimension.height = this.frameHeight;
+        this.updateEntity();
+    };
+
+    Sprite.prototype.updateEntity = function () {
+        if (!this.entity) {
+            return;
         }
+        var relOriginX = this.entity.origin.x / this.entity.dimension.width;
+        var relOriginY = this.entity.origin.y / this.entity.dimension.height;
+
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+        //reset entity's origin
+        this.entity.setOriginRelative(new Vector2(relOriginX, relOriginY));
     };
 
     Sprite.prototype.attached = function (data) {
@@ -7322,8 +7388,7 @@ bento.define('bento/components/sprite', [
 
         this.entity = data.entity;
         // set dimension of entity object
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
+        this.updateEntity();
 
         // check if the frames of animation go out of bounds
         for (animation in animations) {
@@ -7373,6 +7438,62 @@ bento.define('bento/components/sprite', [
                 this.currentAnimation.backTo = this.currentAnimationLength;
             }
         }
+    };
+    /**
+     * Bind another spritesheet to this sprite.
+     * @function
+     * @instance
+     * @param {String} name - Name of the spritesheet.
+     * @param {Function} callback - Called when animation ends.
+     * @name setAnimation
+     */
+    Sprite.prototype.setSpriteSheet = function (name, callback) {
+        var spriteSheet = Bento.assets.getSpriteSheet(name);
+        var anim = spriteSheet.animation;
+
+        this.spriteImage = spriteSheet.image;
+
+        this.animations = {
+            default: {
+                frames: [0]
+            }
+        };
+
+        if (anim.animation) {
+            this.animations.default = anim.animation;
+        } else if (anim.animations) {
+            this.animations = anim.animations;
+        }
+
+        this.padding = anim.padding || 0;
+
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (anim.frameWidth) {
+            this.frameWidth = anim.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = anim.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - this.padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (anim.frameHeight) {
+            this.frameHeight = anim.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = anim.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - this.padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        if (anim.origin) {
+            this.origin.x = anim.origin.x;
+            this.origin.y = anim.origin.y;
+        } else {
+            this.origin.x = 0;
+            this.origin.y = 0;
+        }
+
+        this.updateEntity();
+
+        this.setAnimation('default', callback);
     };
     /**
      * Returns the name of current animation playing
@@ -7439,13 +7560,19 @@ bento.define('bento/components/sprite', [
         if (!this.currentAnimation) {
             return;
         }
+
         // no need for update
         if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
             return;
         }
 
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
+        }
+
         reachedEnd = false;
-        this.currentFrame += (this.currentAnimation.speed || 1) * data.speed;
+        this.currentFrame += (frameSpeed) * data.speed;
         if (this.currentAnimation.loop) {
             while (this.currentFrame >= this.currentAnimation.frames.length) {
                 this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
@@ -7458,6 +7585,10 @@ bento.define('bento/components/sprite', [
         }
         if (reachedEnd && this.onCompleteCallback) {
             this.onCompleteCallback();
+            //don't repeat callback on non-looping animations
+            if (!this.currentAnimation.loop) {
+                this.onCompleteCallback = null;
+            }
         }
     };
 
@@ -7470,7 +7601,7 @@ bento.define('bento/components/sprite', [
 
     Sprite.prototype.draw = function (data) {
         var entity = data.entity,
-            origin = entity.origin;
+            eOrigin = entity.origin;
 
         if (!this.currentAnimation || !this.visible) {
             return;
@@ -7478,19 +7609,17 @@ bento.define('bento/components/sprite', [
 
         this.updateFrame();
 
-        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
         data.renderer.drawImage(
             this.spriteImage,
             this.sourceX,
             this.sourceY,
             this.frameWidth,
             this.frameHeight,
-            0,
-            0,
+            (-eOrigin.x - this.origin.x) | 0,
+            (-eOrigin.y - this.origin.y) | 0,
             this.frameWidth,
             this.frameHeight
         );
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
     Sprite.prototype.toString = function () {
         return '[object Sprite]';
@@ -9053,6 +9182,7 @@ bento.define('bento/lib/requestanimationframe', [], function () {
  * assets to load, and where to find them.
  * <br>Exports: Constructor, can be accessed through Bento.assets namespace
  * @module bento/managers/asset
+ * @moduleName AssetManager
  * @returns AssetManager
  */
 bento.define('bento/managers/asset', [
@@ -9069,7 +9199,8 @@ bento.define('bento/managers/asset', [
             json: {},
             images: {},
             binary: {},
-            fonts: {}
+            fonts: {},
+            spriteSheets: {}
         };
         var texturePacker = {};
         var packs = [];
@@ -9244,6 +9375,36 @@ bento.define('bento/managers/asset', [
                 checkCount += 1;
             }, 100);
         };
+        var loadSpriteSheet = function (name, source, callback) {
+            var spriteSheet = {
+                image: null,
+                animation: null
+            };
+
+            var checkForCompletion = function () {
+                if (spriteSheet.image !== null && spriteSheet.animation !== null) {
+                    callback(null, name, spriteSheet);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.animation = json;
+                checkForCompletion();
+            });
+
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.image = PackedImage(img);
+                checkForCompletion();
+            });
+        };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
          * If the assetGroup parameter is passed to Bento.setup, this function will be
@@ -9364,6 +9525,18 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            var onLoadSpriteSheet = function (err, name, spriteSheet) {
+                if (err) {
+                    Utils.log(err);
+                } else {
+                    assets.spriteSheets[name] = spriteSheet;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
             var readyForLoading = function (fn, asset, path, callback) {
                 toLoad.push({
                     fn: fn,
@@ -9438,6 +9611,16 @@ bento.define('bento/managers/asset', [
                         continue;
                     }
                     readyForLoading(loadTTF, asset, path + 'fonts/' + group.fonts[asset], onLoadTTF);
+                }
+            }
+            // get spritesheets
+            if (Utils.isDefined(group.spritesheets)) {
+                assetCount += Utils.getKeyLength(group.spritesheets);
+                for (asset in group.spritesheets) {
+                    if (!group.spritesheets.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
                 }
             }
 
@@ -9601,7 +9784,7 @@ bento.define('bento/managers/asset', [
          * Returns a previously loaded json object
          * @function
          * @instance
-         * @param {String} name - Name of image
+         * @param {String} name - Name of json file
          * @returns {Object} Json object
          * @name getJson
          */
@@ -9624,6 +9807,21 @@ bento.define('bento/managers/asset', [
             var asset = assets.audio[name];
             if (!Utils.isDefined(asset)) {
                 Utils.log("ERROR: Audio " + name + " could not be found");
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded spriteSheet element
+         * @function
+         * @instance
+         * @param {String} name - Name of spriteSheet
+         * @returns {Object} spriteSheet object
+         * @name getSpriteSheet
+         */
+        var getSpriteSheet = function (name) {
+            var asset = assets.spriteSheets[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Sprite sheet " + name + " could not be found");
             }
             return asset;
         };
@@ -9800,6 +9998,7 @@ bento.define('bento/managers/asset', [
             getImageElement: getImageElement,
             getJson: getJson,
             getAudio: getAudio,
+            getSpriteSheet: getSpriteSheet,
             getAssets: getAssets,
             getAssetGroups: getAssetGroups
         };
@@ -9811,6 +10010,7 @@ bento.define('bento/managers/asset', [
  * asset names with sfx_ and bgm_ respectively.
  * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
  * @module bento/managers/audio
+ * @moduleName AudioManager
  * @returns AudioManager
  */
 bento.define('bento/managers/audio', [
@@ -10118,6 +10318,7 @@ bento.define('bento/managers/audio', [
  * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
  * <br>Exports: Constructor, can be accessed through Bento.input namespace.
  * @module bento/managers/input
+ * @moduleName InputManager
  * @param {Object} gameData - gameData
  * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
  * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
@@ -10890,6 +11091,7 @@ bento.define('bento/managers/input', [
  * draw functions. The settings object passed here is passed through Bento.setup().
  * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
  * @module bento/managers/object
+ * @moduleName ObjectManager
  * @param {Function} getGameData - Function that returns gameData object
  * @param {Object} settings - Settings object
  * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
@@ -11373,6 +11575,7 @@ bento.define('bento/managers/object', [
  * save values and Bento.saveState.load() to retrieve them.
  * <br>Exports: Object, can be accessed through Bento.saveState namespace.
  * @module bento/managers/savestate
+ * @moduleName SaveStateManager
  * @returns SaveState
  */
 bento.define('bento/managers/savestate', [
@@ -11594,6 +11797,7 @@ bento.define('bento/managers/savestate', [
  * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
  * <br>Exports: Constructor, can be accessed through Bento.screens namespace.
  * @module bento/managers/screen
+ * @moudleName ScreenManager
  * @returns ScreenManager
  */
 bento.define('bento/managers/screen', [
@@ -11707,6 +11911,7 @@ bento.define('bento/managers/screen', [
  * A 2-dimensional array
  * <br>Exports: Constructor
  * @module bento/math/array2d
+ * @moduleName Array2D
  * @param {Number} width - horizontal size of array
  * @param {Number} height - vertical size of array
  * @returns {Array} Returns 2d array.
@@ -11791,6 +11996,7 @@ bento.define('bento/math/array2d', [], function () {
  * Matrix
  * <br>Exports: Constructor
  * @module bento/math/matrix
+ * @moduleName Matrix
  * @param {Number} width - horizontal size of matrix
  * @param {Number} height - vertical size of matrix
  * @returns {Matrix} Returns a matrix object.
@@ -12077,6 +12283,7 @@ bento.define('bento/math/matrix', [
  * Polygon
  * <br>Exports: Constructor
  * @module bento/math/polygon
+ * @moduleName Polgygon
  * @param {Array} points - An array of Vector2 with positions of all points
  * @returns {Polygon} Returns a polygon.
  */
@@ -12309,6 +12516,7 @@ bento.define('bento/math/polygon', [
  * Rectangle
  * <br>Exports: Constructor
  * @module bento/math/rectangle
+ * @moduleName Rectangle
  * @param {Number} x - Top left x position
  * @param {Number} y - Top left y position
  * @param {Number} width - Width of the rectangle
@@ -12554,6 +12762,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
  * <br>[ 0 0 1  ]
  * <br>Exports: Constructor
  * @module bento/math/transformmatrix
+ * @moduleName TransformMatrix
  * @returns {Matrix} Returns a matrix object.
  */
 bento.define('bento/math/transformmatrix', [
@@ -12792,6 +13001,7 @@ bento.define('bento/math/transformmatrix', [
  * (Note: to perform matrix multiplications, one must use toMatrix)
  * <br>Exports: Constructor
  * @module bento/math/vector2
+ * @moduleName Vector2
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
@@ -13129,6 +13339,7 @@ bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
  * If the height goes over the max or minimum size, then the width gets adapted.
  * <br>Exports: Constructor
  * @module bento/autoresize
+ * @moduleName AutoResize
  * @param {Rectangle} canvasDimension - Default size
  * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
  * then autoresize will start filling up the width
@@ -13175,8 +13386,8 @@ bento.define('bento/autoresize', [
                     swap();
                 }
 
-                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' +  innerHeight * devicePixelRatio);
-                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' +  canvasDimension.height.toFixed(2));
+                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' + innerHeight * devicePixelRatio);
+                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' + canvasDimension.height.toFixed(2));
                 return canvasDimension;
             },
             scrollAndResize = function () {
@@ -13204,6 +13415,7 @@ bento.define('bento/autoresize', [
  * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
  * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
  * @module bento/canvas
+ * @moduleName Canvas
  * @returns Entity
  */
 bento.define('bento/canvas', [
@@ -13384,6 +13596,7 @@ bento.define('bento/canvas', [
  * @param {Number} a - Alpha value [0...1]
  * @returns {Array} Returns a color array
  * @module bento/color
+ * @module Color
  */
 bento.define('bento/color', ['bento/utils'], function (Utils) {
     return function (r, g, b, a) {
@@ -13404,6 +13617,7 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
  * @param {Function} settings.destructor - function that resets object for reuse
  * @param {Number} settings.poolSize - amount to pre-initialize
  * @module bento/objectpool
+ * @module ObjectPool
  * @returns ObjectPool
  */
 bento.define('bento/objectpool', [
@@ -13469,6 +13683,7 @@ bento.define('bento/objectpool', [
  * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
  * <br>Exports: Constructor
  * @module bento/screen
+ * @moduleName Screen
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Asset name of the json file
  * @param {String} settings.onShow - Callback when screen starts
@@ -13938,6 +14153,7 @@ bento.define('bento/sortedeventsystem', [
  * JSON and set spawnBackground and spawnEntities to true.
  * <br>Exports: Constructor
  * @module bento/tiled
+ * @moduleName Tiled
  * @param {Object} settings - Settings object
  * @param {String} settings.assetName - Name of the Tiled JSON asset to load
  * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
@@ -14396,6 +14612,7 @@ bento.define('bento/tiled', [
  * A generic interpreter for Tiled map JSON files.
  * <br>Exports: Constructor
  * @module bento/tiledreader
+ * @moduleName TiledReader
  * @param {Object} settings - Settings object
  * @param {String} settings.tiled - Tiled map JSON asset
  * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
@@ -14640,6 +14857,7 @@ bento.define('bento/tiledreader', [], function () {
  * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
  * <br>Exports: Constructor
  * @module bento/tween
+ * @moduleName Tween
  * @param {Object} settings - Settings object
  * @param {Number} settings.from - Starting value
  * @param {Number} settings.to - End value
@@ -15084,6 +15302,7 @@ bento.define('bento/tween', [
 /**
  * Canvas 2d renderer
  * @copyright (C) 2015 LuckyKat
+ * @moduleName Canvas2DRenderer
  */
 bento.define('bento/renderers/canvas2d', [
     'bento/utils'
@@ -15261,6 +15480,7 @@ bento.define('bento/renderers/canvas2d', [
 });
 /**
  * Renderer using PIXI by GoodBoyDigital
+ * @moduleName PixiRenderer
  */
 bento.define('bento/renderers/pixi', [
     'bento',
@@ -15580,6 +15800,7 @@ bento.define('bento/renderers/pixi', [
  * Useful if you want to use pixi features.
  * <br>Exports: Constructor
  * @module bento/components/pixi/sprite
+ * @moduleName PixiSprite
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/pixi/sprite', [
@@ -15654,6 +15875,7 @@ bento.define('bento/components/pixi/sprite', [
  * @param {Function} [settings.onButtonUp] - When the user releases the mouse or stops touching the button
  * @param {Boolean} [settings.sort] - Callbacks are executed first if the component/entity is visually on top. Other ClickButtons must also have "sort" to true.
  * @module bento/gui/clickbutton
+ * @moduleName ClickButton
  * @returns Entity
  */
 bento.define('bento/gui/clickbutton', [
@@ -15873,6 +16095,7 @@ bento.define('bento/gui/clickbutton', [
  * TODO: document settings parameter
  * <br>Exports: Constructor
  * @module bento/gui/counter
+ * @moduleName Counter
  * @returns Entity
  */
 bento.define('bento/gui/counter', [
@@ -16125,6 +16348,7 @@ bento.define('bento/gui/counter', [
  * @param {Number} [settings.linebreaks] - Allow the module to add linebreaks to fit text with maxWidth (default true)
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
+ * @moduleName Text
  * @returns Entity
  */
 bento.define('bento/gui/text', [
@@ -16862,6 +17086,7 @@ bento.define('bento/gui/text', [
  * @param {String} settings.onToggle - Callback when user clicks on the toggle ("this" refers to the clickbutton entity).
  * @param {String} [settings.sfx] - Plays sound when pressed
  * @module bento/gui/togglebutton
+ * @moduleName ToggleButton
  * @returns Entity
  */
 bento.define('bento/gui/togglebutton', [
@@ -16933,14 +17158,14 @@ bento.define('bento/gui/togglebutton', [
                         },
                         onHoldLeave: function () {
                             sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' +  (toggled ? 'down' : 'up'), {
+                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
                                 event: 'onHoldLeave'
                             });
                         },
                         pointerUp: function () {
                             sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' +  (toggled ? 'down' : 'up'), {
+                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
                                 event: 'pointerUp'
                             });

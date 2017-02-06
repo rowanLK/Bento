@@ -1,0 +1,11 @@
+{
+    "assets": {
+        "path": "assets/",
+        "spritesheets": {
+            "idle": "idle",
+            "punch1": "punch1",
+            "punch2": "punch2",
+            "uppercut": "uppercut"
+        }
+    }
+}
