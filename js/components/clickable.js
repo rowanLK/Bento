@@ -46,8 +46,8 @@ bento.define('bento/components/clickable', [
         rootPause = entity.updateWhenPaused;
         // find root parent 
         while (entity.parent) {
-            rootPause = entity.updateWhenPaused;
             entity = entity.parent;
+            rootPause = entity.updateWhenPaused;
         }
 
         return rootPause < Bento.objects.isPaused();
