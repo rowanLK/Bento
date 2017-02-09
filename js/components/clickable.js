@@ -39,20 +39,18 @@ bento.define('bento/components/clickable', [
 
     var clickables = [];
     var isPaused = function (entity) {
-        var highestPause = 0;
+        var rootPause = 0;
         if (!Bento.objects || !entity) {
             return false;
         }
-        highestPause = entity.updateWhenPaused;
-        // loop through all parents and find the highest pauselevel
+        rootPause = entity.updateWhenPaused;
+        // find root parent 
         while (entity.parent) {
+            rootPause = entity.updateWhenPaused;
             entity = entity.parent;
-            if (entity.updateWhenPaused > highestPause) {
-                highestPause = entity.updateWhenPaused;
-            }
         }
 
-        return highestPause < Bento.objects.isPaused();
+        return rootPause < Bento.objects.isPaused();
     };
 
     var Clickable = function (settings) {
