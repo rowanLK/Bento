@@ -282,7 +282,7 @@ bento.define('bento/gui/text', [
                 scale,
                 // extra offset because we may draw a line around the text
                 offset = new Vector2(maxLineWidth / 2, maxLineWidth / 2),
-                origin = entity.origin,
+                origin = sprite.origin,
                 position = entity.position,
                 doPixelStroke = function () {
                     var tempCanvas = document.createElement('canvas');
@@ -632,9 +632,9 @@ bento.define('bento/gui/text', [
                     entity = data.entity;
 
                     // predict where the origin will be if max is not reached
-                    relativeOrigin.x = entity.origin.x / entity.dimension.width;
-                    relativeOrigin.y = entity.origin.y / entity.dimension.height;
-                    absoluteOrigin = entity.origin.clone();
+                    relativeOrigin.x = sprite.origin.x / entity.dimension.width;
+                    relativeOrigin.y = sprite.origin.y / entity.dimension.height;
+                    absoluteOrigin = sprite.origin.clone();
                     if (maxWidth !== null) {
                         absoluteOrigin.x = relativeOrigin.x * maxWidth;
                     }
