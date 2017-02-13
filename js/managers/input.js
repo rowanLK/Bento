@@ -8,7 +8,8 @@
  * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
  * @param {Rectangle} gameData.viewport - Reference to viewport.
  * @param {Object} settings - settings passed from Bento.setup
- * @param {Boolean} settings.preventContextMenu - Prevents right click menu
+ * @param {Boolean} [settings.preventContextMenu] - Prevents right click menu
+ * @param {Boolean} [settings.globalMouseUp] - Catch mouseup events outside canvas (only useful for desktop)
  * @returns InputManager
  */
 bento.define('bento/managers/input', [
@@ -196,9 +197,14 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('touchstart', touchStart);
                 canvas.addEventListener('touchmove', touchMove);
                 canvas.addEventListener('touchend', touchEnd);
+                if (settings.globalMouseUp) {
+                    // TODO: add correction for position
+                    window.addEventListener('mouseup', mouseUp);
+                } else {
+                    canvas.addEventListener('mouseup', mouseUp);
+                }
                 canvas.addEventListener('mousedown', mouseDown);
                 canvas.addEventListener('mousemove', mouseMove);
-                canvas.addEventListener('mouseup', mouseUp);
                 isListening = true;
 
                 canvas.addEventListener('touchstart', function (evt) {
@@ -733,7 +739,12 @@ bento.define('bento/managers/input', [
                 canvas.removeEventListener('touchend', touchEnd);
                 canvas.removeEventListener('mousedown', mouseDown);
                 canvas.removeEventListener('mousemove', mouseMove);
-                canvas.removeEventListener('mouseup', mouseUp);
+                if (settings.globalMouseUp) {
+                    window.removeEventListener('mouseup', mouseUp);
+                } else {
+                    canvas.removeEventListener('mouseup', mouseUp);
+                }
+
                 isListening = false;
             },
             /**
@@ -756,7 +767,12 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('touchend', touchEnd);
                 canvas.addEventListener('mousedown', mouseDown);
                 canvas.addEventListener('mousemove', mouseMove);
-                canvas.addEventListener('mouseup', mouseUp);
+                if (settings.globalMouseUp) {
+                    window.addEventListener('mouseup', mouseUp);
+                } else {
+                    canvas.addEventListener('mouseup', mouseUp);
+                }
+
                 isListening = true;
             },
             /**

@@ -586,6 +586,7 @@ Bento.objects.attach(entity);
      * @param {Array} settings.entities - Or an array of entities to check with
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
+     * @param {Entity} settings.rectangle - Or if you want to check collision with a shape directly instead of entity
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
@@ -597,6 +598,7 @@ Bento.objects.attach(entity);
     Entity.prototype.collidesWith = function (settings, deprecated_offset, deprecated_callback) {
         var intersect = false;
         var box;
+        var otherBox;
         var i;
         var obj;
         var array = [];
@@ -632,7 +634,7 @@ Bento.objects.attach(entity);
                 array = [settings.entity];
             } else if (settings.entities) {
                 if (!Utils.isArray(settings.entities)) {
-                    Utils.log("WARNING: settings.entity is not an entity");
+                    Utils.log("WARNING: settings.entities is not an array");
                     return null;
                 }
                 array = [settings.entities];
@@ -640,6 +642,8 @@ Bento.objects.attach(entity);
                 array = Bento.objects.getByName(settings.name);
             } else if (settings.family) {
                 array = Bento.objects.getByFamily(settings.family);
+            } else if (settings.rectangle) {
+                array = [settings.rectangle];
             }
         }
 
@@ -649,10 +653,17 @@ Bento.objects.attach(entity);
         box = this.getBoundingBox().offset(offset);
         for (i = 0; i < array.length; ++i) {
             obj = array[i];
-            if (obj.id && obj.id === this.id) {
-                continue;
+
+            if (obj.isEntity) {
+                // ignore self collision
+                if (obj.id === this.id) {
+                    continue;
+                }
+                otherBox = obj.getBoundingBox();
+            } else if (obj.isRectangle) {
+                otherBox = obj;
             }
-            if (obj.getBoundingBox && box.intersect(obj.getBoundingBox())) {
+            if (box.intersect(otherBox)) {
                 if (callback) {
                     callback(obj);
                 }
@@ -665,6 +676,7 @@ Bento.objects.attach(entity);
                     collisions.push(obj);
                 }
             }
+
         }
         return collisions;
     };
