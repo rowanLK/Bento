@@ -12775,6 +12775,26 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
     Rectangle.prototype.getCenter = function () {
         return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
     };
+    /**
+     * Returns a clone with only the width and height cloned
+     * @function
+     * @returns {Rectangle} a clone of the current rectangle with x and y set to 0
+     * @instance
+     * @name getSize
+     */
+    Rectangle.prototype.getSize = function () {
+        return new Rectangle(0, 0, this.width, this.height);
+    };
+    /**
+     * Returns a Vector2 half the size of the rectangle
+     * @function
+     * @returns {Vector2} Vector2 half the size of the rectangle
+     * @instance
+     * @name getExtents
+     */
+    Rectangle.prototype.getExtents = function () {
+        return new Vector2(this.width / 2, this.height / 2);
+    };
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
     };
@@ -14424,7 +14444,7 @@ bento.define('bento/tiled', [
                 }
                 opacity = layer.opacity;
                 if (onLayer) {
-                    onLayer(layer);
+                    onLayer.call(tiled, layer);
                 }
             },
             onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
@@ -14460,12 +14480,12 @@ bento.define('bento/tiled', [
                 );
 
                 if (onTile) {
-                    onTile(tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
+                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
                 }
             },
             onObject: function (object, tileSet, tileIndex) {
                 if (onObject) {
-                    onObject(object, tileSet, tileIndex);
+                    onObject.call(tiled, object, tileSet, tileIndex);
                 }
                 if (settings.spawnEntities) {
                     spawnEntity(object, tileSet, tileIndex);
@@ -14516,7 +14536,12 @@ bento.define('bento/tiled', [
                 }
 
                 if (onComplete) {
-                    onComplete();
+                    onComplete.call(tiled);
+                }
+
+                // call onSpawnComplete anyway if there were no objects to spawn at all
+                if (settings.spawnEntities && entitiesToSpawn === 0 && onSpawnComplete) {
+                    onSpawnComplete.call(tiled);
                 }
             }
         });
@@ -14586,18 +14611,15 @@ bento.define('bento/tiled', [
                 entitiesSpawned += 1;
 
                 if (onSpawn) {
-                    onSpawn(instance);
+                    onSpawn.call(tiled, instance);
                 }
 
                 if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
-                    onSpawnComplete();
+                    onSpawnComplete.call(tiled);
                 }
             });
         };
-
-        tiledReader.read();
-
-        return {
+        var tiled = {
             name: settings.name || 'tiled',
             /**
              * Name of the Tiled JSON asset
@@ -14630,6 +14652,10 @@ bento.define('bento/tiled', [
              */
             layerImages: layerSprites
         };
+
+        tiledReader.read();
+
+        return tiled;
     };
 
     return Tiled;

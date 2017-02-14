@@ -235,6 +235,26 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
     Rectangle.prototype.getCenter = function () {
         return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
     };
+    /**
+     * Returns a clone with only the width and height cloned
+     * @function
+     * @returns {Rectangle} a clone of the current rectangle with x and y set to 0
+     * @instance
+     * @name getSize
+     */
+    Rectangle.prototype.getSize = function () {
+        return new Rectangle(0, 0, this.width, this.height);
+    };
+    /**
+     * Returns a Vector2 half the size of the rectangle
+     * @function
+     * @returns {Vector2} Vector2 half the size of the rectangle
+     * @instance
+     * @name getExtents
+     */
+    Rectangle.prototype.getExtents = function () {
+        return new Vector2(this.width / 2, this.height / 2);
+    };
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
     };
