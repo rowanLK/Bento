@@ -404,10 +404,15 @@ bento.define('bento/tiled', [
                 var instance = new Instance(params),
                     origin = instance.origin,
                     dimension = instance.dimension;
+                var spriteOrigin = origin.clone();
+
+                instance.getComponent('sprite', function (sprite) {
+                    spriteOrigin.addTo(sprite.origin);
+                });
 
                 instance.position = new Vector2(
-                    offset.x + x + origin.x,
-                    offset.y + y + (origin.y - dimension.height)
+                    offset.x + x + spriteOrigin.x,
+                    offset.y + y + (spriteOrigin.y - dimension.height)
                 );
 
                 // add to game

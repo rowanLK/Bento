@@ -52,14 +52,13 @@ bento.define('bento/utils', [], function () {
                 )
             );
         },
-        removeObject = function (array, obj) {
-            var i,
-                l;
-            for (i = 0, l = array.length; i < l; i += 1) {
-                if (array[i] === obj) {
-                    array.splice(i, 1);
-                    break;
-                }
+        removeFromArray = function (array, obj) {
+            var index = array.indexOf(obj);
+            if (index >= 0) {
+                array.splice(index, 1);
+                return true;
+            } else {
+                return false;
             }
         },
         extend = function (obj1, obj2, force, onConflict) {
@@ -452,15 +451,15 @@ bento.define('bento/utils', [], function () {
          */
         isDefined: isDefined,
         /**
-         * Removes entry from array
+         * Removes entry from array (note: only removes the first matching value it finds)
          * @function
          * @instance
          * @param {Array} array - array
          * @param {Anything} value - any type
-         * @return {Array} The updated array
-         * @name removeObject
+         * @return {Bool} True if removal was successful, false if the value was not found
+         * @name removeFromArray
          */
-        removeObject: removeObject,
+        removeFromArray: removeFromArray,
         /**
          * Extends object literal properties with another object
          * If the objects have the same property name, then the old one is pushed to a property called "base"
