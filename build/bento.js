@@ -4919,7 +4919,7 @@ Bento.objects.attach(entity);
                     Utils.log("WARNING: settings.entities is not an array");
                     return null;
                 }
-                array = [settings.entities];
+                array = settings.entities;
             } else if (settings.name) {
                 array = Bento.objects.getByName(settings.name);
             } else if (settings.family) {
