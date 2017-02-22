@@ -11343,7 +11343,7 @@ bento.define('bento/managers/object', [
                         type = family[i];
                         pool = quickAccess[type];
                         if (pool) {
-                            Utils.removeObject(quickAccess[type], object);
+                            Utils.removeFromArray(quickAccess[type], object);
                         }
                     }
                 }
