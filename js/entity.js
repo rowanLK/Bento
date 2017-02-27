@@ -41,7 +41,14 @@ bento.define('bento/entity', [
     'bento/math/rectangle',
     'bento/math/transformmatrix',
     'bento/transform'
-], function (Bento, Utils, Vector2, Rectangle, Matrix, Transform) {
+], function (
+    Bento, 
+    Utils, 
+    Vector2, 
+    Rectangle, 
+    Matrix, 
+    Transform
+) {
     'use strict';
     var cleanComponents = function (entity) {
         // remove null components
@@ -55,6 +62,9 @@ bento.define('bento/entity', [
     var id = 0;
 
     var Entity = function (settings) {
+        if (!(this instanceof Entity)) {            
+            return new Entity(settings);
+        }
         var i;
         /**
          * Unique id

@@ -25,6 +25,9 @@ bento.define('bento/components/nineslice', [
      * @param {Object} settings
      */
     var NineSlice = function (settings) {
+        if (!(this instanceof NineSlice)) {
+            return new NineSlice(settings);
+        }
         this.entity = null;
         this.parent = null;
         this.rootIndex = -1;

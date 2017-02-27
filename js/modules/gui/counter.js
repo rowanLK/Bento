@@ -11,18 +11,12 @@ bento.define('bento/gui/counter', [
     'bento/entity',
     'bento/math/vector2',
     'bento/components/sprite',
-    'bento/components/translation',
-    'bento/components/rotation',
-    'bento/components/scale',
     'bento/utils'
 ], function (
     Bento,
     Entity,
     Vector2,
     Sprite,
-    Translation,
-    Rotation,
-    Scale,
     Utils
 ) {
     'use strict';
@@ -60,6 +54,42 @@ bento.define('bento/gui/counter', [
          * Returns an entity with all digits as animation
          */
         var createDigit = function () {
+            var defaultNumbers = {
+                '0': {
+                    frames: [0]
+                },
+                '1': {
+                    frames: [1]
+                },
+                '2': {
+                    frames: [2]
+                },
+                '3': {
+                    frames: [3]
+                },
+                '4': {
+                    frames: [4]
+                },
+                '5': {
+                    frames: [5]
+                },
+                '6': {
+                    frames: [6]
+                },
+                '7': {
+                    frames: [7]
+                },
+                '8': {
+                    frames: [8]
+                },
+                '9': {
+                    frames: [9]
+                }
+                // TODO: add a '-' as default or not?
+                // '-': {
+                //     frames: [10]
+                // }
+            };
             var sprite = new Sprite({
                 image: spriteSettings.image,
                 imageName: spriteSettings.imageName,
@@ -67,41 +97,7 @@ bento.define('bento/gui/counter', [
                 frameHeight: spriteSettings.frameHeight,
                 frameCountX: spriteSettings.frameCountX,
                 frameCountY: spriteSettings.frameCountY,
-                animations: settings.animations || {
-                    '0': {
-                        frames: [0]
-                    },
-                    '1': {
-                        frames: [1]
-                    },
-                    '2': {
-                        frames: [2]
-                    },
-                    '3': {
-                        frames: [3]
-                    },
-                    '4': {
-                        frames: [4]
-                    },
-                    '5': {
-                        frames: [5]
-                    },
-                    '6': {
-                        frames: [6]
-                    },
-                    '7': {
-                        frames: [7]
-                    },
-                    '8': {
-                        frames: [8]
-                    },
-                    '9': {
-                        frames: [9]
-                    },
-                    '-': {
-                        frames: [10]
-                    }
-                }
+                animations: settings.animations || defaultNumbers
             });
             // settings.digit can be used to change every digit entity constructor
             var digitSettings = Utils.extend({

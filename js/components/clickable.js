@@ -54,6 +54,9 @@ bento.define('bento/components/clickable', [
     };
 
     var Clickable = function (settings) {
+        if (!(this instanceof Clickable)) {
+            return new Clickable(settings);
+        }
         var nothing = function () {};
         this.entity = null;
         this.parent = null;

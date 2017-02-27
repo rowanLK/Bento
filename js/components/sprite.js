@@ -58,6 +58,9 @@ bento.define('bento/components/sprite', [
 ) {
     'use strict';
     var Sprite = function (settings) {
+        if (!(this instanceof Sprite)) {
+            return new Sprite(settings);
+        }
         this.entity = null;
         this.name = 'sprite';
         this.visible = true;

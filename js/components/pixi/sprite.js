@@ -13,6 +13,9 @@ bento.define('bento/components/pixi/sprite', [
 ], function (Bento, Utils, Sprite) {
     'use strict';
     var PixiSprite = function (settings) {
+        if (!(this instanceof PixiSprite)) {
+            return new PixiSprite(settings);
+        }
         Sprite.call(this, settings);
         this.sprite = new window.PIXI.Sprite();
     };
