@@ -12687,7 +12687,7 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
      * @param {Number} radius
      * @returns {Boolean} True if rectangle and circle intersect
      * @instance
-     * @name intersectCircle
+     * @name intersectsCircle
      */
     Rectangle.prototype.intersectsCircle = function (circleCenter, radius) {
         var rectHalfWidth = this.width * 0.5;
@@ -12708,6 +12708,40 @@ bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], func
         cornerDistanceSq = (distanceX - rectHalfWidth) * (distanceX - rectHalfWidth) + (distanceY - rectHalfHeight) * (distanceY - rectHalfHeight);
 
         return cornerDistanceSq <= radius * radius;
+    };
+    /**
+     * Checks if rectangle intersects with the provided line
+     * @function
+     * @param {Vector2} lineOrigin
+     * @param {Vector2} lineEnd
+     * @returns {Boolean} True if rectangle and line intersect
+     * @instance
+     * @name intersectsLine
+     */
+    Rectangle.prototype.intersectsLine = function (lineOrigin, lineEnd) {
+        // linesIntersect adapted from: https://gist.github.com/Joncom/e8e8d18ebe7fe55c3894
+        var linesIntersect = function (p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y) {
+            var s1x = p1x - p0x;
+            var s1y = p1y - p0y;
+            var s2x = p3x - p2x;
+            var s2y = p3y - p2y;
+
+            var s = (-s1y * (p0x - p2x) + s1x * (p0y - p2y)) / (-s2x * s1y + s1x * s2y);
+            var t = (s2x * (p0y - p2y) - s2y * (p0x - p2x)) / (-s2x * s1y + s1x * s2y);
+
+            return s >= 0 && s <= 1 && t >= 0 && t <= 1;
+        };
+
+        var x1 = this.x;
+        var y1 = this.y;
+        var x2 = this.getX2();
+        var y2 = this.getY2();
+
+        return this.hasPosition(lineOrigin) && this.hasPosition(lineEnd) || // line is inside of rectangle
+            linesIntersect(lineOrigin.x, lineOrigin.y, lineEnd.x, lineEnd.y, x1, y1, x1, y2) || // line intersects left side
+            linesIntersect(lineOrigin.x, lineOrigin.y, lineEnd.x, lineEnd.y, x1, y1, x2, y1) || // line intersects top side
+            linesIntersect(lineOrigin.x, lineOrigin.y, lineEnd.x, lineEnd.y, x2, y1, x2, y2) || // line intersects right side
+            linesIntersect(lineOrigin.x, lineOrigin.y, lineEnd.x, lineEnd.y, x1, y2, x2, y2); // line intersects bottom side
     };
     /**
      * Returns a new rectangle that has been moved by the offset
