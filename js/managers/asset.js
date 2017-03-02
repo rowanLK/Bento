@@ -22,9 +22,11 @@ bento.define('bento/managers/asset', [
             images: {},
             binary: {},
             fonts: {},
-            spriteSheets: {}
+            spritesheets: {},
+            texturePacker: {}
         };
-        var texturePacker = {};
+        // TODO: fix texturepacker loading
+        // right now its very confusing: a texturepacker group loads a JSON + image and merges them later
         var packs = [];
         var loadAudio = function (name, source, callback) {
             var i;
@@ -299,6 +301,7 @@ bento.define('bento/managers/asset', [
                 checkLoaded();
             };
             var onLoadPack = function (err, name, json) {
+                // TODO: fix texturepacker loading
                 if (err) {
                     Utils.log(err);
                     return;
@@ -351,7 +354,7 @@ bento.define('bento/managers/asset', [
                 if (err) {
                     Utils.log(err);
                 } else {
-                    assets.spriteSheets[name] = spriteSheet;
+                    assets.spritesheets[name] = spriteSheet;
                 }
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
@@ -547,9 +550,14 @@ bento.define('bento/managers/asset', [
                     return;
                 }
                 Utils.forEach(group, function (assetPath, name) {
+                    // NOTE: from this point on there are a lot of manual checks etc.
+                    // would be nicer to make unify the logic...
+
                     // find the corresponding asset from the assets object
                     var assetTypeGroup = assets[type] || {};
                     var asset = assetTypeGroup[name];
+
+                    // TODO: unloading and reloading texture packer (?)
 
                     if (asset) {
                         // remove reference to it
@@ -557,10 +565,33 @@ bento.define('bento/managers/asset', [
                         // delete could be bad for performance(?)
                         delete assetTypeGroup[name];
 
+                        if (type === 'images') {
+                            // remove corresponding texturepacker
+                            if (assets.texturePacker[name]) {
+                                assets.texturePacker[name] = undefined;
+                                delete assets.texturePacker[name];
+                            }
+                        }
+
                         // Canvas+ only: dispose if possible
                         // https://blog.ludei.com/techniques-to-optimize-memory-use-in-ludeis-canvas-environment/
-                        if (dispose && asset.dispose) {
-                            asset.dispose();
+                        if (dispose) {
+                            // image
+                            if (asset.dispose) {
+                                asset.dispose();
+                            }
+                            // packedimage
+                            // if (asset.image && asset.image.dispose) {
+                            //     asset.image.dispose();
+                            // }
+                            // spritesheet
+                            else if (asset.image && asset.image.dispose) {
+                                asset.dispose();
+                            }
+                            // audia
+                            else if (asset._audioNode && asset._audioNode.dispose) {
+                                asset._audioNode.dispose();
+                            }
                         }
                     }
                 });
@@ -575,7 +606,10 @@ bento.define('bento/managers/asset', [
          * @name getImage
          */
         var getImage = function (name) {
-            var image, packedImage = texturePacker[name];
+            // NOTE: getImage always returns a PackedImage
+            // if the loaded image has not been initialized as PackedImage yet,
+            // getImage will do that now and caches the PackedImage in assets.texturePacker
+            var image, packedImage = assets.texturePacker[name];
             if (!packedImage) {
                 image = getImageElement(name);
                 if (!image) {
@@ -583,7 +617,7 @@ bento.define('bento/managers/asset', [
                     return null;
                 }
                 packedImage = PackedImage(image);
-                texturePacker[name] = packedImage;
+                assets.texturePacker[name] = packedImage;
             }
             return packedImage;
         };
@@ -641,7 +675,7 @@ bento.define('bento/managers/asset', [
          * @name getSpriteSheet
          */
         var getSpriteSheet = function (name) {
-            var asset = assets.spriteSheets[name];
+            var asset = assets.spritesheets[name];
             if (!Utils.isDefined(asset)) {
                 Utils.log("ERROR: Sprite sheet " + name + " could not be found");
             }
@@ -659,6 +693,7 @@ bento.define('bento/managers/asset', [
             return assets;
         };
         var initPackedImages = function () {
+            // TODO: fix texturepacker loading
             var frame, pack, i, image, json, name;
             while (packs.length) {
                 pack = packs.pop();
@@ -677,7 +712,7 @@ bento.define('bento/managers/asset', [
                     name = json.frames[i].filename;
                     name = name.substring(0, name.length - 4);
                     frame = json.frames[i].frame;
-                    texturePacker[name] = new PackedImage(image, frame);
+                    assets.texturePacker[name] = new PackedImage(image, frame);
                 }
             }
         };
