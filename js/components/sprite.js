@@ -188,6 +188,8 @@ bento.define('bento/components/sprite', [
         if (this.animationSettings.origin) {
             this.origin.x = this.animationSettings.origin.x;
             this.origin.y = this.animationSettings.origin.y;
+        } else if (this.animationSettings.originRelative) {
+            this.setOriginRelative(this.animationSettings.originRelative);
         }
 
         // set default
@@ -385,6 +387,17 @@ bento.define('bento/components/sprite', [
      */
     Sprite.prototype.getFrameWidth = function () {
         return this.frameWidth;
+    };
+    /**
+     * Sets the origin relatively (0...1), relative to the size of the frame.
+     * @function
+     * @param {Vector2} origin - Position of the origin (relative to upper left corner)
+     * @instance
+     * @name setOriginRelative
+     */
+    Sprite.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = originRelative.x * this.frameWidth;
+        this.origin.y = originRelative.y * this.frameHeight;
     };
     Sprite.prototype.update = function (data) {
         var reachedEnd;
