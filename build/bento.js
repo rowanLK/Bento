@@ -7310,12 +7310,14 @@ bento.define('bento/components/sprite', [
         this.padding = 0;
         this.origin = new Vector2(0, 0);
 
+        // keep a reference to the spritesheet name
+        this.currentSpriteSheet = '';
+
         // drawing internals
         this.frameIndex = 0;
         this.sourceFrame = 0;
         this.sourceX = 0;
         this.sourceY = 0;
-
 
         // set to default
         this.animations = {};
@@ -7340,6 +7342,11 @@ bento.define('bento/components/sprite', [
         if (settings && settings.spriteSheet) {
             //load settings from animation JSON, and set the correct image
             spriteSheet = Bento.assets.getSpriteSheet(settings.spriteSheet);
+
+            // remember the spritesheet name
+            this.currentSpriteSheet = settings.spriteSheet;
+
+            // settings is overwritten 
             settings = Utils.copyObject(spriteSheet.animation);
             settings.image = spriteSheet.image;
             if (settings.animation) {
@@ -7502,7 +7509,7 @@ bento.define('bento/components/sprite', [
         }
     };
     /**
-     * Bind another spritesheet to this sprite.
+     * Bind another spritesheet to this sprite. The spritesheet won't change if it's already playing
      * @function
      * @instance
      * @param {String} name - Name of the spritesheet.
@@ -7510,52 +7517,15 @@ bento.define('bento/components/sprite', [
      * @name setAnimation
      */
     Sprite.prototype.setSpriteSheet = function (name, callback) {
-        var spriteSheet = Bento.assets.getSpriteSheet(name);
-        var anim = spriteSheet.animation;
-
-        this.spriteImage = spriteSheet.image;
-
-        this.animations = {
-            default: {
-                frames: [0]
-            }
-        };
-
-        if (anim.animation) {
-            this.animations.default = anim.animation;
-        } else if (anim.animations) {
-            this.animations = anim.animations;
+        if (this.currentSpriteSheet === name) {
+            // already playing
+            return;
         }
+        this.setup({
+            spriteSheet: name
+        });
 
-        this.padding = anim.padding || 0;
-
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (anim.frameWidth) {
-            this.frameWidth = anim.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = anim.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - this.padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (anim.frameHeight) {
-            this.frameHeight = anim.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = anim.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - this.padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        if (anim.origin) {
-            this.origin.x = anim.origin.x;
-            this.origin.y = anim.origin.y;
-        } else {
-            this.origin.x = 0;
-            this.origin.y = 0;
-        }
-
-        this.updateEntity();
-
-        this.setAnimation('default', callback);
+        this.onCompleteCallback = callback;
     };
     /**
      * Returns the name of current animation playing
