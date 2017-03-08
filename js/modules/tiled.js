@@ -184,6 +184,7 @@ bento.define('bento/tiled', [
         var onComplete = settings.onComplete;
         var onSpawn = settings.onSpawn;
         var onSpawnComplete = settings.onSpawnComplete;
+        var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
         var mapSize = new Vector2(width * tileWidth, height * tileHeight);
@@ -416,7 +417,9 @@ bento.define('bento/tiled', [
                 );
 
                 // add to game
-                Bento.objects.attach(instance);
+                if (attachEntities) {
+                    Bento.objects.attach(instance);
+                }
                 entities.push(instance);
 
                 entitiesSpawned += 1;
