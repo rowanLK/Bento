@@ -79,17 +79,17 @@ bento.define('bento/managers/input', [
                 }
             },
             mouseDown = function (evt) {
-                evt.preventDefault();
+                // evt.preventDefault();
                 addMousePosition(evt, 'start');
                 pointerDown(evt);
             },
             mouseMove = function (evt) {
-                evt.preventDefault();
+                // evt.preventDefault();
                 addMousePosition(evt, 'move');
                 pointerMove(evt);
             },
             mouseUp = function (evt) {
-                evt.preventDefault();
+                // evt.preventDefault();
                 addMousePosition(evt, 'end');
                 pointerUp(evt);
             },

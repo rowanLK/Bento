@@ -15,6 +15,9 @@ bento.define('bento/transform', [
     var twoPi = Math.PI * 2;
 
     var Transform = function (entity) {
+        if (!(this instanceof Transform)) {
+            return new Transform(entity);
+        }
         this.matrix = new Matrix();
         this.entity = entity;
 

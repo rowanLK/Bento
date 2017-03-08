@@ -11,17 +11,23 @@
 bento.define('bento/math/transformmatrix', [
     'bento/utils',
     'bento/math/vector2'
-], function (Utils, Vector2) {
+], function (
+    Utils, 
+    Vector2
+) {
     'use strict';
 
-    function Matrix() {
+    var Matrix = function () {
+        if (!(this instanceof Matrix)) {
+            return new Matrix();
+        }
         this.a = 1;
         this.b = 0;
         this.c = 0;
         this.d = 1;
         this.tx = 0;
         this.ty = 0;
-    }
+    };
 
     /**
      * Applies matrix on a vector

@@ -9,9 +9,18 @@
  * @param {Number} height - Height of the rectangle
  * @returns {Rectangle} Returns a rectangle.
  */
-bento.define('bento/math/rectangle', ['bento/utils', 'bento/math/vector2'], function (Utils, Vector2) {
+bento.define('bento/math/rectangle', [
+    'bento/utils', 
+    'bento/math/vector2'
+], function (
+    Utils, 
+    Vector2
+) {
     'use strict';
     var Rectangle = function (x, y, width, height) {
+        if (!(this instanceof Rectangle)) {
+            return new Rectangle(x, y, width, height);
+        }
         /**
          * X position
          * @instance

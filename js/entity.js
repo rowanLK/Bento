@@ -41,7 +41,14 @@ bento.define('bento/entity', [
     'bento/math/rectangle',
     'bento/math/transformmatrix',
     'bento/transform'
-], function (Bento, Utils, Vector2, Rectangle, Matrix, Transform) {
+], function (
+    Bento, 
+    Utils, 
+    Vector2, 
+    Rectangle, 
+    Matrix, 
+    Transform
+) {
     'use strict';
     var cleanComponents = function (entity) {
         // remove null components
@@ -55,6 +62,9 @@ bento.define('bento/entity', [
     var id = 0;
 
     var Entity = function (settings) {
+        if (!(this instanceof Entity)) {            
+            return new Entity(settings);
+        }
         var i;
         /**
          * Unique id
@@ -307,6 +317,20 @@ entity.addX(10);
      * @name getBoundingBox
      * @returns {Rectangle} A rectangle representing the boundingbox of the entity
      */
+    var correctBoundingBox = function (entity, boundingBox) {
+        // this function offsets a boundingbox with an entity's position and scale
+        var box = boundingBox.clone();
+        var position = entity.position;
+        var scale = entity.scale;
+        // note that we need the abs of scale to prevent negative widths
+        box.x *= Math.abs(scale.x);
+        box.y *= Math.abs(scale.y);
+        box.width *= Math.abs(scale.x);
+        box.height *= Math.abs(scale.y);
+        box.x += position.x;
+        box.y += position.y;
+        return box;
+    };
     Entity.prototype.getBoundingBox = function () {
         var scale, x1, x2, y1, y2, box;
         if (!this.boundingBox) {
@@ -324,16 +348,7 @@ entity.addX(10);
             }
             return new Rectangle(x1, y1, x2 - x1, y2 - y1);
         } else {
-            // TODO: cloning could be expensive for polygons
-            box = this.boundingBox.clone();
-            scale = this.scale ? this.scale : new Vector2(1, 1);
-            box.x *= Math.abs(scale.x);
-            box.y *= Math.abs(scale.y);
-            box.width *= Math.abs(scale.x);
-            box.height *= Math.abs(scale.y);
-            box.x += this.position.x;
-            box.y += this.position.y;
-            return box;
+            return correctBoundingBox(this, this.boundingBox);
         }
     };
     /**
@@ -587,6 +602,7 @@ Bento.objects.attach(entity);
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Entity} settings.rectangle - Or if you want to check collision with a shape directly instead of entity
+     * @param {Boolean} settings.withComponent - Swap entity's boundingBox with this component's boundingBox
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
@@ -606,6 +622,8 @@ Bento.objects.attach(entity);
         var callback;
         var firstOnly = true;
         var collisions = null;
+        var withComponent = settings.withComponent;
+        var component;
 
         if (settings.isEntity) {
             // old method with parameters: collidesWith(entity, offset, callback)
@@ -637,7 +655,7 @@ Bento.objects.attach(entity);
                     Utils.log("WARNING: settings.entities is not an array");
                     return null;
                 }
-                array = [settings.entities];
+                array = settings.entities;
             } else if (settings.name) {
                 array = Bento.objects.getByName(settings.name);
             } else if (settings.family) {
@@ -659,7 +677,22 @@ Bento.objects.attach(entity);
                 if (obj.id === this.id) {
                     continue;
                 }
-                otherBox = obj.getBoundingBox();
+                if (!withComponent) {
+                    otherBox = obj.getBoundingBox();
+                } else {
+                    // get component
+                    component = obj.getComponent(withComponent);
+                    if (!component) {
+                        Utils.log('ERROR: component ' + withComponent + ' does not exist');
+                        return;
+                    }
+                    if (!component.boundingBox) {
+                        Utils.log('ERROR: component ' + withComponent + ' does not have a boundingBox');
+                        return;
+                    }
+                    // correct bounding box with position and scale
+                    otherBox = correctBoundingBox(obj, component.boundingBox);
+                }
             } else if (obj.isRectangle) {
                 otherBox = obj;
             }

@@ -11,9 +11,15 @@
 bento.define('bento/components/fill', [
     'bento/utils',
     'bento'
-], function (Utils, Bento) {
+], function (
+    Utils, 
+    Bento
+) {
     'use strict';
     var Fill = function (settings) {
+        if (!(this instanceof Fill)) {
+            return new Fill(settings);
+        }
         var viewport = Bento.getViewport();
         settings = settings || {};
         this.parent = null;

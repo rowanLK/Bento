@@ -8,9 +8,16 @@
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
  */
-bento.define('bento/math/vector2', ['bento/math/matrix'], function (Matrix) {
+bento.define('bento/math/vector2', [
+    'bento/math/matrix'
+], function (
+    Matrix
+) {
     'use strict';
     var Vector2 = function (x, y) {
+        if (!(this instanceof Vector2)) {
+            return new Vector2(x, y);
+        }
         this.x = x || 0;
         this.y = y || 0;
     };

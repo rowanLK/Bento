@@ -45,7 +45,39 @@ bento.require([
             sprite: new Sprite({
                 imageName: 'numberslarge',
                 frameWidth: 48, // can also use frameWidth and frameHeight if you wish
-                frameHeight: 48
+                frameHeight: 48,
+                animations: {
+                    '0': {
+                        frames: [0]
+                    },
+                    '1': {
+                        frames: [1]
+                    },
+                    '2': {
+                        frames: [2]
+                    },
+                    '3': {
+                        frames: [3]
+                    },
+                    '4': {
+                        frames: [4]
+                    },
+                    '5': {
+                        frames: [5]
+                    },
+                    '6': {
+                        frames: [6]
+                    },
+                    '7': {
+                        frames: [7]
+                    },
+                    '8': {
+                        frames: [8]
+                    },
+                    '9': {
+                        frames: [9]
+                    }
+                }
             }),
             alignment: 'center',
             spacing: new Vector2(-16, 0),
@@ -54,6 +86,7 @@ bento.require([
 
         // attach the counters
         Bento.objects.attach(counter1);
+        // not attaching the 2nd counter because it looks confusing at first glance
         // Bento.objects.attach(counter2);
 
         // attach counting behaviors
