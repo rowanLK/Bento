@@ -586,7 +586,7 @@ bento.define('bento/managers/asset', [
                             // }
                             // spritesheet
                             else if (asset.image && asset.image.dispose) {
-                                asset.dispose();
+                                asset.image.dispose();
                             }
                             // audia
                             else if (asset._audioNode && asset._audioNode.dispose) {
