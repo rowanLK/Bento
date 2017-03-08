@@ -14678,7 +14678,9 @@ bento.define('bento/renderers/canvas2d', [
                     context.arc(x, y, radius, 0, Math.PI * 2);
                     context.fill();
                     context.closePath();
-
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
                 },
                 strokeRect: function (colorArray, x, y, w, h, lineWidth) {
                     var colorStr = getColor(colorArray),
