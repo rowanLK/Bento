@@ -8949,7 +8949,7 @@ bento.define('bento/managers/asset', [
                             // }
                             // spritesheet
                             else if (asset.image && asset.image.dispose) {
-                                asset.dispose();
+                                asset.image.dispose();
                             }
                             // audia
                             else if (asset._audioNode && asset._audioNode.dispose) {
@@ -9224,6 +9224,7 @@ bento.define('bento/managers/asset', [
         };
     };
 });
+
 /**
  * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
  * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
