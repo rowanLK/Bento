@@ -496,6 +496,12 @@ bento.define('bento/utils', [], function () {
         remoteMapping: remoteMapping,
         gamepadMapping: gamepadMapping,
         /**
+         * Returns either the provided value, or the provided fallback value in case the provided value was undefined
+         */
+        getDefault: function (param, fallback) {
+            return (param !== void(0)) ? param : fallback;
+        },
+        /**
          * Returns a random integer [0...n)
          * @function
          * @instance
