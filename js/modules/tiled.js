@@ -176,7 +176,7 @@ bento.define('bento/tiled', [
         var height = json.height || 0;
         var tileWidth = json.tilewidth || 0;
         var tileHeight = json.tileheight || 0;
-        var mergeLayers = json.merge || false;
+        var mergeLayers = settings.merge || false;
         var onInit = settings.onInit;
         var onLayer = settings.onLayer;
         var onTile = settings.onTile;
