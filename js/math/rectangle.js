@@ -10,10 +10,10 @@
  * @returns {Rectangle} Returns a rectangle.
  */
 bento.define('bento/math/rectangle', [
-    'bento/utils', 
+    'bento/utils',
     'bento/math/vector2'
 ], function (
-    Utils, 
+    Utils,
     Vector2
 ) {
     'use strict';

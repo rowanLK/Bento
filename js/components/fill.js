@@ -12,7 +12,7 @@ bento.define('bento/components/fill', [
     'bento/utils',
     'bento'
 ], function (
-    Utils, 
+    Utils,
     Bento
 ) {
     'use strict';

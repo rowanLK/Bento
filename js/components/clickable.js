@@ -16,7 +16,7 @@
  * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
  * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
  * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
- * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top. 
+ * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top.
  Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
  */
@@ -28,10 +28,10 @@ bento.define('bento/components/clickable', [
     'bento/eventsystem',
     'bento/sortedeventsystem'
 ], function (
-    Bento, 
-    Utils, 
-    Vector2, 
-    Matrix, 
+    Bento,
+    Utils,
+    Vector2,
+    Matrix,
     EventSystem,
     SortedEventSystem
 ) {
@@ -44,7 +44,7 @@ bento.define('bento/components/clickable', [
             return false;
         }
         rootPause = entity.updateWhenPaused;
-        // find root parent 
+        // find root parent
         while (entity.parent) {
             entity = entity.parent;
             rootPause = entity.updateWhenPaused;
@@ -147,7 +147,7 @@ bento.define('bento/components/clickable', [
         } else {
             EventSystem.off('pointerDown', this.pointerDown, this);
             EventSystem.off('pointerUp', this.pointerUp, this);
-            EventSystem.off('pointerMove', this.pointerMove, this);            
+            EventSystem.off('pointerMove', this.pointerMove, this);
         }
         this.initialized = false;
     };
@@ -165,7 +165,7 @@ bento.define('bento/components/clickable', [
         } else {
             EventSystem.on('pointerDown', this.pointerDown, this);
             EventSystem.on('pointerUp', this.pointerUp, this);
-            EventSystem.on('pointerMove', this.pointerMove, this);            
+            EventSystem.on('pointerMove', this.pointerMove, this);
         }
         this.initialized = true;
     };
