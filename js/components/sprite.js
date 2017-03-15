@@ -94,6 +94,7 @@ bento.define('bento/components/sprite', [
         this.animations = {};
         this.currentAnimation = null;
         this.currentAnimationLength = 0;
+        this.currentFrame = 0;
 
         this.onCompleteCallback = function () {};
         this.setup(settings);
@@ -117,7 +118,7 @@ bento.define('bento/components/sprite', [
             // remember the spritesheet name
             this.currentSpriteSheet = settings.spriteSheet;
 
-            // settings is overwritten 
+            // settings is overwritten
             settings = Utils.copyObject(spriteSheet.animation);
             settings.image = spriteSheet.image;
             if (settings.animation) {
