@@ -218,8 +218,7 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.updateFrame = function () {
-        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        var sourceFrame = this.currentAnimation.frames[0];
         this.sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
         this.sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
     };
