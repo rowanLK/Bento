@@ -85,8 +85,6 @@ bento.define('bento/components/sprite', [
         this.currentSpriteSheet = '';
 
         // drawing internals
-        this.frameIndex = 0;
-        this.sourceFrame = 0;
         this.sourceX = 0;
         this.sourceY = 0;
 
@@ -408,10 +406,10 @@ bento.define('bento/components/sprite', [
     };
 
     Sprite.prototype.updateFrame = function () {
-        this.frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        this.sourceFrame = this.currentAnimation.frames[this.frameIndex];
-        this.sourceX = (this.sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.sourceY = Math.floor(this.sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        this.sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
     };
 
     Sprite.prototype.draw = function (data) {
