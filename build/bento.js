@@ -7190,7 +7190,7 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.setWidth = function (width) {
-        this.width = Utils.isNotEmpty(width) ? width : this.width;
+        this.width = Utils.isDefined(width) ? width : this.width;
         this.width = Math.max(this.width, this.sliceWidth * 2);
         if (this.entity) {
             var relOriginX = this.entity.origin.x / this.entity.dimension.width;
@@ -7200,7 +7200,7 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.setHeight = function (height) {
-        this.height = Utils.isNotEmpty(height) ? height : this.height;
+        this.height = Utils.isDefined(height) ? height : this.height;
         this.height = Math.max(this.height, this.sliceHeight * 2);
         if (this.entity) {
             var relOriginY = this.entity.origin.y / this.entity.dimension.height;
