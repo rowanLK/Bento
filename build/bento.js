@@ -7116,8 +7116,6 @@ bento.define('bento/components/nineslice', [
         // drawing internals
         this.sliceWidth = 0;
         this.sliceHeight = 0;
-        this.frameIndex = 0;
-        this.sourceFrame = 0;
         this.sourceX = 0;
         this.sourceY = 0;
 
@@ -7261,7 +7259,6 @@ bento.define('bento/components/nineslice', [
             this.currentAnimation = anim;
             this.currentAnimation.name = name;
             this.currentAnimationLength = this.currentAnimation.frames.length;
-            this.currentFrame = 0;
             if ( /*!Sprite.suppressWarnings &&*/ this.currentAnimation.backTo > this.currentAnimationLength) {
                 console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
                 this.currentAnimation.backTo = this.currentAnimationLength;
@@ -7272,10 +7269,10 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.updateFrame = function () {
-        this.frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        this.sourceFrame = this.currentAnimation.frames[this.frameIndex];
-        this.sourceX = (this.sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.sourceY = Math.floor(this.sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        this.sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
     };
 
     NineSlice.prototype.setWidth = function (width) {
