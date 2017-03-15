@@ -48,7 +48,8 @@ bento.define('bento/gui/clickbutton', [
                 frames: [1]
             }
         };
-        var sprite = settings.sprite || new Sprite({
+        var nineSlice = settings.nineSlice || null;
+        var sprite = nineSlice ? null : settings.sprite || new Sprite({
             image: settings.image,
             imageName: settings.imageName,
             frameWidth: settings.frameWidth,
@@ -57,6 +58,7 @@ bento.define('bento/gui/clickbutton', [
             frameCountY: settings.frameCountY,
             animations: animations
         });
+        var visualComponent = nineSlice || sprite;
         // workaround for pointerUp/onHoldEnd order of events
         var wasHoldingThis = false;
         var clickable = new Clickable({
@@ -67,7 +69,7 @@ bento.define('bento/gui/clickbutton', [
                     return;
                 }
                 ClickButton.currentlyPressing = entity;
-                sprite.setAnimation('down');
+                visualComponent.setAnimation('down');
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity);
                 }
@@ -80,7 +82,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('down');
+                visualComponent.setAnimation('down');
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity);
                 }
@@ -93,7 +95,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('up');
+                visualComponent.setAnimation('up');
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity);
                 }
@@ -106,7 +108,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('up');
+                visualComponent.setAnimation('up');
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity);
                 }
@@ -146,16 +148,16 @@ bento.define('bento/gui/clickbutton', [
             originRelative: new Vector2(0.5, 0.5),
             position: new Vector2(0, 0),
             components: [
-                sprite,
+                visualComponent,
                 clickable
             ],
             family: ['buttons'],
             init: function () {
-                animations = sprite.animations || animations;
+                animations = visualComponent.animations || animations;
                 if (!active && animations.inactive) {
-                    sprite.setAnimation('inactive');
+                    visualComponent.setAnimation('inactive');
                 } else {
-                    sprite.setAnimation('up');
+                    visualComponent.setAnimation('up');
                 }
             }
         }, settings);
@@ -170,9 +172,9 @@ bento.define('bento/gui/clickbutton', [
             setActive: function (bool) {
                 active = bool;
                 if (!active && animations.inactive) {
-                    sprite.setAnimation('inactive');
+                    visualComponent.setAnimation('inactive');
                 } else {
-                    sprite.setAnimation('up');
+                    visualComponent.setAnimation('up');
                 }
             },
             /**
@@ -193,6 +195,22 @@ bento.define('bento/gui/clickbutton', [
              */
             isActive: function () {
                 return active;
+            },
+            /**
+             * Set the size of the clickbutton if it's using a nine slice
+             * @function
+             * @param {Number} width
+             * @param {Number} height
+             * @instance
+             * @name setNineSliceSize
+             */
+            setNineSliceSize: function (width, height) {
+                if (visualComponent.name !== 'nineslice') {
+                    console.warn("LK_WARN: Don't use setNineSliceSize if the clickbutton uses a sprite.");
+                    return;
+                }
+                visualComponent.setWidth(width);
+                visualComponent.setHeight(height);
             }
         });
 
