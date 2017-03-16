@@ -87,7 +87,11 @@ gulp.task('check', function () {
 });
 
 gulp.task('watch', function () {
-    gulp.watch(['js/**/*.js'], ['default']);
+    gulp.watch(
+        ['js/**/*.js'], {
+            interval: 1000
+        }, ['default']
+    );
 });
 
 gulp.task('doc', function (cb) {
@@ -99,5 +103,9 @@ gulp.task('doc', function (cb) {
 });
 
 gulp.task('docwatch', function () {
-    gulp.watch(['js/**/*.js', './readme.md'], ['doc']);
+    gulp.watch(
+        ['js/**/*.js', './readme.md'], {
+            interval: 1000
+        }, ['doc']
+    );
 });
