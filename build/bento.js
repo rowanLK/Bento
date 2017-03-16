@@ -7115,66 +7115,23 @@ bento.define('bento/components/nineslice', [
         this.name = 'nineslice';
         this.visible = true;
 
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1,
-            animations: {
-                up: {
-                    frames: [0]
-                },
-                down: {
-                    frames: [0]
-                },
-                inactive: {
-                    frames: [0]
-                }
-            }
-        };
-
         // component settings
         this.width = 0;
         this.height = 0;
 
         // sprite settings
         this.spriteImage = null;
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
         this.padding = 0;
 
         // drawing internals
         this.sliceWidth = 0;
         this.sliceHeight = 0;
-        this.sourceX = 0;
-        this.sourceY = 0;
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-        this.currentAnimationLength = 0;
 
         this.setup(settings);
     };
 
     NineSlice.prototype.setup = function (settings) {
         var self = this;
-        var padding = 0;
-
-        this.animationSettings = settings || this.animationSettings;
-        padding = this.animationSettings.padding || 0;
-
-        // add default animation
-        if (!this.animations['up']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['up']) {
-                this.animationSettings.animations['up'] = {
-                    frames: [0]
-                };
-            }
-        }
 
         if (settings.image) {
             this.spriteImage = settings.image;
@@ -7204,25 +7161,11 @@ bento.define('bento/components/nineslice', [
             return;
         }
 
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
+        this.padding = settings.padding || 0;
 
         if (this.spriteImage) {
-            this.sliceWidth = Math.floor((this.spriteImage.width - this.padding * 2 * this.frameCountX) / (3 * this.frameCountX));
-            this.sliceHeight = Math.floor((this.spriteImage.height - this.padding * 2 * this.frameCountY) / (3 * this.frameCountY));
+            this.sliceWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
+            this.sliceHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
         }
 
         if (settings.width) {
@@ -7232,76 +7175,18 @@ bento.define('bento/components/nineslice', [
             this.height = Math.max(settings.height || 0, this.sliceHeight * 2);
         }
 
-        this.padding = this.animationSettings.padding || 0;
-
         if (this.entity) {
             // set dimension of entity object
             this.entity.dimension.width = this.width;
             this.entity.dimension.height = this.height;
         }
-
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('up');
     };
 
     NineSlice.prototype.attached = function (data) {
-        var animation;
-        var animations = this.animationSettings.animations;
-        var ii = 0;
-        var iil = 0;
-        var highestFrame = 0;
-
         this.entity = data.entity;
         // set dimension of entity object
         this.entity.dimension.width = this.width;
         this.entity.dimension.height = this.height;
-
-        // check if the frames of animation go out of bounds
-        for (animation in animations) {
-            for (ii = 0, iil = animations[animation].frames.length; ii < iil; ++ii) {
-                if (animations[animation].frames[ii] > highestFrame) {
-                    highestFrame = animations[animation].frames[ii];
-                }
-            }
-            if ( /*!Sprite.suppressWarnings &&*/ highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
-            }
-        }
-    };
-
-    NineSlice.prototype.setAnimation = function (name, callback) {
-        var anim = this.animations[name];
-        if (Utils.isDefined(callback)) {
-            console.warn("LK_WARN: the version of setAnimation in NineSlice doesn't support callbacks.");
-        }
-        if ( /*!Sprite.suppressWarnings &&*/ !anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && this.currentAnimation !== anim) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            this.currentAnimationLength = this.currentAnimation.frames.length;
-            if ( /*!Sprite.suppressWarnings &&*/ this.currentAnimation.backTo > this.currentAnimationLength) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimationLength;
-            }
-        }
-
-        this.updateFrame();
-    };
-
-    NineSlice.prototype.updateFrame = function () {
-        var sourceFrame = this.currentAnimation.frames[0];
-        this.sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
     };
 
     NineSlice.prototype.setWidth = function (width) {
@@ -7325,8 +7210,8 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.fillArea = function (renderer, frame, x, y, width, height) {
-        var sx = (this.sliceWidth + this.padding) * (frame % 3) + this.sourceX;
-        var sy = (this.sliceHeight + this.padding) * Math.floor(frame / 3) + this.sourceY;
+        var sx = (this.sliceWidth + this.padding) * (frame % 3);
+        var sy = (this.sliceHeight + this.padding) * Math.floor(frame / 3);
 
         if (width === 0 || height === 0) {
             return;
@@ -7339,17 +7224,7 @@ bento.define('bento/components/nineslice', [
             height = this.sliceHeight;
         }
 
-        renderer.drawImage(
-            this.spriteImage,
-            sx,
-            sy,
-            this.sliceWidth,
-            this.sliceHeight,
-            x,
-            y,
-            width,
-            height
-        );
+        renderer.drawImage(this.spriteImage, sx, sy, this.sliceWidth, this.sliceHeight, x, y, width, height);
     };
 
     NineSlice.prototype.draw = function (data) {
@@ -15376,6 +15251,7 @@ bento.define('bento/gui/clickbutton', [
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/components/sprite',
+    'bento/components/nineslice',
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
@@ -15386,6 +15262,7 @@ bento.define('bento/gui/clickbutton', [
     Vector2,
     Rectangle,
     Sprite,
+    NineSlice,
     Clickable,
     Entity,
     Utils,
@@ -15406,7 +15283,12 @@ bento.define('bento/gui/clickbutton', [
                 frames: [1]
             }
         };
-        var nineSlice = settings.nineSlice || null;
+        var nsSettings = settings.nineSliceSettings || null;
+        var nineSlice = !nsSettings ? null : new NineSlice({
+            imageName: nsSettings.animations.up,
+            width: nsSettings.width,
+            height: nsSettings.height
+        });
         var sprite = nineSlice ? null : settings.sprite || new Sprite({
             image: settings.image,
             imageName: settings.imageName,
@@ -15427,7 +15309,7 @@ bento.define('bento/gui/clickbutton', [
                     return;
                 }
                 ClickButton.currentlyPressing = entity;
-                visualComponent.setAnimation('down');
+                setAnimation('down');
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity);
                 }
@@ -15440,7 +15322,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                visualComponent.setAnimation('down');
+                setAnimation('down');
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity);
                 }
@@ -15453,7 +15335,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                visualComponent.setAnimation('up');
+                setAnimation('up');
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity);
                 }
@@ -15466,7 +15348,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                visualComponent.setAnimation('up');
+                setAnimation('up');
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity);
                 }
@@ -15511,14 +15393,38 @@ bento.define('bento/gui/clickbutton', [
             ],
             family: ['buttons'],
             init: function () {
-                animations = visualComponent.animations || animations;
-                if (!active && animations.inactive) {
-                    visualComponent.setAnimation('inactive');
-                } else {
-                    visualComponent.setAnimation('up');
-                }
+                setActive(active);
             }
         }, settings);
+
+        var setActive = function (bool) {
+            active = bool;
+
+            if (visualComponent.name === 'nineslice') {
+                animations = nsSettings.animations;
+            } else {
+                animations = sprite.animations || animations;
+            }
+
+            if (!active && animations.inactive) {
+                setAnimation('inactive');
+            } else {
+                setAnimation('up');
+            }
+        };
+
+        var setAnimation = function (animation) {
+            if (visualComponent.name === 'nineslice') {
+                visualComponent.setup({
+                    imageName: nsSettings.animations[animation],
+                    width: nsSettings.width,
+                    height: nsSettings.height
+                });
+            } else {
+                visualComponent.setAnimation(animation);
+            }
+        };
+
         var entity = new Entity(entitySettings).extend({
             /**
              * Activates or deactives the button. Deactivated buttons cannot be pressed.
@@ -15527,14 +15433,7 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name setActive
              */
-            setActive: function (bool) {
-                active = bool;
-                if (!active && animations.inactive) {
-                    visualComponent.setAnimation('inactive');
-                } else {
-                    visualComponent.setAnimation('up');
-                }
-            },
+            setActive: setActive,
             /**
              * Performs the callback as if the button was clicked
              * @function
@@ -15567,6 +15466,8 @@ bento.define('bento/gui/clickbutton', [
                     console.warn("LK_WARN: Don't use setNineSliceSize if the clickbutton uses a sprite.");
                     return;
                 }
+                nsSettings.width = width;
+                nsSettings.height = height;
                 visualComponent.setWidth(width);
                 visualComponent.setHeight(height);
             }

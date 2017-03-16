@@ -34,7 +34,7 @@ bento.define('bento/components/nineslice', [
         this.name = 'nineslice';
         this.visible = true;
 
-        //component settings
+        // component settings
         this.width = 0;
         this.height = 0;
 
