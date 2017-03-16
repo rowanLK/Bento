@@ -13869,9 +13869,70 @@ bento.define('bento/tiled', [
             var tileproperties;
             var properties;
             var moduleName;
+            var components = {};
+            var instantiated = [];
             var x = object.x;
             var y = object.y;
             var params;
+
+            // Reads all custom properties and fishes out the components that need
+            // to be attached to the entity. Also gets the component's parameters.
+            var getComponents = function (props) {
+                var prop = '';
+                var name = '';
+                var paramName = '';
+                var dotIndex = -1;
+                for (prop in props) {
+                    // in order to pass a component through custom properties
+                    // it needs to have 'component' somewhere in the name
+                    if (prop.indexOf('component') > -1) {
+
+                        dotIndex = prop.indexOf('.');
+                        name = prop.slice(0, dotIndex === -1 ? undefined : dotIndex);
+
+                        if (!components[name]) {
+                            components[name] = {};
+                        }
+
+                        // Is it a parameter for the component?
+                        if (dotIndex > -1) {
+                            // component parameters have the same name as the component
+                            // followed by a dot and the parameter name
+                            paramName = prop.slice(dotIndex + 1);
+                            components[name][paramName] = props[prop];
+                        }
+                        // Otherwise it's the path to the component
+                        else {
+                            components[name].pathToComponent = props[prop];
+                        }
+                    }
+                }
+            };
+
+            // Instantiates all the components that were passed through
+            // Tiled so that they can later be attached to the entity.
+            var instantiateComponents = function () {
+                var prop = '';
+                var key = '';
+                var component;
+                var parameters = {};
+
+                for (key in components) {
+                    parameters = {};
+                    component = components[key];
+
+                    // make an object with all parameters for the component
+                    for (prop in component) {
+                        parameters[prop] = component[prop];
+                    }
+
+                    // instantiate component now so it can be attached to the entity later
+                    bento.require([component.pathToComponent], function (Component) {
+                        instantiated.push(new Component(parameters));
+                    });
+                }
+            };
+
             if (!object.gid) {
                 // not an entity (it's a rectangle or other shape)
                 return;
@@ -13899,12 +13960,22 @@ bento.define('bento/tiled', [
                     jsonName: assetName // reference to current json name
                 }
             };
+
+            // search through the tileset's custom properties
+            getComponents(properties);
+            // search through any custom properties that were added to this instance of the object
+            getComponents(object.properties);
+            // instantiate the components, if any were found
+            instantiateComponents();
+
             entitiesToSpawn += 1;
             bento.require([moduleName], function (Instance) {
-                var instance = new Instance(params),
-                    origin = instance.origin,
-                    dimension = instance.dimension;
+                var instance = new Instance(params);
+                var origin = instance.origin;
+                var dimension = instance.dimension;
                 var spriteOrigin = origin.clone();
+                var ii = 0;
+                var iil = 0;
 
                 instance.getComponent('sprite', function (sprite) {
                     spriteOrigin.addTo(sprite.origin);
@@ -13914,6 +13985,11 @@ bento.define('bento/tiled', [
                     offset.x + x + spriteOrigin.x,
                     offset.y + y + (spriteOrigin.y - dimension.height)
                 );
+
+                // attach all the specified components
+                for (ii = 0, iil = instantiated.length; ii < iil; ++ii) {
+                    instance.attach(instantiated[ii]);
+                }
 
                 // add to game
                 if (attachEntities) {
