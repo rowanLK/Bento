@@ -4324,11 +4324,11 @@ bento.define('bento/entity', [
     'bento/math/transformmatrix',
     'bento/transform'
 ], function (
-    Bento, 
-    Utils, 
-    Vector2, 
-    Rectangle, 
-    Matrix, 
+    Bento,
+    Utils,
+    Vector2,
+    Rectangle,
+    Matrix,
     Transform
 ) {
     'use strict';
@@ -4344,7 +4344,7 @@ bento.define('bento/entity', [
     var id = 0;
 
     var Entity = function (settings) {
-        if (!(this instanceof Entity)) {            
+        if (!(this instanceof Entity)) {
             return new Entity(settings);
         }
         var i;
@@ -5851,6 +5851,12 @@ bento.define('bento/utils', [], function () {
         isDefined = function (obj) {
             return obj !== void(0);
         },
+        isEmpty = function (obj) {
+            return obj == null;
+        },
+        isNotEmpty = function (obj) {
+            return obj != null;
+        },
         isObjLiteral = function (_obj) {
             var _test = _obj;
             return (typeof _obj !== 'object' || _obj === null ?
@@ -6254,17 +6260,41 @@ bento.define('bento/utils', [], function () {
          */
         isInt: isInt,
         /**
+         * Is parameter undefined?
          * @function
          * @name isUndefined
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is undefined
          * @instance
          */
         isUndefined: isUndefined,
         /**
+         * Is parameter anything other than undefined?
          * @function
          * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not undefined
          * @name isDefined
          */
         isDefined: isDefined,
+        /**
+         * Is parameter null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is null or undefined
+         * @name isDefined
+         */
+        isEmpty: isEmpty,
+        /**
+         * Is parameter anything other than null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not null or undefined
+         * @name isDefined
+         */
+        isNotEmpty: isNotEmpty,
         /**
          * Removes entry from array (note: only removes the first matching value it finds)
          * @function
@@ -6748,7 +6778,7 @@ bento.define('bento/utils', [], function () {
  * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
  * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
  * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
- * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top. 
+ * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top.
  Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
  */
@@ -6760,10 +6790,10 @@ bento.define('bento/components/clickable', [
     'bento/eventsystem',
     'bento/sortedeventsystem'
 ], function (
-    Bento, 
-    Utils, 
-    Vector2, 
-    Matrix, 
+    Bento,
+    Utils,
+    Vector2,
+    Matrix,
     EventSystem,
     SortedEventSystem
 ) {
@@ -6776,7 +6806,7 @@ bento.define('bento/components/clickable', [
             return false;
         }
         rootPause = entity.updateWhenPaused;
-        // find root parent 
+        // find root parent
         while (entity.parent) {
             entity = entity.parent;
             rootPause = entity.updateWhenPaused;
@@ -6879,7 +6909,7 @@ bento.define('bento/components/clickable', [
         } else {
             EventSystem.off('pointerDown', this.pointerDown, this);
             EventSystem.off('pointerUp', this.pointerUp, this);
-            EventSystem.off('pointerMove', this.pointerMove, this);            
+            EventSystem.off('pointerMove', this.pointerMove, this);
         }
         this.initialized = false;
     };
@@ -6897,7 +6927,7 @@ bento.define('bento/components/clickable', [
         } else {
             EventSystem.on('pointerDown', this.pointerDown, this);
             EventSystem.on('pointerUp', this.pointerUp, this);
-            EventSystem.on('pointerMove', this.pointerMove, this);            
+            EventSystem.on('pointerMove', this.pointerMove, this);
         }
         this.initialized = true;
     };
@@ -7020,7 +7050,7 @@ bento.define('bento/components/fill', [
     'bento/utils',
     'bento'
 ], function (
-    Utils, 
+    Utils,
     Bento
 ) {
     'use strict';
@@ -7160,7 +7190,8 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.setWidth = function (width) {
-        this.width = Math.max(width || this.width, this.sliceWidth * 2);
+        this.width = Utils.isDefined(width) ? width : this.width;
+        this.width = Math.max(this.width, this.sliceWidth * 2);
         if (this.entity) {
             var relOriginX = this.entity.origin.x / this.entity.dimension.width;
             this.entity.dimension.width = this.width;
@@ -7169,7 +7200,8 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.setHeight = function (height) {
-        this.height = Math.max(height || this.height, this.sliceHeight * 2);
+        this.height = Utils.isDefined(height) ? height : this.height;
+        this.height = Math.max(this.height, this.sliceHeight * 2);
         if (this.entity) {
             var relOriginY = this.entity.origin.y / this.entity.dimension.height;
             this.entity.dimension.height = this.height;
@@ -7352,7 +7384,7 @@ bento.define('bento/components/sprite', [
             // remember the spritesheet name
             this.currentSpriteSheet = settings.spriteSheet;
 
-            // settings is overwritten 
+            // settings is overwritten
             settings = Utils.copyObject(spriteSheet.animation);
             settings.image = spriteSheet.image;
             if (settings.animation) {
@@ -11767,10 +11799,10 @@ bento.define('bento/math/polygon', [
  * @returns {Rectangle} Returns a rectangle.
  */
 bento.define('bento/math/rectangle', [
-    'bento/utils', 
+    'bento/utils',
     'bento/math/vector2'
 ], function (
-    Utils, 
+    Utils,
     Vector2
 ) {
     'use strict';
@@ -12075,7 +12107,7 @@ bento.define('bento/math/transformmatrix', [
     'bento/utils',
     'bento/math/vector2'
 ], function (
-    Utils, 
+    Utils,
     Vector2
 ) {
     'use strict';

@@ -12,7 +12,7 @@ bento.define('bento/math/transformmatrix', [
     'bento/utils',
     'bento/math/vector2'
 ], function (
-    Utils, 
+    Utils,
     Vector2
 ) {
     'use strict';
