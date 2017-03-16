@@ -36,6 +36,12 @@ bento.define('bento/utils', [], function () {
         isDefined = function (obj) {
             return obj !== void(0);
         },
+        isEmpty = function (obj) {
+            return obj == null;
+        },
+        isNotEmpty = function (obj) {
+            return obj != null;
+        },
         isObjLiteral = function (_obj) {
             var _test = _obj;
             return (typeof _obj !== 'object' || _obj === null ?
@@ -439,17 +445,41 @@ bento.define('bento/utils', [], function () {
          */
         isInt: isInt,
         /**
+         * Is parameter undefined?
          * @function
          * @name isUndefined
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is undefined
          * @instance
          */
         isUndefined: isUndefined,
         /**
+         * Is parameter anything other than undefined?
          * @function
          * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not undefined
          * @name isDefined
          */
         isDefined: isDefined,
+        /**
+         * Is parameter null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is null or undefined
+         * @name isDefined
+         */
+        isEmpty: isEmpty,
+        /**
+         * Is parameter anything other than null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not null or undefined
+         * @name isDefined
+         */
+        isNotEmpty: isNotEmpty,
         /**
          * Removes entry from array (note: only removes the first matching value it finds)
          * @function
