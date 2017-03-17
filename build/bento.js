@@ -13870,10 +13870,14 @@ bento.define('bento/tiled', [
             var properties;
             var moduleName;
             var components = {};
-            var instantiated = [];
+            var require = {
+                // paths to module and components
+                paths: [],
+                // parameters for respective module and components
+                parameters: []
+            };
             var x = object.x;
             var y = object.y;
-            var params;
 
             // Reads all custom properties and fishes out the components that need
             // to be attached to the entity. Also gets the component's parameters.
@@ -13923,13 +13927,14 @@ bento.define('bento/tiled', [
 
                     // make an object with all parameters for the component
                     for (prop in component) {
-                        parameters[prop] = component[prop];
+                        if (prop !== 'pathToComponent') {
+                            parameters[prop] = component[prop];
+                        }
                     }
 
-                    // instantiate component now so it can be attached to the entity later
-                    bento.require([component.pathToComponent], function (Component) {
-                        instantiated.push(new Component(parameters));
-                    });
+                    // save paths to JS files and corresponding parameters
+                    require.paths.push(component.pathToComponent);
+                    require.parameters.push(Utils.cloneJson(parameters));
                 }
             };
 
@@ -13949,7 +13954,9 @@ bento.define('bento/tiled', [
             if (!moduleName) {
                 return;
             }
-            params = {
+            // save path to module and its paramters
+            require.paths.push(moduleName);
+            require.parameters.push({
                 tiled: {
                     position: new Vector2(x, y),
                     tileSet: tileSet,
@@ -13959,7 +13966,7 @@ bento.define('bento/tiled', [
                     objectProperties: object.properties,
                     jsonName: assetName // reference to current json name
                 }
-            };
+            });
 
             // search through the tileset's custom properties
             getComponents(properties);
@@ -13969,13 +13976,13 @@ bento.define('bento/tiled', [
             instantiateComponents();
 
             entitiesToSpawn += 1;
-            bento.require([moduleName], function (Instance) {
-                var instance = new Instance(params);
+            bento.require(require.paths, function () {
+                var instance = new arguments[0](require.parameters[0]);
                 var origin = instance.origin;
                 var dimension = instance.dimension;
                 var spriteOrigin = origin.clone();
-                var ii = 0;
-                var iil = 0;
+                var ii = 1;
+                var iil = arguments.length;
 
                 instance.getComponent('sprite', function (sprite) {
                     spriteOrigin.addTo(sprite.origin);
@@ -13986,9 +13993,9 @@ bento.define('bento/tiled', [
                     offset.y + y + (spriteOrigin.y - dimension.height)
                 );
 
-                // attach all the specified components
-                for (ii = 0, iil = instantiated.length; ii < iil; ++ii) {
-                    instance.attach(instantiated[ii]);
+                // instantiate and attach all the specified components
+                for (; ii < iil; ++ii) {
+                    instance.attach(new arguments[ii](require.parameters[ii]));
                 }
 
                 // add to game
