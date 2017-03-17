@@ -42,11 +42,11 @@ bento.define('bento/entity', [
     'bento/math/transformmatrix',
     'bento/transform'
 ], function (
-    Bento, 
-    Utils, 
-    Vector2, 
-    Rectangle, 
-    Matrix, 
+    Bento,
+    Utils,
+    Vector2,
+    Rectangle,
+    Matrix,
     Transform
 ) {
     'use strict';
@@ -62,7 +62,7 @@ bento.define('bento/entity', [
     var id = 0;
 
     var Entity = function (settings) {
-        if (!(this instanceof Entity)) {            
+        if (!(this instanceof Entity)) {
             return new Entity(settings);
         }
         var i;
