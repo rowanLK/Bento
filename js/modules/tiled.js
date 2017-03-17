@@ -518,6 +518,12 @@ bento.define('bento/tiled', [
              */
             assetName: assetName,
             /**
+             * Reference to the Tiled JSON asset
+             * @instance
+             * @name json
+             */
+            json: json,
+            /**
              * Rectangle with width and height of the Tiled map in pixels
              * @instance
              * @name dimension
