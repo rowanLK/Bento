@@ -34,7 +34,7 @@ bento.define('bento/components/nineslice', [
         this.name = 'nineslice';
         this.visible = true;
 
-        //component settings
+        // component settings
         this.width = 0;
         this.height = 0;
 
@@ -180,7 +180,6 @@ bento.define('bento/components/nineslice', [
 
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
-
 
     return NineSlice;
 });
