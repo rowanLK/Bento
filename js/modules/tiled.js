@@ -414,9 +414,7 @@ bento.define('bento/tiled', [
                 }
             };
 
-            // Instantiates all the components that were passed through
-            // Tiled so that they can later be attached to the entity.
-            var instantiateComponents = function () {
+            var savePathsAndParameters = function () {
                 var prop = '';
                 var key = '';
                 var component;
@@ -473,8 +471,8 @@ bento.define('bento/tiled', [
             getComponents(properties);
             // search through any custom properties that were added to this instance of the object
             getComponents(object.properties);
-            // instantiate the components, if any were found
-            instantiateComponents();
+            // save the paths to the components and save their parameters
+            savePathsAndParameters();
 
             entitiesToSpawn += 1;
             bento.require(require.paths, function () {
