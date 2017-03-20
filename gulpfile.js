@@ -53,7 +53,22 @@ gulp.task('default', [], function () {
         .pipe(addsrc.prepend('node_modules/requirejs/require.js'))
         // output bento.js
         .pipe(concat('bento.js'))
-        .pipe(gulp.dest('build'))
+        .pipe(gulp.dest('build'));
+});
+
+gulp.task('min', [], function () {
+    // place code for your default task here
+    return gulp.src([
+            'js/lib/fpsmeter.js',
+            'js/**/main.js',
+            'js/lib/lzstring.js',
+            'js/lib/audia.js',
+            'js/**/*.js',
+            '!js/lib/bento-require.js'
+        ])
+        // add requirejs
+        .pipe(addsrc.prepend('node_modules/requirejs/require.js'))
+        .pipe(concat('bento.js'))
         // output bento.min.js
         .pipe(uglify())
         .pipe(rename('bento.min.js'))
