@@ -7,7 +7,11 @@
 
     Adapted for Bento game engine by Lucky Kat Studios
 */
-bento.define("audia", [], function () {
+bento.define("audia", [
+    'bento/utils'
+], function (
+    Utils
+) {
 
     // Got Web Audio API?
     var audioContext = null;
@@ -690,12 +694,23 @@ bento.define("audia", [], function () {
     // canPlayType helper
     // Can be called with shortcuts, e.g. "mp3" instead of "audio/mp3"
     var audioNode;
+    var hasWarned = false;
     Audia.canPlayType = function (type) {
-        if (audioNode === undefined) {
-            audioNode = new Audio();
+        if (hasWebAudio && Utils.isApple()) {
+            // bug in iOS Safari
+            if (!hasWarned) {
+                hasWarned = true;
+                Utils.log("WARNING: cannot properly check if audio is supported on iOS Safari");
+            }
+            return true;
+        } else {
+            if (audioNode === undefined) {
+                audioNode = new Audio();
+            }
+            type = (type.match("/") === null ? "audio/" : "") + type;
+            return audioNode.canPlayType(type);
         }
-        var type = (type.match("/") === null ? "audio/" : "") + type;
-        return audioNode.canPlayType(type);
+
     };
 
     // canPlayType
