@@ -9,14 +9,21 @@
  * @returns {Vector2} Returns a 2d vector.
  */
 bento.define('bento/math/vector2', [
-    'bento/math/matrix'
+    'bento/math/matrix',
+    'bento/utils'
 ], function (
-    Matrix
+    Matrix,
+    Utils
 ) {
     'use strict';
     var Vector2 = function (x, y) {
         if (!(this instanceof Vector2)) {
             return new Vector2(x, y);
+        }
+        if (Utils.isDev()) {
+            if (!Utils.isNumber(x) || !Utils.isEmpty(y) || isNaN(x) || isNaN(y) ) {
+                Utils.log("WARNING: invalid Vector2 state! x: " + x + ", y: " + y);
+            }
         }
         this.x = x || 0;
         this.y = y || 0;

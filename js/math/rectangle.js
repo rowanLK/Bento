@@ -21,30 +21,50 @@ bento.define('bento/math/rectangle', [
         if (!(this instanceof Rectangle)) {
             return new Rectangle(x, y, width, height);
         }
+        if (Utils.isDev()) {
+            if (
+                !Utils.isNumber(x) || 
+                !Utils.isNumber(y) || 
+                !Utils.isNumber(width) || 
+                !Utils.isNumber(height) ||
+                isNaN(x) || 
+                isNaN(y) || 
+                isNaN(width) || 
+                isNaN(height)
+            ) {
+                Utils.log(
+                    "WARNING: invalid Rectangle state! x: " + x +
+                    ", y: " + y +
+                    ", width: " + width +
+                    ", height: " + height
+                );
+            }
+        }
+
         /**
          * X position
          * @instance
          * @name x
          */
-        this.x = x;
+        this.x = x || 0;
         /**
          * Y position
          * @instance
          * @name y
          */
-        this.y = y;
+        this.y = y || 0;
         /**
          * Width of the rectangle
          * @instance
          * @name width
          */
-        this.width = width;
+        this.width = width || 0;
         /**
          * Height of the rectangle
          * @instance
          * @name height
          */
-        this.height = height;
+        this.height = height || 0;
     };
     /**
      * Returns true
