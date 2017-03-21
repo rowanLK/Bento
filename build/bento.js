@@ -7130,7 +7130,7 @@ bento.define('bento/components/nineslice', [
         this.name = 'nineslice';
         this.visible = true;
 
-        //component settings
+        // component settings
         this.width = 0;
         this.height = 0;
 
@@ -7277,7 +7277,6 @@ bento.define('bento/components/nineslice', [
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
 
-
     return NineSlice;
 });
 /**
@@ -7367,8 +7366,6 @@ bento.define('bento/components/sprite', [
         this.currentSpriteSheet = '';
 
         // drawing internals
-        this.frameIndex = 0;
-        this.sourceFrame = 0;
         this.sourceX = 0;
         this.sourceY = 0;
 
@@ -7376,6 +7373,7 @@ bento.define('bento/components/sprite', [
         this.animations = {};
         this.currentAnimation = null;
         this.currentAnimationLength = 0;
+        this.currentFrame = 0;
 
         this.onCompleteCallback = function () {};
         this.setup(settings);
@@ -7689,10 +7687,10 @@ bento.define('bento/components/sprite', [
     };
 
     Sprite.prototype.updateFrame = function () {
-        this.frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        this.sourceFrame = this.currentAnimation.frames[this.frameIndex];
-        this.sourceX = (this.sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.sourceY = Math.floor(this.sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        this.sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
     };
 
     Sprite.prototype.draw = function (data) {
@@ -15382,6 +15380,7 @@ bento.define('bento/gui/clickbutton', [
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/components/sprite',
+    'bento/components/nineslice',
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
@@ -15392,6 +15391,7 @@ bento.define('bento/gui/clickbutton', [
     Vector2,
     Rectangle,
     Sprite,
+    NineSlice,
     Clickable,
     Entity,
     Utils,
@@ -15412,7 +15412,13 @@ bento.define('bento/gui/clickbutton', [
                 frames: [1]
             }
         };
-        var sprite = settings.sprite || new Sprite({
+        var nsSettings = settings.nineSliceSettings || null;
+        var nineSlice = !nsSettings ? null : new NineSlice({
+            imageName: nsSettings.animations.up,
+            width: nsSettings.width,
+            height: nsSettings.height
+        });
+        var sprite = nineSlice ? null : settings.sprite || new Sprite({
             image: settings.image,
             imageName: settings.imageName,
             frameWidth: settings.frameWidth,
@@ -15421,6 +15427,7 @@ bento.define('bento/gui/clickbutton', [
             frameCountY: settings.frameCountY,
             animations: animations
         });
+        var visualComponent = nineSlice || sprite;
         // workaround for pointerUp/onHoldEnd order of events
         var wasHoldingThis = false;
         var clickable = new Clickable({
@@ -15431,7 +15438,7 @@ bento.define('bento/gui/clickbutton', [
                     return;
                 }
                 ClickButton.currentlyPressing = entity;
-                sprite.setAnimation('down');
+                setAnimation('down');
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity);
                 }
@@ -15444,7 +15451,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('down');
+                setAnimation('down');
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity);
                 }
@@ -15457,7 +15464,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('up');
+                setAnimation('up');
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity);
                 }
@@ -15470,7 +15477,7 @@ bento.define('bento/gui/clickbutton', [
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('up');
+                setAnimation('up');
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity);
                 }
@@ -15510,19 +15517,43 @@ bento.define('bento/gui/clickbutton', [
             originRelative: new Vector2(0.5, 0.5),
             position: new Vector2(0, 0),
             components: [
-                sprite,
+                visualComponent,
                 clickable
             ],
             family: ['buttons'],
             init: function () {
-                animations = sprite.animations || animations;
-                if (!active && animations.inactive) {
-                    sprite.setAnimation('inactive');
-                } else {
-                    sprite.setAnimation('up');
-                }
+                setActive(active);
             }
         }, settings);
+
+        var setActive = function (bool) {
+            active = bool;
+
+            if (visualComponent.name === 'nineslice') {
+                animations = nsSettings.animations;
+            } else {
+                animations = sprite.animations || animations;
+            }
+
+            if (!active && animations.inactive) {
+                setAnimation('inactive');
+            } else {
+                setAnimation('up');
+            }
+        };
+
+        var setAnimation = function (animation) {
+            if (visualComponent.name === 'nineslice') {
+                visualComponent.setup({
+                    imageName: nsSettings.animations[animation],
+                    width: nsSettings.width,
+                    height: nsSettings.height
+                });
+            } else {
+                visualComponent.setAnimation(animation);
+            }
+        };
+
         var entity = new Entity(entitySettings).extend({
             /**
              * Activates or deactives the button. Deactivated buttons cannot be pressed.
@@ -15531,14 +15562,7 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name setActive
              */
-            setActive: function (bool) {
-                active = bool;
-                if (!active && animations.inactive) {
-                    sprite.setAnimation('inactive');
-                } else {
-                    sprite.setAnimation('up');
-                }
-            },
+            setActive: setActive,
             /**
              * Performs the callback as if the button was clicked
              * @function
@@ -15557,6 +15581,24 @@ bento.define('bento/gui/clickbutton', [
              */
             isActive: function () {
                 return active;
+            },
+            /**
+             * Set the size of the clickbutton if it's using a nine slice
+             * @function
+             * @param {Number} width
+             * @param {Number} height
+             * @instance
+             * @name setNineSliceSize
+             */
+            setNineSliceSize: function (width, height) {
+                if (visualComponent.name !== 'nineslice') {
+                    console.warn("LK_WARN: Don't use setNineSliceSize if the clickbutton uses a sprite.");
+                    return;
+                }
+                nsSettings.width = width;
+                nsSettings.height = height;
+                visualComponent.setWidth(width);
+                visualComponent.setHeight(height);
             }
         });
 
