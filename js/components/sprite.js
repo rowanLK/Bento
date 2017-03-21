@@ -210,8 +210,8 @@ bento.define('bento/components/sprite', [
         if (!this.entity) {
             return;
         }
-        var relOriginX = this.entity.origin.x / this.entity.dimension.width;
-        var relOriginY = this.entity.origin.y / this.entity.dimension.height;
+        var relOriginX = this.entity.origin.x / this.entity.dimension.width || 0; // Note: possible divide by 0
+        var relOriginY = this.entity.origin.y / this.entity.dimension.height || 0;
 
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;

@@ -3710,7 +3710,7 @@ bento.define("audia", [
             // bug in iOS Safari
             if (!hasWarned) {
                 hasWarned = true;
-                Utils.log("WARNING: cannot properly check if audio is supported on iOS Safari");
+                console.log("WARNING: cannot properly check if audio is supported on iOS Safari");
             }
             return true;
         } else {
@@ -7492,8 +7492,8 @@ bento.define('bento/components/sprite', [
         if (!this.entity) {
             return;
         }
-        var relOriginX = this.entity.origin.x / this.entity.dimension.width;
-        var relOriginY = this.entity.origin.y / this.entity.dimension.height;
+        var relOriginX = this.entity.origin.x / this.entity.dimension.width || 0; // Note: possible divide by 0
+        var relOriginY = this.entity.origin.y / this.entity.dimension.height || 0;
 
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
@@ -12398,7 +12398,7 @@ bento.define('bento/math/vector2', [
             return new Vector2(x, y);
         }
         if (Utils.isDev()) {
-            if (!Utils.isNumber(x) || !Utils.isEmpty(y) || isNaN(x) || isNaN(y) ) {
+            if (!Utils.isNumber(x) || !Utils.isNumber(y) || isNaN(x) || isNaN(y)) {
                 Utils.log("WARNING: invalid Vector2 state! x: " + x + ", y: " + y);
             }
         }

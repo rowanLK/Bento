@@ -21,7 +21,7 @@ bento.define('bento/math/vector2', [
             return new Vector2(x, y);
         }
         if (Utils.isDev()) {
-            if (!Utils.isNumber(x) || !Utils.isEmpty(y) || isNaN(x) || isNaN(y) ) {
+            if (!Utils.isNumber(x) || !Utils.isNumber(y) || isNaN(x) || isNaN(y)) {
                 Utils.log("WARNING: invalid Vector2 state! x: " + x + ", y: " + y);
             }
         }

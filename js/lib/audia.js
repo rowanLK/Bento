@@ -700,7 +700,7 @@ bento.define("audia", [
             // bug in iOS Safari
             if (!hasWarned) {
                 hasWarned = true;
-                Utils.log("WARNING: cannot properly check if audio is supported on iOS Safari");
+                console.log("WARNING: cannot properly check if audio is supported on iOS Safari");
             }
             return true;
         } else {
