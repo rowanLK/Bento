@@ -34,7 +34,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.fillStyle = colorStr;
                     context.fillRect(x, y, w, h);
@@ -46,7 +46,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.fillStyle = colorStr;
                     context.beginPath();
@@ -61,7 +61,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.lineWidth = lineWidth || 0;
                     context.strokeStyle = colorStr;
@@ -78,7 +78,7 @@ bento.define('bento/renderers/canvas2d', [
                     eAngle = eAngle || 0;
 
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.strokeStyle = colorStr;
                     context.lineWidth = lineWidth || 0;
@@ -91,7 +91,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     if (!Utils.isDefined(width)) {
                         width = 1;

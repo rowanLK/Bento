@@ -3017,7 +3017,11 @@ var requirejs, require, define;
 
     Adapted for Bento game engine by Lucky Kat Studios
 */
-bento.define("audia", [], function () {
+bento.define("audia", [
+    'bento/utils'
+], function (
+    Utils
+) {
 
     // Got Web Audio API?
     var audioContext = null;
@@ -3700,12 +3704,23 @@ bento.define("audia", [], function () {
     // canPlayType helper
     // Can be called with shortcuts, e.g. "mp3" instead of "audio/mp3"
     var audioNode;
+    var hasWarned = false;
     Audia.canPlayType = function (type) {
-        if (audioNode === undefined) {
-            audioNode = new Audio();
+        if (hasWebAudio && Utils.isApple()) {
+            // bug in iOS Safari
+            if (!hasWarned) {
+                hasWarned = true;
+                console.log("WARNING: cannot properly check if audio is supported on iOS Safari");
+            }
+            return true;
+        } else {
+            if (audioNode === undefined) {
+                audioNode = new Audio();
+            }
+            type = (type.match("/") === null ? "audio/" : "") + type;
+            return audioNode.canPlayType(type);
         }
-        var type = (type.match("/") === null ? "audio/" : "") + type;
-        return audioNode.canPlayType(type);
+
     };
 
     // canPlayType
@@ -7475,8 +7490,8 @@ bento.define('bento/components/sprite', [
         if (!this.entity) {
             return;
         }
-        var relOriginX = this.entity.origin.x / this.entity.dimension.width;
-        var relOriginY = this.entity.origin.y / this.entity.dimension.height;
+        var relOriginX = this.entity.origin.x / this.entity.dimension.width || 0; // Note: possible divide by 0
+        var relOriginY = this.entity.origin.y / this.entity.dimension.height || 0;
 
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
@@ -11812,30 +11827,50 @@ bento.define('bento/math/rectangle', [
         if (!(this instanceof Rectangle)) {
             return new Rectangle(x, y, width, height);
         }
+        if (Utils.isDev()) {
+            if (
+                !Utils.isNumber(x) || 
+                !Utils.isNumber(y) || 
+                !Utils.isNumber(width) || 
+                !Utils.isNumber(height) ||
+                isNaN(x) || 
+                isNaN(y) || 
+                isNaN(width) || 
+                isNaN(height)
+            ) {
+                Utils.log(
+                    "WARNING: invalid Rectangle state! x: " + x +
+                    ", y: " + y +
+                    ", width: " + width +
+                    ", height: " + height
+                );
+            }
+        }
+
         /**
          * X position
          * @instance
          * @name x
          */
-        this.x = x;
+        this.x = x || 0;
         /**
          * Y position
          * @instance
          * @name y
          */
-        this.y = y;
+        this.y = y || 0;
         /**
          * Width of the rectangle
          * @instance
          * @name width
          */
-        this.width = width;
+        this.width = width || 0;
         /**
          * Height of the rectangle
          * @instance
          * @name height
          */
-        this.height = height;
+        this.height = height || 0;
     };
     /**
      * Returns true
@@ -12353,14 +12388,21 @@ bento.define('bento/math/transformmatrix', [
  * @returns {Vector2} Returns a 2d vector.
  */
 bento.define('bento/math/vector2', [
-    'bento/math/matrix'
+    'bento/math/matrix',
+    'bento/utils'
 ], function (
-    Matrix
+    Matrix,
+    Utils
 ) {
     'use strict';
     var Vector2 = function (x, y) {
         if (!(this instanceof Vector2)) {
             return new Vector2(x, y);
+        }
+        if (Utils.isDev()) {
+            if (!Utils.isNumber(x) || !Utils.isNumber(y) || isNaN(x) || isNaN(y)) {
+                Utils.log("WARNING: invalid Vector2 state! x: " + x + ", y: " + y);
+            }
         }
         this.x = x || 0;
         this.y = y || 0;
@@ -14789,7 +14831,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.fillStyle = colorStr;
                     context.fillRect(x, y, w, h);
@@ -14801,7 +14843,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.fillStyle = colorStr;
                     context.beginPath();
@@ -14816,7 +14858,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.lineWidth = lineWidth || 0;
                     context.strokeStyle = colorStr;
@@ -14833,7 +14875,7 @@ bento.define('bento/renderers/canvas2d', [
                     eAngle = eAngle || 0;
 
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     context.strokeStyle = colorStr;
                     context.lineWidth = lineWidth || 0;
@@ -14846,7 +14888,7 @@ bento.define('bento/renderers/canvas2d', [
                     var colorStr = getColor(colorArray),
                         oldOpacity = context.globalAlpha;
                     if (colorArray[3] !== 1) {
-                        context.globalAlpha = colorArray[3];
+                        context.globalAlpha *= colorArray[3];
                     }
                     if (!Utils.isDefined(width)) {
                         width = 1;
