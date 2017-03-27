@@ -211,7 +211,7 @@ bento.define('bento/components/clickable', [
             this.callbacks.pointerUp.call(this, e);
         }
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            this.callbacks.onClickUp.call(this, [e]);
+            this.callbacks.onClickUp.call(this, e);
             if (this.hasTouched && this.holdId === e.id) {
                 this.holdId = null;
                 this.callbacks.onHoldEnd.call(this, e);
