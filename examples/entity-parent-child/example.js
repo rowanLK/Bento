@@ -40,7 +40,9 @@ bento.require([
                 }),
                 new Clickable({
                     pointerMove: function (evt) {
-                        var localPos = cursor.getLocalPosition(evt.worldPosition);
+                        var localPos = cursor.parent.getLocalPosition(evt.worldPosition);
+                        // OR: 
+                        // var localPos = cursor.getComparablePosition(evt.worldPosition);
                         cursor.position.x = localPos.x;
                         cursor.position.y = localPos.y;
                     }

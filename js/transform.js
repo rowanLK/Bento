@@ -142,6 +142,25 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.getLocalPosition = function (worldPosition) {
+        // get the comparable position and reverse transform once more to get into the local space
+        var positionVector = this.getComparablePosition(worldPosition);
+
+        // construct a translation matrix and apply to position vector
+        var entity = this.entity;
+        var position = entity.position;
+        var matrix = new Matrix().translate(-position.x, -position.y);
+        matrix.multiplyWithVector(positionVector);
+        // construct a rotation matrix and apply to position vector
+        matrix = new Matrix().rotate(-entity.rotation);
+        matrix.multiplyWithVector(positionVector);
+        // construct a scaling matrix and apply to position vector
+        matrix = new Matrix().scale(1 / entity.scale.x, 1 / entity.scale.y);
+        matrix.multiplyWithVector(positionVector);
+
+        return positionVector;
+    };
+
+    Transform.prototype.getComparablePosition = function (worldPosition) {
         var positionVector,
             matrix,
             entity = this.entity,
