@@ -275,6 +275,11 @@ bento.define('bento/math/rectangle', [
      * @instance
      * @name getCorner
      */
+    Rectangle.TOPLEFT = 0;
+    Rectangle.TOPRIGHT = 1;
+    Rectangle.BOTTOMLEFT = 2;
+    Rectangle.BOTTOMRIGHT = 3;
+    Rectangle.CENTER = 4;
     Rectangle.prototype.getCorner = function (corner) {
         if (!corner) {
             return new Vector2(this.x, this.y);

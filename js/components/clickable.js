@@ -262,7 +262,7 @@ bento.define('bento/components/clickable', [
     };
 
     Clickable.prototype.transformEvent = function (evt) {
-        evt.localPosition = this.entity.getComparablePosition(evt.worldPosition);
+        evt.localPosition = this.entity.toComparablePosition(evt.worldPosition);
         return evt;
     };
     Clickable.prototype.attached = function (data) {
