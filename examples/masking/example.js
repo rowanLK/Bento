@@ -6,22 +6,26 @@ bento.require([
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/entity',
+    'bento/components/clickable',
     'bento/components/sprite',
     'bento/components/fill',
     'bento/tween',
     'bento/utils',
     'bento/canvas',
+    'bento/maskedcontainer',
     'bunny'
 ], function (
     Bento,
     Vector2,
     Rectangle,
     Entity,
+    Clickable,
     Sprite,
     Fill,
     Tween,
     Utils,
     Canvas,
+    MaskedContainer,
     Bunny
 ) {
     var loadAssets = function () {
@@ -85,7 +89,7 @@ bento.require([
         });
 
         canvasEntity1.attach(bunny1);
-        Bento.objects.attach(canvasEntity1);
+        // Bento.objects.attach(canvasEntity1);
 
         // ==== example 2 ======
         // draw bunny first
@@ -105,8 +109,43 @@ bento.require([
             }
         });
 
-        Bento.objects.attach(canvasEntity2);
+        // Bento.objects.attach(canvasEntity2);
 
+        // ==== example 3 ======
+        // using MaskedContainer
+        var bunny3 = new Bunny().attach(new Clickable({
+            pointerDown: function () {
+                // bunny3.scale.x -= 0.1;
+                // bunny3.scale.y -= 0.1;
+
+                // maskedContainer.scale.x += 0.2;
+                // maskedContainer.scale.y += 0.2;
+
+                // bunny3.rotation += 0.1;
+
+                // TODO: rotation is supposed to work
+                // maskedContainer.rotation += 0.1;
+            },
+            pointerMove: function (data) {
+                bunny3.position = bunny3.toComparablePosition(data.worldPosition);
+            },
+        }));
+        var maskedContainer = new MaskedContainer({
+            z: 0,
+            name: 'maskedContainer',
+            position: new Vector2(viewport.width / 2, viewport.height / 3),
+            boundingBox: new Rectangle(-32, -32, 64, 64),
+            components: [ //
+                {
+                    name: 'fillRect',
+                    draw: function (data) {
+                        data.renderer.fillRect([1, 0, 0, 1], -32, -32, 64, 64);
+                    }
+                },
+                bunny3
+            ]
+        });
+        Bento.objects.attach(maskedContainer);
     };
     Bento.setup({
         canvasId: 'canvas',

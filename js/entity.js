@@ -779,12 +779,24 @@ Bento.objects.attach(entity);
      * Transforms a world position to the entity's local position
      * @function
      * @instance
-     * @name getLocalPosition
+     * @name toLocalPosition
      * @param {Vector2} worldPosition - A position to transform to local position
+     * @returns {Vector2} Returns a position relative to the entity
+     */
+    Entity.prototype.toLocalPosition = function (worldPosition) {
+        return this.transform.toLocalPosition(worldPosition);
+    };
+
+    /**
+     * Transforms a world position to the same space as the entity's
+     * @function
+     * @instance
+     * @name toComparablePosition
+     * @param {Vector2} worldPosition - A vector2 to transform
      * @returns {Vector2} Returns a position relative to the entity's parent
      */
-    Entity.prototype.getLocalPosition = function (worldPosition) {
-        return this.transform.getLocalPosition(worldPosition);
+    Entity.prototype.toComparablePosition = function (worldPosition) {
+        return this.transform.toComparablePosition(worldPosition);
     };
 
     /*

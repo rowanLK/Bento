@@ -84,7 +84,7 @@ bento.define('bento/transform', [
         renderer.restore();
     };
 
-    Transform.prototype.getWorldPosition = function () {
+    Transform.prototype.getWorldPosition = function (optionalPos) {
         var positionVector,
             matrix,
             entity = this.entity,
@@ -94,7 +94,7 @@ bento.define('bento/transform', [
             i,
             isFloating = false;
 
-        // no parents
+        // no parents: is already a world position
         if (!entity.parent) {
             if (entity.float) {
                 return entity.position.add(Bento.getViewport().getCorner());
@@ -141,7 +141,30 @@ bento.define('bento/transform', [
         return positionVector;
     };
 
-    Transform.prototype.getLocalPosition = function (worldPosition) {
+    // TODO!!
+    Transform.prototype.toWorldPosition = function (localPosition) {
+    };
+
+    Transform.prototype.toLocalPosition = function (worldPosition) {
+        // get the comparable position and reverse transform once more to get into the local space
+        var positionVector = this.toComparablePosition(worldPosition);
+
+        // construct a translation matrix and apply to position vector
+        var entity = this.entity;
+        var position = entity.position;
+        var matrix = new Matrix().translate(-position.x, -position.y);
+        matrix.multiplyWithVector(positionVector);
+        // construct a rotation matrix and apply to position vector
+        matrix = new Matrix().rotate(-entity.rotation);
+        matrix.multiplyWithVector(positionVector);
+        // construct a scaling matrix and apply to position vector
+        matrix = new Matrix().scale(1 / entity.scale.x, 1 / entity.scale.y);
+        matrix.multiplyWithVector(positionVector);
+
+        return positionVector;
+    };
+
+    Transform.prototype.toComparablePosition = function (worldPosition) {
         var positionVector,
             matrix,
             entity = this.entity,
