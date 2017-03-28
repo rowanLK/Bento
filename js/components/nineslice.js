@@ -35,8 +35,8 @@ bento.define('bento/components/nineslice', [
         this.visible = true;
 
         // component settings
-        this.width = 0;
-        this.height = 0;
+        this._width = 0;
+        this._height = 0;
 
         // sprite settings
         this.spriteImage = null;
@@ -88,44 +88,58 @@ bento.define('bento/components/nineslice', [
         }
 
         if (settings.width) {
-            this.width = Math.max(settings.width || 0, this.sliceWidth * 2);
+            this._width = Math.max(settings.width || 0, 0);
         }
         if (settings.height) {
-            this.height = Math.max(settings.height || 0, this.sliceHeight * 2);
+            this._height = Math.max(settings.height || 0, 0);
         }
 
         if (this.entity) {
             // set dimension of entity object
-            this.entity.dimension.width = this.width;
-            this.entity.dimension.height = this.height;
+            this.entity.dimension.width = this._width;
+            this.entity.dimension.height = this._height;
         }
+        recalculateDimensions();
     };
 
     NineSlice.prototype.attached = function (data) {
         this.entity = data.entity;
         // set dimension of entity object
-        this.entity.dimension.width = this.width;
-        this.entity.dimension.height = this.height;
+        this.entity.dimension.width = this._width;
+        this.entity.dimension.height = this._height;
     };
 
     NineSlice.prototype.setWidth = function (width) {
-        this.width = Utils.isDefined(width) ? width : this.width;
-        this.width = Math.max(this.width, this.sliceWidth * 2);
+        this._width = Utils.isDefined(width) ? width : this._width;
+        this._width = Math.max(this._width, 0);
         if (this.entity) {
             var relOriginX = this.entity.origin.x / this.entity.dimension.width;
-            this.entity.dimension.width = this.width;
-            this.entity.origin.x = relOriginX * this.width;
+            this.entity.dimension.width = this._width;
+            this.entity.origin.x = relOriginX * this._width;
         }
+        recalculateDimensions();
     };
 
     NineSlice.prototype.setHeight = function (height) {
-        this.height = Utils.isDefined(height) ? height : this.height;
-        this.height = Math.max(this.height, this.sliceHeight * 2);
+        this._height = Utils.isDefined(height) ? height : this._height;
+        this._height = Math.max(this.height, 0);
         if (this.entity) {
             var relOriginY = this.entity.origin.y / this.entity.dimension.height;
-            this.entity.dimension.height = this.height;
-            this.entity.origin.y = relOriginY * this.height;
+            this.entity.dimension.height = this._height;
+            this.entity.origin.y = relOriginY * this._height;
         }
+        recalculateDimensions();
+    };
+
+    var recalculateDimensions = function () {
+        this.innerWidth = this._width - this.sliceWidth * 2;
+        this.innerHeight = this._height - this.sliceHeight * 2;
+
+        this.leftWidth = Math.min(this.sliceWidth, Math.ceil(this._width / 2));
+        this.rightWidth = Math.min(this.sliceWidth, Math.floor(this._width / 2));
+
+        this.topHeight = Math.min(this.sliceHeight, Math.ceil(this.height / 2));
+        this.bottomHeight = Math.min(this.sliceHeight, Math.floor(this.height / 2));
     };
 
     NineSlice.prototype.fillArea = function (renderer, frame, x, y, width, height) {
@@ -150,33 +164,30 @@ bento.define('bento/components/nineslice', [
         var entity = data.entity;
         var origin = data.entity.origin;
 
-        var innerWidth = this.width - this.sliceWidth * 2;
-        var innerHeight = this.height - this.sliceHeight * 2;
-
-        if (this.width === 0 || this.height === 0) {
+        if (this._width === 0 || this._height === 0) {
             return;
         }
 
         data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
 
         //top left corner
-        this.fillArea(data.renderer, 0, 0, 0);
+        this.fillArea(data.renderer, 0, 0, 0, this.leftWidth, this.topHeight);
         //top stretch
-        this.fillArea(data.renderer, 1, this.sliceWidth, 0, innerWidth, this.sliceHeight);
+        this.fillArea(data.renderer, 1, this.sliceWidth, 0, this.innerWidth, this.topHeight);
         //top right corner
-        this.fillArea(data.renderer, 2, this.width - this.sliceWidth, 0);
+        this.fillArea(data.renderer, 2, this._width - this.sliceWidth, 0, this.rightWidth, this.topHeight);
         //left stretch
-        this.fillArea(data.renderer, 3, 0, this.sliceHeight, this.sliceWidth, innerHeight);
+        this.fillArea(data.renderer, 3, 0, this.sliceHeight, this.leftWidth, this.innerHeight);
         //center stretch
-        this.fillArea(data.renderer, 4, this.sliceWidth, this.sliceHeight, innerWidth, innerHeight);
+        this.fillArea(data.renderer, 4, this.sliceWidth, this.sliceHeight, this.innerWidth, this.innerHeight);
         //right stretch
-        this.fillArea(data.renderer, 5, this.width - this.sliceWidth, this.sliceHeight, this.sliceWidth, innerHeight);
+        this.fillArea(data.renderer, 5, this._width - this.sliceWidth, this.sliceHeight, this.rightWidth, this.innerHeight);
         //bottom left corner
-        this.fillArea(data.renderer, 6, 0, this.height - this.sliceHeight);
+        this.fillArea(data.renderer, 6, 0, this._height - this.sliceHeight, this.leftWidth, this.bottomHeight);
         //bottom stretch
-        this.fillArea(data.renderer, 7, this.sliceWidth, this.height - this.sliceHeight, innerWidth, this.sliceHeight);
+        this.fillArea(data.renderer, 7, this.sliceWidth, this._height - this.sliceHeight, this.innerWidth, this.bottomHeight);
         //bottom right corner
-        this.fillArea(data.renderer, 8, this.width - this.sliceWidth, this.height - this.sliceHeight);
+        this.fillArea(data.renderer, 8, this._width - this.sliceWidth, this._height - this.sliceHeight, this.rightWidth, this.bottomHeight);
 
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
