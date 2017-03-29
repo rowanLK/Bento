@@ -7022,7 +7022,8 @@ bento.define('bento/components/clickable', [
         if (this.callbacks.pointerUp) {
             this.callbacks.pointerUp.call(this, e);
         }
-        if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
+        // onClickUp respects isPaused
+        if (this.entity.getBoundingBox().hasPosition(mousePosition) && !isPaused(this.entity)) {
             this.callbacks.onClickUp.call(this, e);
             if (this.hasTouched && this.holdId === e.id) {
                 this.holdId = null;
