@@ -64,9 +64,8 @@ bento.define('bento/maskedcontainer', [
 
             // we have to transform the mask to the sprite's local space
             // first to world
-            var world = new Entity({}); // TODO: need a toWorldPosition, this is a bit of a hack to convert local to world
-            var maskTopLeftWorld = world.toComparablePosition(mask.getCorner(Rectangle.TOPLEFT));
-            var maskBottomRightWorld = world.toComparablePosition(mask.getCorner(Rectangle.BOTTOMRIGHT));
+            var maskTopLeftWorld = container.toWorldPosition(mask.getCorner(Rectangle.TOPLEFT));
+            var maskBottomRightWorld = container.toWorldPosition(mask.getCorner(Rectangle.BOTTOMRIGHT));
             // world to sprite's local
             var maskTopLeft = entity.toLocalPosition(maskTopLeftWorld);
             var maskBottomRight = entity.toLocalPosition(maskBottomRightWorld);

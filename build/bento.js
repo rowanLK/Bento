@@ -5071,7 +5071,18 @@ Bento.objects.attach(entity);
     Entity.prototype.getWorldPosition = function () {
         return this.transform.getWorldPosition();
     };
-
+    
+    /**
+     * Transforms a position local to entity's space to the world position
+     * @function
+     * @instance
+     * @name toWorldPosition
+     * @param {Vector2} localPosition - A position to transform to world position
+     * @returns {Vector2} Returns a position
+     */
+    Entity.prototype.toWorldPosition = function (localPosition) {
+        return this.transform.toWorldPosition(localPosition);
+    };
     /**
      * Transforms a world position to the entity's local position
      * @function
@@ -5721,7 +5732,11 @@ bento.define('bento/transform', [
         renderer.restore();
     };
 
-    Transform.prototype.getWorldPosition = function (optionalPos) {
+    Transform.prototype.getWorldPosition = function () {
+        return this.toWorldPosition(this.entity.position);
+    };
+
+    Transform.prototype.toWorldPosition = function (localPosition) {
         var positionVector,
             matrix,
             entity = this.entity,
@@ -5734,9 +5749,9 @@ bento.define('bento/transform', [
         // no parents: is already a world position
         if (!entity.parent) {
             if (entity.float) {
-                return entity.position.add(Bento.getViewport().getCorner());
+                return localPosition.add(Bento.getViewport().getCorner());
             } else {
-                return entity.position.clone();
+                return localPosition.clone();
             }
         }
 
@@ -5753,9 +5768,9 @@ bento.define('bento/transform', [
 
         // make a copy
         if (entity.float || isFloating) {
-            positionVector = entity.position.add(Bento.getViewport().getCorner());
+            positionVector = localPosition.add(Bento.getViewport().getCorner());
         } else {
-            positionVector = entity.position.clone();
+            positionVector = localPosition.clone();
         }
 
         /**
@@ -5776,10 +5791,6 @@ bento.define('bento/transform', [
         }
 
         return positionVector;
-    };
-
-    // TODO!!
-    Transform.prototype.toWorldPosition = function (localPosition) {
     };
 
     Transform.prototype.toLocalPosition = function (worldPosition) {
@@ -13124,9 +13135,8 @@ bento.define('bento/maskedcontainer', [
 
             // we have to transform the mask to the sprite's local space
             // first to world
-            var world = new Entity({}); // TODO: need a toWorldPosition, this is a bit of a hack to convert local to world
-            var maskTopLeftWorld = world.toComparablePosition(mask.getCorner(Rectangle.TOPLEFT));
-            var maskBottomRightWorld = world.toComparablePosition(mask.getCorner(Rectangle.BOTTOMRIGHT));
+            var maskTopLeftWorld = container.toWorldPosition(mask.getCorner(Rectangle.TOPLEFT));
+            var maskBottomRightWorld = container.toWorldPosition(mask.getCorner(Rectangle.BOTTOMRIGHT));
             // world to sprite's local
             var maskTopLeft = entity.toLocalPosition(maskTopLeftWorld);
             var maskBottomRight = entity.toLocalPosition(maskBottomRightWorld);

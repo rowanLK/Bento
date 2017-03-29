@@ -774,7 +774,18 @@ Bento.objects.attach(entity);
     Entity.prototype.getWorldPosition = function () {
         return this.transform.getWorldPosition();
     };
-
+    
+    /**
+     * Transforms a position local to entity's space to the world position
+     * @function
+     * @instance
+     * @name toWorldPosition
+     * @param {Vector2} localPosition - A position to transform to world position
+     * @returns {Vector2} Returns a position
+     */
+    Entity.prototype.toWorldPosition = function (localPosition) {
+        return this.transform.toWorldPosition(localPosition);
+    };
     /**
      * Transforms a world position to the entity's local position
      * @function
