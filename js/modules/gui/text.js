@@ -615,11 +615,9 @@ bento.define('bento/gui/text', [
 
             return grd;
         };
-        var scaler = {
-            name: 'sharpnessScaler',
+        var debugDrawComponent = {
+            name: 'debugDrawComponent',
             draw: function (data) {
-                data.renderer.scale(invSharpness, invSharpness);
-
                 // draw the debug box while we're at it
                 var entity;
                 var box;
@@ -664,6 +662,14 @@ bento.define('bento/gui/text', [
         var sprite = new Sprite({
             image: packedImage
         });
+        var scaler = new Entity({
+            name: 'sharpnessScaler',
+            scale: new Vector2(invSharpness, invSharpness),
+            components: [
+                debugDrawComponent,
+                sprite
+            ]
+        });
         var entitySettings = Utils.extend({
             z: 0,
             name: 'text',
@@ -671,12 +677,8 @@ bento.define('bento/gui/text', [
         }, settings, true);
         var entity;
 
-        // add the scaler, debugDraw and sprite as top components
-        entitySettings.components = [
-                scaler,
-                sprite
-            ]
-            .concat(entitySettings.components || []);
+        // add the scaler (debugDrawComponent and sprite) as top component
+        entitySettings.components = [scaler].concat(entitySettings.components || []);
 
         entity = new Entity(entitySettings).extend({
             /**
