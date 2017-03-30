@@ -60,12 +60,13 @@ bento.define('bento/utils', [], function () {
         },
         removeFromArray = function (array, obj) {
             var index = array.indexOf(obj);
-            if (index >= 0) {
+            var removed = false;
+            while (index >= 0) {
                 array.splice(index, 1);
-                return true;
-            } else {
-                return false;
+                index = array.indexOf(obj);
+                removed = true;
             }
+            return removed;
         },
         extend = function (obj1, obj2, force, onConflict) {
             var prop, temp;
