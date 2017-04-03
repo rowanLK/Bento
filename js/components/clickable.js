@@ -5,20 +5,34 @@
  * @module bento/components/clickable
  * @moduleName Clickable
  * @param {Object} settings - Settings
- * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
- * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
- * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
- * @param {Function} settings.onClick - Called when pointer taps on the parent entity
- * @param {Function} settings.onClickUp - The pointer was released above the parent entity
- * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
+ * @param {InputCallback} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
+ * @param {InputCallback} settings.pointerUp - Called when pointer is released anywhere on the screen
+ * @param {InputCallback} settings.pointerMove - Called when pointer moves anywhere on the screen
+ * @param {InputCallback} settings.onClick - Called when pointer taps on the parent entity
+ * @param {InputCallback} settings.onClickUp - The pointer was released above the parent entity
+ * @param {InputCallback} settings.onClickMiss - Pointer down but does not touches the parent entity
  * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
- * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
- * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
- * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
- * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @param {InputCallback} settings.onHoldLeave - Called when pointer leaves the entity
+ * @param {InputCallback} settings.onHoldEnter - Called when pointer enters the entity
+ * @param {InputCallback} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
+ * @param {InputCallback} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
  * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top.
  Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
+ */
+ /**
+ * Callback when input changed. The event data is an object that is passed by a source (usually the browser). 
+ * The input manager injects some extra info useful for the game.
+ *
+ * @callback InputCallback
+ * @param {Object} evt - Event data object coming from the source
+ * @param {Number} evt.id - Touch id (-1 for mouse). Note that touch id can be different for each browser!
+ * @param {Vector2} evt.position - position as reported by the source
+ * @param {Vector2} evt.worldPosition - position in the world (includes any scrolling)
+ * @param {Vector2} evt.localPosition - position relative to the parent entity
+ * @param {Vector2} evt.diffPosition - Only when touch ends. Difference position between where the touch started.
+ * @param {Vector2} evt.diffWorldPosition - Only when touch ends. Difference position between where the touch started.
+ * @param {Vector2} evt.diffLocalPosition - Only when touch ends. Difference position between where the touch started.
  */
 bento.define('bento/components/clickable', [
     'bento',

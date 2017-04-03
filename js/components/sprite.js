@@ -1,18 +1,19 @@
 /**
- * Sprite component. Draws an animated sprite on screen at the entity position.
+ * Sprite component. Draws an animated sprite on screen at the entity's transform.
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
  * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
- * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {String} settings.spriteSheet - (Using spritesheet assets) Asset name for the spriteSheet asset. If one uses spritesheet assets, this is the only parameter that is needed.
+ * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
  * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
  * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
  * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
  * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Vector2} settings.origin - Vector2 of origin
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
+ * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
  * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
  * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
  * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)

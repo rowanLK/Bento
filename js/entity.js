@@ -10,7 +10,7 @@
  * @param {Array} settings.components - Array of component module functions
  * @param {Array} settings.family - Array of family names. See {@link module:bento/managers/object#getByFamily}
  * @param {Vector2} settings.position - Vector2 of position to set
- * @param {Vector2} settings.origin - Vector2 of origin to set
+ * @param {Vector2} settings.origin - Vector2 of origin to set (if entity has a sprite, recommended to set the origin in the sprite!)
  * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
  * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
  * @param {Boolean} settings.z - z-index to set
