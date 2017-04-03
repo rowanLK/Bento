@@ -13,6 +13,7 @@ Install Node.js and use `npm install`. To build the engine, use the `gulp` comma
 ## How to use
 
 Please refer to the [guide](guide.md).
+
 Easiest way to get started for now is to download a copy of [Bento Empty Project template](https://github.com/LuckyKat/Bento-Empty-Project)
 
 Install these Sublime Text snippets to make your life easier! [snippets](https://gist.github.com/HernanZh/d12d81cd2de72c735171e866f5236632)

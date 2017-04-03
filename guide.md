@@ -29,7 +29,7 @@ Bento is a HTML5 Game Engine written in JavaScript, primarily aimed at the mobil
 
 ## 1. Getting started
 
-Download the [Bento Empty Project template](https://github.com/LuckyKat/Bento). 
+Download the [Bento Empty Project template](https://github.com/LuckyKat/Bento-Empty-Project). 
 
 To start the game, any browser will do. However, do keep in mind that every browser, [except Opera and Firefox](https://productforums.google.com/forum/#!msg/chrome/v177zA6LCKU/uQ8QZFD3pfcJ), will require a web server to be run locally on your computer. 
 
@@ -39,15 +39,19 @@ Tip: also install [JSHint](https://github.com/uipoet/sublime-jshint)
 You will also need to install Node.js in order to utilize the development scripts.
 
 
-## 2. RequireJS
+## 2. JavaScript knowledge
 
-Bento uses RequireJS for modular programming. For a quick tutorial on RequireJS: https://www.sitepoint.com/understanding-requirejs-for-effective-javascript-module-loading/
+Bento uses ES5 version of JavaScript. Why ES5? Primarily to stay compatible with [cocoon.io](http://cocoon.io/).
+
+Since module importing is introduced in ES6/ES2015, Bento uses RequireJS for modular programming. For a quick tutorial on RequireJS: [link](https://www.sitepoint.com/understanding-requirejs-for-effective-javascript-module-loading/)
+
+Having a strong understanding of JavaScript is recommended. Trouble understanding JavaScript? A small guide about JavaScript for games is written [here](http://www.lucky-kat.com/javascript).
 
 ## 3. Entities and Components
 
 ### 3.1 Entities
 
-Bento uses a entity + component structure (not to be confused with Entity-Component-System aka ECS). The entities are considered as game objects which you can extend with components as behaviors or visuals. Entities have several transform properties which are directly editable:
+Bento uses a entity + component structure (not to be confused with Entity-Component-System aka ECS). The entities are considered as game objects where you can attach components as behaviors or visuals. Entities have several transform properties which are directly editable:
 * position (*Vector2*)
 * scale (*Vector2*)
 * rotation (*in radians*)
@@ -59,12 +63,16 @@ Declaring an entity does not make it appear in the game (unlike game engines suc
 ```javascript
 var entity = new Entity({
     name: 'myEntity',
-    position: new Vector2(0, 0)
-    // ... and more properties
+    position: new Vector2(0, 0),
+    components: []
+    // ... etc
 });
 
+// add it to the game!
 Bento.objects.attach(entity);
 ```
+
+It is also worth noting that Bento often uses object literals as parameters.
 
 ### 3.2 Components
 
@@ -97,7 +105,7 @@ entity.attach(component);
 
 Anything goes, even the update and draw functions are optional. 
 Typically, components have the following functions:
- * ``start``: called when the component goes "live" in the game, the start function is garanteed to be called when the entity is attached to the game, even if the component is attached later.
+ * ``start``: called when the component goes "live" in the game, the start function is guaranteed to be called when the entity is attached to the game, even if the component is attached later.
  * ``destroy``: called when the component is removed from the game (opposite of ``start``)
  * ``update``: called every tick (guaranteed 60 times per second)
  * ``draw``: called every tick, after the update loop (60fps if possible)
@@ -111,7 +119,7 @@ The order of these functions is simply the order of components. The entity keeps
 
 ### 3.3 Parent-child relations
 
-The line between entity and component is blurry. If you look at the source of entity, you can see entity has the same functions as components: start, destroy, update, draw etc. All the entity does in these functions is call the component's functions.
+The line between entity and component is blurry. Just like components, the entity implements the following functions: start, destroy, update, draw etc. The entity forms a container and calls the same functions on its components. 
 In fact, it is perfectly possible to attach entities to other entities. Doing so creates a parent child relation and the attached entity could be considered a component. Child entities transform with the parent entity (moving, scaling and rotating). 
 
 ### 3.4 Retrieving components
@@ -196,9 +204,11 @@ In the Bento Empty Project template you can see the game starts up by going into
 
 ### 5.1 More about Sprites
 
-The sprite component is a commonly used component. However, it is currently undergoing a bit of change (in the sense that it's starting to look more like GameMaker's definition of sprites). 
+The Sprite component is a commonly used component. 
 
-The sprite component draws an image that is composed as a spritesheet, allowing animations. There are 2 ways to define a sprite: from an image asset or from a spritesheet asset.
+Please note that the Sprite component is currently undergoing a bit of change (in the sense that it's starting to look more like GameMaker's definition of sprites). 
+
+The Sprite component draws an image that is composed as a spritesheet, allowing animations. There are 2 ways to define a sprite: from an image asset or from a spritesheet asset.
 
 #### 5.1.1 Using images as sprites (old method)
 
@@ -262,10 +272,10 @@ To switch animation, one must switch spritesheets by using ``sprite.setSpriteShe
 
 ### 5.2 Collisions
 
-Collisions are implemented only as a "brute force method". It is You may need to implement other methods if many collision checks are needed and performance. From my experience, a simple hashgrid for non-moving objects works best.
-(TODO: bento hashgrid example)
-
 [Entity.collidesWith](https://luckykat.github.io/Bento/module-bento_entity.html#collidesWith) implements an AABB collision check with other entities or families. 
+
+Considerations for performance: collidesWith is a sort of "brute force method". It is somewhat restrained by only comparing collisions between families of entities. You may need to implement extra methods for improved performance, such as hasgrids or quadtrees. From my experience, a simple hashgrid for non-moving objects is very effective. If the object count is low, collidesWith performs fine.
+(TODO: bento hashgrid example)
 
 You may be also considering to implement a physics engine, such as Box2D. Just be wary of performance of these engines on mobile browsers!
 (TODO: show bento-Box2D implementation example)
