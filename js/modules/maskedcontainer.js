@@ -1,4 +1,4 @@
-/**
+/*
  * Simple container that masks the children's sprites in a rectangle. Does not work with rotated children.
  * The container's boundingbox is used as mask. 
  * @moduleName MaskedContainer
@@ -32,10 +32,6 @@ bento.define('bento/maskedcontainer', [
 ) {
     'use strict';
     return function (settings) {
-        /*settings = {
-            // describe your settings object parameters
-            position: Vector2 // positions the entity
-        }*/
         var viewport = Bento.getViewport();
         var components = settings.components || [];
         var container;
