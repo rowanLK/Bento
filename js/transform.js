@@ -135,8 +135,10 @@ bento.define('bento/transform', [
             matrix = new Matrix().scale(parent.scale.x, parent.scale.y);
             matrix.multiplyWithVector(positionVector);
             // construct a rotation matrix and apply to position vector
-            matrix = new Matrix().rotate(parent.rotation);
-            matrix.multiplyWithVector(positionVector);
+            if (parent.rotation % twoPi) {
+                matrix = new Matrix().rotate(parent.rotation);
+                matrix.multiplyWithVector(positionVector);
+            }
             // construct a translation matrix and apply to position vector
             matrix = new Matrix().translate(parent.position.x, parent.position.y);
             matrix.multiplyWithVector(positionVector);
@@ -155,8 +157,10 @@ bento.define('bento/transform', [
         var matrix = new Matrix().translate(-position.x, -position.y);
         matrix.multiplyWithVector(positionVector);
         // construct a rotation matrix and apply to position vector
-        matrix = new Matrix().rotate(-entity.rotation);
-        matrix.multiplyWithVector(positionVector);
+        if (entity.rotation % twoPi) {
+            matrix = new Matrix().rotate(-entity.rotation);
+            matrix.multiplyWithVector(positionVector);
+        }
         // construct a scaling matrix and apply to position vector
         matrix = new Matrix().scale(1 / entity.scale.x, 1 / entity.scale.y);
         matrix.multiplyWithVector(positionVector);
@@ -212,8 +216,10 @@ bento.define('bento/transform', [
             matrix = new Matrix().translate(-position.x, -position.y);
             matrix.multiplyWithVector(positionVector);
             // construct a rotation matrix and apply to position vector
-            matrix = new Matrix().rotate(-parent.rotation);
-            matrix.multiplyWithVector(positionVector);
+            if (parent.rotation % twoPi) {
+                matrix = new Matrix().rotate(-parent.rotation);
+                matrix.multiplyWithVector(positionVector);
+            }
             // construct a scaling matrix and apply to position vector
             matrix = new Matrix().scale(1 / parent.scale.x, 1 / parent.scale.y);
             matrix.multiplyWithVector(positionVector);

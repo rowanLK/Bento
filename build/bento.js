@@ -4307,7 +4307,7 @@ bento.define('bento', [
  * @param {Array} settings.components - Array of component module functions
  * @param {Array} settings.family - Array of family names. See {@link module:bento/managers/object#getByFamily}
  * @param {Vector2} settings.position - Vector2 of position to set
- * @param {Vector2} settings.origin - Vector2 of origin to set
+ * @param {Vector2} settings.origin - Vector2 of origin to set (if entity has a sprite, recommended to set the origin in the sprite!)
  * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
  * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
  * @param {Boolean} settings.z - z-index to set
@@ -5783,8 +5783,10 @@ bento.define('bento/transform', [
             matrix = new Matrix().scale(parent.scale.x, parent.scale.y);
             matrix.multiplyWithVector(positionVector);
             // construct a rotation matrix and apply to position vector
-            matrix = new Matrix().rotate(parent.rotation);
-            matrix.multiplyWithVector(positionVector);
+            if (parent.rotation % twoPi) {
+                matrix = new Matrix().rotate(parent.rotation);
+                matrix.multiplyWithVector(positionVector);
+            }
             // construct a translation matrix and apply to position vector
             matrix = new Matrix().translate(parent.position.x, parent.position.y);
             matrix.multiplyWithVector(positionVector);
@@ -5803,8 +5805,10 @@ bento.define('bento/transform', [
         var matrix = new Matrix().translate(-position.x, -position.y);
         matrix.multiplyWithVector(positionVector);
         // construct a rotation matrix and apply to position vector
-        matrix = new Matrix().rotate(-entity.rotation);
-        matrix.multiplyWithVector(positionVector);
+        if (entity.rotation % twoPi) {
+            matrix = new Matrix().rotate(-entity.rotation);
+            matrix.multiplyWithVector(positionVector);
+        }
         // construct a scaling matrix and apply to position vector
         matrix = new Matrix().scale(1 / entity.scale.x, 1 / entity.scale.y);
         matrix.multiplyWithVector(positionVector);
@@ -5860,8 +5864,10 @@ bento.define('bento/transform', [
             matrix = new Matrix().translate(-position.x, -position.y);
             matrix.multiplyWithVector(positionVector);
             // construct a rotation matrix and apply to position vector
-            matrix = new Matrix().rotate(-parent.rotation);
-            matrix.multiplyWithVector(positionVector);
+            if (parent.rotation % twoPi) {
+                matrix = new Matrix().rotate(-parent.rotation);
+                matrix.multiplyWithVector(positionVector);
+            }
             // construct a scaling matrix and apply to position vector
             matrix = new Matrix().scale(1 / parent.scale.x, 1 / parent.scale.y);
             matrix.multiplyWithVector(positionVector);
@@ -6828,20 +6834,34 @@ bento.define('bento/utils', [], function () {
  * @module bento/components/clickable
  * @moduleName Clickable
  * @param {Object} settings - Settings
- * @param {Function} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
- * @param {Function} settings.pointerUp - Called when pointer is released anywhere on the screen
- * @param {Function} settings.pointerMove - Called when pointer moves anywhere on the screen
- * @param {Function} settings.onClick - Called when pointer taps on the parent entity
- * @param {Function} settings.onClickUp - The pointer was released above the parent entity
- * @param {Function} settings.onClickMiss - Pointer down but does not touches the parent entity
+ * @param {InputCallback} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
+ * @param {InputCallback} settings.pointerUp - Called when pointer is released anywhere on the screen
+ * @param {InputCallback} settings.pointerMove - Called when pointer moves anywhere on the screen
+ * @param {InputCallback} settings.onClick - Called when pointer taps on the parent entity
+ * @param {InputCallback} settings.onClickUp - The pointer was released above the parent entity
+ * @param {InputCallback} settings.onClickMiss - Pointer down but does not touches the parent entity
  * @param {Function} settings.onHold - Called every update tick when the pointer is down on the entity
- * @param {Function} settings.onHoldLeave - Called when pointer leaves the entity
- * @param {Function} settings.onHoldEnter - Called when pointer enters the entity
- * @param {Function} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
- * @param {Function} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
+ * @param {InputCallback} settings.onHoldLeave - Called when pointer leaves the entity
+ * @param {InputCallback} settings.onHoldEnter - Called when pointer enters the entity
+ * @param {InputCallback} settings.onHoverEnter - Called when mouse hovers over the entity (does not work with touch)
+ * @param {InputCallback} settings.onHoverLeave - Called when mouse stops hovering over the entity (does not work with touch)
  * @param {Boolean} settings.sort - Clickable callbacks are executed first if the component/entity is visually on top.
  Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
+ */
+ /**
+ * Callback when input changed. The event data is an object that is passed by a source (usually the browser). 
+ * The input manager injects some extra info useful for the game.
+ *
+ * @callback InputCallback
+ * @param {Object} evt - Event data object coming from the source
+ * @param {Number} evt.id - Touch id (-1 for mouse). Note that touch id can be different for each browser!
+ * @param {Vector2} evt.position - position as reported by the source
+ * @param {Vector2} evt.worldPosition - position in the world (includes any scrolling)
+ * @param {Vector2} evt.localPosition - position relative to the parent entity
+ * @param {Vector2} evt.diffPosition - Only when touch ends. Difference position between where the touch started.
+ * @param {Vector2} evt.diffWorldPosition - Only when touch ends. Difference position between where the touch started.
+ * @param {Vector2} evt.diffLocalPosition - Only when touch ends. Difference position between where the touch started.
  */
 bento.define('bento/components/clickable', [
     'bento',
@@ -7340,20 +7360,21 @@ bento.define('bento/components/nineslice', [
     return NineSlice;
 });
 /**
- * Sprite component. Draws an animated sprite on screen at the entity position.
+ * Sprite component. Draws an animated sprite on screen at the entity's transform.
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
  * @param {Object} settings - Settings
- * @param {String} settings.imageName - Asset name for the image. Calls Bento.assets.getImage() internally.
- * @param {String} settings.imageFromUrl - Load image from url asynchronously. (NOT RECOMMENDED, you should use imageName)
- * @param {Function} settings.onLoad - Called when image is loaded through URL
+ * @param {String} settings.spriteSheet - (Using spritesheet assets) Asset name for the spriteSheet asset. If one uses spritesheet assets, this is the only parameter that is needed.
+ * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
  * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
  * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
  * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
  * @param {Number} settings.paddding - Pixelsize between frames
- * @param {Object} settings.animations - Object literal defining animations, the object literal keys are the animation names
+ * @param {Vector2} settings.origin - Vector2 of origin
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
+ * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
  * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
  * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
  * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
@@ -12794,504 +12815,6 @@ bento.define('bento/math/vector2', [
     return Vector2;
 });
 /**
- * Canvas 2d renderer
- * @copyright (C) 2015 LuckyKat
- * @moduleName Canvas2DRenderer
- */
-bento.define('bento/renderers/canvas2d', [
-    'bento/utils'
-], function (Utils) {
-    return function (canvas, settings) {
-        var context = canvas.getContext('2d'),
-            original = context,
-            pixelSize = settings.pixelSize || 1,
-            renderer = {
-                name: 'canvas2d',
-                save: function () {
-                    context.save();
-                },
-                restore: function () {
-                    context.restore();
-                },
-                setTransform: function (a, b, c, d, tx, ty) {
-                    context.setTransform(a, b, c, d, tx, ty);
-                },
-                translate: function (x, y) {
-                    context.translate(x, y);
-                },
-                scale: function (x, y) {
-                    context.scale(x, y);
-                },
-                rotate: function (angle) {
-                    context.rotate(angle);
-                },
-                fillRect: function (colorArray, x, y, w, h) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.fillRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                fillCircle: function (colorArray, x, y, radius) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.beginPath();
-                    context.arc(x, y, radius, 0, Math.PI * 2);
-                    context.fill();
-                    context.closePath();
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                strokeRect: function (colorArray, x, y, w, h, lineWidth) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.lineWidth = lineWidth || 0;
-                    context.strokeStyle = colorStr;
-                    context.strokeRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-
-                    sAngle = sAngle || 0;
-                    eAngle = eAngle || 0;
-
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.strokeStyle = colorStr;
-                    context.lineWidth = lineWidth || 0;
-                    context.beginPath();
-                    context.arc(x, y, radius, sAngle, eAngle, false);
-                    context.stroke();
-                    context.closePath();
-                },
-                drawLine: function (colorArray, ax, ay, bx, by, width) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    if (!Utils.isDefined(width)) {
-                        width = 1;
-                    }
-
-                    context.strokeStyle = colorStr;
-                    context.lineWidth = width;
-
-                    context.beginPath();
-                    context.moveTo(ax, ay);
-                    context.lineTo(bx, by);
-                    context.stroke();
-                    context.closePath();
-
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
-                },
-                getOpacity: function () {
-                    return context.globalAlpha;
-                },
-                setOpacity: function (value) {
-                    context.globalAlpha = value;
-                },
-                createSurface: function (width, height) {
-                    var newCanvas = document.createElement('canvas'),
-                        newContext;
-
-                    newCanvas.width = width;
-                    newCanvas.height = height;
-
-                    newContext = canvas.getContext('2d');
-
-                    return {
-                        canvas: newCanvas,
-                        context: newContext
-                    };
-                },
-                setContext: function (ctx) {
-                    context = ctx;
-                },
-                restoreContext: function () {
-                    context = original;
-                },
-                getContext: function () {
-                    return context;
-                },
-                begin: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.save();
-                        context.scale(pixelSize, pixelSize);
-                    }
-                },
-                flush: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.restore();
-                    }
-                }
-            },
-            getColor = function (colorArray) {
-                var colorStr = '#';
-                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
-                return colorStr;
-            };
-
-        if (!settings.smoothing) {
-            if (context.imageSmoothingEnabled) {
-                context.imageSmoothingEnabled = false;
-            }
-            if (context.webkitImageSmoothingEnabled) {
-                context.webkitImageSmoothingEnabled = false;
-            }
-            if (context.mozImageSmoothingEnabled) {
-                context.mozImageSmoothingEnabled = false;
-            }
-            if (context.msImageSmoothingEnabled) {
-                context.msImageSmoothingEnabled = false;
-            }
-        }
-        return renderer;
-    };
-});
-/**
- * Renderer using PIXI by GoodBoyDigital
- * @moduleName PixiRenderer
- */
-bento.define('bento/renderers/pixi', [
-    'bento',
-    'bento/utils',
-    'bento/math/transformmatrix',
-    'bento/renderers/canvas2d'
-], function (Bento, Utils, TransformMatrix, Canvas2d) {
-    var PIXI = window.PIXI;
-    var SpritePool = function (initialSize) {
-        var i;
-        // initialize
-        this.sprites = [];
-        for (i = 0; i < initialSize; ++i) {
-            this.sprites.push(new PIXI.Sprite());
-        }
-        this.index = 0;
-    };
-    SpritePool.prototype.reset = function () {
-        this.index = 0;
-    };
-    SpritePool.prototype.getSprite = function () {
-        var sprite = this.sprites[this.index];
-        if (!sprite) {
-            sprite = new PIXI.Sprite();
-            this.sprites.push(sprite);
-        }
-        this.index += 1;
-        return sprite;
-    };
-
-    return function (canvas, settings) {
-        var gl;
-        var canWebGl = (function () {
-            // try making a canvas
-            try {
-                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                return !!window.WebGLRenderingContext;
-            } catch (e) {
-                return false;
-            }
-        })();
-        var matrix;
-        var Matrix;
-        var matrices = [];
-        var alpha = 1;
-        var color = 0xFFFFFF;
-        var pixiRenderer;
-        var spriteRenderer;
-        var meshRenderer;
-        var graphicsRenderer;
-        var particleRenderer;
-        var test = false;
-        var cocoonScale = 1;
-        var pixelSize = settings.pixelSize || 1;
-        var tempDisplayObjectParent = null;
-        var spritePool = new SpritePool(2000);
-        var transformObject = {
-            worldTransform: null,
-            worldAlpha: 1,
-            children: []
-        };
-        var getPixiMatrix = function () {
-            var pixiMatrix = new PIXI.Matrix();
-            pixiMatrix.a = matrix.a;
-            pixiMatrix.b = matrix.b;
-            pixiMatrix.c = matrix.c;
-            pixiMatrix.d = matrix.d;
-            pixiMatrix.tx = matrix.tx;
-            pixiMatrix.ty = matrix.ty;
-            return pixiMatrix;
-        };
-        var getFillGraphics = function (color) {
-            var graphics = new PIXI.Graphics();
-            var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-            var alphaColor = color[3];
-            graphics.beginFill(colorInt, alphaColor);
-            graphics.worldTransform = getPixiMatrix();
-            graphics.worldAlpha = alpha;
-            return graphics;
-        };
-        var renderer = {
-            name: 'pixi',
-            init: function () {
-
-            },
-            destroy: function () {},
-            save: function () {
-                matrices.push(matrix.clone());
-            },
-            restore: function () {
-                matrix = matrices.pop();
-            },
-            setTransform: function (a, b, c, d, tx, ty) {
-                matrix.a = a;
-                matrix.b = b;
-                matrix.c = c;
-                matrix.d = d;
-                matrix.tx = tx;
-                matrix.ty = ty;
-            },
-            translate: function (x, y) {
-                var transform = new TransformMatrix();
-                matrix.multiplyWith(transform.translate(x, y));
-            },
-            scale: function (x, y) {
-                var transform = new TransformMatrix();
-                matrix.multiplyWith(transform.scale(x, y));
-            },
-            rotate: function (angle) {
-                var transform = new TransformMatrix();
-                matrix.multiplyWith(transform.rotate(angle));
-            },
-            fillRect: function (color, x, y, w, h) {
-                var graphics = getFillGraphics(color);
-                graphics.drawRect(x, y, w, h);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-            },
-            fillCircle: function (color, x, y, radius) {
-                var graphics = getFillGraphics(color);
-                graphics.drawCircle(x, y, radius);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-
-            },
-            strokeRect: function (color, x, y, w, h, lineWidth) {
-                var graphics = new PIXI.Graphics();
-                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-                var alphaColor = color[3];
-                graphics.worldTransform = getPixiMatrix();
-                graphics.worldAlpha = alpha;
-
-                graphics.lineStyle(lineWidth, colorInt, alphaColor);
-                graphics.drawRect(x, y, w, h);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-            },
-            strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
-                var graphics = new PIXI.Graphics();
-                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-                var alphaColor = color[3];
-                graphics.worldTransform = getPixiMatrix();
-                graphics.worldAlpha = alpha;
-
-                graphics
-                    .lineStyle(lineWidth, colorInt, alphaColor)
-                    .arc(x, y, radius, sAngle, eAngle);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-
-            },
-            drawLine: function (color, ax, ay, bx, by, width) {
-                var graphics = getFillGraphics(color);
-                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-
-                if (!Utils.isDefined(width)) {
-                    width = 1;
-                }
-                if (!Utils.isDefined(color[3])) {
-                    color[3] = 1;
-                }
-
-                graphics
-                    .lineStyle(width, colorInt, color[3])
-                    .moveTo(ax, ay)
-                    .lineTo(bx, by)
-                    .endFill();
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-            },
-            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                var image = packedImage.image;
-                var px = packedImage.x;
-                var py = packedImage.y;
-                var rectangle;
-                var sprite = spritePool.getSprite();
-                var texture;
-                // If image and frame size don't correspond Pixi will throw an error and break the game.
-                // This check tries to prevent that.
-                if (px + sx + sw > image.width || py + sy + sh > image.height) {
-                    console.error("Warning: image and frame size do not correspond.", image);
-                    return;
-                }
-                if (!image.texture) {
-                    // initialize pixi baseTexture
-                    image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
-                    image.frame = new PIXI.Texture(image.texture);
-                }
-                // without spritepool
-                /*
-                rectangle = new PIXI.Rectangle(px + sx, py + sy, sw, sh);
-                texture = new PIXI.Texture(image.texture, rectangle);
-                texture._updateUvs();
-                sprite = new PIXI.Sprite(texture);
-                */
-
-                // with spritepool
-                texture = image.frame;
-                rectangle = texture._frame;
-                rectangle.x = px + sx;
-                rectangle.y = py + sy;
-                rectangle.width = sw;
-                rectangle.height = sh;
-                texture._updateUvs();
-                sprite._texture = texture;
-
-                // apply x, y, w, h
-                renderer.save();
-                renderer.translate(x, y);
-                renderer.scale(w / sw, h / sh);
-
-                sprite.worldTransform = matrix;
-                sprite.worldAlpha = alpha;
-
-                // push into batch
-                pixiRenderer.setObjectRenderer(spriteRenderer);
-                spriteRenderer.render(sprite);
-
-                renderer.restore();
-
-                // did the spriteRenderer flush in the meantime?
-                if (spriteRenderer.currentBatchSize === 0) {
-                    // the spritepool can be reset as well then
-                    spritePool.reset();
-                }
-            },
-            begin: function () {
-                spriteRenderer.start();
-                if (pixelSize !== 1 || Utils.isCocoonJs()) {
-                    this.save();
-                    this.scale(pixelSize * cocoonScale, pixelSize * cocoonScale);
-                }
-            },
-            flush: function () {
-                // note: only spriterenderer has an implementation of flush
-                spriteRenderer.flush();
-                spritePool.reset();
-                if (pixelSize !== 1 || Utils.isCocoonJs()) {
-                    this.restore();
-                }
-            },
-            getOpacity: function () {
-                return alpha;
-            },
-            setOpacity: function (value) {
-                alpha = value;
-            },
-            /*
-             * Pixi only feature: draws any pixi displayObject
-             */
-            drawPixi: function (displayObject) {
-                // trick the renderer by setting our own parent
-                transformObject.worldTransform = matrix;
-                transformObject.worldAlpha = alpha;
-
-                // method 1, replace the "parent" that the renderer swaps with
-                // maybe not efficient because it calls flush all the time?
-                // pixiRenderer._tempDisplayObjectParent = transformObject;
-                // pixiRenderer.render(displayObject);
-
-                // method 2, set the object parent and update transform
-                displayObject.parent = transformObject;
-                displayObject.updateTransform();
-                displayObject.renderWebGL(pixiRenderer);
-            },
-            getContext: function () {
-                return gl;
-            },
-            getPixiRenderer: function () {
-                return pixiRenderer;
-            },
-            // pixi specific: update the webgl view, needed if the canvas changed size
-            updateSize: function () {
-                pixiRenderer.resize(canvas.width, canvas.height);
-            }
-        };
-
-        if (canWebGl && Utils.isDefined(window.PIXI)) {
-            // init pixi
-            // Matrix = PIXI.Matrix;
-            matrix = new TransformMatrix();
-            // additional scale
-            if (Utils.isCocoonJs()) {
-                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
-                canvas.width *= cocoonScale;
-                canvas.height *= cocoonScale;
-            }
-            pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
-                view: canvas,
-                backgroundColor: 0x000000,
-                clearBeforeRender: false
-            });
-            pixiRenderer.filterManager.setFilterStack(pixiRenderer.renderTarget.filterStack);
-            tempDisplayObjectParent = pixiRenderer._tempDisplayObjectParent;
-            spriteRenderer = pixiRenderer.plugins.sprite;
-            graphicsRenderer = pixiRenderer.plugins.graphics;
-            meshRenderer = pixiRenderer.plugins.mesh;
-
-            return renderer;
-        } else {
-            if (!window.PIXI) {
-                console.log('WARNING: PIXI library is missing, reverting to Canvas2D renderer');
-            } else if (!canWebGl) {
-                console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');
-            }
-            return Canvas2d(canvas, settings);
-        }
-    };
-});
-/**
  * A helper module that returns a rectangle with the same aspect ratio as the screen size.
  * Assuming portrait mode, autoresize holds the width and then fills up the height
  * If the height goes over the max or minimum size, then the width gets adapted.
@@ -13567,7 +13090,7 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
         return [r, g, b, a];
     };
 });
-/**
+/*
  * Simple container that masks the children's sprites in a rectangle. Does not work with rotated children.
  * The container's boundingbox is used as mask. 
  * @moduleName MaskedContainer
@@ -13601,10 +13124,6 @@ bento.define('bento/maskedcontainer', [
 ) {
     'use strict';
     return function (settings) {
-        /*settings = {
-            // describe your settings object parameters
-            position: Vector2 // positions the entity
-        }*/
         var viewport = Bento.getViewport();
         var components = settings.components || [];
         var container;
@@ -13674,10 +13193,22 @@ bento.define('bento/maskedcontainer', [
                 }
             });
         };
+        // this component traverses through all child components and updates the sprites
+        var watcher = {
+            name: 'componentWatcher',
+            start: function () {
+                traverse(components);
+            },
+            update: function () {
+                // would be better to only traverse when a new entity/component is attached, this requires some new event
+                // for now, it's a setting
+                if (settings.watchComponents) {
+                    traverse(components);
+                }
+            }
+        };
 
-        traverse(components);
-
-        // TODO: add a "watcher" component that inspects newly attached components
+        components.push(watcher);
 
         container = new Entity(settings);
         return container;
@@ -15473,6 +15004,504 @@ bento.define('bento/tween', [
     Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
 
     return Tween;
+});
+/**
+ * Canvas 2d renderer
+ * @copyright (C) 2015 LuckyKat
+ * @moduleName Canvas2DRenderer
+ */
+bento.define('bento/renderers/canvas2d', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvas, settings) {
+        var context = canvas.getContext('2d'),
+            original = context,
+            pixelSize = settings.pixelSize || 1,
+            renderer = {
+                name: 'canvas2d',
+                save: function () {
+                    context.save();
+                },
+                restore: function () {
+                    context.restore();
+                },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    context.setTransform(a, b, c, d, tx, ty);
+                },
+                translate: function (x, y) {
+                    context.translate(x, y);
+                },
+                scale: function (x, y) {
+                    context.scale(x, y);
+                },
+                rotate: function (angle) {
+                    context.rotate(angle);
+                },
+                fillRect: function (colorArray, x, y, w, h) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.fillStyle = colorStr;
+                    context.fillRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                fillCircle: function (colorArray, x, y, radius) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.fillStyle = colorStr;
+                    context.beginPath();
+                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.fill();
+                    context.closePath();
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                strokeRect: function (colorArray, x, y, w, h, lineWidth) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.lineWidth = lineWidth || 0;
+                    context.strokeStyle = colorStr;
+                    context.strokeRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+
+                    sAngle = sAngle || 0;
+                    eAngle = eAngle || 0;
+
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.strokeStyle = colorStr;
+                    context.lineWidth = lineWidth || 0;
+                    context.beginPath();
+                    context.arc(x, y, radius, sAngle, eAngle, false);
+                    context.stroke();
+                    context.closePath();
+                },
+                drawLine: function (colorArray, ax, ay, bx, by, width) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    if (!Utils.isDefined(width)) {
+                        width = 1;
+                    }
+
+                    context.strokeStyle = colorStr;
+                    context.lineWidth = width;
+
+                    context.beginPath();
+                    context.moveTo(ax, ay);
+                    context.lineTo(bx, by);
+                    context.stroke();
+                    context.closePath();
+
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+                },
+                getOpacity: function () {
+                    return context.globalAlpha;
+                },
+                setOpacity: function (value) {
+                    context.globalAlpha = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('2d');
+
+                    return {
+                        canvas: newCanvas,
+                        context: newContext
+                    };
+                },
+                setContext: function (ctx) {
+                    context = ctx;
+                },
+                restoreContext: function () {
+                    context = original;
+                },
+                getContext: function () {
+                    return context;
+                },
+                begin: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.save();
+                        context.scale(pixelSize, pixelSize);
+                    }
+                },
+                flush: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.restore();
+                    }
+                }
+            },
+            getColor = function (colorArray) {
+                var colorStr = '#';
+                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                return colorStr;
+            };
+
+        if (!settings.smoothing) {
+            if (context.imageSmoothingEnabled) {
+                context.imageSmoothingEnabled = false;
+            }
+            if (context.webkitImageSmoothingEnabled) {
+                context.webkitImageSmoothingEnabled = false;
+            }
+            if (context.mozImageSmoothingEnabled) {
+                context.mozImageSmoothingEnabled = false;
+            }
+            if (context.msImageSmoothingEnabled) {
+                context.msImageSmoothingEnabled = false;
+            }
+        }
+        return renderer;
+    };
+});
+/**
+ * Renderer using PIXI by GoodBoyDigital
+ * @moduleName PixiRenderer
+ */
+bento.define('bento/renderers/pixi', [
+    'bento',
+    'bento/utils',
+    'bento/math/transformmatrix',
+    'bento/renderers/canvas2d'
+], function (Bento, Utils, TransformMatrix, Canvas2d) {
+    var PIXI = window.PIXI;
+    var SpritePool = function (initialSize) {
+        var i;
+        // initialize
+        this.sprites = [];
+        for (i = 0; i < initialSize; ++i) {
+            this.sprites.push(new PIXI.Sprite());
+        }
+        this.index = 0;
+    };
+    SpritePool.prototype.reset = function () {
+        this.index = 0;
+    };
+    SpritePool.prototype.getSprite = function () {
+        var sprite = this.sprites[this.index];
+        if (!sprite) {
+            sprite = new PIXI.Sprite();
+            this.sprites.push(sprite);
+        }
+        this.index += 1;
+        return sprite;
+    };
+
+    return function (canvas, settings) {
+        var gl;
+        var canWebGl = (function () {
+            // try making a canvas
+            try {
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!window.WebGLRenderingContext;
+            } catch (e) {
+                return false;
+            }
+        })();
+        var matrix;
+        var Matrix;
+        var matrices = [];
+        var alpha = 1;
+        var color = 0xFFFFFF;
+        var pixiRenderer;
+        var spriteRenderer;
+        var meshRenderer;
+        var graphicsRenderer;
+        var particleRenderer;
+        var test = false;
+        var cocoonScale = 1;
+        var pixelSize = settings.pixelSize || 1;
+        var tempDisplayObjectParent = null;
+        var spritePool = new SpritePool(2000);
+        var transformObject = {
+            worldTransform: null,
+            worldAlpha: 1,
+            children: []
+        };
+        var getPixiMatrix = function () {
+            var pixiMatrix = new PIXI.Matrix();
+            pixiMatrix.a = matrix.a;
+            pixiMatrix.b = matrix.b;
+            pixiMatrix.c = matrix.c;
+            pixiMatrix.d = matrix.d;
+            pixiMatrix.tx = matrix.tx;
+            pixiMatrix.ty = matrix.ty;
+            return pixiMatrix;
+        };
+        var getFillGraphics = function (color) {
+            var graphics = new PIXI.Graphics();
+            var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+            var alphaColor = color[3];
+            graphics.beginFill(colorInt, alphaColor);
+            graphics.worldTransform = getPixiMatrix();
+            graphics.worldAlpha = alpha;
+            return graphics;
+        };
+        var renderer = {
+            name: 'pixi',
+            init: function () {
+
+            },
+            destroy: function () {},
+            save: function () {
+                matrices.push(matrix.clone());
+            },
+            restore: function () {
+                matrix = matrices.pop();
+            },
+            setTransform: function (a, b, c, d, tx, ty) {
+                matrix.a = a;
+                matrix.b = b;
+                matrix.c = c;
+                matrix.d = d;
+                matrix.tx = tx;
+                matrix.ty = ty;
+            },
+            translate: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.translate(x, y));
+            },
+            scale: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.scale(x, y));
+            },
+            rotate: function (angle) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.rotate(angle));
+            },
+            fillRect: function (color, x, y, w, h) {
+                var graphics = getFillGraphics(color);
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            fillCircle: function (color, x, y, radius) {
+                var graphics = getFillGraphics(color);
+                graphics.drawCircle(x, y, radius);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+
+            },
+            strokeRect: function (color, x, y, w, h, lineWidth) {
+                var graphics = new PIXI.Graphics();
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+                var alphaColor = color[3];
+                graphics.worldTransform = getPixiMatrix();
+                graphics.worldAlpha = alpha;
+
+                graphics.lineStyle(lineWidth, colorInt, alphaColor);
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
+                var graphics = new PIXI.Graphics();
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+                var alphaColor = color[3];
+                graphics.worldTransform = getPixiMatrix();
+                graphics.worldAlpha = alpha;
+
+                graphics
+                    .lineStyle(lineWidth, colorInt, alphaColor)
+                    .arc(x, y, radius, sAngle, eAngle);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+
+            },
+            drawLine: function (color, ax, ay, bx, by, width) {
+                var graphics = getFillGraphics(color);
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+
+                if (!Utils.isDefined(width)) {
+                    width = 1;
+                }
+                if (!Utils.isDefined(color[3])) {
+                    color[3] = 1;
+                }
+
+                graphics
+                    .lineStyle(width, colorInt, color[3])
+                    .moveTo(ax, ay)
+                    .lineTo(bx, by)
+                    .endFill();
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                var image = packedImage.image;
+                var px = packedImage.x;
+                var py = packedImage.y;
+                var rectangle;
+                var sprite = spritePool.getSprite();
+                var texture;
+                // If image and frame size don't correspond Pixi will throw an error and break the game.
+                // This check tries to prevent that.
+                if (px + sx + sw > image.width || py + sy + sh > image.height) {
+                    console.error("Warning: image and frame size do not correspond.", image);
+                    return;
+                }
+                if (!image.texture) {
+                    // initialize pixi baseTexture
+                    image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+                    image.frame = new PIXI.Texture(image.texture);
+                }
+                // without spritepool
+                /*
+                rectangle = new PIXI.Rectangle(px + sx, py + sy, sw, sh);
+                texture = new PIXI.Texture(image.texture, rectangle);
+                texture._updateUvs();
+                sprite = new PIXI.Sprite(texture);
+                */
+
+                // with spritepool
+                texture = image.frame;
+                rectangle = texture._frame;
+                rectangle.x = px + sx;
+                rectangle.y = py + sy;
+                rectangle.width = sw;
+                rectangle.height = sh;
+                texture._updateUvs();
+                sprite._texture = texture;
+
+                // apply x, y, w, h
+                renderer.save();
+                renderer.translate(x, y);
+                renderer.scale(w / sw, h / sh);
+
+                sprite.worldTransform = matrix;
+                sprite.worldAlpha = alpha;
+
+                // push into batch
+                pixiRenderer.setObjectRenderer(spriteRenderer);
+                spriteRenderer.render(sprite);
+
+                renderer.restore();
+
+                // did the spriteRenderer flush in the meantime?
+                if (spriteRenderer.currentBatchSize === 0) {
+                    // the spritepool can be reset as well then
+                    spritePool.reset();
+                }
+            },
+            begin: function () {
+                spriteRenderer.start();
+                if (pixelSize !== 1 || Utils.isCocoonJs()) {
+                    this.save();
+                    this.scale(pixelSize * cocoonScale, pixelSize * cocoonScale);
+                }
+            },
+            flush: function () {
+                // note: only spriterenderer has an implementation of flush
+                spriteRenderer.flush();
+                spritePool.reset();
+                if (pixelSize !== 1 || Utils.isCocoonJs()) {
+                    this.restore();
+                }
+            },
+            getOpacity: function () {
+                return alpha;
+            },
+            setOpacity: function (value) {
+                alpha = value;
+            },
+            /*
+             * Pixi only feature: draws any pixi displayObject
+             */
+            drawPixi: function (displayObject) {
+                // trick the renderer by setting our own parent
+                transformObject.worldTransform = matrix;
+                transformObject.worldAlpha = alpha;
+
+                // method 1, replace the "parent" that the renderer swaps with
+                // maybe not efficient because it calls flush all the time?
+                // pixiRenderer._tempDisplayObjectParent = transformObject;
+                // pixiRenderer.render(displayObject);
+
+                // method 2, set the object parent and update transform
+                displayObject.parent = transformObject;
+                displayObject.updateTransform();
+                displayObject.renderWebGL(pixiRenderer);
+            },
+            getContext: function () {
+                return gl;
+            },
+            getPixiRenderer: function () {
+                return pixiRenderer;
+            },
+            // pixi specific: update the webgl view, needed if the canvas changed size
+            updateSize: function () {
+                pixiRenderer.resize(canvas.width, canvas.height);
+            }
+        };
+
+        if (canWebGl && Utils.isDefined(window.PIXI)) {
+            // init pixi
+            // Matrix = PIXI.Matrix;
+            matrix = new TransformMatrix();
+            // additional scale
+            if (Utils.isCocoonJs()) {
+                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
+                canvas.width *= cocoonScale;
+                canvas.height *= cocoonScale;
+            }
+            pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
+                view: canvas,
+                backgroundColor: 0x000000,
+                clearBeforeRender: false
+            });
+            pixiRenderer.filterManager.setFilterStack(pixiRenderer.renderTarget.filterStack);
+            tempDisplayObjectParent = pixiRenderer._tempDisplayObjectParent;
+            spriteRenderer = pixiRenderer.plugins.sprite;
+            graphicsRenderer = pixiRenderer.plugins.graphics;
+            meshRenderer = pixiRenderer.plugins.mesh;
+
+            return renderer;
+        } else {
+            if (!window.PIXI) {
+                console.log('WARNING: PIXI library is missing, reverting to Canvas2D renderer');
+            } else if (!canWebGl) {
+                console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');
+            }
+            return Canvas2d(canvas, settings);
+        }
+    };
 });
 /**
  * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.

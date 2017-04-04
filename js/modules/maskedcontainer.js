@@ -101,10 +101,22 @@ bento.define('bento/maskedcontainer', [
                 }
             });
         };
+        // this component traverses through all child components and updates the sprites
+        var watcher = {
+            name: 'componentWatcher',
+            start: function () {
+                traverse(components);
+            },
+            update: function () {
+                // would be better to only traverse when a new entity/component is attached, this requires some new event
+                // for now, it's a setting
+                if (settings.watchComponents) {
+                    traverse(components);
+                }
+            }
+        };
 
-        traverse(components);
-
-        // TODO: add a "watcher" component that inspects newly attached components
+        components.push(watcher);
 
         container = new Entity(settings);
         return container;
