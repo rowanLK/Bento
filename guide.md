@@ -188,9 +188,11 @@ Entities can be retrieved by the Object manager at any times using [Bento.object
 
 Another way of retrieving entities is by [family](https://luckykat.github.io/Bento/module-bento_managers_object.html#getByFamily). Entities are grouped by families. You can assign multiple families to an entity.
 
+Note that all these methods only apply to entities that were attached with ``Bento.objects.attach``. To retrieve child entities, first get their parent and make subsequent getComponent calls.
+
 ### 4.6 Savestate manager
 
-The savestate manager is just a wrapper around localStorage. Use ```Bento.saveState.save('key', value)`` to save a value and ``Bento.saveState.load('key', defaultValue)`` to load a value. (defaultValue is returned if the key does not exist)
+The savestate manager is just a wrapper around localStorage. Use ``Bento.saveState.save('key', value)`` to save a value and ``Bento.saveState.load('key', defaultValue)`` to load a value. (defaultValue is returned if the key does not exist)
 
 ### 4.7 Screen Manager
 
