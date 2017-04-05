@@ -468,7 +468,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is null or undefined
-         * @name isDefined
+         * @name isEmpty
          */
         isEmpty: isEmpty,
         /**
@@ -477,7 +477,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is not null or undefined
-         * @name isDefined
+         * @name isNotEmpty
          */
         isNotEmpty: isNotEmpty,
         /**

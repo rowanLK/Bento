@@ -684,6 +684,16 @@ bento.define('bento/gui/text', [
 
         entity = new Entity(entitySettings).extend({
             /**
+             * Get a reference to the internal canvas
+             * @function
+             * @instance
+             * @name getCanvas
+             * @returns HTMLCanvasElement
+             */
+            getCanvas: function () {
+                return canvas;
+            },
+            /**
              * Retrieve current text
              * @function
              * @instance
