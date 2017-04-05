@@ -12,6 +12,7 @@
  * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
  * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
  * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
+ * @param {Function} [settings.onCreate] - Called as soon as the tween is added to the object manager and before the delay (if any).
  * @param {Function} [settings.onStart] - Called before the first tween update and after a delay (if any).
  * @param {Function} [settings.onUpdate] - Called every tick during the tween lifetime. Callback parameters: (value, time)
  * @param {Function} [settings.onComplete] - Called when tween ends
@@ -254,6 +255,7 @@ bento.define('bento/tween', [
         var running = true;
         var onUpdate = settings.onUpdate || settings.do;
         var onComplete = settings.onComplete;
+        var onCreate = settings.onCreate;
         var onStart = settings.onStart;
         var hasStarted = false;
         var ease = settings.ease || 'linear';
@@ -269,6 +271,11 @@ bento.define('bento/tween', [
         var autoResumeTimer = -1;
         var tween = new Entity(settings).extend({
             id: settings.id,
+            start: function (data) {
+                if (onCreate) {
+                    onCreate.apply(this);
+                }
+            },
             update: function (data) {
                 //if an autoresume timer is running, decrease it and resume when it is done
                 if (--autoResumeTimer === 0) {
