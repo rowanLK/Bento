@@ -1,6 +1,6 @@
 /**
- * An entity that displays text from a system font or ttf font. Be warned: drawing text is an expensive operation. 
- * This module caches the drawn text as a speed boost, however if you are updating the text all the time this 
+ * An entity that displays text from a system font or ttf font. Be warned: drawing text is an expensive operation.
+ * This module caches the drawn text as a speed boost, however if you are updating the text all the time this
  * speed boost is cancelled.
  * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings

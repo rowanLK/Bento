@@ -5071,7 +5071,7 @@ Bento.objects.attach(entity);
     Entity.prototype.getWorldPosition = function () {
         return this.transform.getWorldPosition();
     };
-    
+
     /**
      * Transforms a position local to entity's space to the world position
      * @function
@@ -11910,13 +11910,13 @@ bento.define('bento/math/rectangle', [
         }
         if (Utils.isDev()) {
             if (
-                !Utils.isNumber(x) || 
-                !Utils.isNumber(y) || 
-                !Utils.isNumber(width) || 
+                !Utils.isNumber(x) ||
+                !Utils.isNumber(y) ||
+                !Utils.isNumber(width) ||
                 !Utils.isNumber(height) ||
-                isNaN(x) || 
-                isNaN(y) || 
-                isNaN(width) || 
+                isNaN(x) ||
+                isNaN(y) ||
+                isNaN(width) ||
                 isNaN(height)
             ) {
                 Utils.log(
@@ -13092,7 +13092,7 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
 });
 /*
  * Simple container that masks the children's sprites in a rectangle. Does not work with rotated children.
- * The container's boundingbox is used as mask. 
+ * The container's boundingbox is used as mask.
  * @moduleName MaskedContainer
  */
 bento.define('bento/maskedcontainer', [
@@ -13142,11 +13142,11 @@ bento.define('bento/maskedcontainer', [
             this.updateFrame();
 
             // determine target
-            // target is local to the sprite 
+            // target is local to the sprite
             target = new Rectangle(
-                (-eOrigin.x - this.origin.x) | 0, 
-                (-eOrigin.y - this.origin.y) | 0, 
-                this.frameWidth, 
+                (-eOrigin.x - this.origin.x) | 0,
+                (-eOrigin.y - this.origin.y) | 0,
+                this.frameWidth,
                 this.frameHeight
             );
 
@@ -16085,8 +16085,8 @@ bento.define('bento/gui/counter', [
     };
 });
 /**
- * An entity that displays text from a system font or ttf font. Be warned: drawing text is an expensive operation. 
- * This module caches the drawn text as a speed boost, however if you are updating the text all the time this 
+ * An entity that displays text from a system font or ttf font. Be warned: drawing text is an expensive operation.
+ * This module caches the drawn text as a speed boost, however if you are updating the text all the time this
  * speed boost is cancelled.
  * <br>Exports: Constructor
  * @param {Object} settings - Required, can include Entity settings
