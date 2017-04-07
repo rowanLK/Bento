@@ -482,7 +482,7 @@ bento.define('bento/utils', [], function () {
          */
         isNotEmpty: isNotEmpty,
         /**
-         * Removes entry from array (note: only removes the first matching value it finds)
+         * Removes entry from array (note: only removes all matching values it finds)
          * @function
          * @instance
          * @param {Array} array - array
