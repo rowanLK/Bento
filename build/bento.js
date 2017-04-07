@@ -14573,8 +14573,9 @@ bento.define('bento/tiledreader', [], function () {
  * @param {Number} settings.to - End value
  * @param {Number} settings.in - Time frame
  * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
- * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
- * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
+ * @param {Number} [settings.decay] - For use in exponential and elastic tweens: decay factor (negative growth)
+ * @param {Number} [settings.growth] - For use in exponential and elastic tweens: growth factor
+ * @param {Number} [settings.oscillations] - For use in sin, cos and elastic tweens: number of oscillations
  * @param {Function} [settings.onCreate] - Called as soon as the tween is added to the object manager and before the delay (if any).
  * @param {Function} [settings.onStart] - Called before the first tween update and after a delay (if any).
  * @param {Function} [settings.onUpdate] - Called every tick during the tween lifetime. Callback parameters: (value, time)
@@ -14586,6 +14587,10 @@ bento.define('bento/tiledreader', [], function () {
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
  * @returns Entity
  */
+
+// Deprecated parameters
+// * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
+// * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
 bento.define('bento/tween', [
     'bento',
     'bento/math/vector2',
@@ -14959,10 +14964,23 @@ bento.define('bento/tween', [
             }
         });
 
-        if (!Utils.isDefined(settings.ease)) {
-            Utils.log("WARNING: settings.ease is undefined.");
+        // convert decay and growth to alpha
+        if (Utils.isDefined(settings.decay)) {
+            alpha = -settings.decay;
+        }
+        if (Utils.isDefined(settings.growth)) {
+            alpha = settings.growth;
+        }
+        if (Utils.isDefined(settings.oscillations)) {
+            beta = settings.oscillations;
         }
 
+        // if (!Utils.isDefined(settings.ease)) {
+        //     Utils.log("WARNING: settings.ease is undefined.");
+        // }
+
+        // Assuming that when a tween is created when the game is paused, 
+        // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
             tween.updateWhenPaused = Bento.objects.isPaused();
         }

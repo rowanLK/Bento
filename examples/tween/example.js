@@ -76,8 +76,8 @@ bento.require([
             new Tween({
                 from: bunny1.position.x,
                 to: xPos,
-                'in': 60,
-                ease: Tween.LINEAR,
+                in: 60,
+                ease: 'linear',
                 onUpdate: function (v, t) {
                     bunny1.position.x = v;
                 }
@@ -86,8 +86,8 @@ bento.require([
             new Tween({
                 from: bunny2.position.x,
                 to: xPos,
-                'in': 60,
-                ease: Tween.QUADRATIC,
+                in: 60,
+                ease: 'quadratic',
                 onUpdate: function (v, t) {
                     bunny2.position.x = v;
                 }
@@ -96,8 +96,8 @@ bento.require([
             new Tween({
                 from: bunny3.position.x,
                 to: xPos,
-                'in': 60,
-                ease: Tween.EASEOUTBOUNCE,
+                in: 60,
+                ease: 'easeOutBounce',
                 onUpdate: function (v, t) {
                     bunny3.position.x = v;
                 }
@@ -106,8 +106,8 @@ bento.require([
             new Tween({
                 from: bunny4.position.x,
                 to: xPos, // go to middle 
-                'in': 60,
-                ease: Tween.EASEOUTBACK,
+                in: 60,
+                ease: 'easeOutBack',
                 onUpdate: function (v, t) {
                     bunny4.position.x = v;
                 },
@@ -116,8 +116,8 @@ bento.require([
                     new Tween({
                         from: 0,
                         to: Math.PI * 2,
-                        'in': 60,
-                        ease: Tween.EASEOUTBACK,
+                        in: 60,
+                        ease: 'easeOutBack',
                         onUpdate: function (v, t) {
                             bunny4.rotation = v;
                         },
@@ -133,8 +133,8 @@ bento.require([
                 delay: 30,
                 from: bunny5.position.x,
                 to: xPos,
-                'in': 30,
-                ease: Tween.LINEAR,
+                in: 30,
+                ease: 'linear',
                 onUpdate: function (v, t) {
                     bunny5.position.x = v;
                 }
