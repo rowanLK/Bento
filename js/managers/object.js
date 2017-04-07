@@ -171,7 +171,9 @@ bento.define('bento/managers/object', [
                     if (!quickAccess[type]) {
                         quickAccess[type] = [];
                     }
-                    quickAccess[type].push(object);
+                    if (quickAccess[type].indexOf(object) === -1) {
+                        quickAccess[type].push(object);
+                    }
                 }
             }
 

@@ -60,12 +60,13 @@ bento.define('bento/utils', [], function () {
         },
         removeFromArray = function (array, obj) {
             var index = array.indexOf(obj);
-            if (index >= 0) {
+            var removed = false;
+            while (index >= 0) {
                 array.splice(index, 1);
-                return true;
-            } else {
-                return false;
+                index = array.indexOf(obj);
+                removed = true;
             }
+            return removed;
         },
         extend = function (obj1, obj2, force, onConflict) {
             var prop, temp;
@@ -481,7 +482,7 @@ bento.define('bento/utils', [], function () {
          */
         isNotEmpty: isNotEmpty,
         /**
-         * Removes entry from array (note: only removes the first matching value it finds)
+         * Removes entry from array (note: only removes all matching values it finds)
          * @function
          * @instance
          * @param {Array} array - array
