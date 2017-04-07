@@ -101,6 +101,8 @@ bento.define('bento/screen', [
                     if (settings.onHide) {
                         settings.onHide.call(module, data);
                     }
+                    // reset pause level
+                    Bento.objects.resume();
                 }
             };
 
