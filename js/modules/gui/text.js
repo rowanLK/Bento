@@ -253,20 +253,22 @@ bento.define('bento/gui/text', [
             }
 
             // shadow
-            shadow = textSettings.shadow;
-            if (Utils.isDefined(textSettings.shadowOffset)) {
-                shadowOffset = textSettings.shadowOffset.scalarMultiplyWith(sharpness);
-            } else {
-                if (shadow) {
-                    // default is 1 pixel down
-                    shadowOffset = new Vector2(0, 1 * sharpness);
+            if (Utils.isDefined(textSettings.shadow)) {
+                shadow = textSettings.shadow;
+                if (Utils.isDefined(textSettings.shadowOffset)) {
+                    shadowOffset = textSettings.shadowOffset.scalarMultiplyWith(sharpness);
                 } else {
-                    shadowOffset = new Vector2(0, 0);
+                    if (shadow) {
+                        // default is 1 pixel down
+                        shadowOffset = new Vector2(0, 1 * sharpness);
+                    } else {
+                        shadowOffset = new Vector2(0, 0);
+                    }
                 }
+                // get largest offset so we can resize the canvas
+                shadowOffsetMax = Math.max(Math.abs(shadowOffset.x), Math.abs(shadowOffset.y));
+                shadowColor = textSettings.shadowColor || 'black';
             }
-            // get largest offset so we can resize the canvas
-            shadowOffsetMax = Math.max(shadowOffset.x, shadowOffset.y);
-            shadowColor = textSettings.shadowColor || 'black';
 
             /*
              * entity settings
@@ -306,7 +308,7 @@ bento.define('bento/gui/text', [
                 y,
                 scale,
                 // extra offset because we may draw a line around the text
-                offset = new Vector2(maxLineWidth / 2 + shadowOffsetMax, maxLineWidth / 2 + shadowOffsetMax),
+                offset = new Vector2(maxLineWidth / 2, maxLineWidth / 2),
                 origin = sprite.origin,
                 position = entity.position,
                 doPixelStroke = function () {
@@ -348,8 +350,8 @@ bento.define('bento/gui/text', [
                 };
 
             // resize canvas based on text size
-            canvas.width = canvasWidth + maxLineWidth + shadowOffsetMax * 2 + margin.x * 2;
-            canvas.height = canvasHeight + maxLineWidth + shadowOffsetMax * 2 + margin.y * 2;
+            canvas.width = canvasWidth + maxLineWidth + shadowOffsetMax + margin.x * 2;
+            canvas.height = canvasHeight + maxLineWidth + shadowOffsetMax + margin.y * 2;
             // clear
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // update baseobject
@@ -361,6 +363,16 @@ bento.define('bento/gui/text', [
                 scale = canvas.width / overlaySprite.getDimension().width;
                 if (overlaySprite.scalable) {
                     overlaySprite.scalable.setScale(new Vector2(scale, scale));
+                }
+            }
+
+            // offset text left or up for shadow if needed
+            if (shadow) {
+                if (shadowOffset.x < 0) {
+                    offset.x -= shadowOffset.x;
+                }
+                if (shadowOffset.y < 0) {
+                    offset.y -= shadowOffset.y;
                 }
             }
 
