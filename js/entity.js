@@ -774,7 +774,7 @@ Bento.objects.attach(entity);
     Entity.prototype.getWorldPosition = function () {
         return this.transform.getWorldPosition();
     };
-    
+
     /**
      * Transforms a position local to entity's space to the world position
      * @function

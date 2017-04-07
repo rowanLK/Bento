@@ -23,13 +23,13 @@ bento.define('bento/math/rectangle', [
         }
         if (Utils.isDev()) {
             if (
-                !Utils.isNumber(x) || 
-                !Utils.isNumber(y) || 
-                !Utils.isNumber(width) || 
+                !Utils.isNumber(x) ||
+                !Utils.isNumber(y) ||
+                !Utils.isNumber(width) ||
                 !Utils.isNumber(height) ||
-                isNaN(x) || 
-                isNaN(y) || 
-                isNaN(width) || 
+                isNaN(x) ||
+                isNaN(y) ||
+                isNaN(width) ||
                 isNaN(height)
             ) {
                 Utils.log(

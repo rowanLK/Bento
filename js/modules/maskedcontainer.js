@@ -1,6 +1,6 @@
 /*
  * Simple container that masks the children's sprites in a rectangle. Does not work with rotated children.
- * The container's boundingbox is used as mask. 
+ * The container's boundingbox is used as mask.
  * @moduleName MaskedContainer
  */
 bento.define('bento/maskedcontainer', [
@@ -50,11 +50,11 @@ bento.define('bento/maskedcontainer', [
             this.updateFrame();
 
             // determine target
-            // target is local to the sprite 
+            // target is local to the sprite
             target = new Rectangle(
-                (-eOrigin.x - this.origin.x) | 0, 
-                (-eOrigin.y - this.origin.y) | 0, 
-                this.frameWidth, 
+                (-eOrigin.x - this.origin.x) | 0,
+                (-eOrigin.y - this.origin.y) | 0,
+                this.frameWidth,
                 this.frameHeight
             );
 
