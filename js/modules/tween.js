@@ -410,6 +410,9 @@ bento.define('bento/tween', [
         }
         if (Utils.isDefined(settings.oscillations)) {
             beta = settings.oscillations;
+            if (settings.ease === 'sin' || settings.ease === 'cos') {
+                alpha = settings.oscillations;
+            }
         }
 
         // if (!Utils.isDefined(settings.ease)) {

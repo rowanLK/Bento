@@ -506,7 +506,10 @@ bento.define('bento/tiled', [
                 entitiesSpawned += 1;
 
                 if (onSpawn) {
-                    onSpawn.call(tiled, instance, object);
+                    onSpawn.call(tiled, instance, object, {
+                        tileSet: tileSet,
+                        moduleName: moduleName
+                    });
                 }
 
                 if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {

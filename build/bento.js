@@ -14265,7 +14265,10 @@ bento.define('bento/tiled', [
                 entitiesSpawned += 1;
 
                 if (onSpawn) {
-                    onSpawn.call(tiled, instance, object);
+                    onSpawn.call(tiled, instance, object, {
+                        tileSet: tileSet,
+                        moduleName: moduleName
+                    });
                 }
 
                 if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
@@ -14975,6 +14978,9 @@ bento.define('bento/tween', [
         }
         if (Utils.isDefined(settings.oscillations)) {
             beta = settings.oscillations;
+            if (settings.ease === 'sin' || settings.ease === 'cos') {
+                alpha = settings.oscillations;
+            }
         }
 
         // if (!Utils.isDefined(settings.ease)) {
