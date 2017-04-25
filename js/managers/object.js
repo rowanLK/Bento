@@ -215,17 +215,6 @@ bento.define('bento/managers/object', [
                 if (!object) {
                     return;
                 }
-                index = objects.indexOf(object);
-                if (index >= 0) {
-                    objects[index] = null;
-                    if (object.destroy) {
-                        object.destroy(data);
-                    }
-                    if (object.removed) {
-                        object.removed(data);
-                    }
-                    object.isAdded = false;
-                }
                 // remove from access pools
                 if (object.family) {
                     family = object.family;
@@ -236,6 +225,18 @@ bento.define('bento/managers/object', [
                             Utils.removeFromArray(quickAccess[type], object);
                         }
                     }
+                }
+                // remove from object list
+                index = objects.indexOf(object);
+                if (index >= 0) {
+                    objects[index] = null;
+                    if (object.destroy) {
+                        object.destroy(data);
+                    }
+                    if (object.removed) {
+                        object.removed(data);
+                    }
+                    object.isAdded = false;
                 }
             },
             /**

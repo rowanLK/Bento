@@ -465,6 +465,8 @@ Bento.objects.attach(entity);
             return;
         }
         index = this.components.indexOf(child);
+        this.components[index] = null;
+        
         if (index >= 0) {
             // the parent entity is an added entity: call destroy on the child
             if (this.isAdded) {
@@ -492,8 +494,6 @@ Bento.objects.attach(entity);
             }
             child.parent = null;
             child.rootIndex = -1; // note that sibling rootIndex may be incorrect until the next update loop
-
-            this.components[index] = null;
         }
         return this;
     };
