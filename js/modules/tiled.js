@@ -371,6 +371,7 @@ bento.define('bento/tiled', [
             var properties;
             var moduleName;
             var components = {};
+            var tiledSettings = {};
             var require = {
                 // paths to module and components
                 paths: [],
@@ -421,7 +422,9 @@ bento.define('bento/tiled', [
                 var parameters = {};
 
                 for (key in components) {
-                    parameters = {};
+                    parameters = {
+                        tiled: tiledSettings
+                    };
                     component = components[key];
 
                     // make an object with all parameters for the component
@@ -455,16 +458,17 @@ bento.define('bento/tiled', [
             }
             // save path to module and its paramters
             require.paths.push(moduleName);
+            tiledSettings = {
+                position: new Vector2(x, y),
+                tileSet: tileSet,
+                tileIndex: tileIndex,
+                tileProperties: properties,
+                object: object,
+                objectProperties: object.properties,
+                jsonName: assetName // reference to current json name
+            };
             require.parameters.push({
-                tiled: {
-                    position: new Vector2(x, y),
-                    tileSet: tileSet,
-                    tileIndex: tileIndex,
-                    tileProperties: properties,
-                    object: object,
-                    objectProperties: object.properties,
-                    jsonName: assetName // reference to current json name
-                }
+                tiled: tiledSettings
             });
 
             // search through the tileset's custom properties
