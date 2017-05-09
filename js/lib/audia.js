@@ -694,13 +694,14 @@ bento.define("audia", [
     // canPlayType helper
     // Can be called with shortcuts, e.g. "mp3" instead of "audio/mp3"
     var audioNode;
-    var hasWarned = false;
     Audia.canPlayType = function (type) {
         if (hasWebAudio && Utils.isApple()) {
-            // bug in iOS Safari
-            if (!hasWarned) {
-                hasWarned = true;
-                console.log("WARNING: cannot properly check if audio is supported on iOS Safari");
+            // bug in iOS Safari: will not respect the mute if an audionode is instantiated
+            // manual type checking: ogg not supported
+            if (type.indexOf('ogg') >= 0) {
+                return false;
+            } else if (type.indexOf('mp3') >= 0) {
+                return true;
             }
             return true;
         } else {
