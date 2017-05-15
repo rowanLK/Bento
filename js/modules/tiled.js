@@ -176,6 +176,7 @@ bento.define('bento/tiled', [
         var height = json.height || 0;
         var tileWidth = json.tilewidth || 0;
         var tileHeight = json.tileheight || 0;
+        var mapProperties = json.properties || {};
         var mergeLayers = settings.merge || false;
         var onInit = settings.onInit;
         var onLayer = settings.onLayer;
@@ -529,6 +530,12 @@ bento.define('bento/tiled', [
              * @name assetName
              */
             assetName: assetName,
+            /**
+             * Map properties
+             * @instance
+             * @name mapProperties
+             */
+            mapProperties: mapProperties,
             /**
              * Reference to the Tiled JSON asset
              * @instance
