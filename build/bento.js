@@ -6852,7 +6852,7 @@ bento.define('bento/utils', [], function () {
  Other clickables must also have "sort" to true. Otherwise, clickables are executed on creation order.
  * @returns Returns a component object to be attached to an entity.
  */
- /**
+/**
  * Callback when input changed. The event data is an object that is passed by a source (usually the browser). 
  * The input manager injects some extra info useful for the game.
  *
@@ -6903,7 +6903,7 @@ bento.define('bento/components/clickable', [
         if (!(this instanceof Clickable)) {
             return new Clickable(settings);
         }
-        var nothing = function () {};
+        var nothing = null;
         this.entity = null;
         this.parent = null;
         this.rootIndex = -1;
@@ -6921,7 +6921,6 @@ bento.define('bento/components/clickable', [
          * @name isHovering
          */
         this.isHovering = false;
-        this.hasTouched = false;
         /**
          * Ignore the pause during pointerUp event. If false, the pointerUp event will not be called if the parent entity is paused.
          * This can have a negative side effect in some cases: the pointerUp is never called and your code might be waiting for that.
@@ -7031,79 +7030,102 @@ bento.define('bento/components/clickable', [
         };
     };
     Clickable.prototype.pointerDown = function (evt) {
-        var e = this.transformEvent(evt);
+        var e;
         if (isPaused(this.entity)) {
             return;
         }
+        e = this.transformEvent(evt);
         this.isPointerDown = true;
         if (this.callbacks.pointerDown) {
             this.callbacks.pointerDown.call(this, e);
         }
         if (this.entity.getBoundingBox) {
-            this.checkHovering(e, true);
+            this.checkHovering.call(this, e, true);
         }
     };
     Clickable.prototype.pointerUp = function (evt) {
-        var e = this.transformEvent(evt),
-            mousePosition;
+        var e;
+        var mousePosition;
+        var callbacks = this.callbacks;
 
         // a pointer up could get missed during a pause
         if (!this.ignorePauseDuringPointerUpEvent && isPaused(this.entity)) {
             return;
         }
+        e = this.transformEvent(evt);
         mousePosition = e.localPosition;
         this.isPointerDown = false;
-        if (this.callbacks.pointerUp) {
-            this.callbacks.pointerUp.call(this, e);
+        if (callbacks.pointerUp) {
+            callbacks.pointerUp.call(this, e);
         }
         // onClickUp respects isPaused
         if (this.entity.getBoundingBox().hasPosition(mousePosition) && !isPaused(this.entity)) {
-            this.callbacks.onClickUp.call(this, e);
-            if (this.hasTouched && this.holdId === e.id) {
-                this.holdId = null;
-                this.callbacks.onHoldEnd.call(this, e);
+            if (callbacks.onClickUp) {
+                callbacks.onClickUp.call(this, e);
+            }
+            if (this.holdId === e.id) {
+                if (callbacks.onHoldEnd) {
+                    callbacks.onHoldEnd.call(this, e);
+                }
             }
         }
-        this.hasTouched = false;
+        this.holdId = null;
     };
     Clickable.prototype.pointerMove = function (evt) {
-        var e = this.transformEvent(evt);
+        var e; // don't calculate transformed event until last moment to save cpu
+        var callbacks = this.callbacks;
         if (isPaused(this.entity)) {
             return;
         }
-        if (this.callbacks.pointerMove) {
-            this.callbacks.pointerMove.call(this, e);
+        if (callbacks.pointerMove) {
+            if (!e) {
+                e = this.transformEvent(evt);
+            }
+            callbacks.pointerMove.call(this, e);
         }
         // hovering?
-        if (this.entity.getBoundingBox) {
-            this.checkHovering(e);
+        if (
+            this.entity.getBoundingBox &&
+            // only relevant if hover callbacks are implmented
+            (callbacks.onHoldEnter || callbacks.onHoldLeave || callbacks.onHoverLeave)
+        ) {
+            if (!e) {
+                e = this.transformEvent(evt);
+            }
+            this.checkHovering.call(this, e);
         }
     };
     Clickable.prototype.checkHovering = function (evt, clicked) {
         var mousePosition = evt.localPosition;
+        var callbacks = this.callbacks;
         if (this.entity.getBoundingBox().hasPosition(mousePosition)) {
-            if (this.hasTouched && !this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldEnter.call(this, evt);
+            if (!this.isHovering && this.holdId === evt.id) {
+                if (callbacks.onHoldEnter) {
+                    callbacks.onHoldEnter.call(this, evt);
+                }
             }
-            if (!this.isHovering) {
-                this.callbacks.onHoverEnter.call(this, evt);
+            if (!this.isHovering && callbacks.onHoverEnter) {
+                callbacks.onHoverEnter.call(this, evt);
             }
             this.isHovering = true;
             if (clicked) {
-                this.hasTouched = true;
                 this.holdId = evt.id;
-                this.callbacks.onClick.call(this, evt);
+                if (callbacks.onClick) {
+                    callbacks.onClick.call(this, evt);
+                }
             }
         } else {
-            if (this.hasTouched && this.isHovering && this.holdId === evt.id) {
-                this.callbacks.onHoldLeave.call(this, evt);
+            if (this.isHovering && this.holdId === evt.id) {
+                if (callbacks.onHoldLeave) {
+                    callbacks.onHoldLeave.call(this, evt);
+                }
             }
-            if (this.isHovering) {
-                this.callbacks.onHoverLeave.call(this, evt);
+            if (this.isHovering && callbacks.onHoverLeave) {
+                callbacks.onHoverLeave.call(this, evt);
             }
             this.isHovering = false;
-            if (clicked) {
-                this.callbacks.onClickMiss.call(this, evt);
+            if (clicked && callbacks.onClickMiss) {
+                callbacks.onClickMiss.call(this, evt);
             }
         }
     };
@@ -13944,6 +13966,7 @@ bento.define('bento/tiled', [
         var height = json.height || 0;
         var tileWidth = json.tilewidth || 0;
         var tileHeight = json.tileheight || 0;
+        var mapProperties = json.properties || {};
         var mergeLayers = settings.merge || false;
         var onInit = settings.onInit;
         var onLayer = settings.onLayer;
@@ -14297,6 +14320,12 @@ bento.define('bento/tiled', [
              * @name assetName
              */
             assetName: assetName,
+            /**
+             * Map properties
+             * @instance
+             * @name mapProperties
+             */
+            mapProperties: mapProperties,
             /**
              * Reference to the Tiled JSON asset
              * @instance
