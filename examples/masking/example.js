@@ -60,9 +60,9 @@ bento.require([
         });
         var triangle = new Entity({
             name: 'triangle',
-            originRelative: new Vector2(1, 1),
             components: [
                 new Sprite({
+                    originRelative: new Vector2(1, 1),
                     imageName: 'triangle'
                 }), {
                     update: function (data) {

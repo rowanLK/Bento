@@ -23,6 +23,7 @@ bento.require([
         var viewport = Bento.getViewport();
         var bunnySprite = {
             image: Bento.assets.getImage('bunnygirlsmall'),
+            originRelative: new Vector2(0.5, 0.5),
             frameWidth: 32,
             frameHeight: 32,
             animations: {
@@ -58,14 +59,13 @@ bento.require([
                     blurFilter.blur = 20 * Math.cos(entity.timer / 50);
                 },
                 draw: function (data) {
-                    // data.renderer.translate(-16, -16); // temp: origin set manually
+                    data.renderer.translate(-16, -16);
                     data.renderer.drawPixi(pixiSprite);
                 }
             };
             var entity = new Entity({
                 name: 'bunny5',
                 position: new Vector2(viewport.width / 2, viewport.height / 2 + 16),
-                originRelative: new Vector2(0.5, 0.5),
                 components: [
                     drawPixiComponent
                 ]
@@ -92,7 +92,6 @@ bento.require([
             var entity = new Entity({
                 name: 'bunny6',
                 position: new Vector2(viewport.width / 2, viewport.height / 2 - 16),
-                originRelative: new Vector2(0.5, 0.5),
                 components: [
                     pixiSprite,
                     blurBehavior,

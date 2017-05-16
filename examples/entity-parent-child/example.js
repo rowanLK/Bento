@@ -33,9 +33,9 @@ bento.require([
             z: 10,
             name: 'cursor',
             position: new Vector2(0, 0),
-            originRelative: new Vector2(0.5, 0.5),
             components: [
                 new Sprite({
+                    originRelative: new Vector2(0.5, 0.5),
                     imageName: 'cursor'
                 }),
                 new Clickable({

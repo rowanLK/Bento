@@ -132,6 +132,7 @@ bento.define('bento/canvas', [
         packedImage = new PackedImage(canvas);
         sprite = new Sprite({
             image: packedImage,
+            origin: settings.origin,
             originRelative: settings.originRelative
         });
 
@@ -147,7 +148,6 @@ bento.define('bento/canvas', [
         entity = new Entity({
             z: settings.z,
             name: settings.name,
-            origin: settings.origin,
             position: settings.position,
             components: components,
             family: settings.family,

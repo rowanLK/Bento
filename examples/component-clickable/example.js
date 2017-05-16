@@ -55,9 +55,9 @@ bento.require([
             z: 1,
             name: 'triangle',
             position: new Vector2(viewport.width / 2, viewport.height / 3),
-            originRelative: new Vector2(0.5, 0.5),
             components: [
                 new Sprite({
+                    originRelative: new Vector2(0.5, 0.5),
                     imageName: 'buttonr'
                 }),
                 new Clickable({

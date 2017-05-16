@@ -32,7 +32,7 @@ bento.require([
         });
     };
     var onLoaded = function (err) {
-        console.log(Bento.assets.getSpriteSheet('bunny'));
+        console.log(Bento.assets.getSpriteSheet('idle'));
 
         var viewport = Bento.getViewport();
         var background = new Entity({

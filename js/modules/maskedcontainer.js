@@ -46,14 +46,13 @@ bento.define('bento/maskedcontainer', [
 
             // do the sprite update
             var entity = data.entity;
-            var eOrigin = entity.origin;
             this.updateFrame();
 
             // determine target
             // target is local to the sprite
             target = new Rectangle(
-                (-eOrigin.x - this.origin.x) | 0,
-                (-eOrigin.y - this.origin.y) | 0,
+                (-this.origin.x) | 0,
+                (-this.origin.y) | 0,
                 this.frameWidth,
                 this.frameHeight
             );

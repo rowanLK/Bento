@@ -23,6 +23,7 @@ bento.define('bunny', [
             image: Bento.assets.getImage('bunnygirlsmall'),
             frameWidth: 32,
             frameHeight: 32,
+            originRelative: new Vector2(0.5, 0.5),
             animations: {
                 'default': {
                     speed: 0.1,
@@ -37,7 +38,6 @@ bento.define('bunny', [
         var entity = new Entity({
             z: 1,
             name: 'bunny',
-            originRelative: new Vector2(0.5, 0.5),
             components: [sprite],
             family: ['bunnies']
         });

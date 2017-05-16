@@ -21,6 +21,7 @@ bento.define('bunny', [
     return function () {
         var sprite = new Sprite({
                 image: Bento.assets.getImage('bunnygirlsmall'),
+                originRelative: new Vector2(0.5, 0.5),
                 frameWidth: 32,
                 frameHeight: 32,
                 animations: {
@@ -48,7 +49,6 @@ bento.define('bunny', [
             entity = new Entity({
                 z: 0,
                 name: 'bunny',
-                originRelative: new Vector2(0.5, 0.5),
                 components: [
                     sprite,
                     clickable

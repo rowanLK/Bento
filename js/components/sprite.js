@@ -215,12 +215,6 @@ bento.define('bento/components/sprite', [
         this.entity.dimension.y = -this.origin.y;
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
-        
-        //reset entity's origin
-        // TODO: deprecated
-        var relOriginX = this.entity.origin.x / this.entity.dimension.width || 0; // Note: possible divide by 0
-        var relOriginY = this.entity.origin.y / this.entity.dimension.height || 0;
-        this.entity.setOriginRelative(new Vector2(relOriginX, relOriginY));
     };
 
     Sprite.prototype.attached = function (data) {
@@ -418,9 +412,7 @@ bento.define('bento/components/sprite', [
     };
 
     Sprite.prototype.draw = function (data) {
-        var entity = data.entity,
-            // TODO: deprecate entity.origin
-            eOrigin = entity.origin;
+        var entity = data.entity;
 
         if (!this.currentAnimation || !this.visible) {
             return;
@@ -434,8 +426,8 @@ bento.define('bento/components/sprite', [
             this.sourceY,
             this.frameWidth,
             this.frameHeight,
-            (-eOrigin.x - this.origin.x) | 0,
-            (-eOrigin.y - this.origin.y) | 0,
+            (-this.origin.x) | 0,
+            (-this.origin.y) | 0,
             this.frameWidth,
             this.frameHeight
         );

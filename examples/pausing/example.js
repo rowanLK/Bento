@@ -60,6 +60,7 @@ bento.require([
             // bunny sprite
             var sprite = new Sprite({
                 imageName: 'bunnygirlsmall',
+                originRelative: new Vector2(0.5, 0.5),
                 frameCountX: 4,
                 frameCountY: 4,
                 animations: {
@@ -74,7 +75,6 @@ bento.require([
                 z: 1,
                 name: 'bunny',
                 position: new Vector2(viewport.width / 2, 48 + bunnyId * 32),
-                originRelative: new Vector2(0.5, 0.5),
                 updateWhenPaused: bunnyId, // every bunny has a higher pause level
                 components: [
                     sprite,

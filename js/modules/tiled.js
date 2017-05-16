@@ -482,14 +482,13 @@ bento.define('bento/tiled', [
             entitiesToSpawn += 1;
             bento.require(require.paths, function () {
                 var instance = new arguments[0](require.parameters[0]);
-                var origin = instance.origin;
                 var dimension = instance.dimension;
-                var spriteOrigin = origin.clone();
+                var spriteOrigin = new Vector2(0, 0);
                 var ii = 1;
                 var iil = arguments.length;
 
                 instance.getComponent('sprite', function (sprite) {
-                    spriteOrigin.addTo(sprite.origin);
+                    spriteOrigin = sprite.origin;
                 });
 
                 instance.position = new Vector2(

@@ -24,6 +24,7 @@ bento.define('clickbutton', [
             image: settings.image,
             frameWidth: settings.frameWidth || 32,
             frameHeight: settings.frameHeight || 32,
+            originRelative: settings.originRelative || new Vector2(0, 0),
             animations: settings.animations || {
                 'default': {
                     speed: 0,
@@ -60,7 +61,6 @@ bento.define('clickbutton', [
         var entity = new Entity({
             z: 0,
             name: '',
-            originRelative: settings.originRelative || new Vector2(0, 0),
             position: settings.position || new Vector2(0, 0),
             components: [
                 sprite,

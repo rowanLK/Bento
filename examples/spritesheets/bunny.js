@@ -24,12 +24,12 @@ bento.define('bunny', [
         var isPunching = false;
 
         var sprite = new Sprite({
+            // originRelative: new Vector2(0.5, 0.5),
             spriteSheet: 'idle'
         });
         var entity = new Entity({
             z: 1,
             name: 'bunny',
-            originRelative: new Vector2(0.5, 0.5),
             components: [sprite],
             family: ['bunnies']
         });

@@ -110,9 +110,9 @@ bento.require([
                 name: 'red',
                 family: ['red'],
                 position: new Vector2(Utils.getRandom(viewport.width), Utils.getRandom(viewport.height - 48)),
-                originRelative: new Vector2(0.5, 0.5),
                 components: [
                     new Sprite({
+                        originRelative: new Vector2(0.5, 0.5),
                         imageName: 'ballred'
                     })
                 ]
@@ -125,9 +125,9 @@ bento.require([
                 name: 'green',
                 family: ['green'],
                 position: new Vector2(Utils.getRandom(viewport.width), Utils.getRandom(viewport.height - 48)),
-                originRelative: new Vector2(0.5, 0.5),
                 components: [
                     new Sprite({
+                        originRelative: new Vector2(0.5, 0.5),
                         imageName: 'ballgreen'
                     })
                 ]
@@ -140,9 +140,9 @@ bento.require([
                 name: 'blue',
                 family: ['blue'],
                 position: new Vector2(Utils.getRandom(viewport.width), Utils.getRandom(viewport.height - 48)),
-                originRelative: new Vector2(0.5, 0.5),
                 components: [
                     new Sprite({
+                        originRelative: new Vector2(0.5, 0.5),
                         imageName: 'ballblue'
                     })
                 ]

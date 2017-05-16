@@ -49,8 +49,7 @@ bento.require([
             components: [
                 new Sprite(Bento.assets.getJson('bunny'))
             ],
-            position: new Vector2(viewport.width / 2, 32),
-            originRelative: new Vector2(0.5, 0.5)
+            position: new Vector2(viewport.width / 2, 32)
         });
 
         /*
@@ -67,7 +66,6 @@ bento.require([
             name: 'stretchBunny',
             scale: new Vector2(2, 1), // stretched in x
             position: new Vector2(viewport.width / 2, 88),
-            originRelative: new Vector2(0.5, 0.5),
             components: [
                 new Sprite(Bento.assets.getJson('bunny')),
                 stretchComponent
@@ -88,7 +86,6 @@ bento.require([
             z: 1,
             name: 'rotatingBunny',
             position: new Vector2(viewport.width / 2, 152),
-            originRelative: new Vector2(0.5, 0.5),
             components: [
                 new Sprite(Bento.assets.getJson('bunny')),
                 rotationBehavior
@@ -109,7 +106,6 @@ bento.require([
             z: 1,
             name: 'rotatingBunny',
             position: new Vector2(viewport.width / 2, 208),
-            originRelative: new Vector2(0.5, 0.5),
             components: [
                 new Sprite(Bento.assets.getJson('bunny')),
                 stretchAndRotate

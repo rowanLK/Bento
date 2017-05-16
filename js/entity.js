@@ -10,10 +10,9 @@
  * @param {Array} settings.components - Array of component module functions
  * @param {Array} settings.family - Array of family names. See {@link module:bento/managers/object#getByFamily}
  * @param {Vector2} settings.position - Vector2 of position to set
- * @param {Vector2} settings.origin - Vector2 of origin to set (if entity has a sprite, recommended to set the origin in the sprite!)
- * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
- * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
- * @param {Boolean} settings.z - z-index to set
+ * @param {Rectangle} settings.dimension - Size of the entity
+ * @param {Rectangle} settings.boundingBox - Rectangle used for collision checking (if this does not exist, dimension is used as bounding box)
+ * @param {Number} settings.z - z-index to set (note: higher values go on top)
  * @param {Number} settings.alpha - Opacity of the entity (1 = fully visible)
  * @param {Number} settings.rotation - Rotation of the entity in radians
  * @param {Vector2} settings.scale - Scale of the entity
@@ -132,13 +131,6 @@ bento.define('bento/entity', [
          */
         this.position = new Vector2(0, 0);
         /**
-         * (Deprecated) Origin of the entity (anchor point)
-         * @instance
-         * @default Vector2(0, 0)
-         * @name origin
-         */
-        this.origin = new Vector2(0, 0);
-        /**
          * Families of the entity. Note: edit this before the entity is attached.
          * @instance
          * @default []
@@ -222,9 +214,6 @@ bento.define('bento/entity', [
             if (settings.position) {
                 this.position = settings.position; // should this be cloned?
             }
-            if (settings.origin) {
-                this.origin = settings.origin; // TODO: deprecated
-            }
             if (settings.dimension) {
                 this.dimension = settings.dimension;
             }
@@ -263,12 +252,6 @@ bento.define('bento/entity', [
                     this.attach(settings.components[i]);
                 }
             }
-
-            // origin relative depends on dimension, so do this after attaching components
-            if (settings.originRelative) {
-                this.setOriginRelative(settings.originRelative); // TODO: deprecated
-            }
-
             // you might want to do things before the entity returns
             if (settings.init) {
                 settings.init.apply(this);
@@ -333,17 +316,6 @@ entity.addX(10);
     };
     Entity.prototype.getBoundingBox = function () {
         return correctBoundingBox(this, this.boundingBox || this.dimension);
-    };
-    /**
-     * (Deprecated) Sets the origin relatively (0...1), relative to the dimension of the entity.
-     * @function
-     * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
-     * @instance
-     * @name setOriginRelative
-     */
-    Entity.prototype.setOriginRelative = function (value) {
-        this.origin.x = value.x * this.dimension.width;
-        this.origin.y = value.y * this.dimension.height;
     };
 
     /**

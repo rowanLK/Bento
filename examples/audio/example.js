@@ -60,6 +60,7 @@ bento.require([
             image: Bento.assets.getImage('bunnygirlsmall'),
             frameWidth: 32,
             frameHeight: 32,
+            originRelative: new Vector2(0.5, 1),
             animations: {
                 'idle': {
                     speed: 0.1,
@@ -82,7 +83,6 @@ bento.require([
         });
         var bunny = new Entity({
             position: new Vector2(80, 120),
-            originRelative: new Vector2(0.5, 1),
             components: [
                 sprite,
                 clickable,

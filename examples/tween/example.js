@@ -52,9 +52,9 @@ bento.require([
                 z: 1,
                 name: 'bunny',
                 position: new Vector2(32, 48 + bunnyCount * 32),
-                originRelative: new Vector2(0.5, 0.5),
                 components: [
                     new Sprite({
+                        originRelative: new Vector2(0.5, 0.5),
                         imageName: 'bunnygirlsmall'
                     })
                 ]

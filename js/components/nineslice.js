@@ -133,10 +133,6 @@ bento.define('bento/components/nineslice', [
                 this.origin.x = this.settings.originRelative.x * this._width;
             }
             this.entity.dimension.x = -this.origin.x;
-
-            // TODO: deprecated
-            var relOriginX = this.entity.origin.x / this.entity.dimension.width;
-            this.entity.origin.x = relOriginX * this._width;
         }
         this.recalculateDimensions();
     };
@@ -151,10 +147,6 @@ bento.define('bento/components/nineslice', [
                 this.origin.y = this.settings.originRelative.y * this._height;
             }
             this.entity.dimension.y = -this.origin.y;
-
-            // TODO: deprecated
-            var relOriginY = this.entity.origin.y / this.entity.dimension.height;
-            this.entity.origin.y = relOriginY * this._height;
         }
         this.recalculateDimensions();
     };
@@ -210,8 +202,7 @@ bento.define('bento/components/nineslice', [
 
     NineSlice.prototype.draw = function (data) {
         var entity = data.entity;
-        // TODO: deprecate data.entity.origin
-        var origin = data.entity.origin.add(this.origin);
+        var origin = this.origin;
 
         if (this._width === 0 || this._height === 0) {
             return;

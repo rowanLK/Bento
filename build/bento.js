@@ -4310,10 +4310,9 @@ bento.define('bento', [
  * @param {Array} settings.components - Array of component module functions
  * @param {Array} settings.family - Array of family names. See {@link module:bento/managers/object#getByFamily}
  * @param {Vector2} settings.position - Vector2 of position to set
- * @param {Vector2} settings.origin - Vector2 of origin to set (if entity has a sprite, recommended to set the origin in the sprite!)
- * @param {Vector2} settings.originRelative - Vector2 of relative origin to set (relative to dimension size)
- * @param {Rectangle} settings.boundingBox - Rectangle position relative to the origin
- * @param {Boolean} settings.z - z-index to set
+ * @param {Rectangle} settings.dimension - Size of the entity
+ * @param {Rectangle} settings.boundingBox - Rectangle used for collision checking (if this does not exist, dimension is used as bounding box)
+ * @param {Number} settings.z - z-index to set (note: higher values go on top)
  * @param {Number} settings.alpha - Opacity of the entity (1 = fully visible)
  * @param {Number} settings.rotation - Rotation of the entity in radians
  * @param {Vector2} settings.scale - Scale of the entity
@@ -4432,13 +4431,6 @@ bento.define('bento/entity', [
          */
         this.position = new Vector2(0, 0);
         /**
-         * (Deprecated) Origin of the entity (anchor point)
-         * @instance
-         * @default Vector2(0, 0)
-         * @name origin
-         */
-        this.origin = new Vector2(0, 0);
-        /**
          * Families of the entity. Note: edit this before the entity is attached.
          * @instance
          * @default []
@@ -4522,9 +4514,6 @@ bento.define('bento/entity', [
             if (settings.position) {
                 this.position = settings.position; // should this be cloned?
             }
-            if (settings.origin) {
-                this.origin = settings.origin; // TODO: deprecated
-            }
             if (settings.dimension) {
                 this.dimension = settings.dimension;
             }
@@ -4563,12 +4552,6 @@ bento.define('bento/entity', [
                     this.attach(settings.components[i]);
                 }
             }
-
-            // origin relative depends on dimension, so do this after attaching components
-            if (settings.originRelative) {
-                this.setOriginRelative(settings.originRelative); // TODO: deprecated
-            }
-
             // you might want to do things before the entity returns
             if (settings.init) {
                 settings.init.apply(this);
@@ -4633,17 +4616,6 @@ entity.addX(10);
     };
     Entity.prototype.getBoundingBox = function () {
         return correctBoundingBox(this, this.boundingBox || this.dimension);
-    };
-    /**
-     * (Deprecated) Sets the origin relatively (0...1), relative to the dimension of the entity.
-     * @function
-     * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
-     * @instance
-     * @name setOriginRelative
-     */
-    Entity.prototype.setOriginRelative = function (value) {
-        this.origin.x = value.x * this.dimension.width;
-        this.origin.y = value.y * this.dimension.height;
     };
 
     /**
@@ -7169,7 +7141,7 @@ bento.define('bento/components/fill', [
     };
     Fill.prototype.draw = function (data) {
         var dimension = this.dimension;
-        var origin = this.origin.add(this.parent.origin);
+        var origin = this.origin;
         data.renderer.fillRect(this.color, dimension.x - origin.x, dimension.y - origin.y, dimension.width, dimension.height);
     };
     Fill.prototype.toString = function () {
@@ -7313,10 +7285,6 @@ bento.define('bento/components/nineslice', [
                 this.origin.x = this.settings.originRelative.x * this._width;
             }
             this.entity.dimension.x = -this.origin.x;
-
-            // TODO: deprecated
-            var relOriginX = this.entity.origin.x / this.entity.dimension.width;
-            this.entity.origin.x = relOriginX * this._width;
         }
         this.recalculateDimensions();
     };
@@ -7331,10 +7299,6 @@ bento.define('bento/components/nineslice', [
                 this.origin.y = this.settings.originRelative.y * this._height;
             }
             this.entity.dimension.y = -this.origin.y;
-
-            // TODO: deprecated
-            var relOriginY = this.entity.origin.y / this.entity.dimension.height;
-            this.entity.origin.y = relOriginY * this._height;
         }
         this.recalculateDimensions();
     };
@@ -7390,8 +7354,7 @@ bento.define('bento/components/nineslice', [
 
     NineSlice.prototype.draw = function (data) {
         var entity = data.entity;
-        // TODO: deprecate data.entity.origin
-        var origin = data.entity.origin.add(this.origin);
+        var origin = this.origin;
 
         if (this._width === 0 || this._height === 0) {
             return;
@@ -7642,12 +7605,6 @@ bento.define('bento/components/sprite', [
         this.entity.dimension.y = -this.origin.y;
         this.entity.dimension.width = this.frameWidth;
         this.entity.dimension.height = this.frameHeight;
-        
-        //reset entity's origin
-        // TODO: deprecated
-        var relOriginX = this.entity.origin.x / this.entity.dimension.width || 0; // Note: possible divide by 0
-        var relOriginY = this.entity.origin.y / this.entity.dimension.height || 0;
-        this.entity.setOriginRelative(new Vector2(relOriginX, relOriginY));
     };
 
     Sprite.prototype.attached = function (data) {
@@ -7845,9 +7802,7 @@ bento.define('bento/components/sprite', [
     };
 
     Sprite.prototype.draw = function (data) {
-        var entity = data.entity,
-            // TODO: deprecate entity.origin
-            eOrigin = entity.origin;
+        var entity = data.entity;
 
         if (!this.currentAnimation || !this.visible) {
             return;
@@ -7861,8 +7816,8 @@ bento.define('bento/components/sprite', [
             this.sourceY,
             this.frameWidth,
             this.frameHeight,
-            (-eOrigin.x - this.origin.x) | 0,
-            (-eOrigin.y - this.origin.y) | 0,
+            (-this.origin.x) | 0,
+            (-this.origin.y) | 0,
             this.frameWidth,
             this.frameHeight
         );
@@ -13093,6 +13048,7 @@ bento.define('bento/canvas', [
         packedImage = new PackedImage(canvas);
         sprite = new Sprite({
             image: packedImage,
+            origin: settings.origin,
             originRelative: settings.originRelative
         });
 
@@ -13108,7 +13064,6 @@ bento.define('bento/canvas', [
         entity = new Entity({
             z: settings.z,
             name: settings.name,
-            origin: settings.origin,
             position: settings.position,
             components: components,
             family: settings.family,
@@ -13212,14 +13167,13 @@ bento.define('bento/maskedcontainer', [
 
             // do the sprite update
             var entity = data.entity;
-            var eOrigin = entity.origin;
             this.updateFrame();
 
             // determine target
             // target is local to the sprite
             target = new Rectangle(
-                (-eOrigin.x - this.origin.x) | 0,
-                (-eOrigin.y - this.origin.y) | 0,
+                (-this.origin.x) | 0,
+                (-this.origin.y) | 0,
                 this.frameWidth,
                 this.frameHeight
             );
@@ -14311,14 +14265,13 @@ bento.define('bento/tiled', [
             entitiesToSpawn += 1;
             bento.require(require.paths, function () {
                 var instance = new arguments[0](require.parameters[0]);
-                var origin = instance.origin;
                 var dimension = instance.dimension;
-                var spriteOrigin = origin.clone();
+                var spriteOrigin = new Vector2(0, 0);
                 var ii = 1;
                 var iil = arguments.length;
 
                 instance.getComponent('sprite', function (sprite) {
-                    spriteOrigin.addTo(sprite.origin);
+                    spriteOrigin = sprite.origin;
                 });
 
                 instance.position = new Vector2(
@@ -15645,9 +15598,7 @@ bento.define('bento/components/pixi/sprite', [
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
     PixiSprite.prototype.draw = function (data) {
-        var entity = data.entity,
-            // TODO: deprecate entity.origin
-            eOrigin = entity.origin;
+        var entity = data.entity;
 
         if (!this.currentAnimation || !this.visible) {
             return;
@@ -15662,9 +15613,9 @@ bento.define('bento/components/pixi/sprite', [
         );
 
         // draw with pixi
-        data.renderer.translate(-Math.round(eOrigin.x - this.origin.x), -Math.round(eOrigin.y - this.origin.y));
+        data.renderer.translate(-Math.round(this.origin.x), -Math.round(this.origin.y));
         data.renderer.drawPixi(this.sprite);
-        data.renderer.translate(Math.round(eOrigin.x - this.origin.x), Math.round(eOrigin.y - this.origin.y));
+        data.renderer.translate(Math.round(this.origin.x), Math.round(this.origin.y));
     };
     PixiSprite.prototype.updateSprite = function (packedImage, sx, sy, sw, sh) {
         var rectangle;
