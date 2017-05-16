@@ -7151,12 +7151,17 @@ bento.define('bento/components/fill', [
     return Fill;
 });
 /**
- * Nineslice component
+ * Nineslice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
+ * where the corners don't get deformed.
  * <br>Exports: Constructor
  * @module bento/components/nineslice
  * @moduleName NineSlice
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - (Using image assets) Asset name for the image.
+ * @param {Vector2} settings.origin - Vector2 of origin
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
+ * @param {Vector2} settings.width - Width of the desired box
+ * @param {Vector2} settings.height - Height of the desired box
  */
 bento.define('bento/components/nineslice', [
     'bento',
@@ -7190,10 +7195,6 @@ bento.define('bento/components/nineslice', [
         this.name = 'nineslice';
         this.visible = true;
         this.origin = settings.origin || new Vector2(0, 0);
-
-        if (settings.originRelative) {
-            this.setOriginRelative(settings.originRelative);
-        }
 
         // component settings
         this._width = 0;
@@ -7254,6 +7255,9 @@ bento.define('bento/components/nineslice', [
         }
         if (settings.height) {
             this._height = Math.max(settings.height || 0, 0);
+        }
+        if (settings.originRelative) {
+            this.setOriginRelative(settings.originRelative);
         }
 
         if (this.entity) {
