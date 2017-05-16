@@ -7,34 +7,10 @@ var addsrc = require('gulp-add-src');
 // var exec = require('gulp-exec');
 var exec = require('child_process').exec;
 var fs = require('fs');
-var webpack = require("webpack");
 
-gulp.task('webgl', function () {
-    fs.writeFileSync(
-        'build/bento-webgl.js',
-        'window.GlSprites = {};\nGlSprites.SpriteRenderer = require("gl-sprites");\nGlSprites.createTexture2D = require("gl-texture2d");'
-    );
+gulp.task('default', ['build', 'updateVersion'], function () {});
 
-    webpack({
-        entry: './build/bento-webgl.js',
-        output: {
-            path: './build',
-            filename: 'bento-webgl.js'
-        },
-    }, function (err, stats) {
-        if (err) {
-            console.log(err);
-        }
-        gulp.src([
-                'build/bento-webgl.js'
-            ])
-            .pipe(uglify())
-            .pipe(rename('bento-webgl.min.js'))
-            .pipe(gulp.dest('build'));
-    });
-});
-
-gulp.task('default', [], function () {
+gulp.task('build', [], function () {
     // place code for your default task here
     return gulp.src([
             'js/lib/fpsmeter.js',
@@ -54,6 +30,28 @@ gulp.task('default', [], function () {
         // output bento.js
         .pipe(concat('bento.js'))
         .pipe(gulp.dest('build'));
+});
+gulp.task('updateVersion', ['build'], function (callback) {
+    var pjson = require('./package.json');
+    var fs = require('fs');
+    var path = require('path');
+    var bentojs = path.join('.', 'build', 'bento.js');
+    
+    // read package
+    fs.readFile(bentojs, 'utf8', function (err, data) {
+        if (err) {
+            return console.log(err);
+        }
+        var result = data.replace(/version: (["'])(?:(?=(\\?))\2.)*?\1/g, "version: '" + pjson.version +"'");
+
+        fs.writeFile(bentojs, result, 'utf8', function (err) {
+            if (err) {
+                callback();
+                return console.log(err);
+            }
+            callback();
+        });
+    });
 });
 
 gulp.task('min', [], function () {

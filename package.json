@@ -1,8 +1,10 @@
 {
     "name": "bento",
-    "version": "0.9.0",
+    "version": "1.0.0",
     "author": {
-        "name": "Hernan Zhou"
+        "name": "Lucky Kat Studios",
+        "email" : "hernanzh@lucky-kat.com",
+        "url": "http://lucky-kat.com"
     },
     "devDependencies": {
         "gulp": "3.9.1",
@@ -14,9 +16,6 @@
         "gulp-uglify": "1.5.1",
         "requirejs": "2.1.9",
         "jsdoc": "3.4.0",
-        "minami": "git://github.com/LuckyKat/minami.git",
-        "gl-sprites": "git://github.com/LuckyKat/gl-sprites.git",
-        "gl-texture2d": "^2.0.7",
-        "webpack": "1.13.1"
+        "minami": "git://github.com/LuckyKat/minami.git"
     }
 }
