@@ -50,6 +50,7 @@ bento.define('bento/gui/togglebutton', [
             sprite = settings.sprite || new Sprite({
                 image: settings.image,
                 imageName: settings.imageName,
+                originRelative: settings.originRelative || new Vector2(0.5, 0.5),
                 frameWidth: settings.frameWidth,
                 frameHeight: settings.frameHeight,
                 frameCountX: settings.frameCountX,
@@ -59,7 +60,6 @@ bento.define('bento/gui/togglebutton', [
             entitySettings = Utils.extend({
                 z: 0,
                 name: 'toggleButton',
-                originRelative: new Vector2(0.5, 0.5),
                 position: new Vector2(0, 0),
                 components: [
                     sprite,

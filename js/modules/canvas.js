@@ -131,7 +131,8 @@ bento.define('bento/canvas', [
         // init sprite
         packedImage = new PackedImage(canvas);
         sprite = new Sprite({
-            image: packedImage
+            image: packedImage,
+            originRelative: settings.originRelative
         });
 
         // init entity and its components
@@ -147,7 +148,6 @@ bento.define('bento/canvas', [
             z: settings.z,
             name: settings.name,
             origin: settings.origin,
-            originRelative: settings.originRelative,
             position: settings.position,
             components: components,
             family: settings.family,

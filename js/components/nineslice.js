@@ -1,6 +1,10 @@
 /**
  * Nineslice component
+ * <br>Exports: Constructor
+ * @module bento/components/nineslice
  * @moduleName NineSlice
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  */
 bento.define('bento/components/nineslice', [
     'bento',
@@ -33,6 +37,11 @@ bento.define('bento/components/nineslice', [
         this.rootIndex = -1;
         this.name = 'nineslice';
         this.visible = true;
+        this.origin = settings.origin || new Vector2(0, 0);
+
+        if (settings.originRelative) {
+            this.setOriginRelative(settings.originRelative);
+        }
 
         // component settings
         this._width = 0;
@@ -46,6 +55,7 @@ bento.define('bento/components/nineslice', [
         this.sliceWidth = 0;
         this.sliceHeight = 0;
 
+        this.settings = settings;
         this.setup(settings);
     };
 
@@ -96,6 +106,8 @@ bento.define('bento/components/nineslice', [
 
         if (this.entity) {
             // set dimension of entity object
+            this.entity.dimension.x = -this.origin.x;
+            this.entity.dimension.y = -this.origin.y;
             this.entity.dimension.width = this._width;
             this.entity.dimension.height = this._height;
         }
@@ -105,6 +117,8 @@ bento.define('bento/components/nineslice', [
     NineSlice.prototype.attached = function (data) {
         this.entity = data.entity;
         // set dimension of entity object
+        this.entity.dimension.x = -this.origin.x;
+        this.entity.dimension.y = -this.origin.y;
         this.entity.dimension.width = this._width;
         this.entity.dimension.height = this._height;
     };
@@ -113,8 +127,15 @@ bento.define('bento/components/nineslice', [
         this._width = Utils.isDefined(width) ? width : this._width;
         this._width = Math.max(this._width, 0);
         if (this.entity) {
-            var relOriginX = this.entity.origin.x / this.entity.dimension.width;
             this.entity.dimension.width = this._width;
+            if (this.settings.originRelative) {
+                // recalculate relative origin
+                this.origin.x = this.settings.originRelative.x * this._width;
+            }
+            this.entity.dimension.x = -this.origin.x;
+
+            // TODO: deprecated
+            var relOriginX = this.entity.origin.x / this.entity.dimension.width;
             this.entity.origin.x = relOriginX * this._width;
         }
         this.recalculateDimensions();
@@ -124,13 +145,30 @@ bento.define('bento/components/nineslice', [
         this._height = Utils.isDefined(height) ? height : this._height;
         this._height = Math.max(this._height, 0);
         if (this.entity) {
-            var relOriginY = this.entity.origin.y / this.entity.dimension.height;
             this.entity.dimension.height = this._height;
+            if (this.settings.originRelative) {
+                // recalculate relative origin
+                this.origin.y = this.settings.originRelative.y * this._height;
+            }
+            this.entity.dimension.y = -this.origin.y;
+
+            // TODO: deprecated
+            var relOriginY = this.entity.origin.y / this.entity.dimension.height;
             this.entity.origin.y = relOriginY * this._height;
         }
         this.recalculateDimensions();
     };
-
+    /**
+     * Sets the origin relatively (0...1), relative to the size of the frame.
+     * @function
+     * @param {Vector2} origin - Position of the origin (relative to upper left corner)
+     * @instance
+     * @name setOriginRelative
+     */
+    NineSlice.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = originRelative.x * this._width;
+        this.origin.y = originRelative.y * this._height;
+    };
     NineSlice.prototype.recalculateDimensions = function () {
         this.innerWidth = Math.max(0, this._width - this.sliceWidth * 2);
         this.innerHeight = Math.max(0, this._height - this.sliceHeight * 2);
@@ -157,12 +195,23 @@ bento.define('bento/components/nineslice', [
             height = this.sliceHeight;
         }
 
-        renderer.drawImage(this.spriteImage, sx, sy, this.sliceWidth, this.sliceHeight, x, y, width, height);
+        renderer.drawImage(
+            this.spriteImage,
+            sx,
+            sy,
+            this.sliceWidth,
+            this.sliceHeight,
+            x,
+            y,
+            width,
+            height
+        );
     };
 
     NineSlice.prototype.draw = function (data) {
         var entity = data.entity;
-        var origin = data.entity.origin;
+        // TODO: deprecate data.entity.origin
+        var origin = data.entity.origin.add(this.origin);
 
         if (this._width === 0 || this._height === 0) {
             return;

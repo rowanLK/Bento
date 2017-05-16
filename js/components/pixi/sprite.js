@@ -23,7 +23,8 @@ bento.define('bento/components/pixi/sprite', [
     PixiSprite.prototype.constructor = PixiSprite;
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity,
-            origin = entity.origin;
+            // TODO: deprecate entity.origin
+            eOrigin = entity.origin;
 
         if (!this.currentAnimation || !this.visible) {
             return;
@@ -38,9 +39,9 @@ bento.define('bento/components/pixi/sprite', [
         );
 
         // draw with pixi
-        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
+        data.renderer.translate(-Math.round(eOrigin.x - this.origin.x), -Math.round(eOrigin.y - this.origin.y));
         data.renderer.drawPixi(this.sprite);
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+        data.renderer.translate(Math.round(eOrigin.x - this.origin.x), Math.round(eOrigin.y - this.origin.y));
     };
     PixiSprite.prototype.updateSprite = function (packedImage, sx, sy, sw, sh) {
         var rectangle;

@@ -25,9 +25,9 @@ var entity = new Entity({
     z: 0,
     name: 'myEntity',
     position: new Vector2(32, 32),
-    originRelative: new Vector2(0.5, 1),    // bottom center origin
     components: [new Sprite({
-        imageName: 'myImage'
+        imageName: 'myImage',
+        originRelative: new Vector2(0.5, 1)    // bottom center origin
     })] // see Sprite module
  });
  * // attach entity to Bento Objects
@@ -132,7 +132,7 @@ bento.define('bento/entity', [
          */
         this.position = new Vector2(0, 0);
         /**
-         * Origin of the entity (anchor point)
+         * (Deprecated) Origin of the entity (anchor point)
          * @instance
          * @default Vector2(0, 0)
          * @name origin
@@ -223,7 +223,7 @@ bento.define('bento/entity', [
                 this.position = settings.position; // should this be cloned?
             }
             if (settings.origin) {
-                this.origin = settings.origin;
+                this.origin = settings.origin; // TODO: deprecated
             }
             if (settings.dimension) {
                 this.dimension = settings.dimension;
@@ -266,7 +266,7 @@ bento.define('bento/entity', [
 
             // origin relative depends on dimension, so do this after attaching components
             if (settings.originRelative) {
-                this.setOriginRelative(settings.originRelative);
+                this.setOriginRelative(settings.originRelative); // TODO: deprecated
             }
 
             // you might want to do things before the entity returns
@@ -309,8 +309,8 @@ entity.addX(10);
     /**
      * Returns the bounding box of an entity that's ready to be compared for collisions.
      * If no bounding box was set to entity.boundingBox, the dimension assumed as bounding box size.
-     * entity.boundingBox is a Rectangle set relatively the entity's origin, while getBoundingBox returns
-     * a rectangle that's positioned in the world and scaled appropiately (AABB only, does not take into account rotation)
+     * entity.boundingBox is a Rectangle relative the entity's position, while getBoundingBox returns
+     * a rectangle that's positioned in world space and scaled appropiately (AABB only, does not take into account rotation)
      * @function
      * @returns {Rectangle} boundingbox - Entity's boundingbox with translation and scaling
      * @instance
@@ -332,27 +332,10 @@ entity.addX(10);
         return box;
     };
     Entity.prototype.getBoundingBox = function () {
-        var scale, x1, x2, y1, y2, box;
-        if (!this.boundingBox) {
-            scale = this.scale ? this.scale : new Vector2(1, 1);
-            x1 = this.position.x - this.origin.x * scale.x;
-            y1 = this.position.y - this.origin.y * scale.y;
-            x2 = this.position.x + (this.dimension.width - this.origin.x) * scale.x;
-            y2 = this.position.y + (this.dimension.height - this.origin.y) * scale.y;
-            // swap variables if scale is negative
-            if (scale.x < 0) {
-                x2 = [x1, x1 = x2][0];
-            }
-            if (scale.y < 0) {
-                y2 = [y1, y1 = y2][0];
-            }
-            return new Rectangle(x1, y1, x2 - x1, y2 - y1);
-        } else {
-            return correctBoundingBox(this, this.boundingBox);
-        }
+        return correctBoundingBox(this, this.boundingBox || this.dimension);
     };
     /**
-     * Sets the origin relatively (0...1), relative to the dimension of the entity.
+     * (Deprecated) Sets the origin relatively (0...1), relative to the dimension of the entity.
      * @function
      * @param {Vector2} origin - Position of the origin (relative to upper left corner of the dimension)
      * @instance

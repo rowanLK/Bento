@@ -53,12 +53,14 @@ bento.define('bento/gui/clickbutton', [
         var nsSettings = settings.nineSliceSettings || null;
         var nineSlice = !nsSettings ? null : new NineSlice({
             imageName: nsSettings.animations.up,
+            originRelative: settings.originRelative || new Vector2(0.5, 0.5),
             width: nsSettings.width,
             height: nsSettings.height
         });
         var sprite = nineSlice ? null : settings.sprite || new Sprite({
             image: settings.image,
             imageName: settings.imageName,
+            originRelative: settings.originRelative || new Vector2(0.5, 0.5),
             frameWidth: settings.frameWidth,
             frameHeight: settings.frameHeight,
             frameCountX: settings.frameCountX,
@@ -152,7 +154,6 @@ bento.define('bento/gui/clickbutton', [
         var entitySettings = Utils.extend({
             z: 0,
             name: 'clickButton',
-            originRelative: new Vector2(0.5, 0.5),
             position: new Vector2(0, 0),
             components: [
                 visualComponent,
