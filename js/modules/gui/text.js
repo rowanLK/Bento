@@ -805,7 +805,7 @@ bento.define('bento/gui/text', [
                 }
                 updateCanvas();
 
-                return fontSize;
+                return fontSize / sharpness;
             }
         });
 
