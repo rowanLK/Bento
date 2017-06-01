@@ -16958,6 +16958,8 @@ bento.define('bento/gui/text', [
                     fontSizeCache[hash] = fontSize;
                 }
                 updateCanvas();
+
+                return fontSize / sharpness;
             }
         });
 
