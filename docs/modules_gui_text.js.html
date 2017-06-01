@@ -61,8 +61,8 @@
  * @param {Boolean} [settings.shadow] - Draws a shadow under the text
  * @param {Vector2} [settings.shadowOffset] - Offset of shadow
  * @param {String} [settings.shadowColor] - Color of the shadow (CSS color specification)
- * @param {Number} [settings.maxWidth] - Maximum width for the text. If the the text goes over this, it will first start adding linebreaks. If that doesn't help it will start scaling ifself down.
- * @param {Number} [settings.maxHeight] - Maximum height for the text. If the the text goes over this, it will start scaling itself down.
+ * @param {Number} [settings.maxWidth] - Maximum width for the text. If the the text goes over this, it will first start adding linebreaks. If that doesn't help it will start scaling ifself down. Use null to reset maxWidth.
+ * @param {Number} [settings.maxHeight] - Maximum height for the text. If the the text goes over this, it will start scaling itself down. Use null to reset maxHeight.
  * @param {Number} [settings.linebreaks] - Allow the module to add linebreaks to fit text with maxWidth (default true)
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
@@ -182,9 +182,6 @@ bento.define('bento/gui/text', [
             }
             if (textSettings.fontSize) {
                 textSettings.fontSize *= sharpness;
-            }
-            if (textSettings.maxWidth) {
-                textSettings.maxWidth *= sharpness;
             }
 
             /*
@@ -318,14 +315,10 @@ bento.define('bento/gui/text', [
                 linebreaks = textSettings.linebreaks;
             }
             if (Utils.isDefined(textSettings.maxWidth)) {
-                maxWidth = textSettings.maxWidth;
-            } else {
-                maxWidth = null;
+                maxWidth = textSettings.maxWidth * sharpness;
             }
             if (Utils.isDefined(textSettings.maxHeight)) {
                 maxHeight = textSettings.maxHeight * sharpness;
-            } else {
-                maxHeight = null;
             }
             if (Utils.isDefined(textSettings.margin)) {
                 margin = textSettings.margin;
@@ -845,6 +838,8 @@ bento.define('bento/gui/text', [
                     fontSizeCache[hash] = fontSize;
                 }
                 updateCanvas();
+
+                return fontSize / sharpness;
             }
         });
 
