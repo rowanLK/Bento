@@ -783,7 +783,7 @@ bento.define('bento/gui/text', [
 
                 // check width and height
                 if (!isEmpty(maxWidth) || !isEmpty(maxHeight)) {
-                    hash = Utils.checksum(str);
+                    hash = Utils.checksum(str + '_' + maxWidth + '_' + maxHeight);
                 }
                 if (Utils.isDefined(fontSizeCache[hash])) {
                     fontSize = fontSizeCache[hash];
