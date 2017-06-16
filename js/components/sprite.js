@@ -379,7 +379,7 @@ bento.define('bento/components/sprite', [
         }
 
         var frameSpeed = this.currentAnimation.speed || 1;
-        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length >= this.currentFrame) {
             frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
         }
 
