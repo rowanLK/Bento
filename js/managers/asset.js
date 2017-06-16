@@ -10,8 +10,14 @@
 bento.define('bento/managers/asset', [
     'bento/packedimage',
     'bento/utils',
-    'audia'
-], function (PackedImage, Utils, Audia) {
+    'audia',
+    'lzstring'
+], function (
+    PackedImage, 
+    Utils, 
+    Audia,
+    LZString
+) {
     'use strict';
     return function () {
         var assetGroups = {};
@@ -59,7 +65,7 @@ bento.define('bento/managers/asset', [
                 callback('This audio type is not supported:', name, source);
             }
         };
-        var loadJSON = function (name, source, callback) {
+        var loadJSON = function (name, source, callback, isCompressed) {
             var xhr = new window.XMLHttpRequest();
             if (xhr.overrideMimeType) {
                 xhr.overrideMimeType('application/json');
@@ -77,10 +83,16 @@ bento.define('bento/managers/asset', [
                 if (xhr.readyState === 4) {
                     if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
                         try {
-                            jsonData = JSON.parse(xhr.responseText);
+                            if (isCompressed) {
+                                // decompress if needed
+                                jsonData = JSON.parse(LZString.decompressFromBase64(xhr.responseText));
+                            } else {
+                                jsonData = JSON.parse(xhr.responseText);
+                            }
                         } catch (e) {
-                            Utils.log('ERROR: Could not parse JSON ' + name + ' at ' + source);
+                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source);
                             console.log('Trying to parse', xhr.responseText);
+                            jsonData = xhr.responseText;
                         }
                         callback(null, name, jsonData);
                     } else {
@@ -89,6 +101,9 @@ bento.define('bento/managers/asset', [
                 }
             };
             xhr.send(null);
+        };
+        var loadJsonCompressed = function (name, source, callback) {
+            return loadJSON(name, source, callback, true);
         };
         var loadBinary = function (name, source, success, failure) {
             var xhr = new window.XMLHttpRequest();
@@ -326,6 +341,22 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            var onLoadJsonPack = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                // unpack json into multiple jsons
+                var key;
+                for (key in json) {
+                    assets.json[key] = json[key];
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
             var onLoadTTF = function (err, name, ttf) {
                 if (err) {
                     Utils.log(err);
@@ -427,6 +458,11 @@ bento.define('bento/managers/asset', [
                     }
                     readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
                 }
+            }
+            // get (compressed) packed json
+            if (Utils.isDefined(group.jsonpack)) {
+                assetCount += 1;
+                readyForLoading(loadJsonCompressed, 'packed', path + 'jsonpack/packed.json', onLoadJsonPack);
             }
             // get fonts
             if (Utils.isDefined(group.fonts)) {
