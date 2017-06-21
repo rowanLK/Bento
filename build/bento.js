@@ -16935,20 +16935,20 @@ bento.define('bento/gui/text', [
                 text = str;
                 setupStrings();
 
-                // check width and height
+                // check maxWidth and maxHeight
                 if (!isEmpty(maxWidth) || !isEmpty(maxHeight)) {
                     hash = Utils.checksum(str + '_' + maxWidth + '_' + maxHeight);
-                }
-                if (Utils.isDefined(fontSizeCache[hash])) {
-                    fontSize = fontSizeCache[hash];
-                    setupStrings();
-                } else {
-                    while (fontSize > 0 && ((!isEmpty(maxWidth) && canvasWidth > maxWidth) || (!isEmpty(maxHeight) && canvasHeight > maxHeight))) {
-                        // try again by reducing fontsize
-                        fontSize -= 1;
+                    if (Utils.isDefined(fontSizeCache[hash])) {
+                        fontSize = fontSizeCache[hash];
                         setupStrings();
+                    } else {
+                        while (fontSize > 0 && ((!isEmpty(maxWidth) && canvasWidth > maxWidth) || (!isEmpty(maxHeight) && canvasHeight > maxHeight))) {
+                            // try again by reducing fontsize
+                            fontSize -= 1;
+                            setupStrings();
+                        }
+                        fontSizeCache[hash] = fontSize;
                     }
-                    fontSizeCache[hash] = fontSize;
                 }
                 updateCanvas();
 
