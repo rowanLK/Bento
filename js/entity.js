@@ -237,6 +237,9 @@ bento.define('bento/entity', [
             if (Utils.isDefined(settings.rotation)) {
                 this.rotation = settings.rotation;
             }
+            if (Utils.isDefined(settings.visible)) {
+                this.visible = settings.visible;
+            }
 
             this.z = settings.z || 0;
             this.updateWhenPaused = settings.updateWhenPaused || 0;
