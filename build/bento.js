@@ -17036,6 +17036,9 @@ bento.define('bento/gui/togglebutton', [
                     sprite,
                     new Clickable({
                         onClick: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation('down');
                             EventSystem.fire('toggleButton-toggle-down', {
                                 entity: entity,
@@ -17043,6 +17046,9 @@ bento.define('bento/gui/togglebutton', [
                             });
                         },
                         onHoldEnter: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation('down');
                             EventSystem.fire('toggleButton-toggle-down', {
                                 entity: entity,
@@ -17050,6 +17056,9 @@ bento.define('bento/gui/togglebutton', [
                             });
                         },
                         onHoldLeave: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation(toggled ? 'down' : 'up');
                             EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
@@ -17057,6 +17066,9 @@ bento.define('bento/gui/togglebutton', [
                             });
                         },
                         pointerUp: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation(toggled ? 'down' : 'up');
                             EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
