@@ -5129,7 +5129,7 @@ Bento.objects.attach(entity);
         var i, l, component;
         var components = this.components;
         var matrix;
-        if (!this.visible) {
+        if (!this.visible || !this.transform.visible) {
             return;
         }
         data = data || Bento.getGameData();
@@ -5639,6 +5639,7 @@ bento.define('bento/transform', [
         // additional transforms
         this.x = 0;
         this.y = 0;
+        this.visible = true; // only checked by entity
     };
 
     Transform.prototype.draw = function (data) {

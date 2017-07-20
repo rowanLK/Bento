@@ -829,7 +829,7 @@ Bento.objects.attach(entity);
         var i, l, component;
         var components = this.components;
         var matrix;
-        if (!this.visible) {
+        if (!this.visible || !this.transform.visible) {
             return;
         }
         data = data || Bento.getGameData();
