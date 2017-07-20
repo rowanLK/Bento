@@ -7401,6 +7401,7 @@ bento.define('bento/components/nineslice', [
  * @module bento/components/sprite
  * @moduleName Sprite
  * @param {Object} settings - Settings
+ * @param {String} settings.name - Overwites the component name (default is "sprite")
  * @param {String} settings.spriteSheet - (Using spritesheet assets) Asset name for the spriteSheet asset. If one uses spritesheet assets, this is the only parameter that is needed.
  * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
@@ -7460,7 +7461,7 @@ bento.define('bento/components/sprite', [
             return new Sprite(settings);
         }
         this.entity = null;
-        this.name = 'sprite';
+        this.name = settings.name || 'sprite';
         this.visible = true;
         this.parent = null;
         this.rootIndex = -1;
@@ -13975,6 +13976,7 @@ bento.define('bento/tiled', [
         var onComplete = settings.onComplete;
         var onSpawn = settings.onSpawn;
         var onSpawnComplete = settings.onSpawnComplete;
+        var onLayerMergeCheck = settings.onLayerMergeCheck;
         var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
@@ -14032,10 +14034,19 @@ bento.define('bento/tiled', [
 
                 return json;
             },
-            onLayer: function (layer) {
+            onLayer: function (layer, index) {
+                var shouldMerge = false;
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
-                        currentSpriteLayer += 1;
+                        // check per layer
+                        if (onLayerMergeCheck) {
+                            shouldMerge = onLayerMergeCheck(layer);
+                        }
+                        if (shouldMerge) {
+                            currentSpriteLayer = 0;
+                        } else {
+                            currentSpriteLayer = index;
+                        }
                     } else {
                         currentSpriteLayer = 0;
                     }
@@ -14552,7 +14563,7 @@ bento.define('bento/tiledreader', [], function () {
                 type = layer.type;
 
                 if (onLayer) {
-                    onLayer(layer);
+                    onLayer(layer, k);
                 }
                 if (type === 'tilelayer') {
                     // skip layer if invisible???
