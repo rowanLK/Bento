@@ -252,12 +252,12 @@ bento.define('bento/tiled', [
                             shouldMerge = onLayerMergeCheck(layer);
                         }
                         if (shouldMerge) {
-                            currentSpriteLayer = 0;
+                            currentSpriteLayer = 9999;
                         } else {
                             currentSpriteLayer = index;
                         }
                     } else {
-                        currentSpriteLayer = 0;
+                        currentSpriteLayer = 9999;
                     }
                 }
                 opacity = layer.opacity;
@@ -330,7 +330,7 @@ bento.define('bento/tiled', [
                         });
                         entity = new Entity({
                             z: 0,
-                            name: tiledLayer.name || 'background',
+                            name: tiledLayer ?  tiledLayer.name || 'tiledLayer' : 'tiledLayer',
                             family: ['backgrounds'],
                             position: new Vector2(
                                 offset.x + canvasSize.x * (j % spritesCountX),
