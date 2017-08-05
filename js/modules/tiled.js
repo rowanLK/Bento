@@ -185,6 +185,7 @@ bento.define('bento/tiled', [
         var onComplete = settings.onComplete;
         var onSpawn = settings.onSpawn;
         var onSpawnComplete = settings.onSpawnComplete;
+        var onLayerMergeCheck = settings.onLayerMergeCheck;
         var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
@@ -242,12 +243,21 @@ bento.define('bento/tiled', [
 
                 return json;
             },
-            onLayer: function (layer) {
+            onLayer: function (layer, index) {
+                var shouldMerge = false;
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
-                        currentSpriteLayer += 1;
+                        // check per layer
+                        if (onLayerMergeCheck) {
+                            shouldMerge = onLayerMergeCheck(layer);
+                        }
+                        if (shouldMerge) {
+                            currentSpriteLayer = 9999;
+                        } else {
+                            currentSpriteLayer = index;
+                        }
                     } else {
-                        currentSpriteLayer = 0;
+                        currentSpriteLayer = 9999;
                     }
                 }
                 opacity = layer.opacity;
@@ -320,7 +330,7 @@ bento.define('bento/tiled', [
                         });
                         entity = new Entity({
                             z: 0,
-                            name: tiledLayer.name || 'background',
+                            name: tiledLayer ?  tiledLayer.name || 'tiledLayer' : 'tiledLayer',
                             family: ['backgrounds'],
                             position: new Vector2(
                                 offset.x + canvasSize.x * (j % spritesCountX),

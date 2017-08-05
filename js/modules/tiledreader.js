@@ -186,7 +186,7 @@ bento.define('bento/tiledreader', [], function () {
                 type = layer.type;
 
                 if (onLayer) {
-                    onLayer(layer);
+                    onLayer(layer, k);
                 }
                 if (type === 'tilelayer') {
                     // skip layer if invisible???

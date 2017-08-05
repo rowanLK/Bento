@@ -237,6 +237,9 @@ bento.define('bento/entity', [
             if (Utils.isDefined(settings.rotation)) {
                 this.rotation = settings.rotation;
             }
+            if (Utils.isDefined(settings.visible)) {
+                this.visible = settings.visible;
+            }
 
             this.z = settings.z || 0;
             this.updateWhenPaused = settings.updateWhenPaused || 0;
@@ -826,7 +829,7 @@ Bento.objects.attach(entity);
         var i, l, component;
         var components = this.components;
         var matrix;
-        if (!this.visible) {
+        if (!this.visible || !this.transform.visible) {
             return;
         }
         data = data || Bento.getGameData();

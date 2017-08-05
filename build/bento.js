@@ -4537,6 +4537,9 @@ bento.define('bento/entity', [
             if (Utils.isDefined(settings.rotation)) {
                 this.rotation = settings.rotation;
             }
+            if (Utils.isDefined(settings.visible)) {
+                this.visible = settings.visible;
+            }
 
             this.z = settings.z || 0;
             this.updateWhenPaused = settings.updateWhenPaused || 0;
@@ -5126,7 +5129,7 @@ Bento.objects.attach(entity);
         var i, l, component;
         var components = this.components;
         var matrix;
-        if (!this.visible) {
+        if (!this.visible || !this.transform.visible) {
             return;
         }
         data = data || Bento.getGameData();
@@ -5636,6 +5639,7 @@ bento.define('bento/transform', [
         // additional transforms
         this.x = 0;
         this.y = 0;
+        this.visible = true; // only checked by entity
     };
 
     Transform.prototype.draw = function (data) {
@@ -7559,6 +7563,7 @@ bento.define('bento/components/nineslice', [
  * @module bento/components/sprite
  * @moduleName Sprite
  * @param {Object} settings - Settings
+ * @param {String} settings.name - Overwites the component name (default is "sprite")
  * @param {String} settings.spriteSheet - (Using spritesheet assets) Asset name for the spriteSheet asset. If one uses spritesheet assets, this is the only parameter that is needed.
  * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
@@ -7618,7 +7623,7 @@ bento.define('bento/components/sprite', [
             return new Sprite(settings);
         }
         this.entity = null;
-        this.name = 'sprite';
+        this.name = settings.name || 'sprite';
         this.visible = true;
         this.parent = null;
         this.rootIndex = -1;
@@ -7934,7 +7939,7 @@ bento.define('bento/components/sprite', [
         }
 
         var frameSpeed = this.currentAnimation.speed || 1;
-        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length >= this.currentFrame) {
             frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
         }
 
@@ -14133,6 +14138,7 @@ bento.define('bento/tiled', [
         var onComplete = settings.onComplete;
         var onSpawn = settings.onSpawn;
         var onSpawnComplete = settings.onSpawnComplete;
+        var onLayerMergeCheck = settings.onLayerMergeCheck;
         var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
@@ -14190,10 +14196,19 @@ bento.define('bento/tiled', [
 
                 return json;
             },
-            onLayer: function (layer) {
+            onLayer: function (layer, index) {
+                var shouldMerge = false;
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
-                        currentSpriteLayer += 1;
+                        // check per layer
+                        if (onLayerMergeCheck) {
+                            shouldMerge = onLayerMergeCheck(layer);
+                        }
+                        if (shouldMerge) {
+                            currentSpriteLayer = 0;
+                        } else {
+                            currentSpriteLayer = index;
+                        }
                     } else {
                         currentSpriteLayer = 0;
                     }
@@ -14710,7 +14725,7 @@ bento.define('bento/tiledreader', [], function () {
                 type = layer.type;
 
                 if (onLayer) {
-                    onLayer(layer);
+                    onLayer(layer, k);
                 }
                 if (type === 'tilelayer') {
                     // skip layer if invisible???
@@ -16335,8 +16350,8 @@ bento.define('bento/gui/counter', [
  * @param {Boolean} [settings.shadow] - Draws a shadow under the text
  * @param {Vector2} [settings.shadowOffset] - Offset of shadow
  * @param {String} [settings.shadowColor] - Color of the shadow (CSS color specification)
- * @param {Number} [settings.maxWidth] - Maximum width for the text. If the the text goes over this, it will first start adding linebreaks. If that doesn't help it will start scaling ifself down.
- * @param {Number} [settings.maxHeight] - Maximum height for the text. If the the text goes over this, it will start scaling itself down.
+ * @param {Number} [settings.maxWidth] - Maximum width for the text. If the the text goes over this, it will first start adding linebreaks. If that doesn't help it will start scaling ifself down. Use null to reset maxWidth.
+ * @param {Number} [settings.maxHeight] - Maximum height for the text. If the the text goes over this, it will start scaling itself down. Use null to reset maxHeight.
  * @param {Number} [settings.linebreaks] - Allow the module to add linebreaks to fit text with maxWidth (default true)
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
@@ -16456,9 +16471,6 @@ bento.define('bento/gui/text', [
             }
             if (textSettings.fontSize) {
                 textSettings.fontSize *= sharpness;
-            }
-            if (textSettings.maxWidth) {
-                textSettings.maxWidth *= sharpness;
             }
 
             /*
@@ -16592,14 +16604,10 @@ bento.define('bento/gui/text', [
                 linebreaks = textSettings.linebreaks;
             }
             if (Utils.isDefined(textSettings.maxWidth)) {
-                maxWidth = textSettings.maxWidth;
-            } else {
-                maxWidth = null;
+                maxWidth = textSettings.maxWidth * sharpness;
             }
             if (Utils.isDefined(textSettings.maxHeight)) {
                 maxHeight = textSettings.maxHeight * sharpness;
-            } else {
-                maxHeight = null;
             }
             if (Utils.isDefined(textSettings.margin)) {
                 margin = textSettings.margin;
@@ -17103,22 +17111,24 @@ bento.define('bento/gui/text', [
                 text = str;
                 setupStrings();
 
-                // check width and height
+                // check maxWidth and maxHeight
                 if (!isEmpty(maxWidth) || !isEmpty(maxHeight)) {
-                    hash = Utils.checksum(str);
-                }
-                if (Utils.isDefined(fontSizeCache[hash])) {
-                    fontSize = fontSizeCache[hash];
-                    setupStrings();
-                } else {
-                    while (fontSize > 0 && ((!isEmpty(maxWidth) && canvasWidth > maxWidth) || (!isEmpty(maxHeight) && canvasHeight > maxHeight))) {
-                        // try again by reducing fontsize
-                        fontSize -= 1;
+                    hash = Utils.checksum(str + '_' + maxWidth + '_' + maxHeight);
+                    if (Utils.isDefined(fontSizeCache[hash])) {
+                        fontSize = fontSizeCache[hash];
                         setupStrings();
+                    } else {
+                        while (fontSize > 0 && ((!isEmpty(maxWidth) && canvasWidth > maxWidth) || (!isEmpty(maxHeight) && canvasHeight > maxHeight))) {
+                            // try again by reducing fontsize
+                            fontSize -= 1;
+                            setupStrings();
+                        }
+                        fontSizeCache[hash] = fontSize;
                     }
-                    fontSizeCache[hash] = fontSize;
                 }
                 updateCanvas();
+
+                return fontSize / sharpness;
             }
         });
 
@@ -17199,6 +17209,9 @@ bento.define('bento/gui/togglebutton', [
                     sprite,
                     new Clickable({
                         onClick: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation('down');
                             EventSystem.fire('toggleButton-toggle-down', {
                                 entity: entity,
@@ -17206,6 +17219,9 @@ bento.define('bento/gui/togglebutton', [
                             });
                         },
                         onHoldEnter: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation('down');
                             EventSystem.fire('toggleButton-toggle-down', {
                                 entity: entity,
@@ -17213,6 +17229,9 @@ bento.define('bento/gui/togglebutton', [
                             });
                         },
                         onHoldLeave: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation(toggled ? 'down' : 'up');
                             EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
@@ -17220,6 +17239,9 @@ bento.define('bento/gui/togglebutton', [
                             });
                         },
                         pointerUp: function () {
+                            if (!active) {
+                                return;
+                            }
                             sprite.setAnimation(toggled ? 'down' : 'up');
                             EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                                 entity: entity,
