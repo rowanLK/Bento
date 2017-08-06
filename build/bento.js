@@ -16079,8 +16079,8 @@ bento.define('bento/gui/clickbutton', [
                 }
                 nsSettings.width = width;
                 nsSettings.height = height;
-                visualComponent.setWidth(width);
-                visualComponent.setHeight(height);
+                visualComponent.width = width;
+                visualComponent.height = height;
             }
         });
 
