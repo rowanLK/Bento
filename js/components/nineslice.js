@@ -10,6 +10,17 @@
  * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
  * @param {Vector2} settings.width - Width of the desired box
  * @param {Vector2} settings.height - Height of the desired box
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between slices
+ * @param {Number} settings.framePaddding - Pixelsize between frames
+ * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  */
 bento.define('bento/components/nineslice', [
     'bento',
@@ -58,6 +69,7 @@ bento.define('bento/components/nineslice', [
         this.frameHeight = 0;
         this.frameCountX = 1;
         this.frameCountY = 1;
+        this.framePadding = 0;
 
         // drawing internals
         this.sliceWidth = 0;
