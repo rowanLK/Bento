@@ -7155,7 +7155,7 @@ bento.define('bento/components/fill', [
     return Fill;
 });
 /**
- * Nineslice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
+ * NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
  * where the corners don't get deformed.
  * <br>Exports: Constructor
  * @module bento/components/nineslice
@@ -7172,6 +7172,11 @@ bento.define('bento/components/fill', [
  * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
  * @param {Number} settings.paddding - Pixelsize between slices
  * @param {Number} settings.framePaddding - Pixelsize between frames
+ * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  */
 bento.define('bento/components/nineslice', [
     'bento',
@@ -7398,33 +7403,28 @@ bento.define('bento/components/nineslice', [
         return this.currentFrame;
     };
 
-    NineSlice.prototype.setWidth = function(width) {
-        this._width = Utils.isDefined(width) ? width : this._width;
-        this._width = Math.max(this._width, 0);
-        if (this.entity) {
-            this.entity.dimension.width = this._width;
-            if (this.settings.originRelative) {
-                // recalculate relative origin
-                this.origin.x = this.settings.originRelative.x * this._width;
-            }
-            this.entity.dimension.x = -this.origin.x;
+    Object.defineProperty(NineSlice.prototype, 'width', {
+        get: function() {
+            return this._width;
+        },
+        set: function(value) {
+            this._width = Utils.isDefined(value) ? value : this._width;
+            this._width = Math.max(this._width, 0);
+            this._recalculateFlag = true;
         }
-        this._recalculateFlag = true;
-    };
+    });
 
-    NineSlice.prototype.setHeight = function(height) {
-        this._height = Utils.isDefined(height) ? height : this._height;
-        this._height = Math.max(this._height, 0);
-        if (this.entity) {
-            this.entity.dimension.height = this._height;
-            if (this.settings.originRelative) {
-                // recalculate relative origin
-                this.origin.y = this.settings.originRelative.y * this._height;
-            }
-            this.entity.dimension.y = -this.origin.y;
+    Object.defineProperty(NineSlice.prototype, 'height', {
+        get: function() {
+            return this._height;
+        },
+        set: function(value) {
+            this._height = Utils.isDefined(value) ? value : this._height;
+            this._height = Math.max(this._height, 0);
+            this._recalculateFlag = true;
         }
-        this._recalculateFlag = true;
-    };
+    });
+
     /**
      * Sets the origin relatively (0...1), relative to the size of the frame.
      * @function
@@ -7435,10 +7435,16 @@ bento.define('bento/components/nineslice', [
     NineSlice.prototype.setOriginRelative = function(originRelative) {
         this.origin.x = originRelative.x * this._width;
         this.origin.y = originRelative.y * this._height;
+        this.settings.originRelative = originRelative.clone();
     };
 
     NineSlice.prototype.update = function(data) {
         var reachedEnd;
+
+        if (this._recalculateFlag) {
+            this.recalculateDimensions();
+        }
+
         if (!this.currentAnimation) {
             return;
         }
@@ -7472,21 +7478,27 @@ bento.define('bento/components/nineslice', [
                 this.onCompleteCallback = null;
             }
         }
-
-        if (this._recalculateFlag) {
-            recalculateDimensions();
-        }
     };
 
     NineSlice.prototype.recalculateDimensions = function() {
-        this.innerWidth = Math.max(0, this._width - this.sliceWidth * 2);
-        this.innerHeight = Math.max(0, this._height - this.sliceHeight * 2);
+        this.innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
+        this.innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
 
-        this.leftWidth = Math.min(this.sliceWidth, Math.round(this._width / 2));
+        this.leftWidth = Math.min(this.sliceWidth, this._width / 2);
         this.rightWidth = Math.min(this.sliceWidth, this._width - this.leftWidth);
 
-        this.topHeight = Math.min(this.sliceHeight, Math.round(this._height / 2));
+        this.topHeight = Math.min(this.sliceHeight, this._height / 2);
         this.bottomHeight = Math.min(this.sliceHeight, this._height - this.topHeight);
+
+        if (this.settings.originRelative) {
+            // recalculate relative origin
+            this.origin.x = this.settings.originRelative.x * this._width;
+            this.origin.y = this.settings.originRelative.y * this._height;
+        }
+
+        if (this.entity) {
+            this.updateEntity();
+        }
 
         this._recalculateFlag = false;
     };
@@ -7512,8 +7524,8 @@ bento.define('bento/components/nineslice', [
             sy,
             this.sliceWidth,
             this.sliceHeight,
-            x,
-            y,
+            x | 0,
+            y | 0,
             width,
             height
         );
