@@ -174,11 +174,7 @@ bento.define('bento/gui/clickbutton', [
         var setActive = function(bool) {
             active = bool;
 
-            if (visualComponent.name === 'nineslice') {
-                animations = nsSettings.animations;
-            } else {
-                animations = sprite.animations || animations;
-            }
+            animations = visualComponent.animations || animations;
 
             if (!active && animations.inactive) {
                 setAnimation('inactive');

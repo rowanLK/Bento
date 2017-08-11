@@ -4189,12 +4189,12 @@ bento.define('bento', [
             throttle = 1;
 
             // reload current screen
-            Bento.screens.show(screenName || currentScreen.name);
-            // restart the mainloop
-            window.setTimeout(function() {
-                Bento.objects.run();
-                EventSystem.fire('bento-reload', {});
-            }, 120);
+            Bento.screens.show(screenName || currentScreen.name, undefined,
+                function() {
+                    // restart the mainloop
+                    Bento.objects.run();
+                    EventSystem.fire('bentoReload', {});
+                });
         },
         /**
          * Returns a gameData object
@@ -16022,11 +16022,7 @@ bento.define('bento/gui/clickbutton', [
         var setActive = function(bool) {
             active = bool;
 
-            if (visualComponent.name === 'nineslice') {
-                animations = nsSettings.animations;
-            } else {
-                animations = sprite.animations || animations;
-            }
+            animations = visualComponent.animations || animations;
 
             if (!active && animations.inactive) {
                 setAnimation('inactive');
