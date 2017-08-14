@@ -24,7 +24,7 @@ bento.define('bento/gui/clickbutton', [
     'bento/utils',
     'bento/tween',
     'bento/eventsystem'
-], function(
+], function (
     Bento,
     Vector2,
     Rectangle,
@@ -37,7 +37,7 @@ bento.define('bento/gui/clickbutton', [
     EventSystem
 ) {
     'use strict';
-    var ClickButton = function(settings) {
+    var ClickButton = function (settings) {
         var viewport = Bento.getViewport();
         var active = true;
         var animations = settings.animations || {
@@ -78,7 +78,7 @@ bento.define('bento/gui/clickbutton', [
         var wasHoldingThis = false;
         var clickable = new Clickable({
             sort: settings.sort,
-            onClick: function() {
+            onClick: function () {
                 wasHoldingThis = false;
                 if (!active || ClickButton.currentlyPressing) {
                     return;
@@ -93,7 +93,7 @@ bento.define('bento/gui/clickbutton', [
                     event: 'onClick'
                 });
             },
-            onHoldEnter: function() {
+            onHoldEnter: function () {
                 if (!active) {
                     return;
                 }
@@ -106,7 +106,7 @@ bento.define('bento/gui/clickbutton', [
                     event: 'onHoldEnter'
                 });
             },
-            onHoldLeave: function() {
+            onHoldLeave: function () {
                 if (!active) {
                     return;
                 }
@@ -119,7 +119,7 @@ bento.define('bento/gui/clickbutton', [
                     event: 'onHoldLeave'
                 });
             },
-            pointerUp: function() {
+            pointerUp: function () {
                 if (!active) {
                     return;
                 }
@@ -136,7 +136,7 @@ bento.define('bento/gui/clickbutton', [
                     ClickButton.currentlyPressing = null;
                 }
             },
-            onHoldEnd: function() {
+            onHoldEnd: function () {
                 if (active && settings.onClick && (ClickButton.currentlyPressing === entity || wasHoldingThis)) {
                     wasHoldingThis = false;
                     settings.onClick.apply(entity);
@@ -151,7 +151,7 @@ bento.define('bento/gui/clickbutton', [
                 }
                 ClickButton.currentlyPressing = null;
             },
-            onClickMiss: function(data) {
+            onClickMiss: function (data) {
                 if (settings.onClickMiss) {
                     settings.onClickMiss(data);
                 }
@@ -166,12 +166,12 @@ bento.define('bento/gui/clickbutton', [
                 clickable
             ],
             family: ['buttons'],
-            init: function() {
+            init: function () {
                 setActive(active);
             }
         }, settings);
 
-        var setActive = function(bool) {
+        var setActive = function (bool) {
             active = bool;
 
             animations = visualComponent.animations || animations;
@@ -188,7 +188,7 @@ bento.define('bento/gui/clickbutton', [
             }
         };
 
-        var setAnimation = function(animation) {
+        var setAnimation = function (animation) {
             visualComponent.setAnimation(animation);
         };
 
@@ -207,7 +207,7 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name doCallback
              */
-            doCallback: function() {
+            doCallback: function () {
                 settings.onClick.apply(entity);
             },
             /**
@@ -217,7 +217,7 @@ bento.define('bento/gui/clickbutton', [
              * @name isActive
              * @returns {Bool} Whether the button is active
              */
-            isActive: function() {
+            isActive: function () {
                 return active;
             },
             /**
@@ -228,7 +228,7 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name setNineSliceSize
              */
-            setNineSliceSize: function(width, height) {
+            setNineSliceSize: function (width, height) {
                 if (visualComponent.name !== 'nineslice') {
                     console.warn("LK_WARN: Don't use setNineSliceSize if the clickbutton uses a sprite.");
                     return;
@@ -247,12 +247,12 @@ bento.define('bento/gui/clickbutton', [
         // events for the button becoming active
         entity.attach({
             name: 'attachComponent',
-            start: function() {
+            start: function () {
                 EventSystem.fire('clickButton-start', {
                     entity: entity
                 });
             },
-            destroy: function() {
+            destroy: function () {
                 EventSystem.fire('clickButton-destroy', {
                     entity: entity
                 });

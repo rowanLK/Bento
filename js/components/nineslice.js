@@ -30,7 +30,7 @@ bento.define('bento/components/nineslice', [
     'bento/eventsystem',
     'bento/utils',
     'bento/tween'
-], function(
+], function (
     Bento,
     Vector2,
     Rectangle,
@@ -44,7 +44,7 @@ bento.define('bento/components/nineslice', [
      * Describe your settings object parameters
      * @param {Object} settings
      */
-    var NineSlice = function(settings) {
+    var NineSlice = function (settings) {
         if (!(this instanceof NineSlice)) {
             return new NineSlice(settings);
         }
@@ -81,13 +81,13 @@ bento.define('bento/components/nineslice', [
         this.currentAnimationLength = 0;
         this.currentFrame = 0;
 
-        this.onCompleteCallback = function() {};
+        this.onCompleteCallback = function () {};
 
         this.settings = settings;
         this.setup(settings);
     };
 
-    NineSlice.prototype.setup = function(settings) {
+    NineSlice.prototype.setup = function (settings) {
         var self = this;
 
         if (settings.image) {
@@ -102,7 +102,7 @@ bento.define('bento/components/nineslice', [
         } else if (settings.imageFromUrl) {
             // load from url
             if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function(err, asset) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
                     self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
                     self.setup(settings);
 
@@ -183,7 +183,7 @@ bento.define('bento/components/nineslice', [
         this.setAnimation('default');
     };
 
-    NineSlice.prototype.updateEntity = function() {
+    NineSlice.prototype.updateEntity = function () {
         if (!this.entity) return;
         // set dimension of entity object
         this.entity.dimension.x = -this.origin.x;
@@ -192,13 +192,13 @@ bento.define('bento/components/nineslice', [
         this.entity.dimension.height = this._height;
     };
 
-    NineSlice.prototype.attached = function(data) {
+    NineSlice.prototype.attached = function (data) {
         this.entity = data.entity;
 
         this.updateEntity();
     };
 
-    NineSlice.prototype.setAnimation = function(name, callback, keepCurrentFrame) {
+    NineSlice.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
         if (!anim) {
             console.log('Warning: animation ' + name + ' does not exist.');
@@ -227,31 +227,31 @@ bento.define('bento/components/nineslice', [
         }
     };
 
-    NineSlice.prototype.getAnimationName = function() {
+    NineSlice.prototype.getAnimationName = function () {
         return this.currentAnimation.name;
     };
 
-    NineSlice.prototype.setFrame = function(frameNumber) {
+    NineSlice.prototype.setFrame = function (frameNumber) {
         this.currentFrame = frameNumber;
     };
 
-    NineSlice.prototype.getCurrentSpeed = function() {
+    NineSlice.prototype.getCurrentSpeed = function () {
         return this.currentAnimation.speed;
     };
 
-    NineSlice.prototype.setCurrentSpeed = function(value) {
+    NineSlice.prototype.setCurrentSpeed = function (value) {
         this.currentAnimation.speed = value;
     };
 
-    NineSlice.prototype.getCurrentFrame = function() {
+    NineSlice.prototype.getCurrentFrame = function () {
         return this.currentFrame;
     };
 
     Object.defineProperty(NineSlice.prototype, 'width', {
-        get: function() {
+        get: function () {
             return this._width;
         },
-        set: function(value) {
+        set: function (value) {
             this._width = Utils.isDefined(value) ? value : this._width;
             this._width = Math.max(this._width, 0);
             this._recalculateFlag = true;
@@ -259,10 +259,10 @@ bento.define('bento/components/nineslice', [
     });
 
     Object.defineProperty(NineSlice.prototype, 'height', {
-        get: function() {
+        get: function () {
             return this._height;
         },
-        set: function(value) {
+        set: function (value) {
             this._height = Utils.isDefined(value) ? value : this._height;
             this._height = Math.max(this._height, 0);
             this._recalculateFlag = true;
@@ -276,13 +276,13 @@ bento.define('bento/components/nineslice', [
      * @instance
      * @name setOriginRelative
      */
-    NineSlice.prototype.setOriginRelative = function(originRelative) {
+    NineSlice.prototype.setOriginRelative = function (originRelative) {
         this.origin.x = originRelative.x * this._width;
         this.origin.y = originRelative.y * this._height;
         this.settings.originRelative = originRelative.clone();
     };
 
-    NineSlice.prototype.update = function(data) {
+    NineSlice.prototype.update = function (data) {
         var reachedEnd;
 
         if (this._recalculateFlag) {
@@ -324,7 +324,7 @@ bento.define('bento/components/nineslice', [
         }
     };
 
-    NineSlice.prototype.recalculateDimensions = function() {
+    NineSlice.prototype.recalculateDimensions = function () {
         this.innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
         this.innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
 
@@ -347,7 +347,7 @@ bento.define('bento/components/nineslice', [
         this._recalculateFlag = false;
     };
 
-    NineSlice.prototype.fillArea = function(renderer, slice, x, y, width, height) {
+    NineSlice.prototype.fillArea = function (renderer, slice, x, y, width, height) {
         var sx = (this.sliceWidth + this.padding) * (slice % 3) + this.frameX;
         var sy = (this.sliceHeight + this.padding) * Math.floor(slice / 3) + this.frameY;
 
@@ -375,14 +375,14 @@ bento.define('bento/components/nineslice', [
         );
     };
 
-    NineSlice.prototype.updateFrame = function() {
+    NineSlice.prototype.updateFrame = function () {
         var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
         var sourceFrame = this.currentAnimation.frames[frameIndex];
         this.frameX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
         this.frameY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
     };
 
-    NineSlice.prototype.draw = function(data) {
+    NineSlice.prototype.draw = function (data) {
         var entity = data.entity;
         var origin = this.origin;
 

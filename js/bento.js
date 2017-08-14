@@ -24,7 +24,7 @@ bento.define('bento', [
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/renderer'
-], function(
+], function (
     Utils,
     DomReady,
     EventSystem,
@@ -62,7 +62,7 @@ bento.define('bento', [
     var dev = false;
     var gameData = {};
     var viewport = new Rectangle(0, 0, 640, 480);
-    var setupDebug = function() {
+    var setupDebug = function () {
         if (Utils.isCocoonJS()) {
             return;
         }
@@ -81,7 +81,7 @@ bento.define('bento', [
         button.innerHTML = 'button';
         debug.debugBar.appendChild(button);
     };
-    var setupCanvas = function(settings) {
+    var setupCanvas = function (settings) {
         var parent;
         var pixelSize = settings.pixelSize || 1;
         var pixelRatio = window.devicePixelRatio || 1;
@@ -105,7 +105,7 @@ bento.define('bento', [
         canvas.height = viewport.height * pixelSize;
         canvasRatio = viewport.height / viewport.width;
     };
-    var setupRenderer = function(settings, onComplete) {
+    var setupRenderer = function (settings, onComplete) {
         var rendererName;
         settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
 
@@ -120,7 +120,7 @@ bento.define('bento', [
             rendererName = 'bento/renderers/canvas2d';
         }
         // setup renderer
-        new Renderer(rendererName, canvas, settings, function(rend) {
+        new Renderer(rendererName, canvas, settings, function (rend) {
             console.log('Init ' + rend.name + ' as renderer');
             renderer = rend;
             gameData = Bento.getGameData();
@@ -130,7 +130,7 @@ bento.define('bento', [
     /**
      * Bento's default behavior to resize to fit
      */
-    var onResize = function() {
+    var onResize = function () {
         var clientWidth,
             clientHeight,
             innerWidth = window.innerWidth,
@@ -151,9 +151,9 @@ bento.define('bento', [
         canvasScale.x = clientWidth / viewport.width;
         canvasScale.y = clientHeight / viewport.height;
     };
-    var setScreenshotListener = function(evtName) {
+    var setScreenshotListener = function (evtName) {
         var takeScreenshot = false;
-        var openNewBackgroundTab = function(link) {
+        var openNewBackgroundTab = function (link) {
             // TODO: different behavior in Windows, check navigator.platform
             var a = document.createElement("a");
             var evt = document.createEvent("MouseEvents");
@@ -189,10 +189,10 @@ bento.define('bento', [
             return;
         }
 
-        EventSystem.on(evtName, function() {
+        EventSystem.on(evtName, function () {
             takeScreenshot = true;
         });
-        EventSystem.on('postDraw', function(data) {
+        EventSystem.on('postDraw', function (data) {
             if (takeScreenshot) {
                 takeScreenshot = false;
                 openNewBackgroundTab(canvas.toDataURL());
@@ -225,11 +225,11 @@ bento.define('bento', [
          * @param {Object} settings.screenshot - Event name for taking screenshots
          * @param {Function} settings.onComplete - Called when game is loaded
          */
-        setup: function(settings, callback) {
+        setup: function (settings, callback) {
             callback = callback || settings.onComplete || settings.onLoad;
             bentoSettings = settings;
-            DomReady(function() {
-                var runGame = function() {
+            DomReady(function () {
+                var runGame = function () {
                     Bento.objects.run();
                     if (callback) {
                         callback();
@@ -244,7 +244,7 @@ bento.define('bento', [
                 }
                 settings.sortMode = settings.sortMode || 0;
                 setupCanvas(settings);
-                setupRenderer(settings, function() {
+                setupRenderer(settings, function () {
                     dev = settings.dev || false;
                     Utils.setDev(dev);
                     // window resize listeners
@@ -267,7 +267,7 @@ bento.define('bento', [
                         Bento.assets.loadAssetGroups(settings.assetGroups, runGame);
                     } else {
                         // try loadings assets.json from the root folder
-                        Bento.assets.loadAssetsJson(function(error) {
+                        Bento.assets.loadAssetsJson(function (error) {
                             runGame();
                         });
                     }
@@ -276,19 +276,19 @@ bento.define('bento', [
                     // reload keys
                     if (settings.reload) {
                         if (settings.reload.simple) {
-                            EventSystem.on(settings.reload.simple, function() {
+                            EventSystem.on(settings.reload.simple, function () {
                                 Bento.reload();
                             });
                         }
                         if (settings.reload.assets) {
-                            EventSystem.on(settings.reload.assets, function() {
-                                Bento.assets.loadAssetsJson(function(error) {
+                            EventSystem.on(settings.reload.assets, function () {
+                                Bento.assets.loadAssetsJson(function (error) {
                                     Bento.assets.reload(Bento.reload);
                                 });
                             });
                         }
                         if (settings.reload.jump) {
-                            EventSystem.on(settings.reload.jump, function() {
+                            EventSystem.on(settings.reload.jump, function () {
                                 var res = window.prompt('Show which screen?');
                                 Bento.screens.show(res);
                             });
@@ -309,7 +309,7 @@ bento.define('bento', [
          * @returns Object
          * @name getSettings
          */
-        getSettings: function() {
+        getSettings: function () {
             return bentoSettings;
         },
         /**
@@ -322,7 +322,7 @@ bento.define('bento', [
          * @returns Rectangle
          * @name getViewport
          */
-        getViewport: function() {
+        getViewport: function () {
             return viewport;
         },
         /**
@@ -332,7 +332,7 @@ bento.define('bento', [
          * @returns HTML Canvas Element
          * @name getCanvas
          */
-        getCanvas: function() {
+        getCanvas: function () {
             return canvas;
         },
         /**
@@ -342,7 +342,7 @@ bento.define('bento', [
          * @returns Renderer
          * @name getRenderer
          */
-        getRenderer: function() {
+        getRenderer: function () {
             return renderer;
         },
         /**
@@ -353,7 +353,7 @@ bento.define('bento', [
          * @param {String} screenName - screen to show
          * @name reload
          */
-        reload: function(screenName) {
+        reload: function (screenName) {
             var currentScreen;
             if (!Bento.screens) {
                 throw 'Bento has not beens started yet.';
@@ -376,7 +376,7 @@ bento.define('bento', [
 
             // reload current screen
             Bento.screens.show(screenName || currentScreen.name, undefined,
-                function() {
+                function () {
                     // restart the mainloop
                     Bento.objects.run();
                     EventSystem.fire('bentoReload', {});
@@ -398,7 +398,7 @@ bento.define('bento', [
          * @returns {Number} data.throttle - Game speed (1 is normal)
          * @name getGameData
          */
-        getGameData: function() {
+        getGameData: function () {
             return {
                 canvas: canvas,
                 renderer: renderer,
@@ -417,7 +417,7 @@ bento.define('bento', [
          * @returns Number
          * @name getGameSpeed
          */
-        getGameSpeed: function() {
+        getGameSpeed: function () {
             return throttle;
         },
         /**
@@ -428,7 +428,7 @@ bento.define('bento', [
          * @returns Number
          * @name setGameSpeed
          */
-        setGameSpeed: function(value) {
+        setGameSpeed: function (value) {
             throttle = value;
         },
         /**
@@ -438,7 +438,7 @@ bento.define('bento', [
          * @returns Boolean
          * @name isDev
          */
-        isDev: function() {
+        isDev: function () {
             return dev;
         },
         /**
