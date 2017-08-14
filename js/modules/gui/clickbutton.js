@@ -176,10 +176,15 @@ bento.define('bento/gui/clickbutton', [
 
             animations = visualComponent.animations || animations;
 
-            if (!active && animations.inactive) {
-                setAnimation('inactive');
-            } else {
-                setAnimation('up');
+            if (!active) {
+                if (ClickButton.currentlyPressing === entity) {
+                    ClickButton.currentlyPressing = null;
+                }
+                if (animations.inactive) {
+                    setAnimation('inactive');
+                } else {
+                    setAnimation('up');
+                }
             }
         };
 
