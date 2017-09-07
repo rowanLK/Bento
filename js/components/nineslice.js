@@ -151,9 +151,14 @@ bento.define('bento/components/nineslice', [
 
         if (settings.width) {
             this._width = Math.max(settings.width || 0, 0);
+        } else if (settings.innerWidth) {
+            this._width = this.sliceWidth * 2 + Math.max(settings.innerWidth || 0, 0)
         }
+
         if (settings.height) {
             this._height = Math.max(settings.height || 0, 0);
+        } else if (settings.innerHeight) {
+            this._height = this.sliceHeight * 2 + Math.max(settings.innerHeight || 0, 0)
         }
 
         if (this.settings.origin) {
@@ -252,8 +257,7 @@ bento.define('bento/components/nineslice', [
             return this._width;
         },
         set: function (value) {
-            this._width = Utils.isDefined(value) ? value : this._width;
-            this._width = Math.max(this._width, 0);
+            this._width = Math.max(value, 0);
             this._recalculateFlag = true;
         }
     });
@@ -263,8 +267,29 @@ bento.define('bento/components/nineslice', [
             return this._height;
         },
         set: function (value) {
-            this._height = Utils.isDefined(value) ? value : this._height;
-            this._height = Math.max(this._height, 0);
+            this._height = Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerWidth', {
+        get: function () {
+            return Math.max(this._width - this.sliceWidth * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceWidth * 2;
+            this._width = this.sliceWidth * 2 + Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerHeight', {
+        get: function () {
+            return Math.max(this._height - this.sliceHeight * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceHeight * 2;
+            this._height = this.sliceHeight * 2 + Math.max(value, 0);
             this._recalculateFlag = true;
         }
     });
