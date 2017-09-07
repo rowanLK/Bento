@@ -725,6 +725,10 @@ bento.define('bento/gui/text', [
             name: 'text',
             position: new Vector2(0, 0)
         }, settings, true);
+        
+        // merge components array
+        entitySettings.components = settings.components || [];
+
         var entity;
 
         // add the scaler (debugDrawComponent and sprite) as top component
