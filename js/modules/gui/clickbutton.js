@@ -161,15 +161,17 @@ bento.define('bento/gui/clickbutton', [
             z: 0,
             name: 'clickButton',
             position: new Vector2(0, 0),
-            components: [
-                visualComponent,
-                clickable
-            ],
             family: ['buttons'],
             init: function () {
                 setActive(active);
             }
-        }, settings);
+        }, settings, true);
+
+        // merge components array
+        entitySettings.components = [
+            visualComponent,
+            clickable
+        ].concat(settings.components || []);
 
         var setActive = function (bool) {
             active = bool;
