@@ -350,14 +350,14 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.recalculateDimensions = function () {
-        this.innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
-        this.innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
+        this._innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
+        this._innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
 
-        this.leftWidth = Math.min(this.sliceWidth, this._width / 2);
-        this.rightWidth = Math.min(this.sliceWidth, this._width - this.leftWidth);
+        this._leftWidth = Math.min(this.sliceWidth, this._width / 2);
+        this.rightWidth = Math.min(this.sliceWidth, this._width - this._leftWidth);
 
-        this.topHeight = Math.min(this.sliceHeight, this._height / 2);
-        this.bottomHeight = Math.min(this.sliceHeight, this._height - this.topHeight);
+        this._topHeight = Math.min(this.sliceHeight, this._height / 2);
+        this._bottomHeight = Math.min(this.sliceHeight, this._height - this._topHeight);
 
         if (this.settings.originRelative) {
             // recalculate relative origin
@@ -420,25 +420,25 @@ bento.define('bento/components/nineslice', [
         data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
 
         //top left corner
-        this.fillArea(data.renderer, 0, 0, 0, this.leftWidth, this.topHeight);
+        this.fillArea(data.renderer, 0, 0, 0, this._leftWidth, this._topHeight);
         //top stretch
-        this.fillArea(data.renderer, 1, this.leftWidth, 0, this.innerWidth, this.topHeight);
+        this.fillArea(data.renderer, 1, this._leftWidth, 0, this._innerWidth, this._topHeight);
         //top right corner
-        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this.topHeight);
+        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this._topHeight);
 
         //left stretch
-        this.fillArea(data.renderer, 3, 0, this.topHeight, this.leftWidth, this.innerHeight);
+        this.fillArea(data.renderer, 3, 0, this._topHeight, this._leftWidth, this._innerHeight);
         //center stretch
-        this.fillArea(data.renderer, 4, this.leftWidth, this.topHeight, this.innerWidth, this.innerHeight);
+        this.fillArea(data.renderer, 4, this._leftWidth, this._topHeight, this._innerWidth, this._innerHeight);
         //right stretch
-        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this.topHeight, this.rightWidth, this.innerHeight);
+        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this._topHeight, this.rightWidth, this._innerHeight);
 
         //bottom left corner
-        this.fillArea(data.renderer, 6, 0, this._height - this.bottomHeight, this.leftWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 6, 0, this._height - this._bottomHeight, this._leftWidth, this._bottomHeight);
         //bottom stretch
-        this.fillArea(data.renderer, 7, this.leftWidth, this._height - this.bottomHeight, this.innerWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 7, this._leftWidth, this._height - this._bottomHeight, this._innerWidth, this._bottomHeight);
         //bottom right corner
-        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this.bottomHeight, this.rightWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this._bottomHeight, this.rightWidth, this._bottomHeight);
 
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };

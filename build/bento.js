@@ -6795,6 +6795,693 @@ bento.define('bento/utils', [], function () {
 });
 
 /**
+ * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/requirejs/domReady for details
+ */
+/*jslint*/
+/*global require: false, define: false, requirejs: false,
+  window: false, clearInterval: false, document: false,
+  self: false, setInterval: false */
+
+
+bento.define('bento/lib/domready', [], function () {
+    'use strict';
+
+    var isTop, testDiv, scrollIntervalId,
+        isBrowser = typeof window !== "undefined" && window.document,
+        isPageLoaded = !isBrowser,
+        doc = isBrowser ? document : null,
+        readyCalls = [];
+
+    function runCallbacks(callbacks) {
+        var i;
+        for (i = 0; i < callbacks.length; i += 1) {
+            callbacks[i](doc);
+        }
+    }
+
+    function callReady() {
+        var callbacks = readyCalls;
+
+        if (isPageLoaded) {
+            //Call the DOM ready callbacks
+            if (callbacks.length) {
+                readyCalls = [];
+                runCallbacks(callbacks);
+            }
+        }
+    }
+
+    /**
+     * Sets the page as loaded.
+     */
+    function pageLoaded() {
+        if (!isPageLoaded) {
+            isPageLoaded = true;
+            if (scrollIntervalId) {
+                clearInterval(scrollIntervalId);
+            }
+
+            callReady();
+        }
+    }
+
+    if (isBrowser) {
+        if (document.addEventListener) {
+            //Standards. Hooray! Assumption here that if standards based,
+            //it knows about DOMContentLoaded.
+            document.addEventListener("DOMContentLoaded", pageLoaded, false);
+            window.addEventListener("load", pageLoaded, false);
+        } else if (window.attachEvent) {
+            window.attachEvent("onload", pageLoaded);
+
+            testDiv = document.createElement('div');
+            try {
+                isTop = window.frameElement === null;
+            } catch (e) {}
+
+            //DOMContentLoaded approximation that uses a doScroll, as found by
+            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
+            //but modified by other contributors, including jdalton
+            if (testDiv.doScroll && isTop && window.external) {
+                scrollIntervalId = setInterval(function () {
+                    try {
+                        testDiv.doScroll();
+                        pageLoaded();
+                    } catch (e) {}
+                }, 30);
+            }
+        }
+
+        //Check if document already complete, and if so, just trigger page load
+        //listeners. Latest webkit browsers also use "interactive", and
+        //will fire the onDOMContentLoaded before "interactive" but not after
+        //entering "interactive" or "complete". More details:
+        //http://dev.w3.org/html5/spec/the-end.html#the-end
+        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
+        //Hmm, this is more complicated on further use, see "firing too early"
+        //bug: https://github.com/requirejs/domReady/issues/1
+        //so removing the || document.readyState === "interactive" test.
+        //There is still a window.onload binding that should get fired if
+        //DOMContentLoaded is missed.
+        if (document.readyState === "complete") {
+            pageLoaded();
+        }
+    }
+
+    /** START OF PUBLIC API **/
+
+    /**
+     * Registers a callback for DOM ready. If DOM is already ready, the
+     * callback is called immediately.
+     * @param {Function} callback
+     */
+    function domReady(callback) {
+        if (isPageLoaded) {
+            callback(doc);
+        } else {
+            readyCalls.push(callback);
+        }
+        return domReady;
+    }
+
+    domReady.version = '2.0.1';
+
+    /**
+     * Loader Plugin API method
+     */
+    domReady.load = function (name, req, onLoad, config) {
+        if (config.isBuild) {
+            onLoad(null);
+        } else {
+            domReady(onLoad);
+        }
+    };
+
+    /** END OF PUBLIC API **/
+
+    return domReady;
+});
+
+/**
+ * https://github.com/pieroxy/lz-string/
+ * Modifications: wrapped in Bento define
+ *
+ * Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
+ * This work is free. You can redistribute it and/or modify it
+ * under the terms of the WTFPL, Version 2
+ * For more information see LICENSE.txt or http://www.wtfpl.net/
+ *
+ * For more information, the home page:
+ * http://pieroxy.net/blog/pages/lz-string/testing.html
+ *
+ * LZ-based compression algorithm, version 1.4.4
+ *
+ * @module lzstring
+ * @moduleName LZString
+ * @returns LZString
+ */
+bento.define('lzstring', [], function () {
+    // private property
+    var f = String.fromCharCode;
+    var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+    var baseReverseDic = {};
+
+    function getBaseValue(alphabet, character) {
+        if (!baseReverseDic[alphabet]) {
+            baseReverseDic[alphabet] = {};
+            for (var i = 0; i < alphabet.length; i++) {
+                baseReverseDic[alphabet][alphabet.charAt(i)] = i;
+            }
+        }
+        return baseReverseDic[alphabet][character];
+    }
+
+    var LZString = {
+        compressToBase64: function (input) {
+            if (input == null) return "";
+            var res = LZString._compress(input, 6, function (a) {
+                return keyStrBase64.charAt(a);
+            });
+            switch (res.length % 4) { // To produce valid Base64
+                default: // When could this happen ?
+            case 0:
+                return res;
+            case 1:
+                return res + "===";
+            case 2:
+                return res + "==";
+            case 3:
+                return res + "=";
+            }
+        },
+
+        decompressFromBase64: function (input) {
+            if (input == null) return "";
+            if (input == "") return null;
+            return LZString._decompress(input.length, 32, function (index) {
+                return getBaseValue(keyStrBase64, input.charAt(index));
+            });
+        },
+
+        compressToUTF16: function (input) {
+            if (input == null) return "";
+            return LZString._compress(input, 15, function (a) {
+                return f(a + 32);
+            }) + " ";
+        },
+
+        decompressFromUTF16: function (compressed) {
+            if (compressed == null) return "";
+            if (compressed == "") return null;
+            return LZString._decompress(compressed.length, 16384, function (index) {
+                return compressed.charCodeAt(index) - 32;
+            });
+        },
+
+        //compress into uint8array (UCS-2 big endian format)
+        compressToUint8Array: function (uncompressed) {
+            var compressed = LZString.compress(uncompressed);
+            var buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
+
+            for (var i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
+                var current_value = compressed.charCodeAt(i);
+                buf[i * 2] = current_value >>> 8;
+                buf[i * 2 + 1] = current_value % 256;
+            }
+            return buf;
+        },
+
+        //decompress from uint8array (UCS-2 big endian format)
+        decompressFromUint8Array: function (compressed) {
+            if (compressed === null || compressed === undefined) {
+                return LZString.decompress(compressed);
+            } else {
+                var buf = new Array(compressed.length / 2); // 2 bytes per character
+                for (var i = 0, TotalLen = buf.length; i < TotalLen; i++) {
+                    buf[i] = compressed[i * 2] * 256 + compressed[i * 2 + 1];
+                }
+
+                var result = [];
+                buf.forEach(function (c) {
+                    result.push(f(c));
+                });
+                return LZString.decompress(result.join(''));
+
+            }
+
+        },
+
+
+        //compress into a string that is already URI encoded
+        compressToEncodedURIComponent: function (input) {
+            if (input == null) return "";
+            return LZString._compress(input, 6, function (a) {
+                return keyStrUriSafe.charAt(a);
+            });
+        },
+
+        //decompress from an output of compressToEncodedURIComponent
+        decompressFromEncodedURIComponent: function (input) {
+            if (input == null) return "";
+            if (input == "") return null;
+            input = input.replace(/ /g, "+");
+            return LZString._decompress(input.length, 32, function (index) {
+                return getBaseValue(keyStrUriSafe, input.charAt(index));
+            });
+        },
+
+        compress: function (uncompressed) {
+            return LZString._compress(uncompressed, 16, function (a) {
+                return f(a);
+            });
+        },
+        _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
+            if (uncompressed == null) return "";
+            var i, value,
+                context_dictionary = {},
+                context_dictionaryToCreate = {},
+                context_c = "",
+                context_wc = "",
+                context_w = "",
+                context_enlargeIn = 2, // Compensate for the first entry which should not count
+                context_dictSize = 3,
+                context_numBits = 2,
+                context_data = [],
+                context_data_val = 0,
+                context_data_position = 0,
+                ii;
+
+            for (ii = 0; ii < uncompressed.length; ii += 1) {
+                context_c = uncompressed.charAt(ii);
+                if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
+                    context_dictionary[context_c] = context_dictSize++;
+                    context_dictionaryToCreate[context_c] = true;
+                }
+
+                context_wc = context_w + context_c;
+                if (Object.prototype.hasOwnProperty.call(context_dictionary, context_wc)) {
+                    context_w = context_wc;
+                } else {
+                    if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+                        if (context_w.charCodeAt(0) < 256) {
+                            for (i = 0; i < context_numBits; i++) {
+                                context_data_val = (context_data_val << 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                            }
+                            value = context_w.charCodeAt(0);
+                            for (i = 0; i < 8; i++) {
+                                context_data_val = (context_data_val << 1) | (value & 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = value >> 1;
+                            }
+                        } else {
+                            value = 1;
+                            for (i = 0; i < context_numBits; i++) {
+                                context_data_val = (context_data_val << 1) | value;
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = 0;
+                            }
+                            value = context_w.charCodeAt(0);
+                            for (i = 0; i < 16; i++) {
+                                context_data_val = (context_data_val << 1) | (value & 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = value >> 1;
+                            }
+                        }
+                        context_enlargeIn--;
+                        if (context_enlargeIn == 0) {
+                            context_enlargeIn = Math.pow(2, context_numBits);
+                            context_numBits++;
+                        }
+                        delete context_dictionaryToCreate[context_w];
+                    } else {
+                        value = context_dictionary[context_w];
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+
+
+                    }
+                    context_enlargeIn--;
+                    if (context_enlargeIn == 0) {
+                        context_enlargeIn = Math.pow(2, context_numBits);
+                        context_numBits++;
+                    }
+                    // Add wc to the dictionary.
+                    context_dictionary[context_wc] = context_dictSize++;
+                    context_w = String(context_c);
+                }
+            }
+
+            // Output the code for w.
+            if (context_w !== "") {
+                if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+                    if (context_w.charCodeAt(0) < 256) {
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                        }
+                        value = context_w.charCodeAt(0);
+                        for (i = 0; i < 8; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+                    } else {
+                        value = 1;
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1) | value;
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = 0;
+                        }
+                        value = context_w.charCodeAt(0);
+                        for (i = 0; i < 16; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+                    }
+                    context_enlargeIn--;
+                    if (context_enlargeIn == 0) {
+                        context_enlargeIn = Math.pow(2, context_numBits);
+                        context_numBits++;
+                    }
+                    delete context_dictionaryToCreate[context_w];
+                } else {
+                    value = context_dictionary[context_w];
+                    for (i = 0; i < context_numBits; i++) {
+                        context_data_val = (context_data_val << 1) | (value & 1);
+                        if (context_data_position == bitsPerChar - 1) {
+                            context_data_position = 0;
+                            context_data.push(getCharFromInt(context_data_val));
+                            context_data_val = 0;
+                        } else {
+                            context_data_position++;
+                        }
+                        value = value >> 1;
+                    }
+
+
+                }
+                context_enlargeIn--;
+                if (context_enlargeIn == 0) {
+                    context_enlargeIn = Math.pow(2, context_numBits);
+                    context_numBits++;
+                }
+            }
+
+            // Mark the end of the stream
+            value = 2;
+            for (i = 0; i < context_numBits; i++) {
+                context_data_val = (context_data_val << 1) | (value & 1);
+                if (context_data_position == bitsPerChar - 1) {
+                    context_data_position = 0;
+                    context_data.push(getCharFromInt(context_data_val));
+                    context_data_val = 0;
+                } else {
+                    context_data_position++;
+                }
+                value = value >> 1;
+            }
+
+            // Flush the last char
+            while (true) {
+                context_data_val = (context_data_val << 1);
+                if (context_data_position == bitsPerChar - 1) {
+                    context_data.push(getCharFromInt(context_data_val));
+                    break;
+                } else context_data_position++;
+            }
+            return context_data.join('');
+        },
+
+        decompress: function (compressed) {
+            if (compressed == null) return "";
+            if (compressed == "") return null;
+            return LZString._decompress(compressed.length, 32768, function (index) {
+                return compressed.charCodeAt(index);
+            });
+        },
+
+        _decompress: function (length, resetValue, getNextValue) {
+            var dictionary = [],
+                next,
+                enlargeIn = 4,
+                dictSize = 4,
+                numBits = 3,
+                entry = "",
+                result = [],
+                i,
+                w,
+                bits, resb, maxpower, power,
+                c,
+                data = {
+                    val: getNextValue(0),
+                    position: resetValue,
+                    index: 1
+                };
+
+            for (i = 0; i < 3; i += 1) {
+                dictionary[i] = i;
+            }
+
+            bits = 0;
+            maxpower = Math.pow(2, 2);
+            power = 1;
+            while (power != maxpower) {
+                resb = data.val & data.position;
+                data.position >>= 1;
+                if (data.position == 0) {
+                    data.position = resetValue;
+                    data.val = getNextValue(data.index++);
+                }
+                bits |= (resb > 0 ? 1 : 0) * power;
+                power <<= 1;
+            }
+
+            switch (next = bits) {
+            case 0:
+                bits = 0;
+                maxpower = Math.pow(2, 8);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+                c = f(bits);
+                break;
+            case 1:
+                bits = 0;
+                maxpower = Math.pow(2, 16);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+                c = f(bits);
+                break;
+            case 2:
+                return "";
+            }
+            dictionary[3] = c;
+            w = c;
+            result.push(c);
+            while (true) {
+                if (data.index > length) {
+                    return "";
+                }
+
+                bits = 0;
+                maxpower = Math.pow(2, numBits);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+
+                switch (c = bits) {
+                case 0:
+                    bits = 0;
+                    maxpower = Math.pow(2, 8);
+                    power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position;
+                        data.position >>= 1;
+                        if (data.position == 0) {
+                            data.position = resetValue;
+                            data.val = getNextValue(data.index++);
+                        }
+                        bits |= (resb > 0 ? 1 : 0) * power;
+                        power <<= 1;
+                    }
+
+                    dictionary[dictSize++] = f(bits);
+                    c = dictSize - 1;
+                    enlargeIn--;
+                    break;
+                case 1:
+                    bits = 0;
+                    maxpower = Math.pow(2, 16);
+                    power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position;
+                        data.position >>= 1;
+                        if (data.position == 0) {
+                            data.position = resetValue;
+                            data.val = getNextValue(data.index++);
+                        }
+                        bits |= (resb > 0 ? 1 : 0) * power;
+                        power <<= 1;
+                    }
+                    dictionary[dictSize++] = f(bits);
+                    c = dictSize - 1;
+                    enlargeIn--;
+                    break;
+                case 2:
+                    return result.join('');
+                }
+
+                if (enlargeIn == 0) {
+                    enlargeIn = Math.pow(2, numBits);
+                    numBits++;
+                }
+
+                if (dictionary[c]) {
+                    entry = dictionary[c];
+                } else {
+                    if (c === dictSize) {
+                        entry = w + w.charAt(0);
+                    } else {
+                        return null;
+                    }
+                }
+                result.push(entry);
+
+                // Add w+entry[0] to the dictionary.
+                dictionary[dictSize++] = w + entry.charAt(0);
+                enlargeIn--;
+
+                w = entry;
+
+                if (enlargeIn == 0) {
+                    enlargeIn = Math.pow(2, numBits);
+                    numBits++;
+                }
+
+            }
+        }
+    };
+    return LZString;
+});
+// http://www.makeitgo.ws/articles/animationframe/
+// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+bento.define('bento/lib/requestanimationframe', [], function () {
+    'use strict';
+
+    var lastTime = 0,
+        vendors = ['ms', 'moz', 'webkit', 'o'];
+    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
+    }
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function (callback, element) {
+            var currTime = new Date().getTime(),
+                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
+                id = window.setTimeout(function () {
+                    callback(currTime + timeToCall);
+                }, timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
+
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function (id) {
+            clearTimeout(id);
+        };
+    return window.requestAnimationFrame;
+});
+/**
  * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
  * unless entity.updateWhenPaused is turned on.
  * <br>Exports: Constructor
@@ -7509,14 +8196,14 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.recalculateDimensions = function () {
-        this.innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
-        this.innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
+        this._innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
+        this._innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
 
-        this.leftWidth = Math.min(this.sliceWidth, this._width / 2);
-        this.rightWidth = Math.min(this.sliceWidth, this._width - this.leftWidth);
+        this._leftWidth = Math.min(this.sliceWidth, this._width / 2);
+        this.rightWidth = Math.min(this.sliceWidth, this._width - this._leftWidth);
 
-        this.topHeight = Math.min(this.sliceHeight, this._height / 2);
-        this.bottomHeight = Math.min(this.sliceHeight, this._height - this.topHeight);
+        this._topHeight = Math.min(this.sliceHeight, this._height / 2);
+        this._bottomHeight = Math.min(this.sliceHeight, this._height - this._topHeight);
 
         if (this.settings.originRelative) {
             // recalculate relative origin
@@ -7579,25 +8266,25 @@ bento.define('bento/components/nineslice', [
         data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
 
         //top left corner
-        this.fillArea(data.renderer, 0, 0, 0, this.leftWidth, this.topHeight);
+        this.fillArea(data.renderer, 0, 0, 0, this._leftWidth, this._topHeight);
         //top stretch
-        this.fillArea(data.renderer, 1, this.leftWidth, 0, this.innerWidth, this.topHeight);
+        this.fillArea(data.renderer, 1, this._leftWidth, 0, this._innerWidth, this._topHeight);
         //top right corner
-        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this.topHeight);
+        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this._topHeight);
 
         //left stretch
-        this.fillArea(data.renderer, 3, 0, this.topHeight, this.leftWidth, this.innerHeight);
+        this.fillArea(data.renderer, 3, 0, this._topHeight, this._leftWidth, this._innerHeight);
         //center stretch
-        this.fillArea(data.renderer, 4, this.leftWidth, this.topHeight, this.innerWidth, this.innerHeight);
+        this.fillArea(data.renderer, 4, this._leftWidth, this._topHeight, this._innerWidth, this._innerHeight);
         //right stretch
-        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this.topHeight, this.rightWidth, this.innerHeight);
+        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this._topHeight, this.rightWidth, this._innerHeight);
 
         //bottom left corner
-        this.fillArea(data.renderer, 6, 0, this._height - this.bottomHeight, this.leftWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 6, 0, this._height - this._bottomHeight, this._leftWidth, this._bottomHeight);
         //bottom stretch
-        this.fillArea(data.renderer, 7, this.leftWidth, this._height - this.bottomHeight, this.innerWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 7, this._leftWidth, this._height - this._bottomHeight, this._innerWidth, this._bottomHeight);
         //bottom right corner
-        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this.bottomHeight, this.rightWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this._bottomHeight, this.rightWidth, this._bottomHeight);
 
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
     };
@@ -8052,693 +8739,6 @@ bento.define('bento/components/sprite', [
     Sprite.suppressWarnings = false;
 
     return Sprite;
-});
-/**
- * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/requirejs/domReady for details
- */
-/*jslint*/
-/*global require: false, define: false, requirejs: false,
-  window: false, clearInterval: false, document: false,
-  self: false, setInterval: false */
-
-
-bento.define('bento/lib/domready', [], function () {
-    'use strict';
-
-    var isTop, testDiv, scrollIntervalId,
-        isBrowser = typeof window !== "undefined" && window.document,
-        isPageLoaded = !isBrowser,
-        doc = isBrowser ? document : null,
-        readyCalls = [];
-
-    function runCallbacks(callbacks) {
-        var i;
-        for (i = 0; i < callbacks.length; i += 1) {
-            callbacks[i](doc);
-        }
-    }
-
-    function callReady() {
-        var callbacks = readyCalls;
-
-        if (isPageLoaded) {
-            //Call the DOM ready callbacks
-            if (callbacks.length) {
-                readyCalls = [];
-                runCallbacks(callbacks);
-            }
-        }
-    }
-
-    /**
-     * Sets the page as loaded.
-     */
-    function pageLoaded() {
-        if (!isPageLoaded) {
-            isPageLoaded = true;
-            if (scrollIntervalId) {
-                clearInterval(scrollIntervalId);
-            }
-
-            callReady();
-        }
-    }
-
-    if (isBrowser) {
-        if (document.addEventListener) {
-            //Standards. Hooray! Assumption here that if standards based,
-            //it knows about DOMContentLoaded.
-            document.addEventListener("DOMContentLoaded", pageLoaded, false);
-            window.addEventListener("load", pageLoaded, false);
-        } else if (window.attachEvent) {
-            window.attachEvent("onload", pageLoaded);
-
-            testDiv = document.createElement('div');
-            try {
-                isTop = window.frameElement === null;
-            } catch (e) {}
-
-            //DOMContentLoaded approximation that uses a doScroll, as found by
-            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
-            //but modified by other contributors, including jdalton
-            if (testDiv.doScroll && isTop && window.external) {
-                scrollIntervalId = setInterval(function () {
-                    try {
-                        testDiv.doScroll();
-                        pageLoaded();
-                    } catch (e) {}
-                }, 30);
-            }
-        }
-
-        //Check if document already complete, and if so, just trigger page load
-        //listeners. Latest webkit browsers also use "interactive", and
-        //will fire the onDOMContentLoaded before "interactive" but not after
-        //entering "interactive" or "complete". More details:
-        //http://dev.w3.org/html5/spec/the-end.html#the-end
-        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
-        //Hmm, this is more complicated on further use, see "firing too early"
-        //bug: https://github.com/requirejs/domReady/issues/1
-        //so removing the || document.readyState === "interactive" test.
-        //There is still a window.onload binding that should get fired if
-        //DOMContentLoaded is missed.
-        if (document.readyState === "complete") {
-            pageLoaded();
-        }
-    }
-
-    /** START OF PUBLIC API **/
-
-    /**
-     * Registers a callback for DOM ready. If DOM is already ready, the
-     * callback is called immediately.
-     * @param {Function} callback
-     */
-    function domReady(callback) {
-        if (isPageLoaded) {
-            callback(doc);
-        } else {
-            readyCalls.push(callback);
-        }
-        return domReady;
-    }
-
-    domReady.version = '2.0.1';
-
-    /**
-     * Loader Plugin API method
-     */
-    domReady.load = function (name, req, onLoad, config) {
-        if (config.isBuild) {
-            onLoad(null);
-        } else {
-            domReady(onLoad);
-        }
-    };
-
-    /** END OF PUBLIC API **/
-
-    return domReady;
-});
-
-/**
- * https://github.com/pieroxy/lz-string/
- * Modifications: wrapped in Bento define
- *
- * Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
- * This work is free. You can redistribute it and/or modify it
- * under the terms of the WTFPL, Version 2
- * For more information see LICENSE.txt or http://www.wtfpl.net/
- *
- * For more information, the home page:
- * http://pieroxy.net/blog/pages/lz-string/testing.html
- *
- * LZ-based compression algorithm, version 1.4.4
- *
- * @module lzstring
- * @moduleName LZString
- * @returns LZString
- */
-bento.define('lzstring', [], function () {
-    // private property
-    var f = String.fromCharCode;
-    var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
-    var baseReverseDic = {};
-
-    function getBaseValue(alphabet, character) {
-        if (!baseReverseDic[alphabet]) {
-            baseReverseDic[alphabet] = {};
-            for (var i = 0; i < alphabet.length; i++) {
-                baseReverseDic[alphabet][alphabet.charAt(i)] = i;
-            }
-        }
-        return baseReverseDic[alphabet][character];
-    }
-
-    var LZString = {
-        compressToBase64: function (input) {
-            if (input == null) return "";
-            var res = LZString._compress(input, 6, function (a) {
-                return keyStrBase64.charAt(a);
-            });
-            switch (res.length % 4) { // To produce valid Base64
-                default: // When could this happen ?
-            case 0:
-                return res;
-            case 1:
-                return res + "===";
-            case 2:
-                return res + "==";
-            case 3:
-                return res + "=";
-            }
-        },
-
-        decompressFromBase64: function (input) {
-            if (input == null) return "";
-            if (input == "") return null;
-            return LZString._decompress(input.length, 32, function (index) {
-                return getBaseValue(keyStrBase64, input.charAt(index));
-            });
-        },
-
-        compressToUTF16: function (input) {
-            if (input == null) return "";
-            return LZString._compress(input, 15, function (a) {
-                return f(a + 32);
-            }) + " ";
-        },
-
-        decompressFromUTF16: function (compressed) {
-            if (compressed == null) return "";
-            if (compressed == "") return null;
-            return LZString._decompress(compressed.length, 16384, function (index) {
-                return compressed.charCodeAt(index) - 32;
-            });
-        },
-
-        //compress into uint8array (UCS-2 big endian format)
-        compressToUint8Array: function (uncompressed) {
-            var compressed = LZString.compress(uncompressed);
-            var buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
-
-            for (var i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
-                var current_value = compressed.charCodeAt(i);
-                buf[i * 2] = current_value >>> 8;
-                buf[i * 2 + 1] = current_value % 256;
-            }
-            return buf;
-        },
-
-        //decompress from uint8array (UCS-2 big endian format)
-        decompressFromUint8Array: function (compressed) {
-            if (compressed === null || compressed === undefined) {
-                return LZString.decompress(compressed);
-            } else {
-                var buf = new Array(compressed.length / 2); // 2 bytes per character
-                for (var i = 0, TotalLen = buf.length; i < TotalLen; i++) {
-                    buf[i] = compressed[i * 2] * 256 + compressed[i * 2 + 1];
-                }
-
-                var result = [];
-                buf.forEach(function (c) {
-                    result.push(f(c));
-                });
-                return LZString.decompress(result.join(''));
-
-            }
-
-        },
-
-
-        //compress into a string that is already URI encoded
-        compressToEncodedURIComponent: function (input) {
-            if (input == null) return "";
-            return LZString._compress(input, 6, function (a) {
-                return keyStrUriSafe.charAt(a);
-            });
-        },
-
-        //decompress from an output of compressToEncodedURIComponent
-        decompressFromEncodedURIComponent: function (input) {
-            if (input == null) return "";
-            if (input == "") return null;
-            input = input.replace(/ /g, "+");
-            return LZString._decompress(input.length, 32, function (index) {
-                return getBaseValue(keyStrUriSafe, input.charAt(index));
-            });
-        },
-
-        compress: function (uncompressed) {
-            return LZString._compress(uncompressed, 16, function (a) {
-                return f(a);
-            });
-        },
-        _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
-            if (uncompressed == null) return "";
-            var i, value,
-                context_dictionary = {},
-                context_dictionaryToCreate = {},
-                context_c = "",
-                context_wc = "",
-                context_w = "",
-                context_enlargeIn = 2, // Compensate for the first entry which should not count
-                context_dictSize = 3,
-                context_numBits = 2,
-                context_data = [],
-                context_data_val = 0,
-                context_data_position = 0,
-                ii;
-
-            for (ii = 0; ii < uncompressed.length; ii += 1) {
-                context_c = uncompressed.charAt(ii);
-                if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
-                    context_dictionary[context_c] = context_dictSize++;
-                    context_dictionaryToCreate[context_c] = true;
-                }
-
-                context_wc = context_w + context_c;
-                if (Object.prototype.hasOwnProperty.call(context_dictionary, context_wc)) {
-                    context_w = context_wc;
-                } else {
-                    if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
-                        if (context_w.charCodeAt(0) < 256) {
-                            for (i = 0; i < context_numBits; i++) {
-                                context_data_val = (context_data_val << 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                            }
-                            value = context_w.charCodeAt(0);
-                            for (i = 0; i < 8; i++) {
-                                context_data_val = (context_data_val << 1) | (value & 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = value >> 1;
-                            }
-                        } else {
-                            value = 1;
-                            for (i = 0; i < context_numBits; i++) {
-                                context_data_val = (context_data_val << 1) | value;
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = 0;
-                            }
-                            value = context_w.charCodeAt(0);
-                            for (i = 0; i < 16; i++) {
-                                context_data_val = (context_data_val << 1) | (value & 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = value >> 1;
-                            }
-                        }
-                        context_enlargeIn--;
-                        if (context_enlargeIn == 0) {
-                            context_enlargeIn = Math.pow(2, context_numBits);
-                            context_numBits++;
-                        }
-                        delete context_dictionaryToCreate[context_w];
-                    } else {
-                        value = context_dictionary[context_w];
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-
-
-                    }
-                    context_enlargeIn--;
-                    if (context_enlargeIn == 0) {
-                        context_enlargeIn = Math.pow(2, context_numBits);
-                        context_numBits++;
-                    }
-                    // Add wc to the dictionary.
-                    context_dictionary[context_wc] = context_dictSize++;
-                    context_w = String(context_c);
-                }
-            }
-
-            // Output the code for w.
-            if (context_w !== "") {
-                if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
-                    if (context_w.charCodeAt(0) < 256) {
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                        }
-                        value = context_w.charCodeAt(0);
-                        for (i = 0; i < 8; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-                    } else {
-                        value = 1;
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1) | value;
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = 0;
-                        }
-                        value = context_w.charCodeAt(0);
-                        for (i = 0; i < 16; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-                    }
-                    context_enlargeIn--;
-                    if (context_enlargeIn == 0) {
-                        context_enlargeIn = Math.pow(2, context_numBits);
-                        context_numBits++;
-                    }
-                    delete context_dictionaryToCreate[context_w];
-                } else {
-                    value = context_dictionary[context_w];
-                    for (i = 0; i < context_numBits; i++) {
-                        context_data_val = (context_data_val << 1) | (value & 1);
-                        if (context_data_position == bitsPerChar - 1) {
-                            context_data_position = 0;
-                            context_data.push(getCharFromInt(context_data_val));
-                            context_data_val = 0;
-                        } else {
-                            context_data_position++;
-                        }
-                        value = value >> 1;
-                    }
-
-
-                }
-                context_enlargeIn--;
-                if (context_enlargeIn == 0) {
-                    context_enlargeIn = Math.pow(2, context_numBits);
-                    context_numBits++;
-                }
-            }
-
-            // Mark the end of the stream
-            value = 2;
-            for (i = 0; i < context_numBits; i++) {
-                context_data_val = (context_data_val << 1) | (value & 1);
-                if (context_data_position == bitsPerChar - 1) {
-                    context_data_position = 0;
-                    context_data.push(getCharFromInt(context_data_val));
-                    context_data_val = 0;
-                } else {
-                    context_data_position++;
-                }
-                value = value >> 1;
-            }
-
-            // Flush the last char
-            while (true) {
-                context_data_val = (context_data_val << 1);
-                if (context_data_position == bitsPerChar - 1) {
-                    context_data.push(getCharFromInt(context_data_val));
-                    break;
-                } else context_data_position++;
-            }
-            return context_data.join('');
-        },
-
-        decompress: function (compressed) {
-            if (compressed == null) return "";
-            if (compressed == "") return null;
-            return LZString._decompress(compressed.length, 32768, function (index) {
-                return compressed.charCodeAt(index);
-            });
-        },
-
-        _decompress: function (length, resetValue, getNextValue) {
-            var dictionary = [],
-                next,
-                enlargeIn = 4,
-                dictSize = 4,
-                numBits = 3,
-                entry = "",
-                result = [],
-                i,
-                w,
-                bits, resb, maxpower, power,
-                c,
-                data = {
-                    val: getNextValue(0),
-                    position: resetValue,
-                    index: 1
-                };
-
-            for (i = 0; i < 3; i += 1) {
-                dictionary[i] = i;
-            }
-
-            bits = 0;
-            maxpower = Math.pow(2, 2);
-            power = 1;
-            while (power != maxpower) {
-                resb = data.val & data.position;
-                data.position >>= 1;
-                if (data.position == 0) {
-                    data.position = resetValue;
-                    data.val = getNextValue(data.index++);
-                }
-                bits |= (resb > 0 ? 1 : 0) * power;
-                power <<= 1;
-            }
-
-            switch (next = bits) {
-            case 0:
-                bits = 0;
-                maxpower = Math.pow(2, 8);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-                c = f(bits);
-                break;
-            case 1:
-                bits = 0;
-                maxpower = Math.pow(2, 16);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-                c = f(bits);
-                break;
-            case 2:
-                return "";
-            }
-            dictionary[3] = c;
-            w = c;
-            result.push(c);
-            while (true) {
-                if (data.index > length) {
-                    return "";
-                }
-
-                bits = 0;
-                maxpower = Math.pow(2, numBits);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-
-                switch (c = bits) {
-                case 0:
-                    bits = 0;
-                    maxpower = Math.pow(2, 8);
-                    power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position;
-                        data.position >>= 1;
-                        if (data.position == 0) {
-                            data.position = resetValue;
-                            data.val = getNextValue(data.index++);
-                        }
-                        bits |= (resb > 0 ? 1 : 0) * power;
-                        power <<= 1;
-                    }
-
-                    dictionary[dictSize++] = f(bits);
-                    c = dictSize - 1;
-                    enlargeIn--;
-                    break;
-                case 1:
-                    bits = 0;
-                    maxpower = Math.pow(2, 16);
-                    power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position;
-                        data.position >>= 1;
-                        if (data.position == 0) {
-                            data.position = resetValue;
-                            data.val = getNextValue(data.index++);
-                        }
-                        bits |= (resb > 0 ? 1 : 0) * power;
-                        power <<= 1;
-                    }
-                    dictionary[dictSize++] = f(bits);
-                    c = dictSize - 1;
-                    enlargeIn--;
-                    break;
-                case 2:
-                    return result.join('');
-                }
-
-                if (enlargeIn == 0) {
-                    enlargeIn = Math.pow(2, numBits);
-                    numBits++;
-                }
-
-                if (dictionary[c]) {
-                    entry = dictionary[c];
-                } else {
-                    if (c === dictSize) {
-                        entry = w + w.charAt(0);
-                    } else {
-                        return null;
-                    }
-                }
-                result.push(entry);
-
-                // Add w+entry[0] to the dictionary.
-                dictionary[dictSize++] = w + entry.charAt(0);
-                enlargeIn--;
-
-                w = entry;
-
-                if (enlargeIn == 0) {
-                    enlargeIn = Math.pow(2, numBits);
-                    numBits++;
-                }
-
-            }
-        }
-    };
-    return LZString;
-});
-// http://www.makeitgo.ws/articles/animationframe/
-// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
-// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
-bento.define('bento/lib/requestanimationframe', [], function () {
-    'use strict';
-
-    var lastTime = 0,
-        vendors = ['ms', 'moz', 'webkit', 'o'];
-    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
-        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
-    }
-
-    if (!window.requestAnimationFrame)
-        window.requestAnimationFrame = function (callback, element) {
-            var currTime = new Date().getTime(),
-                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
-                id = window.setTimeout(function () {
-                    callback(currTime + timeToCall);
-                }, timeToCall);
-            lastTime = currTime + timeToCall;
-            return id;
-        };
-
-    if (!window.cancelAnimationFrame)
-        window.cancelAnimationFrame = function (id) {
-            clearTimeout(id);
-        };
-    return window.requestAnimationFrame;
 });
 /**
  * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
@@ -13061,6 +13061,504 @@ bento.define('bento/math/vector2', [
     return Vector2;
 });
 /**
+ * Canvas 2d renderer
+ * @copyright (C) 2015 LuckyKat
+ * @moduleName Canvas2DRenderer
+ */
+bento.define('bento/renderers/canvas2d', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvas, settings) {
+        var context = canvas.getContext('2d'),
+            original = context,
+            pixelSize = settings.pixelSize || 1,
+            renderer = {
+                name: 'canvas2d',
+                save: function () {
+                    context.save();
+                },
+                restore: function () {
+                    context.restore();
+                },
+                setTransform: function (a, b, c, d, tx, ty) {
+                    context.setTransform(a, b, c, d, tx, ty);
+                },
+                translate: function (x, y) {
+                    context.translate(x, y);
+                },
+                scale: function (x, y) {
+                    context.scale(x, y);
+                },
+                rotate: function (angle) {
+                    context.rotate(angle);
+                },
+                fillRect: function (colorArray, x, y, w, h) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.fillStyle = colorStr;
+                    context.fillRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                fillCircle: function (colorArray, x, y, radius) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.fillStyle = colorStr;
+                    context.beginPath();
+                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.fill();
+                    context.closePath();
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                strokeRect: function (colorArray, x, y, w, h, lineWidth) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.lineWidth = lineWidth || 0;
+                    context.strokeStyle = colorStr;
+                    context.strokeRect(x, y, w, h);
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+
+                    sAngle = sAngle || 0;
+                    eAngle = eAngle || 0;
+
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    context.strokeStyle = colorStr;
+                    context.lineWidth = lineWidth || 0;
+                    context.beginPath();
+                    context.arc(x, y, radius, sAngle, eAngle, false);
+                    context.stroke();
+                    context.closePath();
+                },
+                drawLine: function (colorArray, ax, ay, bx, by, width) {
+                    var colorStr = getColor(colorArray),
+                        oldOpacity = context.globalAlpha;
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha *= colorArray[3];
+                    }
+                    if (!Utils.isDefined(width)) {
+                        width = 1;
+                    }
+
+                    context.strokeStyle = colorStr;
+                    context.lineWidth = width;
+
+                    context.beginPath();
+                    context.moveTo(ax, ay);
+                    context.lineTo(bx, by);
+                    context.stroke();
+                    context.closePath();
+
+                    if (colorArray[3] !== 1) {
+                        context.globalAlpha = oldOpacity;
+                    }
+                },
+                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+                },
+                getOpacity: function () {
+                    return context.globalAlpha;
+                },
+                setOpacity: function (value) {
+                    context.globalAlpha = value;
+                },
+                createSurface: function (width, height) {
+                    var newCanvas = document.createElement('canvas'),
+                        newContext;
+
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+
+                    newContext = canvas.getContext('2d');
+
+                    return {
+                        canvas: newCanvas,
+                        context: newContext
+                    };
+                },
+                setContext: function (ctx) {
+                    context = ctx;
+                },
+                restoreContext: function () {
+                    context = original;
+                },
+                getContext: function () {
+                    return context;
+                },
+                begin: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.save();
+                        context.scale(pixelSize, pixelSize);
+                    }
+                },
+                flush: function () {
+                    if (context === original && pixelSize !== 1) {
+                        context.restore();
+                    }
+                }
+            },
+            getColor = function (colorArray) {
+                var colorStr = '#';
+                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+                return colorStr;
+            };
+
+        if (!settings.smoothing) {
+            if (context.imageSmoothingEnabled) {
+                context.imageSmoothingEnabled = false;
+            }
+            if (context.webkitImageSmoothingEnabled) {
+                context.webkitImageSmoothingEnabled = false;
+            }
+            if (context.mozImageSmoothingEnabled) {
+                context.mozImageSmoothingEnabled = false;
+            }
+            if (context.msImageSmoothingEnabled) {
+                context.msImageSmoothingEnabled = false;
+            }
+        }
+        return renderer;
+    };
+});
+/**
+ * Renderer using PIXI by GoodBoyDigital
+ * @moduleName PixiRenderer
+ */
+bento.define('bento/renderers/pixi', [
+    'bento',
+    'bento/utils',
+    'bento/math/transformmatrix',
+    'bento/renderers/canvas2d'
+], function (Bento, Utils, TransformMatrix, Canvas2d) {
+    var PIXI = window.PIXI;
+    var SpritePool = function (initialSize) {
+        var i;
+        // initialize
+        this.sprites = [];
+        for (i = 0; i < initialSize; ++i) {
+            this.sprites.push(new PIXI.Sprite());
+        }
+        this.index = 0;
+    };
+    SpritePool.prototype.reset = function () {
+        this.index = 0;
+    };
+    SpritePool.prototype.getSprite = function () {
+        var sprite = this.sprites[this.index];
+        if (!sprite) {
+            sprite = new PIXI.Sprite();
+            this.sprites.push(sprite);
+        }
+        this.index += 1;
+        return sprite;
+    };
+
+    return function (canvas, settings) {
+        var gl;
+        var canWebGl = (function () {
+            // try making a canvas
+            try {
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!window.WebGLRenderingContext;
+            } catch (e) {
+                return false;
+            }
+        })();
+        var matrix;
+        var Matrix;
+        var matrices = [];
+        var alpha = 1;
+        var color = 0xFFFFFF;
+        var pixiRenderer;
+        var spriteRenderer;
+        var meshRenderer;
+        var graphicsRenderer;
+        var particleRenderer;
+        var test = false;
+        var cocoonScale = 1;
+        var pixelSize = settings.pixelSize || 1;
+        var tempDisplayObjectParent = null;
+        var spritePool = new SpritePool(2000);
+        var transformObject = {
+            worldTransform: null,
+            worldAlpha: 1,
+            children: []
+        };
+        var getPixiMatrix = function () {
+            var pixiMatrix = new PIXI.Matrix();
+            pixiMatrix.a = matrix.a;
+            pixiMatrix.b = matrix.b;
+            pixiMatrix.c = matrix.c;
+            pixiMatrix.d = matrix.d;
+            pixiMatrix.tx = matrix.tx;
+            pixiMatrix.ty = matrix.ty;
+            return pixiMatrix;
+        };
+        var getFillGraphics = function (color) {
+            var graphics = new PIXI.Graphics();
+            var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+            var alphaColor = color[3];
+            graphics.beginFill(colorInt, alphaColor);
+            graphics.worldTransform = getPixiMatrix();
+            graphics.worldAlpha = alpha;
+            return graphics;
+        };
+        var renderer = {
+            name: 'pixi',
+            init: function () {
+
+            },
+            destroy: function () {},
+            save: function () {
+                matrices.push(matrix.clone());
+            },
+            restore: function () {
+                matrix = matrices.pop();
+            },
+            setTransform: function (a, b, c, d, tx, ty) {
+                matrix.a = a;
+                matrix.b = b;
+                matrix.c = c;
+                matrix.d = d;
+                matrix.tx = tx;
+                matrix.ty = ty;
+            },
+            translate: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.translate(x, y));
+            },
+            scale: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.scale(x, y));
+            },
+            rotate: function (angle) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.rotate(angle));
+            },
+            fillRect: function (color, x, y, w, h) {
+                var graphics = getFillGraphics(color);
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            fillCircle: function (color, x, y, radius) {
+                var graphics = getFillGraphics(color);
+                graphics.drawCircle(x, y, radius);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+
+            },
+            strokeRect: function (color, x, y, w, h, lineWidth) {
+                var graphics = new PIXI.Graphics();
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+                var alphaColor = color[3];
+                graphics.worldTransform = getPixiMatrix();
+                graphics.worldAlpha = alpha;
+
+                graphics.lineStyle(lineWidth, colorInt, alphaColor);
+                graphics.drawRect(x, y, w, h);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
+                var graphics = new PIXI.Graphics();
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+                var alphaColor = color[3];
+                graphics.worldTransform = getPixiMatrix();
+                graphics.worldAlpha = alpha;
+
+                graphics
+                    .lineStyle(lineWidth, colorInt, alphaColor)
+                    .arc(x, y, radius, sAngle, eAngle);
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+
+            },
+            drawLine: function (color, ax, ay, bx, by, width) {
+                var graphics = getFillGraphics(color);
+                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+
+                if (!Utils.isDefined(width)) {
+                    width = 1;
+                }
+                if (!Utils.isDefined(color[3])) {
+                    color[3] = 1;
+                }
+
+                graphics
+                    .lineStyle(width, colorInt, color[3])
+                    .moveTo(ax, ay)
+                    .lineTo(bx, by)
+                    .endFill();
+
+                pixiRenderer.setObjectRenderer(graphicsRenderer);
+                graphicsRenderer.render(graphics);
+            },
+            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                var image = packedImage.image;
+                var px = packedImage.x;
+                var py = packedImage.y;
+                var rectangle;
+                var sprite = spritePool.getSprite();
+                var texture;
+                // If image and frame size don't correspond Pixi will throw an error and break the game.
+                // This check tries to prevent that.
+                if (px + sx + sw > image.width || py + sy + sh > image.height) {
+                    console.error("Warning: image and frame size do not correspond.", image);
+                    return;
+                }
+                if (!image.texture) {
+                    // initialize pixi baseTexture
+                    image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+                    image.frame = new PIXI.Texture(image.texture);
+                }
+                // without spritepool
+                /*
+                rectangle = new PIXI.Rectangle(px + sx, py + sy, sw, sh);
+                texture = new PIXI.Texture(image.texture, rectangle);
+                texture._updateUvs();
+                sprite = new PIXI.Sprite(texture);
+                */
+
+                // with spritepool
+                texture = image.frame;
+                rectangle = texture._frame;
+                rectangle.x = px + sx;
+                rectangle.y = py + sy;
+                rectangle.width = sw;
+                rectangle.height = sh;
+                texture._updateUvs();
+                sprite._texture = texture;
+
+                // apply x, y, w, h
+                renderer.save();
+                renderer.translate(x, y);
+                renderer.scale(w / sw, h / sh);
+
+                sprite.worldTransform = matrix;
+                sprite.worldAlpha = alpha;
+
+                // push into batch
+                pixiRenderer.setObjectRenderer(spriteRenderer);
+                spriteRenderer.render(sprite);
+
+                renderer.restore();
+
+                // did the spriteRenderer flush in the meantime?
+                if (spriteRenderer.currentBatchSize === 0) {
+                    // the spritepool can be reset as well then
+                    spritePool.reset();
+                }
+            },
+            begin: function () {
+                spriteRenderer.start();
+                if (pixelSize !== 1 || Utils.isCocoonJs()) {
+                    this.save();
+                    this.scale(pixelSize * cocoonScale, pixelSize * cocoonScale);
+                }
+            },
+            flush: function () {
+                // note: only spriterenderer has an implementation of flush
+                spriteRenderer.flush();
+                spritePool.reset();
+                if (pixelSize !== 1 || Utils.isCocoonJs()) {
+                    this.restore();
+                }
+            },
+            getOpacity: function () {
+                return alpha;
+            },
+            setOpacity: function (value) {
+                alpha = value;
+            },
+            /*
+             * Pixi only feature: draws any pixi displayObject
+             */
+            drawPixi: function (displayObject) {
+                // trick the renderer by setting our own parent
+                transformObject.worldTransform = matrix;
+                transformObject.worldAlpha = alpha;
+
+                // method 1, replace the "parent" that the renderer swaps with
+                // maybe not efficient because it calls flush all the time?
+                // pixiRenderer._tempDisplayObjectParent = transformObject;
+                // pixiRenderer.render(displayObject);
+
+                // method 2, set the object parent and update transform
+                displayObject.parent = transformObject;
+                displayObject.updateTransform();
+                displayObject.renderWebGL(pixiRenderer);
+            },
+            getContext: function () {
+                return gl;
+            },
+            getPixiRenderer: function () {
+                return pixiRenderer;
+            },
+            // pixi specific: update the webgl view, needed if the canvas changed size
+            updateSize: function () {
+                pixiRenderer.resize(canvas.width, canvas.height);
+            }
+        };
+
+        if (canWebGl && Utils.isDefined(window.PIXI)) {
+            // init pixi
+            // Matrix = PIXI.Matrix;
+            matrix = new TransformMatrix();
+            // additional scale
+            if (Utils.isCocoonJs()) {
+                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
+                canvas.width *= cocoonScale;
+                canvas.height *= cocoonScale;
+            }
+            pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
+                view: canvas,
+                backgroundColor: 0x000000,
+                clearBeforeRender: false
+            });
+            pixiRenderer.filterManager.setFilterStack(pixiRenderer.renderTarget.filterStack);
+            tempDisplayObjectParent = pixiRenderer._tempDisplayObjectParent;
+            spriteRenderer = pixiRenderer.plugins.sprite;
+            graphicsRenderer = pixiRenderer.plugins.graphics;
+            meshRenderer = pixiRenderer.plugins.mesh;
+
+            return renderer;
+        } else {
+            if (!window.PIXI) {
+                console.log('WARNING: PIXI library is missing, reverting to Canvas2D renderer');
+            } else if (!canWebGl) {
+                console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');
+            }
+            return Canvas2d(canvas, settings);
+        }
+    };
+});
+/**
  * A helper module that returns a rectangle with the same aspect ratio as the screen size.
  * Assuming portrait mode, autoresize holds the width and then fills up the height
  * If the height goes over the max or minimum size, then the width gets adapted.
@@ -15302,504 +15800,6 @@ bento.define('bento/tween', [
     Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
 
     return Tween;
-});
-/**
- * Canvas 2d renderer
- * @copyright (C) 2015 LuckyKat
- * @moduleName Canvas2DRenderer
- */
-bento.define('bento/renderers/canvas2d', [
-    'bento/utils'
-], function (Utils) {
-    return function (canvas, settings) {
-        var context = canvas.getContext('2d'),
-            original = context,
-            pixelSize = settings.pixelSize || 1,
-            renderer = {
-                name: 'canvas2d',
-                save: function () {
-                    context.save();
-                },
-                restore: function () {
-                    context.restore();
-                },
-                setTransform: function (a, b, c, d, tx, ty) {
-                    context.setTransform(a, b, c, d, tx, ty);
-                },
-                translate: function (x, y) {
-                    context.translate(x, y);
-                },
-                scale: function (x, y) {
-                    context.scale(x, y);
-                },
-                rotate: function (angle) {
-                    context.rotate(angle);
-                },
-                fillRect: function (colorArray, x, y, w, h) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.fillRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                fillCircle: function (colorArray, x, y, radius) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.beginPath();
-                    context.arc(x, y, radius, 0, Math.PI * 2);
-                    context.fill();
-                    context.closePath();
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                strokeRect: function (colorArray, x, y, w, h, lineWidth) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.lineWidth = lineWidth || 0;
-                    context.strokeStyle = colorStr;
-                    context.strokeRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-
-                    sAngle = sAngle || 0;
-                    eAngle = eAngle || 0;
-
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.strokeStyle = colorStr;
-                    context.lineWidth = lineWidth || 0;
-                    context.beginPath();
-                    context.arc(x, y, radius, sAngle, eAngle, false);
-                    context.stroke();
-                    context.closePath();
-                },
-                drawLine: function (colorArray, ax, ay, bx, by, width) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    if (!Utils.isDefined(width)) {
-                        width = 1;
-                    }
-
-                    context.strokeStyle = colorStr;
-                    context.lineWidth = width;
-
-                    context.beginPath();
-                    context.moveTo(ax, ay);
-                    context.lineTo(bx, by);
-                    context.stroke();
-                    context.closePath();
-
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
-                },
-                getOpacity: function () {
-                    return context.globalAlpha;
-                },
-                setOpacity: function (value) {
-                    context.globalAlpha = value;
-                },
-                createSurface: function (width, height) {
-                    var newCanvas = document.createElement('canvas'),
-                        newContext;
-
-                    newCanvas.width = width;
-                    newCanvas.height = height;
-
-                    newContext = canvas.getContext('2d');
-
-                    return {
-                        canvas: newCanvas,
-                        context: newContext
-                    };
-                },
-                setContext: function (ctx) {
-                    context = ctx;
-                },
-                restoreContext: function () {
-                    context = original;
-                },
-                getContext: function () {
-                    return context;
-                },
-                begin: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.save();
-                        context.scale(pixelSize, pixelSize);
-                    }
-                },
-                flush: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.restore();
-                    }
-                }
-            },
-            getColor = function (colorArray) {
-                var colorStr = '#';
-                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
-                return colorStr;
-            };
-
-        if (!settings.smoothing) {
-            if (context.imageSmoothingEnabled) {
-                context.imageSmoothingEnabled = false;
-            }
-            if (context.webkitImageSmoothingEnabled) {
-                context.webkitImageSmoothingEnabled = false;
-            }
-            if (context.mozImageSmoothingEnabled) {
-                context.mozImageSmoothingEnabled = false;
-            }
-            if (context.msImageSmoothingEnabled) {
-                context.msImageSmoothingEnabled = false;
-            }
-        }
-        return renderer;
-    };
-});
-/**
- * Renderer using PIXI by GoodBoyDigital
- * @moduleName PixiRenderer
- */
-bento.define('bento/renderers/pixi', [
-    'bento',
-    'bento/utils',
-    'bento/math/transformmatrix',
-    'bento/renderers/canvas2d'
-], function (Bento, Utils, TransformMatrix, Canvas2d) {
-    var PIXI = window.PIXI;
-    var SpritePool = function (initialSize) {
-        var i;
-        // initialize
-        this.sprites = [];
-        for (i = 0; i < initialSize; ++i) {
-            this.sprites.push(new PIXI.Sprite());
-        }
-        this.index = 0;
-    };
-    SpritePool.prototype.reset = function () {
-        this.index = 0;
-    };
-    SpritePool.prototype.getSprite = function () {
-        var sprite = this.sprites[this.index];
-        if (!sprite) {
-            sprite = new PIXI.Sprite();
-            this.sprites.push(sprite);
-        }
-        this.index += 1;
-        return sprite;
-    };
-
-    return function (canvas, settings) {
-        var gl;
-        var canWebGl = (function () {
-            // try making a canvas
-            try {
-                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                return !!window.WebGLRenderingContext;
-            } catch (e) {
-                return false;
-            }
-        })();
-        var matrix;
-        var Matrix;
-        var matrices = [];
-        var alpha = 1;
-        var color = 0xFFFFFF;
-        var pixiRenderer;
-        var spriteRenderer;
-        var meshRenderer;
-        var graphicsRenderer;
-        var particleRenderer;
-        var test = false;
-        var cocoonScale = 1;
-        var pixelSize = settings.pixelSize || 1;
-        var tempDisplayObjectParent = null;
-        var spritePool = new SpritePool(2000);
-        var transformObject = {
-            worldTransform: null,
-            worldAlpha: 1,
-            children: []
-        };
-        var getPixiMatrix = function () {
-            var pixiMatrix = new PIXI.Matrix();
-            pixiMatrix.a = matrix.a;
-            pixiMatrix.b = matrix.b;
-            pixiMatrix.c = matrix.c;
-            pixiMatrix.d = matrix.d;
-            pixiMatrix.tx = matrix.tx;
-            pixiMatrix.ty = matrix.ty;
-            return pixiMatrix;
-        };
-        var getFillGraphics = function (color) {
-            var graphics = new PIXI.Graphics();
-            var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-            var alphaColor = color[3];
-            graphics.beginFill(colorInt, alphaColor);
-            graphics.worldTransform = getPixiMatrix();
-            graphics.worldAlpha = alpha;
-            return graphics;
-        };
-        var renderer = {
-            name: 'pixi',
-            init: function () {
-
-            },
-            destroy: function () {},
-            save: function () {
-                matrices.push(matrix.clone());
-            },
-            restore: function () {
-                matrix = matrices.pop();
-            },
-            setTransform: function (a, b, c, d, tx, ty) {
-                matrix.a = a;
-                matrix.b = b;
-                matrix.c = c;
-                matrix.d = d;
-                matrix.tx = tx;
-                matrix.ty = ty;
-            },
-            translate: function (x, y) {
-                var transform = new TransformMatrix();
-                matrix.multiplyWith(transform.translate(x, y));
-            },
-            scale: function (x, y) {
-                var transform = new TransformMatrix();
-                matrix.multiplyWith(transform.scale(x, y));
-            },
-            rotate: function (angle) {
-                var transform = new TransformMatrix();
-                matrix.multiplyWith(transform.rotate(angle));
-            },
-            fillRect: function (color, x, y, w, h) {
-                var graphics = getFillGraphics(color);
-                graphics.drawRect(x, y, w, h);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-            },
-            fillCircle: function (color, x, y, radius) {
-                var graphics = getFillGraphics(color);
-                graphics.drawCircle(x, y, radius);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-
-            },
-            strokeRect: function (color, x, y, w, h, lineWidth) {
-                var graphics = new PIXI.Graphics();
-                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-                var alphaColor = color[3];
-                graphics.worldTransform = getPixiMatrix();
-                graphics.worldAlpha = alpha;
-
-                graphics.lineStyle(lineWidth, colorInt, alphaColor);
-                graphics.drawRect(x, y, w, h);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-            },
-            strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
-                var graphics = new PIXI.Graphics();
-                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-                var alphaColor = color[3];
-                graphics.worldTransform = getPixiMatrix();
-                graphics.worldAlpha = alpha;
-
-                graphics
-                    .lineStyle(lineWidth, colorInt, alphaColor)
-                    .arc(x, y, radius, sAngle, eAngle);
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-
-            },
-            drawLine: function (color, ax, ay, bx, by, width) {
-                var graphics = getFillGraphics(color);
-                var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
-
-                if (!Utils.isDefined(width)) {
-                    width = 1;
-                }
-                if (!Utils.isDefined(color[3])) {
-                    color[3] = 1;
-                }
-
-                graphics
-                    .lineStyle(width, colorInt, color[3])
-                    .moveTo(ax, ay)
-                    .lineTo(bx, by)
-                    .endFill();
-
-                pixiRenderer.setObjectRenderer(graphicsRenderer);
-                graphicsRenderer.render(graphics);
-            },
-            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                var image = packedImage.image;
-                var px = packedImage.x;
-                var py = packedImage.y;
-                var rectangle;
-                var sprite = spritePool.getSprite();
-                var texture;
-                // If image and frame size don't correspond Pixi will throw an error and break the game.
-                // This check tries to prevent that.
-                if (px + sx + sw > image.width || py + sy + sh > image.height) {
-                    console.error("Warning: image and frame size do not correspond.", image);
-                    return;
-                }
-                if (!image.texture) {
-                    // initialize pixi baseTexture
-                    image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
-                    image.frame = new PIXI.Texture(image.texture);
-                }
-                // without spritepool
-                /*
-                rectangle = new PIXI.Rectangle(px + sx, py + sy, sw, sh);
-                texture = new PIXI.Texture(image.texture, rectangle);
-                texture._updateUvs();
-                sprite = new PIXI.Sprite(texture);
-                */
-
-                // with spritepool
-                texture = image.frame;
-                rectangle = texture._frame;
-                rectangle.x = px + sx;
-                rectangle.y = py + sy;
-                rectangle.width = sw;
-                rectangle.height = sh;
-                texture._updateUvs();
-                sprite._texture = texture;
-
-                // apply x, y, w, h
-                renderer.save();
-                renderer.translate(x, y);
-                renderer.scale(w / sw, h / sh);
-
-                sprite.worldTransform = matrix;
-                sprite.worldAlpha = alpha;
-
-                // push into batch
-                pixiRenderer.setObjectRenderer(spriteRenderer);
-                spriteRenderer.render(sprite);
-
-                renderer.restore();
-
-                // did the spriteRenderer flush in the meantime?
-                if (spriteRenderer.currentBatchSize === 0) {
-                    // the spritepool can be reset as well then
-                    spritePool.reset();
-                }
-            },
-            begin: function () {
-                spriteRenderer.start();
-                if (pixelSize !== 1 || Utils.isCocoonJs()) {
-                    this.save();
-                    this.scale(pixelSize * cocoonScale, pixelSize * cocoonScale);
-                }
-            },
-            flush: function () {
-                // note: only spriterenderer has an implementation of flush
-                spriteRenderer.flush();
-                spritePool.reset();
-                if (pixelSize !== 1 || Utils.isCocoonJs()) {
-                    this.restore();
-                }
-            },
-            getOpacity: function () {
-                return alpha;
-            },
-            setOpacity: function (value) {
-                alpha = value;
-            },
-            /*
-             * Pixi only feature: draws any pixi displayObject
-             */
-            drawPixi: function (displayObject) {
-                // trick the renderer by setting our own parent
-                transformObject.worldTransform = matrix;
-                transformObject.worldAlpha = alpha;
-
-                // method 1, replace the "parent" that the renderer swaps with
-                // maybe not efficient because it calls flush all the time?
-                // pixiRenderer._tempDisplayObjectParent = transformObject;
-                // pixiRenderer.render(displayObject);
-
-                // method 2, set the object parent and update transform
-                displayObject.parent = transformObject;
-                displayObject.updateTransform();
-                displayObject.renderWebGL(pixiRenderer);
-            },
-            getContext: function () {
-                return gl;
-            },
-            getPixiRenderer: function () {
-                return pixiRenderer;
-            },
-            // pixi specific: update the webgl view, needed if the canvas changed size
-            updateSize: function () {
-                pixiRenderer.resize(canvas.width, canvas.height);
-            }
-        };
-
-        if (canWebGl && Utils.isDefined(window.PIXI)) {
-            // init pixi
-            // Matrix = PIXI.Matrix;
-            matrix = new TransformMatrix();
-            // additional scale
-            if (Utils.isCocoonJs()) {
-                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
-                canvas.width *= cocoonScale;
-                canvas.height *= cocoonScale;
-            }
-            pixiRenderer = new PIXI.WebGLRenderer(canvas.width, canvas.height, {
-                view: canvas,
-                backgroundColor: 0x000000,
-                clearBeforeRender: false
-            });
-            pixiRenderer.filterManager.setFilterStack(pixiRenderer.renderTarget.filterStack);
-            tempDisplayObjectParent = pixiRenderer._tempDisplayObjectParent;
-            spriteRenderer = pixiRenderer.plugins.sprite;
-            graphicsRenderer = pixiRenderer.plugins.graphics;
-            meshRenderer = pixiRenderer.plugins.mesh;
-
-            return renderer;
-        } else {
-            if (!window.PIXI) {
-                console.log('WARNING: PIXI library is missing, reverting to Canvas2D renderer');
-            } else if (!canWebGl) {
-                console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');
-            }
-            return Canvas2d(canvas, settings);
-        }
-    };
 });
 /**
  * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.
