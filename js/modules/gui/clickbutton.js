@@ -61,6 +61,7 @@ bento.define('bento/gui/clickbutton', [
             image: settings.image,
             imageName: settings.imageName,
             originRelative: settings.originRelative || new Vector2(0.5, 0.5),
+            padding: settings.padding,
             frameWidth: settings.frameWidth,
             frameHeight: settings.frameHeight,
             frameCountX: settings.frameCountX,
