@@ -26,6 +26,27 @@
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
  * @moduleName Text
+ * @snippet Text.snippet
+Text({
+    z: ${1:0},
+    position: new Vector2(${2:0}, ${3:0}),
+    text: '${4}',
+    font: '${5:font}',
+    fontSize: ${6:16},
+    fontColor: '${7:#ffffff}',
+    align: '${8:left}',
+    textBaseline: '${9:bottom}',
+    ySpacing: ${10:0},
+    lineWidth: ${11:0}, // set to add an outline
+    strokeStyle: '${12:#000000}',
+    innerStroke: ${13:false},
+    pixelStroke: ${14:false}, // workaround for Cocoon bug
+    maxWidth: ${15:undefined},
+    maxHeight: ${16:undefined},
+    linebreaks: ${17:true},
+    drawDebug: ${18:false},
+    components: [$19]
+});
  * @returns Entity
  */
 bento.define('bento/gui/text', [
