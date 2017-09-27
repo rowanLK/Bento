@@ -4,6 +4,13 @@
  * <br>Exports: Constructor
  * @module bento/components/nineslice
  * @moduleName NineSlice
+ * @snippet NineSlice.snippet
+NineSlice({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    width: ${4:32},
+    height: ${5:32}
+})
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  * @param {Vector2} settings.origin - Vector2 of origin

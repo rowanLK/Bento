@@ -32,6 +32,10 @@ var entity = new Entity({
  * // attach entity to Bento Objects
  * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
+ * @snippet getComponent.Entity
+getComponent('${1}', function (${1:component}) {
+    $2
+});
  */
 bento.define('bento/entity', [
     'bento',

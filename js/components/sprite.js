@@ -3,6 +3,23 @@
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
+ * @snippet Sprite.spriteSheet
+Sprite({
+    spriteSheet: '${1}'
+})
+ * @snippet Sprite.imageName
+Sprite({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    frameCountX: ${4:1},
+    frameCountY: ${5:1},
+    animations: {
+        default: {
+            speed: 0,
+            frames: [0]
+        }
+    }
+})
  * @param {Object} settings - Settings
  * @param {String} settings.name - Overwites the component name (default is "sprite")
  * @param {String} settings.spriteSheet - (Using spritesheet assets) Asset name for the spriteSheet asset. If one uses spritesheet assets, this is the only parameter that is needed.
