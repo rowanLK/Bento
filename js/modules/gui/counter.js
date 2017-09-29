@@ -168,8 +168,7 @@ bento.define('bento/gui/counter', [
         var entitySettings = {
             z: settings.z,
             name: settings.name,
-            position: settings.position,
-            components: []
+            position: settings.position
         };
         var container;
 
@@ -192,7 +191,8 @@ bento.define('bento/gui/counter', [
         }
 
         Utils.extend(entitySettings, settings);
-
+        // merge components array
+        entitySettings.components = settings.components;
         /*
          * Public interface
          */

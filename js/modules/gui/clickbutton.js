@@ -61,6 +61,7 @@ bento.define('bento/gui/clickbutton', [
             image: settings.image,
             imageName: settings.imageName,
             originRelative: settings.originRelative || new Vector2(0.5, 0.5),
+            padding: settings.padding,
             frameWidth: settings.frameWidth,
             frameHeight: settings.frameHeight,
             frameCountX: settings.frameCountX,
@@ -155,15 +156,17 @@ bento.define('bento/gui/clickbutton', [
             z: 0,
             name: 'clickButton',
             position: new Vector2(0, 0),
-            components: [
-                visualComponent,
-                clickable
-            ],
             family: ['buttons'],
             init: function () {
                 setActive(active);
             }
-        }, settings);
+        }, settings, true);
+
+        // merge components array
+        entitySettings.components = [
+            visualComponent,
+            clickable
+        ].concat(settings.components || []);
 
         var setActive = function (bool) {
             active = bool;
