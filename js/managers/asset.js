@@ -791,8 +791,54 @@ bento.define('bento/managers/asset', [
                     // find the corresponding asset from the assets object
                     var assetTypeGroup = assets[type] || {};
                     var asset = assetTypeGroup[name];
-
-                    // TODO: unloading and reloading texture packer (?)
+                    var removePackedImage = function (packedImages) {
+                        // find what it unpacked to
+                        Utils.forEach(packedImages, function (packData, packName) {
+                            var image = packData.image;
+                            var data = packData.data;
+                            Utils.forEach(data, function (textureData, i) {
+                                // find out the asset name
+                                var assetName = textureData.assetName;
+                                var textureAsset = assets.texturePacker[assetName];
+                                // delete if this asset still exists
+                                if (textureAsset) {
+                                    delete assets.texturePacker[assetName];
+                                }
+                                // dispose if possible
+                                if (dispose && textureAsset.image.dispose) {
+                                    textureAsset.image.dispose();
+                                }
+                            });
+                        });
+                    };
+                    var removePackedSpriteSheet = function (packedSpriteSheets) {
+                        // find what it unpacked to
+                        Utils.forEach(packedSpriteSheets, function (packData, packName) {
+                            var image = packData.image;
+                            var data = packData.data;
+                            Utils.forEach(data, function (textureData, i) {
+                                // find out the asset name
+                                var assetName = textureData.assetName;
+                                var spriteSheet = assets.spritesheets[assetName];
+                                // delete if this asset still exists
+                                if (spriteSheet) {
+                                    delete assets.spriteSheet[assetName];
+                                }
+                                // dispose if possible
+                                if (dispose && spriteSheet.image.dispose) {
+                                    spriteSheet.image.dispose();
+                                }
+                            });
+                        });
+                    };
+                    var removePackedJson = function (packedJson) {
+                        // find what it unpacked to
+                        Utils.forEach(packedJson, function (group) {
+                            Utils.forEach(group, function (json, key, l, breakLoop) {
+                                delete assets.json[key];
+                            });
+                        });
+                    };
 
                     if (asset) {
                         // remove reference to it
@@ -801,11 +847,17 @@ bento.define('bento/managers/asset', [
                         delete assetTypeGroup[name];
 
                         if (type === 'images') {
-                            // remove corresponding texturepacker
+                            // also remove corresponding texturepacker
                             if (assets.texturePacker[name]) {
                                 assets.texturePacker[name] = undefined;
                                 delete assets.texturePacker[name];
                             }
+                        } else if (type === 'packed-images') {
+                            removePackedImage(asset);
+                        } else if (type === 'packed-spritesheets') {
+                            removePackedSpriteSheet(asset);
+                        } else if (type === 'packed-json') {
+                            removePackedJson(asset);
                         }
 
                         // Canvas+ only: dispose if possible
@@ -815,10 +867,6 @@ bento.define('bento/managers/asset', [
                             if (asset.dispose) {
                                 asset.dispose();
                             }
-                            // packedimage
-                            // if (asset.image && asset.image.dispose) {
-                            //     asset.image.dispose();
-                            // }
                             // spritesheet
                             else if (asset.image && asset.image.dispose) {
                                 asset.image.dispose();
