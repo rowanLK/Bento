@@ -4537,6 +4537,9 @@ bento.define('bento/entity', [
             if (Utils.isDefined(settings.rotation)) {
                 this.rotation = settings.rotation;
             }
+            if (Utils.isDefined(settings.visible)) {
+                this.visible = settings.visible;
+            }
 
             this.z = settings.z || 0;
             this.updateWhenPaused = settings.updateWhenPaused || 0;
@@ -5126,7 +5129,7 @@ Bento.objects.attach(entity);
         var i, l, component;
         var components = this.components;
         var matrix;
-        if (!this.visible) {
+        if (!this.visible || !this.transform.visible) {
             return;
         }
         data = data || Bento.getGameData();
@@ -5636,6 +5639,7 @@ bento.define('bento/transform', [
         // additional transforms
         this.x = 0;
         this.y = 0;
+        this.visible = true; // only checked by entity
     };
 
     Transform.prototype.draw = function (data) {
@@ -7398,6 +7402,7 @@ bento.define('bento/components/nineslice', [
  * @module bento/components/sprite
  * @moduleName Sprite
  * @param {Object} settings - Settings
+ * @param {String} settings.name - Overwites the component name (default is "sprite")
  * @param {String} settings.spriteSheet - (Using spritesheet assets) Asset name for the spriteSheet asset. If one uses spritesheet assets, this is the only parameter that is needed.
  * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
@@ -7457,7 +7462,7 @@ bento.define('bento/components/sprite', [
             return new Sprite(settings);
         }
         this.entity = null;
-        this.name = 'sprite';
+        this.name = settings.name || 'sprite';
         this.visible = true;
         this.parent = null;
         this.rootIndex = -1;
@@ -14182,6 +14187,7 @@ bento.define('bento/tiled', [
         var onComplete = settings.onComplete;
         var onSpawn = settings.onSpawn;
         var onSpawnComplete = settings.onSpawnComplete;
+        var onLayerMergeCheck = settings.onLayerMergeCheck;
         var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
@@ -14239,12 +14245,21 @@ bento.define('bento/tiled', [
 
                 return json;
             },
-            onLayer: function (layer) {
+            onLayer: function (layer, index) {
+                var shouldMerge = false;
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
-                        currentSpriteLayer += 1;
+                        // check per layer
+                        if (onLayerMergeCheck) {
+                            shouldMerge = onLayerMergeCheck(layer);
+                        }
+                        if (shouldMerge) {
+                            currentSpriteLayer = 9999;
+                        } else {
+                            currentSpriteLayer = index;
+                        }
                     } else {
-                        currentSpriteLayer = 0;
+                        currentSpriteLayer = 9999;
                     }
                 }
                 opacity = layer.opacity;
@@ -14317,7 +14332,7 @@ bento.define('bento/tiled', [
                         });
                         entity = new Entity({
                             z: 0,
-                            name: tiledLayer.name || 'background',
+                            name: tiledLayer ?  tiledLayer.name || 'tiledLayer' : 'tiledLayer',
                             family: ['backgrounds'],
                             position: new Vector2(
                                 offset.x + canvasSize.x * (j % spritesCountX),
@@ -14759,7 +14774,7 @@ bento.define('bento/tiledreader', [], function () {
                 type = layer.type;
 
                 if (onLayer) {
-                    onLayer(layer);
+                    onLayer(layer, k);
                 }
                 if (type === 'tilelayer') {
                     // skip layer if invisible???
@@ -15921,6 +15936,7 @@ bento.define('bento/gui/clickbutton', [
             image: settings.image,
             imageName: settings.imageName,
             originRelative: settings.originRelative || new Vector2(0.5, 0.5),
+            padding: settings.padding,
             frameWidth: settings.frameWidth,
             frameHeight: settings.frameHeight,
             frameCountX: settings.frameCountX,
@@ -16015,15 +16031,17 @@ bento.define('bento/gui/clickbutton', [
             z: 0,
             name: 'clickButton',
             position: new Vector2(0, 0),
-            components: [
-                visualComponent,
-                clickable
-            ],
             family: ['buttons'],
             init: function () {
                 setActive(active);
             }
-        }, settings);
+        }, settings, true);
+
+        // merge components array
+        entitySettings.components = [
+            visualComponent,
+            clickable
+        ].concat(settings.components || []);
 
         var setActive = function (bool) {
             active = bool;
@@ -16300,8 +16318,7 @@ bento.define('bento/gui/counter', [
         var entitySettings = {
             z: settings.z,
             name: settings.name,
-            position: settings.position,
-            components: []
+            position: settings.position
         };
         var container;
 
@@ -16324,7 +16341,8 @@ bento.define('bento/gui/counter', [
         }
 
         Utils.extend(entitySettings, settings);
-
+        // merge components array
+        entitySettings.components = settings.components;
         /*
          * Public interface
          */
@@ -17089,6 +17107,10 @@ bento.define('bento/gui/text', [
             name: 'text',
             position: new Vector2(0, 0)
         }, settings, true);
+        
+        // merge components array
+        entitySettings.components = settings.components || [];
+
         var entity;
 
         // add the scaler (debugDrawComponent and sprite) as top component
@@ -17145,20 +17167,20 @@ bento.define('bento/gui/text', [
                 text = str;
                 setupStrings();
 
-                // check width and height
+                // check maxWidth and maxHeight
                 if (!isEmpty(maxWidth) || !isEmpty(maxHeight)) {
                     hash = Utils.checksum(str + '_' + maxWidth + '_' + maxHeight);
-                }
-                if (Utils.isDefined(fontSizeCache[hash])) {
-                    fontSize = fontSizeCache[hash];
-                    setupStrings();
-                } else {
-                    while (fontSize > 0 && ((!isEmpty(maxWidth) && canvasWidth > maxWidth) || (!isEmpty(maxHeight) && canvasHeight > maxHeight))) {
-                        // try again by reducing fontsize
-                        fontSize -= 1;
+                    if (Utils.isDefined(fontSizeCache[hash])) {
+                        fontSize = fontSizeCache[hash];
                         setupStrings();
+                    } else {
+                        while (fontSize > 0 && ((!isEmpty(maxWidth) && canvasWidth > maxWidth) || (!isEmpty(maxHeight) && canvasHeight > maxHeight))) {
+                            // try again by reducing fontsize
+                            fontSize -= 1;
+                            setupStrings();
+                        }
+                        fontSizeCache[hash] = fontSize;
                     }
-                    fontSizeCache[hash] = fontSize;
                 }
                 updateCanvas();
 
@@ -17212,164 +17234,181 @@ bento.define('bento/gui/togglebutton', [
 ) {
     'use strict';
     return function (settings) {
-        var viewport = Bento.getViewport(),
-            active = true,
-            toggled = false,
-            animations = settings.animations || {
-                'up': {
-                    speed: 0,
-                    frames: [0]
-                },
-                'down': {
-                    speed: 0,
-                    frames: [1]
+        var viewport = Bento.getViewport();
+        var active = true;
+        var toggled = false;
+        var animations = settings.animations || {
+            'up': {
+                speed: 0,
+                frames: [0]
+            },
+            'down': {
+                speed: 0,
+                frames: [1]
+            }
+        };
+        var sprite = settings.sprite || new Sprite({
+            image: settings.image,
+            imageName: settings.imageName,
+            originRelative: settings.originRelative || new Vector2(0.5, 0.5),
+            padding: settings.padding,
+            frameWidth: settings.frameWidth,
+            frameHeight: settings.frameHeight,
+            frameCountX: settings.frameCountX,
+            frameCountY: settings.frameCountY,
+            animations: animations
+        });
+        var clickable = new Clickable({
+            onClick: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation('down');
+                EventSystem.fire('toggleButton-toggle-down', {
+                    entity: entity,
+                    event: 'onClick'
+                });
+            },
+            onHoldEnter: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation('down');
+                EventSystem.fire('toggleButton-toggle-down', {
+                    entity: entity,
+                    event: 'onHoldEnter'
+                });
+            },
+            onHoldLeave: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
+                    entity: entity,
+                    event: 'onHoldLeave'
+                });
+            },
+            pointerUp: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
+                    entity: entity,
+                    event: 'pointerUp'
+                });
+            },
+            onHoldEnd: function () {
+                if (!active) {
+                    return;
+                }
+                if (toggled) {
+                    toggled = false;
+                } else {
+                    toggled = true;
+                }
+                if (settings.onToggle) {
+                    settings.onToggle.apply(entity);
+                    if (settings.sfx) {
+                        Bento.audio.stopSound(settings.sfx);
+                        Bento.audio.playSound(settings.sfx);
+                    }
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                EventSystem.fire('toggleButton-onToggle', {
+                    entity: entity,
+                    event: 'onHoldEnd'
+                });
+            }
+        });
+        var entitySettings = Utils.extend({
+            z: 0,
+            name: 'toggleButton',
+            position: new Vector2(0, 0),
+            family: ['buttons']
+        }, settings);
+
+        // merge components array
+        entitySettings.components = [
+            sprite,
+            clickable
+        ].concat(settings.components || []);
+
+        var entity = new Entity(entitySettings).extend({
+            /**
+             * Check if the button is toggled
+             * @function
+             * @instance
+             * @name isToggled
+             * @returns {Bool} Whether the button is toggled
+             */
+            isToggled: function () {
+                return toggled;
+            },
+            /**
+             * Toggles the button programatically
+             * @function
+             * @param {Bool} state - Toggled or not
+             * @param {Bool} doCallback - Perform the onToggle callback or not
+             * @instance
+             * @name toggle
+             */
+            toggle: function (state, doCallback) {
+                if (Utils.isDefined(state)) {
+                    toggled = state;
+                } else {
+                    toggled = !toggled;
+                }
+                if (doCallback) {
+                    if (settings.onToggle) {
+                        settings.onToggle.apply(entity);
+                        if (settings.sfx) {
+                            Bento.audio.stopSound(settings.sfx);
+                            Bento.audio.playSound(settings.sfx);
+                        }
+                    }
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+            },
+            mimicClick: function () {
+                entity.getComponent('clickable').callbacks.onHoldEnd();
+            },
+            /**
+             * Activates or deactives the button. Deactivated buttons cannot be pressed.
+             * @function
+             * @param {Bool} active - Should be active or not
+             * @instance
+             * @name setActive
+             */
+            setActive: function (bool) {
+                active = bool;
+                if (!active && animations.inactive) {
+                    sprite.setAnimation('inactive');
+                } else {
+                    sprite.setAnimation(toggled ? 'down' : 'up');
                 }
             },
-            sprite = settings.sprite || new Sprite({
-                image: settings.image,
-                imageName: settings.imageName,
-                originRelative: settings.originRelative || new Vector2(0.5, 0.5),
-                frameWidth: settings.frameWidth,
-                frameHeight: settings.frameHeight,
-                frameCountX: settings.frameCountX,
-                frameCountY: settings.frameCountY,
-                animations: animations
-            }),
-            entitySettings = Utils.extend({
-                z: 0,
-                name: 'toggleButton',
-                position: new Vector2(0, 0),
-                components: [
-                    sprite,
-                    new Clickable({
-                        onClick: function () {
-                            sprite.setAnimation('down');
-                            EventSystem.fire('toggleButton-toggle-down', {
-                                entity: entity,
-                                event: 'onClick'
-                            });
-                        },
-                        onHoldEnter: function () {
-                            sprite.setAnimation('down');
-                            EventSystem.fire('toggleButton-toggle-down', {
-                                entity: entity,
-                                event: 'onHoldEnter'
-                            });
-                        },
-                        onHoldLeave: function () {
-                            sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
-                                entity: entity,
-                                event: 'onHoldLeave'
-                            });
-                        },
-                        pointerUp: function () {
-                            sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
-                                entity: entity,
-                                event: 'pointerUp'
-                            });
-                        },
-                        onHoldEnd: function () {
-                            if (!active) {
-                                return;
-                            }
-                            if (toggled) {
-                                toggled = false;
-                            } else {
-                                toggled = true;
-                            }
-                            if (settings.onToggle) {
-                                settings.onToggle.apply(entity);
-                                if (settings.sfx) {
-                                    Bento.audio.stopSound(settings.sfx);
-                                    Bento.audio.playSound(settings.sfx);
-                                }
-                            }
-                            sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-onToggle', {
-                                entity: entity,
-                                event: 'onHoldEnd'
-                            });
-                        }
-                    })
-                ],
-                family: ['buttons']
-            }, settings),
-            entity = new Entity(entitySettings).extend({
-                /**
-                 * Check if the button is toggled
-                 * @function
-                 * @instance
-                 * @name isToggled
-                 * @returns {Bool} Whether the button is toggled
-                 */
-                isToggled: function () {
-                    return toggled;
-                },
-                /**
-                 * Toggles the button programatically
-                 * @function
-                 * @param {Bool} state - Toggled or not
-                 * @param {Bool} doCallback - Perform the onToggle callback or not
-                 * @instance
-                 * @name toggle
-                 */
-                toggle: function (state, doCallback) {
-                    if (Utils.isDefined(state)) {
-                        toggled = state;
-                    } else {
-                        toggled = !toggled;
-                    }
-                    if (doCallback) {
-                        if (settings.onToggle) {
-                            settings.onToggle.apply(entity);
-                            if (settings.sfx) {
-                                Bento.audio.stopSound(settings.sfx);
-                                Bento.audio.playSound(settings.sfx);
-                            }
-                        }
-                    }
-                    sprite.setAnimation(toggled ? 'down' : 'up');
-                },
-                mimicClick: function () {
-                    entity.getComponent('clickable').callbacks.onHoldEnd();
-                },
-                /**
-                 * Activates or deactives the button. Deactivated buttons cannot be pressed.
-                 * @function
-                 * @param {Bool} active - Should be active or not
-                 * @instance
-                 * @name setActive
-                 */
-                setActive: function (bool) {
-                    active = bool;
-                    if (!active && animations.inactive) {
-                        sprite.setAnimation('inactive');
-                    } else {
-                        sprite.setAnimation(toggled ? 'down' : 'up');
-                    }
-                },
-                /**
-                 * Performs the callback as if the button was clicked
-                 * @function
-                 * @instance
-                 * @name doCallback
-                 */
-                doCallback: function () {
-                    settings.onToggle.apply(entity);
-                },
-                /**
-                 * Check if the button is active
-                 * @function
-                 * @instance
-                 * @name isActive
-                 * @returns {Bool} Whether the button is active
-                 */
-                isActive: function () {
-                    return active;
-                }
-            });
+            /**
+             * Performs the callback as if the button was clicked
+             * @function
+             * @instance
+             * @name doCallback
+             */
+            doCallback: function () {
+                settings.onToggle.apply(entity);
+            },
+            /**
+             * Check if the button is active
+             * @function
+             * @instance
+             * @name isActive
+             * @returns {Bool} Whether the button is active
+             */
+            isActive: function () {
+                return active;
+            }
+        });
 
         if (Utils.isDefined(settings.active)) {
             active = settings.active;

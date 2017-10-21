@@ -30,6 +30,7 @@ bento.define('bento/transform', [
         // additional transforms
         this.x = 0;
         this.y = 0;
+        this.visible = true; // only checked by entity
     };
 
     Transform.prototype.draw = function (data) {

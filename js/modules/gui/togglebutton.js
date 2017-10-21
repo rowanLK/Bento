@@ -34,164 +34,181 @@ bento.define('bento/gui/togglebutton', [
 ) {
     'use strict';
     return function (settings) {
-        var viewport = Bento.getViewport(),
-            active = true,
-            toggled = false,
-            animations = settings.animations || {
-                'up': {
-                    speed: 0,
-                    frames: [0]
-                },
-                'down': {
-                    speed: 0,
-                    frames: [1]
+        var viewport = Bento.getViewport();
+        var active = true;
+        var toggled = false;
+        var animations = settings.animations || {
+            'up': {
+                speed: 0,
+                frames: [0]
+            },
+            'down': {
+                speed: 0,
+                frames: [1]
+            }
+        };
+        var sprite = settings.sprite || new Sprite({
+            image: settings.image,
+            imageName: settings.imageName,
+            originRelative: settings.originRelative || new Vector2(0.5, 0.5),
+            padding: settings.padding,
+            frameWidth: settings.frameWidth,
+            frameHeight: settings.frameHeight,
+            frameCountX: settings.frameCountX,
+            frameCountY: settings.frameCountY,
+            animations: animations
+        });
+        var clickable = new Clickable({
+            onClick: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation('down');
+                EventSystem.fire('toggleButton-toggle-down', {
+                    entity: entity,
+                    event: 'onClick'
+                });
+            },
+            onHoldEnter: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation('down');
+                EventSystem.fire('toggleButton-toggle-down', {
+                    entity: entity,
+                    event: 'onHoldEnter'
+                });
+            },
+            onHoldLeave: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
+                    entity: entity,
+                    event: 'onHoldLeave'
+                });
+            },
+            pointerUp: function () {
+                if (!active) {
+                    return;
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
+                    entity: entity,
+                    event: 'pointerUp'
+                });
+            },
+            onHoldEnd: function () {
+                if (!active) {
+                    return;
+                }
+                if (toggled) {
+                    toggled = false;
+                } else {
+                    toggled = true;
+                }
+                if (settings.onToggle) {
+                    settings.onToggle.apply(entity);
+                    if (settings.sfx) {
+                        Bento.audio.stopSound(settings.sfx);
+                        Bento.audio.playSound(settings.sfx);
+                    }
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                EventSystem.fire('toggleButton-onToggle', {
+                    entity: entity,
+                    event: 'onHoldEnd'
+                });
+            }
+        });
+        var entitySettings = Utils.extend({
+            z: 0,
+            name: 'toggleButton',
+            position: new Vector2(0, 0),
+            family: ['buttons']
+        }, settings);
+
+        // merge components array
+        entitySettings.components = [
+            sprite,
+            clickable
+        ].concat(settings.components || []);
+
+        var entity = new Entity(entitySettings).extend({
+            /**
+             * Check if the button is toggled
+             * @function
+             * @instance
+             * @name isToggled
+             * @returns {Bool} Whether the button is toggled
+             */
+            isToggled: function () {
+                return toggled;
+            },
+            /**
+             * Toggles the button programatically
+             * @function
+             * @param {Bool} state - Toggled or not
+             * @param {Bool} doCallback - Perform the onToggle callback or not
+             * @instance
+             * @name toggle
+             */
+            toggle: function (state, doCallback) {
+                if (Utils.isDefined(state)) {
+                    toggled = state;
+                } else {
+                    toggled = !toggled;
+                }
+                if (doCallback) {
+                    if (settings.onToggle) {
+                        settings.onToggle.apply(entity);
+                        if (settings.sfx) {
+                            Bento.audio.stopSound(settings.sfx);
+                            Bento.audio.playSound(settings.sfx);
+                        }
+                    }
+                }
+                sprite.setAnimation(toggled ? 'down' : 'up');
+            },
+            mimicClick: function () {
+                entity.getComponent('clickable').callbacks.onHoldEnd();
+            },
+            /**
+             * Activates or deactives the button. Deactivated buttons cannot be pressed.
+             * @function
+             * @param {Bool} active - Should be active or not
+             * @instance
+             * @name setActive
+             */
+            setActive: function (bool) {
+                active = bool;
+                if (!active && animations.inactive) {
+                    sprite.setAnimation('inactive');
+                } else {
+                    sprite.setAnimation(toggled ? 'down' : 'up');
                 }
             },
-            sprite = settings.sprite || new Sprite({
-                image: settings.image,
-                imageName: settings.imageName,
-                originRelative: settings.originRelative || new Vector2(0.5, 0.5),
-                frameWidth: settings.frameWidth,
-                frameHeight: settings.frameHeight,
-                frameCountX: settings.frameCountX,
-                frameCountY: settings.frameCountY,
-                animations: animations
-            }),
-            entitySettings = Utils.extend({
-                z: 0,
-                name: 'toggleButton',
-                position: new Vector2(0, 0),
-                components: [
-                    sprite,
-                    new Clickable({
-                        onClick: function () {
-                            sprite.setAnimation('down');
-                            EventSystem.fire('toggleButton-toggle-down', {
-                                entity: entity,
-                                event: 'onClick'
-                            });
-                        },
-                        onHoldEnter: function () {
-                            sprite.setAnimation('down');
-                            EventSystem.fire('toggleButton-toggle-down', {
-                                entity: entity,
-                                event: 'onHoldEnter'
-                            });
-                        },
-                        onHoldLeave: function () {
-                            sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
-                                entity: entity,
-                                event: 'onHoldLeave'
-                            });
-                        },
-                        pointerUp: function () {
-                            sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
-                                entity: entity,
-                                event: 'pointerUp'
-                            });
-                        },
-                        onHoldEnd: function () {
-                            if (!active) {
-                                return;
-                            }
-                            if (toggled) {
-                                toggled = false;
-                            } else {
-                                toggled = true;
-                            }
-                            if (settings.onToggle) {
-                                settings.onToggle.apply(entity);
-                                if (settings.sfx) {
-                                    Bento.audio.stopSound(settings.sfx);
-                                    Bento.audio.playSound(settings.sfx);
-                                }
-                            }
-                            sprite.setAnimation(toggled ? 'down' : 'up');
-                            EventSystem.fire('toggleButton-onToggle', {
-                                entity: entity,
-                                event: 'onHoldEnd'
-                            });
-                        }
-                    })
-                ],
-                family: ['buttons']
-            }, settings),
-            entity = new Entity(entitySettings).extend({
-                /**
-                 * Check if the button is toggled
-                 * @function
-                 * @instance
-                 * @name isToggled
-                 * @returns {Bool} Whether the button is toggled
-                 */
-                isToggled: function () {
-                    return toggled;
-                },
-                /**
-                 * Toggles the button programatically
-                 * @function
-                 * @param {Bool} state - Toggled or not
-                 * @param {Bool} doCallback - Perform the onToggle callback or not
-                 * @instance
-                 * @name toggle
-                 */
-                toggle: function (state, doCallback) {
-                    if (Utils.isDefined(state)) {
-                        toggled = state;
-                    } else {
-                        toggled = !toggled;
-                    }
-                    if (doCallback) {
-                        if (settings.onToggle) {
-                            settings.onToggle.apply(entity);
-                            if (settings.sfx) {
-                                Bento.audio.stopSound(settings.sfx);
-                                Bento.audio.playSound(settings.sfx);
-                            }
-                        }
-                    }
-                    sprite.setAnimation(toggled ? 'down' : 'up');
-                },
-                mimicClick: function () {
-                    entity.getComponent('clickable').callbacks.onHoldEnd();
-                },
-                /**
-                 * Activates or deactives the button. Deactivated buttons cannot be pressed.
-                 * @function
-                 * @param {Bool} active - Should be active or not
-                 * @instance
-                 * @name setActive
-                 */
-                setActive: function (bool) {
-                    active = bool;
-                    if (!active && animations.inactive) {
-                        sprite.setAnimation('inactive');
-                    } else {
-                        sprite.setAnimation(toggled ? 'down' : 'up');
-                    }
-                },
-                /**
-                 * Performs the callback as if the button was clicked
-                 * @function
-                 * @instance
-                 * @name doCallback
-                 */
-                doCallback: function () {
-                    settings.onToggle.apply(entity);
-                },
-                /**
-                 * Check if the button is active
-                 * @function
-                 * @instance
-                 * @name isActive
-                 * @returns {Bool} Whether the button is active
-                 */
-                isActive: function () {
-                    return active;
-                }
-            });
+            /**
+             * Performs the callback as if the button was clicked
+             * @function
+             * @instance
+             * @name doCallback
+             */
+            doCallback: function () {
+                settings.onToggle.apply(entity);
+            },
+            /**
+             * Check if the button is active
+             * @function
+             * @instance
+             * @name isActive
+             * @returns {Bool} Whether the button is active
+             */
+            isActive: function () {
+                return active;
+            }
+        });
 
         if (Utils.isDefined(settings.active)) {
             active = settings.active;
