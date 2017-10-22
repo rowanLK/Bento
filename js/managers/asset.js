@@ -10,8 +10,14 @@
 bento.define('bento/managers/asset', [
     'bento/packedimage',
     'bento/utils',
-    'audia'
-], function (PackedImage, Utils, Audia) {
+    'audia',
+    'lzstring'
+], function (
+    PackedImage,
+    Utils,
+    Audia,
+    LZString
+) {
     'use strict';
     return function () {
         var assetGroups = {};
@@ -23,11 +29,16 @@ bento.define('bento/managers/asset', [
             binary: {},
             fonts: {},
             spritesheets: {},
-            texturePacker: {}
+            texturePacker: {},
+
+            // packed
+            'packed-images': {},
+            'packed-spritesheets': {},
+            'packed-json': {}
         };
-        // TODO: fix texturepacker loading
-        // right now its very confusing: a texturepacker group loads a JSON + image and merges them later
-        var packs = [];
+        /**
+         * (Down)Load asset types
+         */
         var loadAudio = function (name, source, callback) {
             var i;
             var failed = true;
@@ -59,7 +70,7 @@ bento.define('bento/managers/asset', [
                 callback('This audio type is not supported:', name, source);
             }
         };
-        var loadJSON = function (name, source, callback) {
+        var loadJSON = function (name, source, callback, isCompressed) {
             var xhr = new window.XMLHttpRequest();
             if (xhr.overrideMimeType) {
                 xhr.overrideMimeType('application/json');
@@ -77,10 +88,16 @@ bento.define('bento/managers/asset', [
                 if (xhr.readyState === 4) {
                     if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
                         try {
-                            jsonData = JSON.parse(xhr.responseText);
+                            if (isCompressed) {
+                                // decompress if needed
+                                jsonData = JSON.parse(LZString.decompressFromBase64(xhr.responseText));
+                            } else {
+                                jsonData = JSON.parse(xhr.responseText);
+                            }
                         } catch (e) {
-                            Utils.log('ERROR: Could not parse JSON ' + name + ' at ' + source);
+                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source);
                             console.log('Trying to parse', xhr.responseText);
+                            jsonData = xhr.responseText;
                         }
                         callback(null, name, jsonData);
                     } else {
@@ -89,6 +106,9 @@ bento.define('bento/managers/asset', [
                 }
             };
             xhr.send(null);
+        };
+        var loadJsonCompressed = function (name, source, callback) {
+            return loadJSON(name, source, callback, true);
         };
         var loadBinary = function (name, source, success, failure) {
             var xhr = new window.XMLHttpRequest();
@@ -229,6 +249,65 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
         };
+        var loadPackedImage = function (name, source, callback) {
+            // very similar to spritesheet: load an image and load a json
+            var packedImage = {
+                image: null,
+                data: null
+            };
+            var checkForCompletion = function () {
+                if (packedImage.image !== null && packedImage.animation !== null) {
+                    callback(null, name, packedImage);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                packedImage.data = json;
+                checkForCompletion();
+            });
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                packedImage.image = img;
+                checkForCompletion();
+            });
+        };
+        var loadSpriteSheetPack = function (name, source, callback) {
+            var spriteSheet = {
+                image: null,
+                data: null
+            };
+
+            var checkForCompletion = function () {
+                if (spriteSheet.image !== null && spriteSheet.data !== null) {
+                    callback(null, name, spriteSheet);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.data = json;
+                checkForCompletion();
+            });
+
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.image = img;
+                checkForCompletion();
+            });
+        };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
          * If the assetGroup parameter is passed to Bento.setup, this function will be
@@ -282,10 +361,102 @@ bento.define('bento/managers/asset', [
             var assetsLoaded = 0;
             var assetCount = 0;
             var toLoad = [];
-            var checkLoaded = function () {
-                if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
-                    initPackedImages();
+            // assets to unpack
+            var toUnpack = {
+                'packed-images': {},
+                'packed-spritesheets': {},
+                'packed-json': {}
+            };
+            var packs = [];
+            var postLoad = function () {
+                var initPackedImagesLegacy = function () {
+                    // old way of packed images
+                    var frame, pack, i, image, json, name;
+                    while (packs.length) {
+                        pack = packs.pop();
+                        image = getImageElement(pack);
+                        json = getJson(pack);
+
+                        if (!image || !json) {
+                            // TODO: should have a cleaner method to check if packs are not loaded yet
+                            // return the pack until the image/json is loaded
+                            packs.push(pack);
+                            return;
+                        }
+
+                        // parse json
+                        for (i = 0; i < json.frames.length; ++i) {
+                            name = json.frames[i].filename;
+                            name = name.substring(0, name.length - 4);
+                            frame = json.frames[i].frame;
+                            assets.texturePacker[name] = new PackedImage(image, frame);
+                        }
+                    }
+                };
+                var initPackedImages = function () {
+                    // expand into images
+                    var packedImages = toUnpack['packed-images'];
+                    Utils.forEach(packedImages, function (packData, name) {
+                        var image = packData.image;
+                        var data = packData.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // turn into image data
+                            var assetName = textureData.assetName;
+                            var frame = {
+                                x: textureData.x,
+                                y: textureData.y,
+                                w: textureData.width,
+                                h: textureData.height,
+                            };
+                            assets.texturePacker[assetName] = new PackedImage(image, frame);
+                        });
+                    });
+                };
+                var unpackJson = function () {
+                    // unpack json into multiple jsons
+                    var key;
+                    var packedJson = toUnpack['packed-json'];
+                    Utils.forEach(packedJson, function (group) {
+                        Utils.forEach(group, function (json, key, l, breakLoop) {
+                            assets.json[key] = json;
+                        });
+                    });
+                };
+                var unpackSpriteSheets = function () {
+                    // expand into images
+                    var packedImages = toUnpack['packed-spritesheets'];
+                    Utils.forEach(packedImages, function (packData, name) {
+                        var image = packData.image;
+                        var data = packData.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // turn into image data
+                            var assetName = textureData.assetName;
+                            var frame = {
+                                x: textureData.x,
+                                y: textureData.y,
+                                w: textureData.width,
+                                h: textureData.height,
+                            };
+                            var spriteSheet = {
+                                image: new PackedImage(image, frame),
+                                animation: textureData.spriteSheet
+                            };
+                            assets.spritesheets[assetName] = spriteSheet;
+                        });
+                    });
+                };
+                // after everything has loaded, do some post processing
+                initPackedImagesLegacy();
+                initPackedImages();
+                unpackJson();
+                unpackSpriteSheets();
+                if (Utils.isDefined(onReady)) {
                     onReady(null);
+                }
+            };
+            var checkLoaded = function () {
+                if (assetsLoaded === assetCount) {
+                    postLoad();
                 }
             };
             var onLoadImage = function (err, name, image) {
@@ -300,6 +471,7 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            // DEPRECATED
             var onLoadPack = function (err, name, json) {
                 // TODO: fix texturepacker loading
                 if (err) {
@@ -362,6 +534,47 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            // packs
+            var onLoadImagePack = function (err, name, imagePack) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets['packed-images'][name] = imagePack;
+                toUnpack['packed-images'][name] = imagePack;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
+            var onLoadJsonPack = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets['packed-json'][name] = json;
+                toUnpack['packed-json'][name] = json;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
+            var onLoadSpriteSheetPack = function (err, name, spriteSheetPack) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets['packed-spritesheets'][name] = spriteSheetPack;
+                toUnpack['packed-spritesheets'][name] = spriteSheetPack;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
+
             var readyForLoading = function (fn, asset, path, callback) {
                 toLoad.push({
                     fn: fn,
@@ -447,6 +660,28 @@ bento.define('bento/managers/asset', [
                     }
                     readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
                 }
+            }
+
+            // packed assets
+            if (Utils.isDefined(group['packed-images'])) {
+                assetCount += Utils.getKeyLength(group['packed-images']);
+                Utils.forEach(group['packed-images'], function (assetPath, assetName) {
+                    readyForLoading(loadPackedImage, assetName, path + 'packed-images/' + assetPath, onLoadImagePack);
+                });
+            }
+            // get (compressed) packed json
+            if (Utils.isDefined(group['packed-json'])) {
+                assetCount += Utils.getKeyLength(group['packed-json']);
+                Utils.forEach(group['packed-json'], function (assetPath, assetName) {
+                    readyForLoading(loadJSON, assetName, path + 'packed-json/' + assetPath, onLoadJsonPack);
+                });
+            }
+            // get packed spritesheet
+            if (Utils.isDefined(group['packed-spritesheets'])) {
+                assetCount += Utils.getKeyLength(group['packed-spritesheets']);
+                Utils.forEach(group['packed-spritesheets'], function (assetPath, assetName) {
+                    readyForLoading(loadSpriteSheetPack, assetName, path + 'packed-spritesheets/' + assetPath, onLoadSpriteSheetPack);
+                });
             }
 
             // load all assets
@@ -556,8 +791,50 @@ bento.define('bento/managers/asset', [
                     // find the corresponding asset from the assets object
                     var assetTypeGroup = assets[type] || {};
                     var asset = assetTypeGroup[name];
-
-                    // TODO: unloading and reloading texture packer (?)
+                    var removePackedImage = function (packedImages) {
+                        // find what it unpacked to
+                            var image = packedImages.image;
+                            var data = packedImages.data;
+                            Utils.forEach(data, function (textureData, i) {
+                                // find out the asset name
+                                var assetName = textureData.assetName;
+                                var textureAsset = assets.texturePacker[assetName];
+                                // delete if this asset still exists
+                                if (textureAsset) {
+                                    delete assets.texturePacker[assetName];
+                                }
+                            });
+                            // dispose if possible
+                            if (dispose && image.dispose) {
+                                image.dispose();
+                            }
+                    };
+                    var removePackedSpriteSheet = function (packedSpriteSheets) {
+                        // find what it unpacked to
+                        var image = packedSpriteSheets.image;
+                        var data = packedSpriteSheets.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // find out the asset name
+                            var assetName = textureData.assetName;
+                            var spriteSheet = assets.spritesheets[assetName];
+                            // delete if this asset still exists
+                            if (spriteSheet) {
+                                delete assets.spritesheets[assetName];
+                            }
+                        });
+                        // dispose if possible
+                        if (dispose && image.dispose) {
+                            image.dispose();
+                        }
+                    };
+                    var removePackedJson = function (packedJson) {
+                        // find what it unpacked to
+                        Utils.forEach(packedJson, function (group) {
+                            Utils.forEach(group, function (json, key, l, breakLoop) {
+                                delete assets.json[key];
+                            });
+                        });
+                    };
 
                     if (asset) {
                         // remove reference to it
@@ -566,11 +843,17 @@ bento.define('bento/managers/asset', [
                         delete assetTypeGroup[name];
 
                         if (type === 'images') {
-                            // remove corresponding texturepacker
+                            // also remove corresponding texturepacker
                             if (assets.texturePacker[name]) {
                                 assets.texturePacker[name] = undefined;
                                 delete assets.texturePacker[name];
                             }
+                        } else if (type === 'packed-images') {
+                            removePackedImage(asset);
+                        } else if (type === 'packed-spritesheets') {
+                            removePackedSpriteSheet(asset);
+                        } else if (type === 'packed-json') {
+                            removePackedJson(asset);
                         }
 
                         // Canvas+ only: dispose if possible
@@ -580,10 +863,6 @@ bento.define('bento/managers/asset', [
                             if (asset.dispose) {
                                 asset.dispose();
                             }
-                            // packedimage
-                            // if (asset.image && asset.image.dispose) {
-                            //     asset.image.dispose();
-                            // }
                             // spritesheet
                             else if (asset.image && asset.image.dispose) {
                                 asset.image.dispose();
@@ -691,30 +970,6 @@ bento.define('bento/managers/asset', [
          */
         var getAssets = function () {
             return assets;
-        };
-        var initPackedImages = function () {
-            // TODO: fix texturepacker loading
-            var frame, pack, i, image, json, name;
-            while (packs.length) {
-                pack = packs.pop();
-                image = getImageElement(pack, true);
-                json = getJson(pack, true);
-
-                if (!image || !json) {
-                    // TODO: should have a cleaner method to check if packs are not loaded yet
-                    // return the pack until the image/json is loaded
-                    packs.push(pack);
-                    return;
-                }
-
-                // parse json
-                for (i = 0; i < json.frames.length; ++i) {
-                    name = json.frames[i].filename;
-                    name = name.substring(0, name.length - 4);
-                    frame = json.frames[i].frame;
-                    assets.texturePacker[name] = new PackedImage(image, frame);
-                }
-            }
         };
         /**
          * Returns asset group

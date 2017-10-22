@@ -410,9 +410,12 @@ bento.define('bento', [
             throttle = 1;
 
             // reload current screen
-            Bento.screens.show(screenName || currentScreen.name);
-            // restart the mainloop
-            window.setTimeout(Bento.objects.run, 120);
+            Bento.screens.show(screenName || currentScreen.name, undefined,
+                function () {
+                    // restart the mainloop
+                    Bento.objects.run();
+                    EventSystem.fire('bentoReload', {});
+                });
         },
         /**
          * Returns a gameData object

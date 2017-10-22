@@ -4016,7 +4016,7 @@ bento.define('bento', [
     };
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.0.0',
+        version: '1.0.1',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -4189,9 +4189,12 @@ bento.define('bento', [
             throttle = 1;
 
             // reload current screen
-            Bento.screens.show(screenName || currentScreen.name);
-            // restart the mainloop
-            window.setTimeout(Bento.objects.run, 120);
+            Bento.screens.show(screenName || currentScreen.name, undefined,
+                function () {
+                    // restart the mainloop
+                    Bento.objects.run();
+                    EventSystem.fire('bentoReload', {});
+                });
         },
         /**
          * Returns a gameData object
@@ -5936,6 +5939,10 @@ bento.define('bento/utils', [], function () {
             return obj1;
         },
         getKeyLength = function (obj) {
+            if (!obj) {
+                Utils.log("WARNING: object is " + obj);
+                return 0;
+            }
             return Object.keys(obj).length;
         },
         copyObject = function (obj) {
@@ -7155,7 +7162,7 @@ bento.define('bento/components/fill', [
     return Fill;
 });
 /**
- * Nineslice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
+ * NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
  * where the corners don't get deformed.
  * <br>Exports: Constructor
  * @module bento/components/nineslice
@@ -7166,6 +7173,17 @@ bento.define('bento/components/fill', [
  * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
  * @param {Vector2} settings.width - Width of the desired box
  * @param {Vector2} settings.height - Height of the desired box
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between slices
+ * @param {Number} settings.framePaddding - Pixelsize between frames
+ * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  */
 bento.define('bento/components/nineslice', [
     'bento',
@@ -7198,19 +7216,35 @@ bento.define('bento/components/nineslice', [
         this.rootIndex = -1;
         this.name = 'nineslice';
         this.visible = true;
-        this.origin = settings.origin || new Vector2(0, 0);
+        this.origin = new Vector2(0, 0);
 
         // component settings
         this._width = 0;
         this._height = 0;
+        this._recalculateFlag = false;
+        this.frameX = 0;
+        this.frameY = 0;
 
         // sprite settings
         this.spriteImage = null;
         this.padding = 0;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.framePadding = 0;
 
         // drawing internals
         this.sliceWidth = 0;
         this.sliceHeight = 0;
+
+        //animation setttings
+        this.animations = {};
+        this.currentAnimation = null;
+        this.currentAnimationLength = 0;
+        this.currentFrame = 0;
+
+        this.onCompleteCallback = function () {};
 
         this.settings = settings;
         this.setup(settings);
@@ -7246,22 +7280,63 @@ bento.define('bento/components/nineslice', [
             // no image specified
             return;
         }
+        if (!this.spriteImage) {
+            Utils.log("ERROR: something went wrong with loading the sprite.");
+            return;
+        }
 
         this.padding = settings.padding || 0;
+        this.framePadding = settings.framePadding || 0;
+
+
+        this.frameWidth = this.spriteImage.width;
+        this.frameHeight = this.spriteImage.height;
+
+        if (settings.frameWidth) {
+            this.frameWidth = settings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / settings.frameWidth);
+        } else if (settings.frameCountX) {
+            this.frameCountX = settings.frameCountX;
+            this.frameWidth = (this.spriteImage.width - this.framePadding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (settings.frameHeight) {
+            this.frameHeight = settings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.width / settings.frameHeight);
+        } else if (settings.frameCountY) {
+            this.frameCountY = settings.frameCountY;
+            this.frameHeight = (this.spriteImage.height - this.framePadding * (this.frameCountY - 1)) / this.frameCountY;
+        }
 
         if (this.spriteImage) {
-            this.sliceWidth = Math.floor((this.spriteImage.width - this.padding * 2) / 3);
-            this.sliceHeight = Math.floor((this.spriteImage.height - this.padding * 2) / 3);
+            this.sliceWidth = Math.floor((this.frameWidth - this.padding * 2) / 3);
+            this.sliceHeight = Math.floor((this.frameHeight - this.padding * 2) / 3);
         }
 
         if (settings.width) {
             this._width = Math.max(settings.width || 0, 0);
+        } else if (settings.innerWidth) {
+            this._width = this.sliceWidth * 2 + Math.max(settings.innerWidth || 0, 0);
         }
+
         if (settings.height) {
             this._height = Math.max(settings.height || 0, 0);
+        } else if (settings.innerHeight) {
+            this._height = this.sliceHeight * 2 + Math.max(settings.innerHeight || 0, 0);
         }
-        if (settings.originRelative) {
-            this.setOriginRelative(settings.originRelative);
+
+        if (this.settings.origin) {
+            this.origin.x = this.settings.origin.x;
+            this.origin.y = this.settings.origin.y;
+        } else if (this.settings.originRelative) {
+            this.setOriginRelative(this.settings.originRelative);
+        }
+
+        this.animations = settings.animations || {};
+        // add default animation
+        if (!this.animations['default']) {
+            this.animations['default'] = {
+                frames: [0]
+            };
         }
 
         if (this.entity) {
@@ -7272,10 +7347,12 @@ bento.define('bento/components/nineslice', [
             this.entity.dimension.height = this._height;
         }
         this.recalculateDimensions();
+
+        this.setAnimation('default');
     };
 
-    NineSlice.prototype.attached = function (data) {
-        this.entity = data.entity;
+    NineSlice.prototype.updateEntity = function () {
+        if (!this.entity) return;
         // set dimension of entity object
         this.entity.dimension.x = -this.origin.x;
         this.entity.dimension.y = -this.origin.y;
@@ -7283,33 +7360,103 @@ bento.define('bento/components/nineslice', [
         this.entity.dimension.height = this._height;
     };
 
-    NineSlice.prototype.setWidth = function (width) {
-        this._width = Utils.isDefined(width) ? width : this._width;
-        this._width = Math.max(this._width, 0);
-        if (this.entity) {
-            this.entity.dimension.width = this._width;
-            if (this.settings.originRelative) {
-                // recalculate relative origin
-                this.origin.x = this.settings.originRelative.x * this._width;
-            }
-            this.entity.dimension.x = -this.origin.x;
-        }
-        this.recalculateDimensions();
+    NineSlice.prototype.attached = function (data) {
+        this.entity = data.entity;
+
+        this.updateEntity();
     };
 
-    NineSlice.prototype.setHeight = function (height) {
-        this._height = Utils.isDefined(height) ? height : this._height;
-        this._height = Math.max(this._height, 0);
-        if (this.entity) {
-            this.entity.dimension.height = this._height;
-            if (this.settings.originRelative) {
-                // recalculate relative origin
-                this.origin.y = this.settings.originRelative.y * this._height;
-            }
-            this.entity.dimension.y = -this.origin.y;
+    NineSlice.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
         }
-        this.recalculateDimensions();
+
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
+            }
+        }
     };
+
+    NineSlice.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+
+    NineSlice.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+
+    NineSlice.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+
+    NineSlice.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+
+    NineSlice.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+
+    Object.defineProperty(NineSlice.prototype, 'width', {
+        get: function () {
+            return this._width;
+        },
+        set: function (value) {
+            this._width = Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'height', {
+        get: function () {
+            return this._height;
+        },
+        set: function (value) {
+            this._height = Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerWidth', {
+        get: function () {
+            return Math.max(this._width - this.sliceWidth * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceWidth * 2;
+            this._width = this.sliceWidth * 2 + Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerHeight', {
+        get: function () {
+            return Math.max(this._height - this.sliceHeight * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceHeight * 2;
+            this._height = this.sliceHeight * 2 + Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
     /**
      * Sets the origin relatively (0...1), relative to the size of the frame.
      * @function
@@ -7320,21 +7467,77 @@ bento.define('bento/components/nineslice', [
     NineSlice.prototype.setOriginRelative = function (originRelative) {
         this.origin.x = originRelative.x * this._width;
         this.origin.y = originRelative.y * this._height;
+        this.settings.originRelative = originRelative.clone();
     };
+
+    NineSlice.prototype.update = function (data) {
+        var reachedEnd;
+
+        if (this._recalculateFlag) {
+            this.recalculateDimensions();
+        }
+
+        if (!this.currentAnimation) {
+            return;
+        }
+
+        // no need for update
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
+        }
+
+        reachedEnd = false;
+        this.currentFrame += (frameSpeed) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+            //don't repeat callback on non-looping animations
+            if (!this.currentAnimation.loop) {
+                this.onCompleteCallback = null;
+            }
+        }
+    };
+
     NineSlice.prototype.recalculateDimensions = function () {
-        this.innerWidth = Math.max(0, this._width - this.sliceWidth * 2);
-        this.innerHeight = Math.max(0, this._height - this.sliceHeight * 2);
+        this._innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
+        this._innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
 
-        this.leftWidth = Math.min(this.sliceWidth, Math.round(this._width / 2));
-        this.rightWidth = Math.min(this.sliceWidth, this._width - this.leftWidth);
+        this._leftWidth = Math.min(this.sliceWidth, this._width / 2);
+        this.rightWidth = Math.min(this.sliceWidth, this._width - this._leftWidth);
 
-        this.topHeight = Math.min(this.sliceHeight, Math.round(this._height / 2));
-        this.bottomHeight = Math.min(this.sliceHeight, this._height - this.topHeight);
+        this._topHeight = Math.min(this.sliceHeight, this._height / 2);
+        this._bottomHeight = Math.min(this.sliceHeight, this._height - this._topHeight);
+
+        if (this.settings.originRelative) {
+            // recalculate relative origin
+            this.origin.x = this.settings.originRelative.x * this._width;
+            this.origin.y = this.settings.originRelative.y * this._height;
+        }
+
+        if (this.entity) {
+            this.updateEntity();
+        }
+
+        this._recalculateFlag = false;
     };
 
-    NineSlice.prototype.fillArea = function (renderer, frame, x, y, width, height) {
-        var sx = (this.sliceWidth + this.padding) * (frame % 3);
-        var sy = (this.sliceHeight + this.padding) * Math.floor(frame / 3);
+    NineSlice.prototype.fillArea = function (renderer, slice, x, y, width, height) {
+        var sx = (this.sliceWidth + this.padding) * (slice % 3) + this.frameX;
+        var sy = (this.sliceHeight + this.padding) * Math.floor(slice / 3) + this.frameY;
 
         if (width === 0 || height === 0) {
             return;
@@ -7353,11 +7556,18 @@ bento.define('bento/components/nineslice', [
             sy,
             this.sliceWidth,
             this.sliceHeight,
-            x,
-            y,
+            x | 0,
+            y | 0,
             width,
             height
         );
+    };
+
+    NineSlice.prototype.updateFrame = function () {
+        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        this.frameX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.frameY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
     };
 
     NineSlice.prototype.draw = function (data) {
@@ -7368,30 +7578,40 @@ bento.define('bento/components/nineslice', [
             return;
         }
 
+        this.updateFrame();
+
         data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
 
         //top left corner
-        this.fillArea(data.renderer, 0, 0, 0, this.leftWidth, this.topHeight);
+        this.fillArea(data.renderer, 0, 0, 0, this._leftWidth, this._topHeight);
         //top stretch
-        this.fillArea(data.renderer, 1, this.leftWidth, 0, this.innerWidth, this.topHeight);
+        this.fillArea(data.renderer, 1, this._leftWidth, 0, this._innerWidth, this._topHeight);
         //top right corner
-        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this.topHeight);
+        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this._topHeight);
 
         //left stretch
-        this.fillArea(data.renderer, 3, 0, this.topHeight, this.leftWidth, this.innerHeight);
+        this.fillArea(data.renderer, 3, 0, this._topHeight, this._leftWidth, this._innerHeight);
         //center stretch
-        this.fillArea(data.renderer, 4, this.leftWidth, this.topHeight, this.innerWidth, this.innerHeight);
+        this.fillArea(data.renderer, 4, this._leftWidth, this._topHeight, this._innerWidth, this._innerHeight);
         //right stretch
-        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this.topHeight, this.rightWidth, this.innerHeight);
+        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this._topHeight, this.rightWidth, this._innerHeight);
 
         //bottom left corner
-        this.fillArea(data.renderer, 6, 0, this._height - this.bottomHeight, this.leftWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 6, 0, this._height - this._bottomHeight, this._leftWidth, this._bottomHeight);
         //bottom stretch
-        this.fillArea(data.renderer, 7, this.leftWidth, this._height - this.bottomHeight, this.innerWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 7, this._leftWidth, this._height - this._bottomHeight, this._innerWidth, this._bottomHeight);
         //bottom right corner
-        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this.bottomHeight, this.rightWidth, this.bottomHeight);
+        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this._bottomHeight, this.rightWidth, this._bottomHeight);
 
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+
+    // Deprecated functions, added for compatibility
+    NineSlice.prototype.setWidth = function (value) {
+        this.width = value;
+    };
+    NineSlice.prototype.setHeight = function (value) {
+        this.height = value;
     };
 
     return NineSlice;
@@ -8544,8 +8764,14 @@ bento.define('bento/lib/requestanimationframe', [], function () {
 bento.define('bento/managers/asset', [
     'bento/packedimage',
     'bento/utils',
-    'audia'
-], function (PackedImage, Utils, Audia) {
+    'audia',
+    'lzstring'
+], function (
+    PackedImage,
+    Utils,
+    Audia,
+    LZString
+) {
     'use strict';
     return function () {
         var assetGroups = {};
@@ -8557,11 +8783,16 @@ bento.define('bento/managers/asset', [
             binary: {},
             fonts: {},
             spritesheets: {},
-            texturePacker: {}
+            texturePacker: {},
+
+            // packed
+            'packed-images': {},
+            'packed-spritesheets': {},
+            'packed-json': {}
         };
-        // TODO: fix texturepacker loading
-        // right now its very confusing: a texturepacker group loads a JSON + image and merges them later
-        var packs = [];
+        /**
+         * (Down)Load asset types
+         */
         var loadAudio = function (name, source, callback) {
             var i;
             var failed = true;
@@ -8593,7 +8824,7 @@ bento.define('bento/managers/asset', [
                 callback('This audio type is not supported:', name, source);
             }
         };
-        var loadJSON = function (name, source, callback) {
+        var loadJSON = function (name, source, callback, isCompressed) {
             var xhr = new window.XMLHttpRequest();
             if (xhr.overrideMimeType) {
                 xhr.overrideMimeType('application/json');
@@ -8611,10 +8842,16 @@ bento.define('bento/managers/asset', [
                 if (xhr.readyState === 4) {
                     if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
                         try {
-                            jsonData = JSON.parse(xhr.responseText);
+                            if (isCompressed) {
+                                // decompress if needed
+                                jsonData = JSON.parse(LZString.decompressFromBase64(xhr.responseText));
+                            } else {
+                                jsonData = JSON.parse(xhr.responseText);
+                            }
                         } catch (e) {
-                            Utils.log('ERROR: Could not parse JSON ' + name + ' at ' + source);
+                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source);
                             console.log('Trying to parse', xhr.responseText);
+                            jsonData = xhr.responseText;
                         }
                         callback(null, name, jsonData);
                     } else {
@@ -8623,6 +8860,9 @@ bento.define('bento/managers/asset', [
                 }
             };
             xhr.send(null);
+        };
+        var loadJsonCompressed = function (name, source, callback) {
+            return loadJSON(name, source, callback, true);
         };
         var loadBinary = function (name, source, success, failure) {
             var xhr = new window.XMLHttpRequest();
@@ -8763,6 +9003,65 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
         };
+        var loadPackedImage = function (name, source, callback) {
+            // very similar to spritesheet: load an image and load a json
+            var packedImage = {
+                image: null,
+                data: null
+            };
+            var checkForCompletion = function () {
+                if (packedImage.image !== null && packedImage.animation !== null) {
+                    callback(null, name, packedImage);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                packedImage.data = json;
+                checkForCompletion();
+            });
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                packedImage.image = img;
+                checkForCompletion();
+            });
+        };
+        var loadSpriteSheetPack = function (name, source, callback) {
+            var spriteSheet = {
+                image: null,
+                data: null
+            };
+
+            var checkForCompletion = function () {
+                if (spriteSheet.image !== null && spriteSheet.data !== null) {
+                    callback(null, name, spriteSheet);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.data = json;
+                checkForCompletion();
+            });
+
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.image = img;
+                checkForCompletion();
+            });
+        };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
          * If the assetGroup parameter is passed to Bento.setup, this function will be
@@ -8816,10 +9115,102 @@ bento.define('bento/managers/asset', [
             var assetsLoaded = 0;
             var assetCount = 0;
             var toLoad = [];
-            var checkLoaded = function () {
-                if (assetsLoaded === assetCount && Utils.isDefined(onReady)) {
-                    initPackedImages();
+            // assets to unpack
+            var toUnpack = {
+                'packed-images': {},
+                'packed-spritesheets': {},
+                'packed-json': {}
+            };
+            var packs = [];
+            var postLoad = function () {
+                var initPackedImagesLegacy = function () {
+                    // old way of packed images
+                    var frame, pack, i, image, json, name;
+                    while (packs.length) {
+                        pack = packs.pop();
+                        image = getImageElement(pack);
+                        json = getJson(pack);
+
+                        if (!image || !json) {
+                            // TODO: should have a cleaner method to check if packs are not loaded yet
+                            // return the pack until the image/json is loaded
+                            packs.push(pack);
+                            return;
+                        }
+
+                        // parse json
+                        for (i = 0; i < json.frames.length; ++i) {
+                            name = json.frames[i].filename;
+                            name = name.substring(0, name.length - 4);
+                            frame = json.frames[i].frame;
+                            assets.texturePacker[name] = new PackedImage(image, frame);
+                        }
+                    }
+                };
+                var initPackedImages = function () {
+                    // expand into images
+                    var packedImages = toUnpack['packed-images'];
+                    Utils.forEach(packedImages, function (packData, name) {
+                        var image = packData.image;
+                        var data = packData.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // turn into image data
+                            var assetName = textureData.assetName;
+                            var frame = {
+                                x: textureData.x,
+                                y: textureData.y,
+                                w: textureData.width,
+                                h: textureData.height,
+                            };
+                            assets.texturePacker[assetName] = new PackedImage(image, frame);
+                        });
+                    });
+                };
+                var unpackJson = function () {
+                    // unpack json into multiple jsons
+                    var key;
+                    var packedJson = toUnpack['packed-json'];
+                    Utils.forEach(packedJson, function (group) {
+                        Utils.forEach(group, function (json, key, l, breakLoop) {
+                            assets.json[key] = json;
+                        });
+                    });
+                };
+                var unpackSpriteSheets = function () {
+                    // expand into images
+                    var packedImages = toUnpack['packed-spritesheets'];
+                    Utils.forEach(packedImages, function (packData, name) {
+                        var image = packData.image;
+                        var data = packData.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // turn into image data
+                            var assetName = textureData.assetName;
+                            var frame = {
+                                x: textureData.x,
+                                y: textureData.y,
+                                w: textureData.width,
+                                h: textureData.height,
+                            };
+                            var spriteSheet = {
+                                image: new PackedImage(image, frame),
+                                animation: textureData.spriteSheet
+                            };
+                            assets.spritesheets[assetName] = spriteSheet;
+                        });
+                    });
+                };
+                // after everything has loaded, do some post processing
+                initPackedImagesLegacy();
+                initPackedImages();
+                unpackJson();
+                unpackSpriteSheets();
+                if (Utils.isDefined(onReady)) {
                     onReady(null);
+                }
+            };
+            var checkLoaded = function () {
+                if (assetsLoaded === assetCount) {
+                    postLoad();
                 }
             };
             var onLoadImage = function (err, name, image) {
@@ -8834,6 +9225,7 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            // DEPRECATED
             var onLoadPack = function (err, name, json) {
                 // TODO: fix texturepacker loading
                 if (err) {
@@ -8896,6 +9288,47 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            // packs
+            var onLoadImagePack = function (err, name, imagePack) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets['packed-images'][name] = imagePack;
+                toUnpack['packed-images'][name] = imagePack;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
+            var onLoadJsonPack = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets['packed-json'][name] = json;
+                toUnpack['packed-json'][name] = json;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
+            var onLoadSpriteSheetPack = function (err, name, spriteSheetPack) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets['packed-spritesheets'][name] = spriteSheetPack;
+                toUnpack['packed-spritesheets'][name] = spriteSheetPack;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name);
+                }
+                checkLoaded();
+            };
+
             var readyForLoading = function (fn, asset, path, callback) {
                 toLoad.push({
                     fn: fn,
@@ -8981,6 +9414,28 @@ bento.define('bento/managers/asset', [
                     }
                     readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
                 }
+            }
+
+            // packed assets
+            if (Utils.isDefined(group['packed-images'])) {
+                assetCount += Utils.getKeyLength(group['packed-images']);
+                Utils.forEach(group['packed-images'], function (assetPath, assetName) {
+                    readyForLoading(loadPackedImage, assetName, path + 'packed-images/' + assetPath, onLoadImagePack);
+                });
+            }
+            // get (compressed) packed json
+            if (Utils.isDefined(group['packed-json'])) {
+                assetCount += Utils.getKeyLength(group['packed-json']);
+                Utils.forEach(group['packed-json'], function (assetPath, assetName) {
+                    readyForLoading(loadJSON, assetName, path + 'packed-json/' + assetPath, onLoadJsonPack);
+                });
+            }
+            // get packed spritesheet
+            if (Utils.isDefined(group['packed-spritesheets'])) {
+                assetCount += Utils.getKeyLength(group['packed-spritesheets']);
+                Utils.forEach(group['packed-spritesheets'], function (assetPath, assetName) {
+                    readyForLoading(loadSpriteSheetPack, assetName, path + 'packed-spritesheets/' + assetPath, onLoadSpriteSheetPack);
+                });
             }
 
             // load all assets
@@ -9090,8 +9545,50 @@ bento.define('bento/managers/asset', [
                     // find the corresponding asset from the assets object
                     var assetTypeGroup = assets[type] || {};
                     var asset = assetTypeGroup[name];
-
-                    // TODO: unloading and reloading texture packer (?)
+                    var removePackedImage = function (packedImages) {
+                        // find what it unpacked to
+                            var image = packedImages.image;
+                            var data = packedImages.data;
+                            Utils.forEach(data, function (textureData, i) {
+                                // find out the asset name
+                                var assetName = textureData.assetName;
+                                var textureAsset = assets.texturePacker[assetName];
+                                // delete if this asset still exists
+                                if (textureAsset) {
+                                    delete assets.texturePacker[assetName];
+                                }
+                            });
+                            // dispose if possible
+                            if (dispose && image.dispose) {
+                                image.dispose();
+                            }
+                    };
+                    var removePackedSpriteSheet = function (packedSpriteSheets) {
+                        // find what it unpacked to
+                        var image = packedSpriteSheets.image;
+                        var data = packedSpriteSheets.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // find out the asset name
+                            var assetName = textureData.assetName;
+                            var spriteSheet = assets.spritesheets[assetName];
+                            // delete if this asset still exists
+                            if (spriteSheet) {
+                                delete assets.spritesheets[assetName];
+                            }
+                        });
+                        // dispose if possible
+                        if (dispose && image.dispose) {
+                            image.dispose();
+                        }
+                    };
+                    var removePackedJson = function (packedJson) {
+                        // find what it unpacked to
+                        Utils.forEach(packedJson, function (group) {
+                            Utils.forEach(group, function (json, key, l, breakLoop) {
+                                delete assets.json[key];
+                            });
+                        });
+                    };
 
                     if (asset) {
                         // remove reference to it
@@ -9100,11 +9597,17 @@ bento.define('bento/managers/asset', [
                         delete assetTypeGroup[name];
 
                         if (type === 'images') {
-                            // remove corresponding texturepacker
+                            // also remove corresponding texturepacker
                             if (assets.texturePacker[name]) {
                                 assets.texturePacker[name] = undefined;
                                 delete assets.texturePacker[name];
                             }
+                        } else if (type === 'packed-images') {
+                            removePackedImage(asset);
+                        } else if (type === 'packed-spritesheets') {
+                            removePackedSpriteSheet(asset);
+                        } else if (type === 'packed-json') {
+                            removePackedJson(asset);
                         }
 
                         // Canvas+ only: dispose if possible
@@ -9114,10 +9617,6 @@ bento.define('bento/managers/asset', [
                             if (asset.dispose) {
                                 asset.dispose();
                             }
-                            // packedimage
-                            // if (asset.image && asset.image.dispose) {
-                            //     asset.image.dispose();
-                            // }
                             // spritesheet
                             else if (asset.image && asset.image.dispose) {
                                 asset.image.dispose();
@@ -9225,30 +9724,6 @@ bento.define('bento/managers/asset', [
          */
         var getAssets = function () {
             return assets;
-        };
-        var initPackedImages = function () {
-            // TODO: fix texturepacker loading
-            var frame, pack, i, image, json, name;
-            while (packs.length) {
-                pack = packs.pop();
-                image = getImageElement(pack, true);
-                json = getJson(pack, true);
-
-                if (!image || !json) {
-                    // TODO: should have a cleaner method to check if packs are not loaded yet
-                    // return the pack until the image/json is loaded
-                    packs.push(pack);
-                    return;
-                }
-
-                // parse json
-                for (i = 0; i < json.frames.length; ++i) {
-                    name = json.frames[i].filename;
-                    name = name.substring(0, name.length - 4);
-                    frame = json.frames[i].frame;
-                    assets.texturePacker[name] = new PackedImage(image, frame);
-                }
-            }
         };
         /**
          * Returns asset group
@@ -9395,7 +9870,6 @@ bento.define('bento/managers/asset', [
         };
     };
 });
-
 /**
  * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
  * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
@@ -15717,10 +16191,16 @@ bento.define('bento/gui/clickbutton', [
         };
         var nsSettings = settings.nineSliceSettings || null;
         var nineSlice = !nsSettings ? null : new NineSlice({
-            imageName: nsSettings.animations.up,
+            image: settings.image,
+            imageName: settings.imageName,
             originRelative: settings.originRelative || new Vector2(0.5, 0.5),
+            frameWidth: settings.frameWidth,
+            frameHeight: settings.frameHeight,
+            frameCountX: settings.frameCountX,
+            frameCountY: settings.frameCountY,
             width: nsSettings.width,
-            height: nsSettings.height
+            height: nsSettings.height,
+            animations: animations
         });
         var sprite = nineSlice ? null : settings.sprite || new Sprite({
             image: settings.image,
@@ -15836,29 +16316,22 @@ bento.define('bento/gui/clickbutton', [
         var setActive = function (bool) {
             active = bool;
 
-            if (visualComponent.name === 'nineslice') {
-                animations = nsSettings.animations;
-            } else {
-                animations = sprite.animations || animations;
-            }
+            animations = visualComponent.animations || animations;
 
-            if (!active && animations.inactive) {
-                setAnimation('inactive');
-            } else {
-                setAnimation('up');
+            if (!active) {
+                if (ClickButton.currentlyPressing === entity) {
+                    ClickButton.currentlyPressing = null;
+                }
+                if (animations.inactive) {
+                    setAnimation('inactive');
+                } else {
+                    setAnimation('up');
+                }
             }
         };
 
         var setAnimation = function (animation) {
-            if (visualComponent.name === 'nineslice') {
-                visualComponent.setup({
-                    imageName: nsSettings.animations[animation],
-                    width: nsSettings.width,
-                    height: nsSettings.height
-                });
-            } else {
-                visualComponent.setAnimation(animation);
-            }
+            visualComponent.setAnimation(animation);
         };
 
         var entity = new Entity(entitySettings).extend({
@@ -15904,8 +16377,8 @@ bento.define('bento/gui/clickbutton', [
                 }
                 nsSettings.width = width;
                 nsSettings.height = height;
-                visualComponent.setWidth(width);
-                visualComponent.setHeight(height);
+                visualComponent.width = width;
+                visualComponent.height = height;
             }
         });
 

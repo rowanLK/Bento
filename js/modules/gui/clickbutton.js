@@ -52,10 +52,16 @@ bento.define('bento/gui/clickbutton', [
         };
         var nsSettings = settings.nineSliceSettings || null;
         var nineSlice = !nsSettings ? null : new NineSlice({
-            imageName: nsSettings.animations.up,
+            image: settings.image,
+            imageName: settings.imageName,
             originRelative: settings.originRelative || new Vector2(0.5, 0.5),
+            frameWidth: settings.frameWidth,
+            frameHeight: settings.frameHeight,
+            frameCountX: settings.frameCountX,
+            frameCountY: settings.frameCountY,
             width: nsSettings.width,
-            height: nsSettings.height
+            height: nsSettings.height,
+            animations: animations
         });
         var sprite = nineSlice ? null : settings.sprite || new Sprite({
             image: settings.image,
@@ -171,29 +177,22 @@ bento.define('bento/gui/clickbutton', [
         var setActive = function (bool) {
             active = bool;
 
-            if (visualComponent.name === 'nineslice') {
-                animations = nsSettings.animations;
-            } else {
-                animations = sprite.animations || animations;
-            }
+            animations = visualComponent.animations || animations;
 
-            if (!active && animations.inactive) {
-                setAnimation('inactive');
-            } else {
-                setAnimation('up');
+            if (!active) {
+                if (ClickButton.currentlyPressing === entity) {
+                    ClickButton.currentlyPressing = null;
+                }
+                if (animations.inactive) {
+                    setAnimation('inactive');
+                } else {
+                    setAnimation('up');
+                }
             }
         };
 
         var setAnimation = function (animation) {
-            if (visualComponent.name === 'nineslice') {
-                visualComponent.setup({
-                    imageName: nsSettings.animations[animation],
-                    width: nsSettings.width,
-                    height: nsSettings.height
-                });
-            } else {
-                visualComponent.setAnimation(animation);
-            }
+            visualComponent.setAnimation(animation);
         };
 
         var entity = new Entity(entitySettings).extend({
@@ -239,8 +238,8 @@ bento.define('bento/gui/clickbutton', [
                 }
                 nsSettings.width = width;
                 nsSettings.height = height;
-                visualComponent.setWidth(width);
-                visualComponent.setHeight(height);
+                visualComponent.width = width;
+                visualComponent.height = height;
             }
         });
 
