@@ -92,6 +92,10 @@ bento.define('bento/utils', [], function () {
             return obj1;
         },
         getKeyLength = function (obj) {
+            if (!obj) {
+                Utils.log("WARNING: object is " + obj);
+                return 0;
+            }
             return Object.keys(obj).length;
         },
         copyObject = function (obj) {

@@ -793,9 +793,8 @@ bento.define('bento/managers/asset', [
                     var asset = assetTypeGroup[name];
                     var removePackedImage = function (packedImages) {
                         // find what it unpacked to
-                        Utils.forEach(packedImages, function (packData, packName) {
-                            var image = packData.image;
-                            var data = packData.data;
+                            var image = packedImages.image;
+                            var data = packedImages.data;
                             Utils.forEach(data, function (textureData, i) {
                                 // find out the asset name
                                 var assetName = textureData.assetName;
@@ -804,32 +803,29 @@ bento.define('bento/managers/asset', [
                                 if (textureAsset) {
                                     delete assets.texturePacker[assetName];
                                 }
-                                // dispose if possible
-                                if (dispose && textureAsset.image.dispose) {
-                                    textureAsset.image.dispose();
-                                }
                             });
-                        });
+                            // dispose if possible
+                            if (dispose && image.dispose) {
+                                image.dispose();
+                            }
                     };
                     var removePackedSpriteSheet = function (packedSpriteSheets) {
                         // find what it unpacked to
-                        Utils.forEach(packedSpriteSheets, function (packData, packName) {
-                            var image = packData.image;
-                            var data = packData.data;
-                            Utils.forEach(data, function (textureData, i) {
-                                // find out the asset name
-                                var assetName = textureData.assetName;
-                                var spriteSheet = assets.spritesheets[assetName];
-                                // delete if this asset still exists
-                                if (spriteSheet) {
-                                    delete assets.spriteSheet[assetName];
-                                }
-                                // dispose if possible
-                                if (dispose && spriteSheet.image.dispose) {
-                                    spriteSheet.image.dispose();
-                                }
-                            });
+                        var image = packedSpriteSheets.image;
+                        var data = packedSpriteSheets.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // find out the asset name
+                            var assetName = textureData.assetName;
+                            var spriteSheet = assets.spritesheets[assetName];
+                            // delete if this asset still exists
+                            if (spriteSheet) {
+                                delete assets.spritesheets[assetName];
+                            }
                         });
+                        // dispose if possible
+                        if (dispose && image.dispose) {
+                            image.dispose();
+                        }
                     };
                     var removePackedJson = function (packedJson) {
                         // find what it unpacked to
