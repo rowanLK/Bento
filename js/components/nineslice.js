@@ -152,13 +152,13 @@ bento.define('bento/components/nineslice', [
         if (settings.width) {
             this._width = Math.max(settings.width || 0, 0);
         } else if (settings.innerWidth) {
-            this._width = this.sliceWidth * 2 + Math.max(settings.innerWidth || 0, 0)
+            this._width = this.sliceWidth * 2 + Math.max(settings.innerWidth || 0, 0);
         }
 
         if (settings.height) {
             this._height = Math.max(settings.height || 0, 0);
         } else if (settings.innerHeight) {
-            this._height = this.sliceHeight * 2 + Math.max(settings.innerHeight || 0, 0)
+            this._height = this.sliceHeight * 2 + Math.max(settings.innerHeight || 0, 0);
         }
 
         if (this.settings.origin) {
@@ -208,7 +208,7 @@ bento.define('bento/components/nineslice', [
         if (!anim) {
             console.log('Warning: animation ' + name + ' does not exist.');
             return;
-        };
+        }
 
         if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
             if (!Utils.isDefined(anim.loop)) {
@@ -441,6 +441,14 @@ bento.define('bento/components/nineslice', [
         this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this._bottomHeight, this.rightWidth, this._bottomHeight);
 
         data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+
+    // Deprecated functions, added for compatibility
+    NineSlice.prototype.setWidth = function (value) {
+        this.width = value;
+    };
+    NineSlice.prototype.setHeight = function (value) {
+        this.height = value;
     };
 
     return NineSlice;
