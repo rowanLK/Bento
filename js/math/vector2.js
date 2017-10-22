@@ -7,6 +7,9 @@
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
+ * @snippet Vector2.snippet
+Vector2(${1:0}, ${2:0})
+ *
  */
 bento.define('bento/math/vector2', [
     'bento/math/matrix',

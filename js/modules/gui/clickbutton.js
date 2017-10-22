@@ -12,6 +12,21 @@
  * @module bento/gui/clickbutton
  * @moduleName ClickButton
  * @returns Entity
+ * @snippet ClickButton.snippet
+ClickButton({
+    z: ${1:0},
+    name: '$2',
+    sfx: '$3',
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:3},
+    position: new Vector2(${7:0}, ${8:0}),
+    updateWhenPaused: ${10:0},
+    float: ${9:false},
+    onClick: function () {
+        $10
+    }
+});
  */
 bento.define('bento/gui/clickbutton', [
     'bento',

@@ -36,6 +36,18 @@ var entity = new Entity({
 getComponent('${1}', function (${1:component}) {
     $2
 });
+ * @snippet Entity.snippet
+Entity({
+    z: ${1:0},
+    name: '$2',
+    family: [''],
+    position: new Vector2(${3:0}, ${4:0}),
+    updateWhenPaused: ${5:0},
+    float: ${6:false},
+    components: [
+        $7
+    ]
+});
  */
 bento.define('bento/entity', [
     'bento',
