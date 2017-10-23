@@ -207,23 +207,30 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('mousemove', mouseMove);
                 isListening = true;
 
-                canvas.addEventListener('touchstart', function (evt) {
-                    if (evt && evt.preventDefault) {
-                        evt.preventDefault();
-                    }
-                    if (evt && evt.stopPropagation) {
-                        evt.stopPropagation();
-                    }
-                    return false;
-                });
-                canvas.addEventListener('touchmove', function (evt) {
-                    if (evt && evt.preventDefault) {
-                        evt.preventDefault();
-                    }
-                    if (evt && evt.stopPropagation) {
-                        evt.stopPropagation();
-                    }
-                    return false;
+                if (!Utils.isCocoonJs()) {
+                    canvas.addEventListener('touchstart', function (evt) {
+                        if (evt && evt.preventDefault) {
+                            evt.preventDefault();
+                        }
+                        if (evt && evt.stopPropagation) {
+                            evt.stopPropagation();
+                        }
+                        return false;
+                    });
+                    canvas.addEventListener('touchmove', function (evt) {
+                        if (evt && evt.preventDefault) {
+                            evt.preventDefault();
+                        }
+                        if (evt && evt.stopPropagation) {
+                            evt.stopPropagation();
+                        }
+                        return false;
+                    });
+                }
+
+                // touchcancel can be used when system interveness with the game
+                canvas.addEventListener('touchcancel', function (evt) {
+                    EventSystem.fire('touchcancel', evt);
                 });
             },
             initKeyboard = function () {
