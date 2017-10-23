@@ -3,6 +3,14 @@
  * <br>Exports: Object
  * @module bento/utils
  * @moduleName Utils
+ * @snippet forEach.Utils
+Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+    ${3:// code here}
+});
+ * @snippet log.Utils
+Utils.log('WARNING: ${1}');
+ * @snippet clamp.Utils
+Utils.clamp(${1:min}, ${2:value}, ${3:max});
  */
 bento.define('bento/utils', [], function () {
     'use strict';

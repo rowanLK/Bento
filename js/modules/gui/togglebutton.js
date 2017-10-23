@@ -10,6 +10,21 @@
  * @module bento/gui/togglebutton
  * @moduleName ToggleButton
  * @returns Entity
+ * @snippet ToggleButton.snippet
+ToggleButton({
+    z: ${1:0},
+    name: '$2',
+    sfx: '$3',
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:3},
+    position: new Vector2(${7:0}, ${8:0}),
+    updateWhenPaused: ${10:0},
+    float: ${9:false},
+    onToggle: function () {
+        $10
+    }
+});
  */
 bento.define('bento/gui/togglebutton', [
     'bento',

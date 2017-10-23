@@ -10,6 +10,41 @@
  * <br>Exports: Object
  * @module bento
  * @moduleName Bento
+ *
+ *
+ * @snippet getJson.AssetManager
+Bento.assets.getJson('${1}');
+ *
+ * @snippet attach.ObjectManager
+Bento.objects.attach(${1:entity});
+ * @snippet remove.ObjectManager
+Bento.objects.remove(${1:entity});
+ * @snippet get.ObjectManager
+Bento.objects.get('${1}', function (${1:entity}) {
+    $2
+});
+ * @snippet getByFamily.ObjectManager
+Bento.objects.getByFamily('${1}');
+ *
+ * @snippet playSound.AudioManager
+Bento.audio.playSound('sfx_${1}');
+ * @snippet stopSound.AudioManager
+Bento.audio.stopSound('sfx_${1}');
+ * @snippet playMusic.AudioManager
+Bento.audio.playMusic('bgm_${1}');
+ * @snippet stopAllMusic.AudioManager
+Bento.audio.stopAllMusic();
+ *
+ * @snippet save.SaveState
+Bento.saveState.save('${1}', ${2:value});
+ * @snippet load.SaveState
+Bento.saveState.load('${1}', ${2:defaultValue});
+ *
+ * @snippet show.ScreenManager
+Bento.screens.show('screens/${1:name}');
+ * @snippet getCurrentScreen.ScreenManager
+Bento.screens.getCurrentScreen();
+ *
  */
 bento.define('bento', [
     'bento/utils',

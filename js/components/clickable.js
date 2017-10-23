@@ -4,6 +4,23 @@
  * <br>Exports: Constructor
  * @module bento/components/clickable
  * @moduleName Clickable
+ * @snippet Clickable.snippet
+Clickable({
+    pointerDown: function (data) {},
+    pointerUp: function (data) {},
+    pointerMove: function (data) {},
+    // when clicking on the object
+    onClick: function (data) {},
+    onClickUp: function (data) {},
+    onClickMiss: function (data) {},
+    onHold: function (data) {},
+    onHoldLeave: function (data) {},
+    onHoldEnter: function (data) {},
+    onHoldEnd: function (data) {},
+    // desktop only
+    onHoverLeave: function (data) {},
+    onHoverEnter: function (data) {}
+})
  * @param {Object} settings - Settings
  * @param {InputCallback} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
  * @param {InputCallback} settings.pointerUp - Called when pointer is released anywhere on the screen
