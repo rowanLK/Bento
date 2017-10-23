@@ -829,10 +829,8 @@ bento.define('bento/managers/asset', [
                     };
                     var removePackedJson = function (packedJson) {
                         // find what it unpacked to
-                        Utils.forEach(packedJson, function (group) {
-                            Utils.forEach(group, function (json, key, l, breakLoop) {
-                                delete assets.json[key];
-                            });
+                        Utils.forEach(packedJson, function (json, key, l, breakLoop) {
+                            delete assets.json[key];
                         });
                     };
 
