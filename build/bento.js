@@ -6867,6 +6867,10 @@ bento.define('bento/components/clickable', [
         return rootPause < Bento.objects.isPaused();
     };
 
+    var isPausedComponent = function (component) {
+        return component.updateWhenPaused < Bento.objects.isPaused();
+    };
+
     var Clickable = function (settings) {
         if (!(this instanceof Clickable)) {
             return new Clickable(settings);
@@ -6915,6 +6919,14 @@ bento.define('bento/components/clickable', [
          * @name sort
          */
         this.sort = settings.sort || false;
+        /**
+         * Clickable's updateWhenPaused check.
+         * Has higher priority than the entity's updateWhenPaused if non-zero
+         * @instance
+         * @default false
+         * @name updateWhenPaused
+         */
+        this.updateWhenPaused = settings.updateWhenPaused;
 
         this.callbacks = {
             pointerDown: settings.pointerDown || nothing,
@@ -6999,7 +7011,8 @@ bento.define('bento/components/clickable', [
     };
     Clickable.prototype.pointerDown = function (evt) {
         var e;
-        if (isPaused(this.entity)) {
+        var isInActive = this.updateWhenPaused ? isPausedComponent(this) : isPaused(this.entity);
+        if (isInActive) {
             return;
         }
         e = this.transformEvent(evt);
@@ -7017,7 +7030,8 @@ bento.define('bento/components/clickable', [
         var callbacks = this.callbacks;
 
         // a pointer up could get missed during a pause
-        if (!this.ignorePauseDuringPointerUpEvent && isPaused(this.entity)) {
+        var isInActive = this.updateWhenPaused ? isPausedComponent(this) : isPaused(this.entity);
+        if (!this.ignorePauseDuringPointerUpEvent && isInActive) {
             return;
         }
         e = this.transformEvent(evt);
@@ -7027,7 +7041,7 @@ bento.define('bento/components/clickable', [
             callbacks.pointerUp.call(this, e);
         }
         // onClickUp respects isPaused
-        if (this.entity.getBoundingBox().hasPosition(mousePosition) && !isPaused(this.entity)) {
+        if (this.entity.getBoundingBox().hasPosition(mousePosition) && !isInActive) {
             if (callbacks.onClickUp) {
                 callbacks.onClickUp.call(this, e);
             }
@@ -7042,7 +7056,8 @@ bento.define('bento/components/clickable', [
     Clickable.prototype.pointerMove = function (evt) {
         var e; // don't calculate transformed event until last moment to save cpu
         var callbacks = this.callbacks;
-        if (isPaused(this.entity)) {
+        var isInActive = this.updateWhenPaused ? isPausedComponent(this) : isPaused(this.entity);
+        if (isInActive) {
             return;
         }
         if (callbacks.pointerMove) {
@@ -9583,10 +9598,8 @@ bento.define('bento/managers/asset', [
                     };
                     var removePackedJson = function (packedJson) {
                         // find what it unpacked to
-                        Utils.forEach(packedJson, function (group) {
-                            Utils.forEach(group, function (json, key, l, breakLoop) {
-                                delete assets.json[key];
-                            });
+                        Utils.forEach(packedJson, function (json, key, l, breakLoop) {
+                            delete assets.json[key];
                         });
                     };
 
@@ -10389,23 +10402,30 @@ bento.define('bento/managers/input', [
                 canvas.addEventListener('mousemove', mouseMove);
                 isListening = true;
 
-                canvas.addEventListener('touchstart', function (evt) {
-                    if (evt && evt.preventDefault) {
-                        evt.preventDefault();
-                    }
-                    if (evt && evt.stopPropagation) {
-                        evt.stopPropagation();
-                    }
-                    return false;
-                });
-                canvas.addEventListener('touchmove', function (evt) {
-                    if (evt && evt.preventDefault) {
-                        evt.preventDefault();
-                    }
-                    if (evt && evt.stopPropagation) {
-                        evt.stopPropagation();
-                    }
-                    return false;
+                if (!Utils.isCocoonJs()) {
+                    canvas.addEventListener('touchstart', function (evt) {
+                        if (evt && evt.preventDefault) {
+                            evt.preventDefault();
+                        }
+                        if (evt && evt.stopPropagation) {
+                            evt.stopPropagation();
+                        }
+                        return false;
+                    });
+                    canvas.addEventListener('touchmove', function (evt) {
+                        if (evt && evt.preventDefault) {
+                            evt.preventDefault();
+                        }
+                        if (evt && evt.stopPropagation) {
+                            evt.stopPropagation();
+                        }
+                        return false;
+                    });
+                }
+
+                // touchcancel can be used when system interveness with the game
+                canvas.addEventListener('touchcancel', function (evt) {
+                    EventSystem.fire('touchcancel', evt);
                 });
             },
             initKeyboard = function () {
