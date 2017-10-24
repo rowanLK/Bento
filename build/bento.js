@@ -3824,6 +3824,41 @@ or implied, of the author(s).
  * <br>Exports: Object
  * @module bento
  * @moduleName Bento
+ *
+ *
+ * @snippet getJson.AssetManager
+Bento.assets.getJson('${1}');
+ *
+ * @snippet attach.ObjectManager
+Bento.objects.attach(${1:entity});
+ * @snippet remove.ObjectManager
+Bento.objects.remove(${1:entity});
+ * @snippet get.ObjectManager
+Bento.objects.get('${1}', function (${1:entity}) {
+    $2
+});
+ * @snippet getByFamily.ObjectManager
+Bento.objects.getByFamily('${1}');
+ *
+ * @snippet playSound.AudioManager
+Bento.audio.playSound('sfx_${1}');
+ * @snippet stopSound.AudioManager
+Bento.audio.stopSound('sfx_${1}');
+ * @snippet playMusic.AudioManager
+Bento.audio.playMusic('bgm_${1}');
+ * @snippet stopAllMusic.AudioManager
+Bento.audio.stopAllMusic();
+ *
+ * @snippet save.SaveState
+Bento.saveState.save('${1}', ${2:value});
+ * @snippet load.SaveState
+Bento.saveState.load('${1}', ${2:defaultValue});
+ *
+ * @snippet show.ScreenManager
+Bento.screens.show('screens/${1:name}');
+ * @snippet getCurrentScreen.ScreenManager
+Bento.screens.getCurrentScreen();
+ *
  */
 bento.define('bento', [
     'bento/utils',
@@ -4335,6 +4370,22 @@ var entity = new Entity({
  * // attach entity to Bento Objects
  * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
+ * @snippet getComponent.Entity
+getComponent('${1}', function (${1:component}) {
+    $2
+});
+ * @snippet Entity.snippet
+Entity({
+    z: ${1:0},
+    name: '$2',
+    family: [''],
+    position: new Vector2(${3:0}, ${4:0}),
+    updateWhenPaused: ${5:0},
+    float: ${6:false},
+    components: [
+        $7
+    ]
+});
  */
 bento.define('bento/entity', [
     'bento',
@@ -5245,6 +5296,12 @@ Bento.objects.attach(entity);
  * <br>Exports: Object
  * @module bento/eventsystem
  * @moduleName EventSystem
+ * @snippet EventSystem.on
+EventSystem.on('${1}', ${2:fn});
+ * @snippet EventSystem.off
+EventSystem.off('${1}', ${2:fn});
+ * @snippet EventSystem.fire
+EventSystem.fire('${1}', ${2:{}});
  */
 bento.define('bento/eventsystem', [
     'bento/utils'
@@ -5850,6 +5907,14 @@ bento.define('bento/transform', [
  * <br>Exports: Object
  * @module bento/utils
  * @moduleName Utils
+ * @snippet forEach.Utils
+Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+    ${3:// code here}
+});
+ * @snippet log.Utils
+Utils.log('WARNING: ${1}');
+ * @snippet clamp.Utils
+Utils.clamp(${1:min}, ${2:value}, ${3:max});
  */
 bento.define('bento/utils', [], function () {
     'use strict';
@@ -6804,6 +6869,23 @@ bento.define('bento/utils', [], function () {
  * <br>Exports: Constructor
  * @module bento/components/clickable
  * @moduleName Clickable
+ * @snippet Clickable.snippet
+Clickable({
+    pointerDown: function (data) {},
+    pointerUp: function (data) {},
+    pointerMove: function (data) {},
+    // when clicking on the object
+    onClick: function (data) {},
+    onClickUp: function (data) {},
+    onClickMiss: function (data) {},
+    onHold: function (data) {},
+    onHoldLeave: function (data) {},
+    onHoldEnter: function (data) {},
+    onHoldEnd: function (data) {},
+    // desktop only
+    onHoverLeave: function (data) {},
+    onHoverEnter: function (data) {}
+})
  * @param {Object} settings - Settings
  * @param {InputCallback} settings.pointerDown - Called when pointer (touch or mouse) is down anywhere on the screen
  * @param {InputCallback} settings.pointerUp - Called when pointer is released anywhere on the screen
@@ -7182,6 +7264,13 @@ bento.define('bento/components/fill', [
  * <br>Exports: Constructor
  * @module bento/components/nineslice
  * @moduleName NineSlice
+ * @snippet NineSlice.snippet
+NineSlice({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    width: ${4:32},
+    height: ${5:32}
+})
  * @param {Object} settings - Settings
  * @param {String} settings.imageName - (Using image assets) Asset name for the image.
  * @param {Vector2} settings.origin - Vector2 of origin
@@ -7636,6 +7725,23 @@ bento.define('bento/components/nineslice', [
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
+ * @snippet Sprite.spriteSheet
+Sprite({
+    spriteSheet: '${1}'
+})
+ * @snippet Sprite.imageName
+Sprite({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    frameCountX: ${4:1},
+    frameCountY: ${5:1},
+    animations: {
+        default: {
+            speed: 0,
+            frames: [0]
+        }
+    }
+})
  * @param {Object} settings - Settings
  * @param {String} settings.name - Overwites the component name (default is "sprite")
  * @param {String} settings.spriteSheet - (Using spritesheet assets) Asset name for the spriteSheet asset. If one uses spritesheet assets, this is the only parameter that is needed.
@@ -9025,7 +9131,7 @@ bento.define('bento/managers/asset', [
                 data: null
             };
             var checkForCompletion = function () {
-                if (packedImage.image !== null && packedImage.animation !== null) {
+                if (packedImage.image !== null && packedImage.data !== null) {
                     callback(null, name, packedImage);
                 }
             };
@@ -9102,10 +9208,10 @@ bento.define('bento/managers/asset', [
                 assetGroups[name] = json;
                 loaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(loaded, keyCount, name);
+                    onLoaded(loaded, keyCount, name, 'json');
                 }
                 if (keyCount === loaded && Utils.isDefined(onReady)) {
-                    onReady(null);
+                    onReady(null, 'assetGroup');
                 }
             };
             for (jsonName in jsonFiles) {
@@ -9220,7 +9326,7 @@ bento.define('bento/managers/asset', [
                 unpackJson();
                 unpackSpriteSheets();
                 if (Utils.isDefined(onReady)) {
-                    onReady(null);
+                    onReady(null, groupName);
                 }
             };
             var checkLoaded = function () {
@@ -9236,7 +9342,7 @@ bento.define('bento/managers/asset', [
                 assets.images[name] = image;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'image');
                 }
                 checkLoaded();
             };
@@ -9251,7 +9357,7 @@ bento.define('bento/managers/asset', [
                 packs.push(name);
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'pack');
                 }
                 checkLoaded();
             };
@@ -9263,7 +9369,7 @@ bento.define('bento/managers/asset', [
                 assets.json[name] = json;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'json');
                 }
                 checkLoaded();
             };
@@ -9275,7 +9381,7 @@ bento.define('bento/managers/asset', [
                 assets.fonts[name] = ttf;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'ttf');
                 }
                 checkLoaded();
             };
@@ -9287,7 +9393,7 @@ bento.define('bento/managers/asset', [
                 }
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'audio');
                 }
                 checkLoaded();
             };
@@ -9299,7 +9405,7 @@ bento.define('bento/managers/asset', [
                 }
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheet');
                 }
                 checkLoaded();
             };
@@ -9313,7 +9419,7 @@ bento.define('bento/managers/asset', [
                 toUnpack['packed-images'][name] = imagePack;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'imagePack');
                 }
                 checkLoaded();
             };
@@ -9326,7 +9432,7 @@ bento.define('bento/managers/asset', [
                 toUnpack['packed-json'][name] = json;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'jsonPack');
                 }
                 checkLoaded();
             };
@@ -9339,7 +9445,7 @@ bento.define('bento/managers/asset', [
                 toUnpack['packed-spritesheets'][name] = spriteSheetPack;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheetPack');
                 }
                 checkLoaded();
             };
@@ -9805,7 +9911,7 @@ bento.define('bento/managers/asset', [
                     loadAssetGroups(groupsToLoad, onReady);
                 } else {
                     // done
-                    onReady(null);
+                    onReady(null, 'assetsJson');
                 }
             });
         };
@@ -9821,8 +9927,8 @@ bento.define('bento/managers/asset', [
          */
         var loadAllAssets = function (settings) {
             var exceptions = settings.exceptions || [];
-            var onReady = settings.onReady || settings.onComplete || function () {};
-            var onLoaded = settings.onLoaded || settings.onLoad || function () {};
+            var onReady = settings.onReady || settings.onComplete || function (err, name) {};
+            var onLoaded = settings.onLoaded || settings.onLoad || function (count, total, name, type) {};
             var group;
             var groupName;
             var groupCount = 0;
@@ -9830,17 +9936,21 @@ bento.define('bento/managers/asset', [
             var groupsLoaded = 0;
             var current = 0;
             // check if all groups loaded
-            var end = function () {
+            var end = function (err) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
                 groupsLoaded += 1;
                 if (groupsLoaded === groupCount && onReady) {
-                    onReady();
+                    onReady(null);
                 }
             };
             // called on every asset
-            var loadAsset = function (c, a, name) {
+            var loadAsset = function (c, a, name, type) {
                 current += 1;
                 if (onLoaded) {
-                    onLoaded(current, assetCount, name);
+                    onLoaded(current, assetCount, name, type);
                 }
             };
 
@@ -12188,7 +12298,7 @@ bento.define('bento/math/matrix', [
  * Polygon
  * <br>Exports: Constructor
  * @module bento/math/polygon
- * @moduleName Polgygon
+ * @moduleName Polygon
  * @param {Array} points - An array of Vector2 with positions of all points
  * @returns {Polygon} Returns a polygon.
  */
@@ -12427,6 +12537,8 @@ bento.define('bento/math/polygon', [
  * @param {Number} width - Width of the rectangle
  * @param {Number} height - Height of the rectangle
  * @returns {Rectangle} Returns a rectangle.
+ * @snippet Rectangle.snippet
+Rectangle(${1:0}, ${2:0}, ${3:1}, ${4:0})
  */
 bento.define('bento/math/rectangle', [
     'bento/utils',
@@ -13004,6 +13116,9 @@ bento.define('bento/math/transformmatrix', [
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
+ * @snippet Vector2.snippet
+Vector2(${1:0}, ${2:0})
+ *
  */
 bento.define('bento/math/vector2', [
     'bento/math/matrix',
@@ -16171,6 +16286,21 @@ bento.define('bento/components/pixi/sprite', [
  * @module bento/gui/clickbutton
  * @moduleName ClickButton
  * @returns Entity
+ * @snippet ClickButton.snippet
+ClickButton({
+    z: ${1:0},
+    name: '$2',
+    sfx: '$3',
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:3},
+    position: new Vector2(${7:0}, ${8:0}),
+    updateWhenPaused: ${10:0},
+    float: ${9:false},
+    onClick: function () {
+        $10
+    }
+});
  */
 bento.define('bento/gui/clickbutton', [
     'bento',
@@ -16691,6 +16821,27 @@ bento.define('bento/gui/counter', [
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
  * @moduleName Text
+ * @snippet Text.snippet
+Text({
+    z: ${1:0},
+    position: new Vector2(${2:0}, ${3:0}),
+    text: '${4}',
+    font: '${5:font}',
+    fontSize: ${6:16},
+    fontColor: '${7:#ffffff}',
+    align: '${8:left}',
+    textBaseline: '${9:bottom}',
+    ySpacing: ${10:0},
+    lineWidth: ${11:0}, // set to add an outline
+    strokeStyle: '${12:#000000}',
+    innerStroke: ${13:false},
+    pixelStroke: ${14:false}, // workaround for Cocoon bug
+    maxWidth: ${15:undefined},
+    maxHeight: ${16:undefined},
+    linebreaks: ${17:true},
+    drawDebug: ${18:false},
+    components: [$19]
+});
  * @returns Entity
  */
 bento.define('bento/gui/text', [
@@ -17493,6 +17644,21 @@ bento.define('bento/gui/text', [
  * @module bento/gui/togglebutton
  * @moduleName ToggleButton
  * @returns Entity
+ * @snippet ToggleButton.snippet
+ToggleButton({
+    z: ${1:0},
+    name: '$2',
+    sfx: '$3',
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:3},
+    position: new Vector2(${7:0}, ${8:0}),
+    updateWhenPaused: ${10:0},
+    float: ${9:false},
+    onToggle: function () {
+        $10
+    }
+});
  */
 bento.define('bento/gui/togglebutton', [
     'bento',

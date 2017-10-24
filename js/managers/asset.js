@@ -256,7 +256,7 @@ bento.define('bento/managers/asset', [
                 data: null
             };
             var checkForCompletion = function () {
-                if (packedImage.image !== null && packedImage.animation !== null) {
+                if (packedImage.image !== null && packedImage.data !== null) {
                     callback(null, name, packedImage);
                 }
             };
@@ -333,10 +333,10 @@ bento.define('bento/managers/asset', [
                 assetGroups[name] = json;
                 loaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(loaded, keyCount, name);
+                    onLoaded(loaded, keyCount, name, 'json');
                 }
                 if (keyCount === loaded && Utils.isDefined(onReady)) {
-                    onReady(null);
+                    onReady(null, 'assetGroup');
                 }
             };
             for (jsonName in jsonFiles) {
@@ -451,7 +451,7 @@ bento.define('bento/managers/asset', [
                 unpackJson();
                 unpackSpriteSheets();
                 if (Utils.isDefined(onReady)) {
-                    onReady(null);
+                    onReady(null, groupName);
                 }
             };
             var checkLoaded = function () {
@@ -467,7 +467,7 @@ bento.define('bento/managers/asset', [
                 assets.images[name] = image;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'image');
                 }
                 checkLoaded();
             };
@@ -482,7 +482,7 @@ bento.define('bento/managers/asset', [
                 packs.push(name);
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'pack');
                 }
                 checkLoaded();
             };
@@ -494,7 +494,7 @@ bento.define('bento/managers/asset', [
                 assets.json[name] = json;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'json');
                 }
                 checkLoaded();
             };
@@ -506,7 +506,7 @@ bento.define('bento/managers/asset', [
                 assets.fonts[name] = ttf;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'ttf');
                 }
                 checkLoaded();
             };
@@ -518,7 +518,7 @@ bento.define('bento/managers/asset', [
                 }
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'audio');
                 }
                 checkLoaded();
             };
@@ -530,7 +530,7 @@ bento.define('bento/managers/asset', [
                 }
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheet');
                 }
                 checkLoaded();
             };
@@ -544,7 +544,7 @@ bento.define('bento/managers/asset', [
                 toUnpack['packed-images'][name] = imagePack;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'imagePack');
                 }
                 checkLoaded();
             };
@@ -557,7 +557,7 @@ bento.define('bento/managers/asset', [
                 toUnpack['packed-json'][name] = json;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'jsonPack');
                 }
                 checkLoaded();
             };
@@ -570,7 +570,7 @@ bento.define('bento/managers/asset', [
                 toUnpack['packed-spritesheets'][name] = spriteSheetPack;
                 assetsLoaded += 1;
                 if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name);
+                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheetPack');
                 }
                 checkLoaded();
             };
@@ -1036,7 +1036,7 @@ bento.define('bento/managers/asset', [
                     loadAssetGroups(groupsToLoad, onReady);
                 } else {
                     // done
-                    onReady(null);
+                    onReady(null, 'assetsJson');
                 }
             });
         };
@@ -1052,8 +1052,8 @@ bento.define('bento/managers/asset', [
          */
         var loadAllAssets = function (settings) {
             var exceptions = settings.exceptions || [];
-            var onReady = settings.onReady || settings.onComplete || function () {};
-            var onLoaded = settings.onLoaded || settings.onLoad || function () {};
+            var onReady = settings.onReady || settings.onComplete || function (err, name) {};
+            var onLoaded = settings.onLoaded || settings.onLoad || function (count, total, name, type) {};
             var group;
             var groupName;
             var groupCount = 0;
@@ -1061,17 +1061,21 @@ bento.define('bento/managers/asset', [
             var groupsLoaded = 0;
             var current = 0;
             // check if all groups loaded
-            var end = function () {
+            var end = function (err) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
                 groupsLoaded += 1;
                 if (groupsLoaded === groupCount && onReady) {
-                    onReady();
+                    onReady(null);
                 }
             };
             // called on every asset
-            var loadAsset = function (c, a, name) {
+            var loadAsset = function (c, a, name, type) {
                 current += 1;
                 if (onLoaded) {
-                    onLoaded(current, assetCount, name);
+                    onLoaded(current, assetCount, name, type);
                 }
             };
 
