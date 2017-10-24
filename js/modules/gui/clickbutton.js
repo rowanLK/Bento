@@ -21,10 +21,10 @@ ClickButton({
     frameCountX: ${5:1},
     frameCountY: ${6:3},
     position: new Vector2(${7:0}, ${8:0}),
-    updateWhenPaused: ${10:0},
-    float: ${9:false},
+    updateWhenPaused: ${9:0},
+    float: ${10:false},
     onClick: function () {
-        $10
+        $11
     }
 });
  */

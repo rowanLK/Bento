@@ -19,10 +19,29 @@
  * @param {Function} [settings.onComplete] - Called when tween ends
  * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
  * @param {Number} [settings.delay] - Wait an amount of ticks before starting
+ * @param {Boolean} [settings.applyOnDelay] - Perform onUpdate even during delay
  * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
  * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
  * @returns Entity
+ * @snippet Tween.snippet
+Tween({
+    from: ${1:0},
+    to: ${2:1},
+    in: ${3:60},
+    delay: ${4:0},
+    applyOnDelay: ${5:0},
+    ease: '${6:linear}',
+    decay: ${7:1},
+    oscillations: ${8:1},
+    onStart: function () {},
+    onUpdate: function (v, t) {
+        ${9}
+    },
+    onComplete: function () {
+        ${10}
+    }
+});
  */
 
 // Deprecated parameters
@@ -262,6 +281,7 @@ bento.define('bento/tween', [
         var onComplete = settings.onComplete;
         var onCreate = settings.onCreate;
         var onStart = settings.onStart;
+        var applyOnDelay = settings.applyOnDelay;
         var hasStarted = false;
         var ease = settings.ease || 'linear';
         var startVal = settings.from || 0;
@@ -294,6 +314,17 @@ bento.define('bento/tween', [
                         delayTimer += 1;
                     } else {
                         delayTimer += data.speed;
+                    }
+                    // run onUpdate before start
+                    if (applyOnDelay && onUpdate) {
+                        onUpdate.apply(this, [interpolate(
+                            ease,
+                            startVal,
+                            endVal,
+                            0,
+                            alpha,
+                            beta
+                        ), 0]);
                     }
                     return;
                 }

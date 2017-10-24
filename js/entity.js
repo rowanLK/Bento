@@ -42,10 +42,8 @@ Entity({
     name: '$2',
     family: [''],
     position: new Vector2(${3:0}, ${4:0}),
-    updateWhenPaused: ${5:0},
-    float: ${6:false},
     components: [
-        $7
+        $5
     ]
 });
  */
