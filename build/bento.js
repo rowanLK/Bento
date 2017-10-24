@@ -16506,6 +16506,8 @@ bento.define('bento/gui/clickbutton', [
                 } else {
                     setAnimation('up');
                 }
+            } else {
+                setAnimation('up');
             }
         };
 
