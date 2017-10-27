@@ -357,8 +357,8 @@ bento.define('bento/components/nineslice', [
     };
 
     NineSlice.prototype.recalculateDimensions = function () {
-        this._innerWidth = Math.ceil(Math.max(0, this._width - this.sliceWidth * 2));
-        this._innerHeight = Math.ceil(Math.max(0, this._height - this.sliceHeight * 2));
+        this._innerWidth = Math.round(Math.max(0, this._width - this.sliceWidth * 2));
+        this._innerHeight = Math.round(Math.max(0, this._height - this.sliceHeight * 2));
 
         this._leftWidth = Math.min(this.sliceWidth, this._width / 2);
         this.rightWidth = Math.min(this.sliceWidth, this._width - this._leftWidth);
