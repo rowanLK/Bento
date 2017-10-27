@@ -7192,6 +7192,17 @@ bento.define('bento/components/clickable', [
             }
         }
     };
+    /**
+     * Whether the clickable is receiving events currently. If the parent entity is paused, the clickable
+     * is not active.
+     * @function
+     * @instance
+     * @returns {Boolean} Active state
+     * @name isPaused
+     */
+    Clickable.prototype.isPaused = function () {
+        return this.updateWhenPaused ? isPausedComponent(this) : isPaused(this.entity);
+    };
 
     Clickable.prototype.transformEvent = function (evt) {
         evt.localPosition = this.entity.toComparablePosition(evt.worldPosition);
