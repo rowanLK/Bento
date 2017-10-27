@@ -55,7 +55,7 @@ bento.define('bento/gui/clickbutton', [
     var ClickButton = function (settings) {
         var viewport = Bento.getViewport();
         var active = true;
-        var animations = settings.animations || {
+        var defaultAnimations = {
             'up': {
                 speed: 0,
                 frames: [0]
@@ -63,8 +63,16 @@ bento.define('bento/gui/clickbutton', [
             'down': {
                 speed: 0,
                 frames: [1]
+            },
+            'inactive': {
+                speed: 0,
+                frames: [2]
             }
         };
+        if (settings.frameCountX * settings.frameCountY <= 2) {
+            delete defaultAnimations.inactive;
+        }
+        var animations = settings.animations || defaultAnimations;
         var nsSettings = settings.nineSliceSettings || null;
         var nineSlice = !nsSettings ? null : new NineSlice({
             image: settings.image,
@@ -94,7 +102,8 @@ bento.define('bento/gui/clickbutton', [
         var wasHoldingThis = false;
         var clickable = new Clickable({
             sort: settings.sort,
-            onClick: function () {
+            ignorePauseDuringPointerUpEvent: settings.ignorePauseDuringPointerUpEvent,
+            onClick: function (data) {
                 wasHoldingThis = false;
                 if (!active || ClickButton.currentlyPressing) {
                     return;
@@ -102,67 +111,72 @@ bento.define('bento/gui/clickbutton', [
                 ClickButton.currentlyPressing = entity;
                 setAnimation('down');
                 if (settings.onButtonDown) {
-                    settings.onButtonDown.apply(entity);
+                    settings.onButtonDown.apply(entity, [data]);
                 }
                 EventSystem.fire('clickButton-onButtonDown', {
                     entity: entity,
-                    event: 'onClick'
+                    event: 'onClick',
+                    data: data
                 });
             },
-            onHoldEnter: function () {
+            onHoldEnter: function (data) {
                 if (!active) {
                     return;
                 }
                 setAnimation('down');
                 if (settings.onButtonDown) {
-                    settings.onButtonDown.apply(entity);
+                    settings.onButtonDown.apply(entity, [data]);
                 }
                 EventSystem.fire('clickButton-onButtonDown', {
                     entity: entity,
-                    event: 'onHoldEnter'
+                    event: 'onHoldEnter',
+                    data: data
                 });
             },
-            onHoldLeave: function () {
+            onHoldLeave: function (data) {
                 if (!active) {
                     return;
                 }
                 setAnimation('up');
                 if (settings.onButtonUp) {
-                    settings.onButtonUp.apply(entity);
+                    settings.onButtonUp.apply(entity, [data]);
                 }
                 EventSystem.fire('clickButton-onButtonUp', {
                     entity: entity,
-                    event: 'onHoldLeave'
+                    event: 'onHoldLeave',
+                    data: data
                 });
             },
-            pointerUp: function () {
+            pointerUp: function (data) {
                 if (!active) {
                     return;
                 }
                 setAnimation('up');
                 if (settings.onButtonUp) {
-                    settings.onButtonUp.apply(entity);
+                    settings.onButtonUp.apply(entity, [data]);
                 }
                 EventSystem.fire('clickButton-onButtonUp', {
                     entity: entity,
-                    event: 'pointerUp'
+                    event: 'pointerUp',
+                    data: data
                 });
                 if (ClickButton.currentlyPressing === entity) {
                     wasHoldingThis = true;
                     ClickButton.currentlyPressing = null;
                 }
             },
-            onHoldEnd: function () {
+            onHoldEnd: function (data) {
                 if (active && settings.onClick && (ClickButton.currentlyPressing === entity || wasHoldingThis)) {
                     wasHoldingThis = false;
-                    settings.onClick.apply(entity);
+                    settings.onClick.apply(entity, [data]);
                     if (settings.sfx) {
                         Bento.audio.stopSound(settings.sfx);
                         Bento.audio.playSound(settings.sfx);
                     }
                     EventSystem.fire('clickButton-onClick', {
                         entity: entity,
-                        event: 'onHoldEnd'
+                        event: 'onHoldEnd',
+                        data: data
                     });
                 }
                 ClickButton.currentlyPressing = null;

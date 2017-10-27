@@ -74,6 +74,8 @@ bento.define('bento/gui/togglebutton', [
             animations: animations
         });
         var clickable = new Clickable({
+            sort: settings.sort,
+            ignorePauseDuringPointerUpEvent: settings.ignorePauseDuringPointerUpEvent,
             onClick: function () {
                 if (!active) {
                     return;
