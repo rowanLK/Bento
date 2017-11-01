@@ -29,6 +29,7 @@ bento.define('bento/managers/input', [
             keyStates = {},
             offsetLeft = 0,
             offsetTop = 0,
+            offsetLocal = new Vector2(0, 0),
             gamepad,
             gamepads,
             gamepadButtonsPressed = [],
@@ -95,8 +96,8 @@ bento.define('bento/managers/input', [
             },
             addTouchPosition = function (evt, n, type) {
                 var touch = evt.changedTouches[n];
-                var x = (touch.pageX - offsetLeft) / canvasScale.x;
-                var y = (touch.pageY - offsetTop) / canvasScale.y;
+                var x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x;
+                var y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y;
                 var startPos = {};
 
                 evt.preventDefault();
@@ -139,8 +140,8 @@ bento.define('bento/managers/input', [
 
             },
             addMousePosition = function (evt, type) {
-                var x = (evt.pageX - offsetLeft) / canvasScale.x,
-                    y = (evt.pageY - offsetTop) / canvasScale.y,
+                var x = (evt.pageX - offsetLeft) / canvasScale.x + offsetLocal.x,
+                    y = (evt.pageY - offsetTop) / canvasScale.y + offsetLocal.y,
                     startPos = {},
                     n = -1;
                 evt.id = 0;
@@ -519,8 +520,8 @@ bento.define('bento/managers/input', [
             },
             addTvTouchPosition = function (evt, n, type) {
                 var touch = evt.changedTouches[n],
-                    x = (touch.pageX - offsetLeft) / canvasScale.x,
-                    y = (touch.pageY - offsetTop) / canvasScale.y,
+                    x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y,
                     startPos = {};
 
                 evt.preventDefault();
@@ -789,6 +790,17 @@ bento.define('bento/managers/input', [
              * @name updateCanvas
              */
             updateCanvas: updateCanvas,
+            /**
+             * Adds an offset to all pointer input
+             * Note that this is in local space
+             * @function
+             * @instance
+             * @param {Vector2} offset - Offset as Vector2
+             * @name setOffset
+             */
+            setOffset: function (offset) {
+                offsetLocal = offset;
+            }
         };
     };
 });

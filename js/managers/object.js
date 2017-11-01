@@ -128,6 +128,7 @@ bento.define('bento/managers/object', [
 
             EventSystem.fire('preDraw', data);
             data.renderer.begin();
+            EventSystem.fire('preDrawLoop', data);
             for (i = 0; i < objects.length; ++i) {
                 object = objects[i];
                 if (!object) {
@@ -137,6 +138,7 @@ bento.define('bento/managers/object', [
                     object.draw(data);
                 }
             }
+            EventSystem.fire('postDrawLoop', data);
             data.renderer.flush();
             EventSystem.fire('postDraw', data);
         };
