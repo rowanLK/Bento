@@ -99,6 +99,7 @@ bento.define('bento/managers/object', [
 
             window.requestAnimationFrame(mainLoop);
         };
+        var currentObject; // the current object being processed in the main loop
         var update = function (data) {
             var object,
                 i;
@@ -111,6 +112,7 @@ bento.define('bento/managers/object', [
                 if (!object) {
                     continue;
                 }
+                currentObject = object;
                 if (object.update && (object.updateWhenPaused >= isPaused)) {
                     object.update(data);
                 }
@@ -134,6 +136,7 @@ bento.define('bento/managers/object', [
                 if (!object) {
                     continue;
                 }
+                currentObject = object;
                 if (object.draw) {
                     object.draw(data);
                 }
@@ -370,8 +373,8 @@ bento.define('bento/managers/object', [
              * @instance
              * @name run
              */
-            run: function () {
-                if (!isRunning) {
+            run: function (force) {
+                if (!isRunning || force) {
                     isRunning = true;
                     mainLoop();
                 }
@@ -466,6 +469,10 @@ bento.define('bento/managers/object', [
              */
             getObjects: function () {
                 return objects;
+            },
+            // useful for debugging, may be removed later so leaving this undocumented
+            getCurrentObject: function () {
+                return currentObject;
             }
         };
 
