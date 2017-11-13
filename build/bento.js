@@ -4560,6 +4560,8 @@ bento.define('bento/entity', [
          * @name settings
          */
         this.settings = settings;
+        // Current component that is being processed, useful for debugging
+        this.currentComponent = null;
 
         // read settings
         if (settings) {
@@ -5166,6 +5168,7 @@ Bento.objects.attach(entity);
         for (i = 0, l = components.length; i < l; ++i) {
             component = components[i];
             if (component && component.update) {
+                this.currentComponent = component;
                 data.entity = this;
                 component.rootIndex = i;
                 component.update(data);
@@ -5176,6 +5179,7 @@ Bento.objects.attach(entity);
 
         // clean up
         cleanComponents(this);
+        this.currentComponent = null;
     };
     Entity.prototype.draw = function (data) {
         var i, l, component;
@@ -5192,6 +5196,7 @@ Bento.objects.attach(entity);
         for (i = 0, l = components.length; i < l; ++i) {
             component = components[i];
             if (component && component.draw) {
+                this.currentComponent = component;
                 data.entity = this;
                 component.draw(data);
             }
@@ -5206,6 +5211,7 @@ Bento.objects.attach(entity);
         }
 
         this.transform.postDraw(data);
+        this.currentComponent = null;
     };
     /*
      * Entity was attached, calls onParentAttach to all children
