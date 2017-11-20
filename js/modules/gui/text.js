@@ -728,6 +728,21 @@ bento.define('bento/gui/text', [
                         data.renderer.drawLine([0, 0, 1, 0.5], box.x, box.y + box.height, box.x + box.width, box.y + box.height, 1);
                     }
                 }
+            },
+            start: function () {
+                // re-init canvas
+                // if (!canvas) {
+                //     canvas = document.createElement('canvas');
+                //     ctx = canvas.getContext('2d');
+                //     packedImage.image = canvas;
+                //     updateCanvas();
+                // }
+            },
+            destroy: function () {
+                // if (canvas.dispose) {
+                //     canvas.dispose();
+                //     canvas = null;
+                // }
             }
         };
         var sprite = new Sprite({
@@ -746,7 +761,7 @@ bento.define('bento/gui/text', [
             name: 'text',
             position: new Vector2(0, 0)
         }, settings, true);
-        
+
         // merge components array
         entitySettings.components = settings.components || [];
 

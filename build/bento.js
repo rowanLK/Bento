@@ -14602,6 +14602,18 @@ bento.define('bento/tiled', [
                 );
                 context.globalAlpha = 1;
                 context.restore();
+            },
+            dispose: function () {
+                // Cocoon: dispose canvasses
+                Utils.forEach(layers, function (layer) {
+                    if (layer.length) {
+                        Utils.forEach(layer, function (canvas) {
+                            if (canvas && canvas.dispose) {
+                                canvas.dispose();
+                            }
+                        });
+                    }
+                });
             }
         };
     };
@@ -15011,7 +15023,11 @@ bento.define('bento/tiled', [
              * @instance
              * @name layerImages
              */
-            layerImages: layerSprites
+            layerImages: layerSprites,
+            // clean up
+            destroy: function () {
+                layerSprites.dispose();
+            }
         };
 
         tiledReader.read();
@@ -17606,6 +17622,21 @@ bento.define('bento/gui/text', [
                         data.renderer.drawLine([0, 0, 1, 0.5], box.x, box.y + box.height, box.x + box.width, box.y + box.height, 1);
                     }
                 }
+            },
+            start: function () {
+                // re-init canvas
+                // if (!canvas) {
+                //     canvas = document.createElement('canvas');
+                //     ctx = canvas.getContext('2d');
+                //     packedImage.image = canvas;
+                //     updateCanvas();
+                // }
+            },
+            destroy: function () {
+                // if (canvas.dispose) {
+                //     canvas.dispose();
+                //     canvas = null;
+                // }
             }
         };
         var sprite = new Sprite({
@@ -17624,7 +17655,7 @@ bento.define('bento/gui/text', [
             name: 'text',
             position: new Vector2(0, 0)
         }, settings, true);
-        
+
         // merge components array
         entitySettings.components = settings.components || [];
 

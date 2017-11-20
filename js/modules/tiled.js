@@ -165,6 +165,18 @@ bento.define('bento/tiled', [
                 );
                 context.globalAlpha = 1;
                 context.restore();
+            },
+            dispose: function () {
+                // Cocoon: dispose canvasses
+                Utils.forEach(layers, function (layer) {
+                    if (layer.length) {
+                        Utils.forEach(layer, function (canvas) {
+                            if (canvas && canvas.dispose) {
+                                canvas.dispose();
+                            }
+                        });
+                    }
+                });
             }
         };
     };
@@ -574,7 +586,11 @@ bento.define('bento/tiled', [
              * @instance
              * @name layerImages
              */
-            layerImages: layerSprites
+            layerImages: layerSprites,
+            // clean up
+            destroy: function () {
+                layerSprites.dispose();
+            }
         };
 
         tiledReader.read();
