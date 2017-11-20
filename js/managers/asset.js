@@ -793,21 +793,24 @@ bento.define('bento/managers/asset', [
                     var asset = assetTypeGroup[name];
                     var removePackedImage = function (packedImages) {
                         // find what it unpacked to
-                            var image = packedImages.image;
-                            var data = packedImages.data;
-                            Utils.forEach(data, function (textureData, i) {
-                                // find out the asset name
-                                var assetName = textureData.assetName;
-                                var textureAsset = assets.texturePacker[assetName];
-                                // delete if this asset still exists
-                                if (textureAsset) {
-                                    delete assets.texturePacker[assetName];
-                                }
-                            });
-                            // dispose if possible
-                            if (dispose && image.dispose) {
-                                image.dispose();
+                        var image = packedImages.image;
+                        var data = packedImages.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // find out the asset name
+                            var assetName = textureData.assetName;
+                            var textureAsset = assets.texturePacker[assetName];
+                            // delete if this asset still exists
+                            if (textureAsset) {
+                                delete assets.texturePacker[assetName];
                             }
+                        });
+                        // dispose if possible
+                        if (dispose && image.dispose) {
+                            image.dispose();
+                        }
+                        if (dispose && image.image && image.image.dispose) {
+                            image.image.dispose();
+                        }
                     };
                     var removePackedSpriteSheet = function (packedSpriteSheets) {
                         // find what it unpacked to
@@ -825,6 +828,9 @@ bento.define('bento/managers/asset', [
                         // dispose if possible
                         if (dispose && image.dispose) {
                             image.dispose();
+                        }
+                        if (dispose && image.image && image.image.dispose) {
+                            image.image.dispose();
                         }
                     };
                     var removePackedJson = function (packedJson) {
@@ -864,6 +870,8 @@ bento.define('bento/managers/asset', [
                             // spritesheet
                             else if (asset.image && asset.image.dispose) {
                                 asset.image.dispose();
+                            } else if (asset.image && asset.image.image && asset.image.image.dispose) {
+                                asset.image.image.dispose();
                             }
                             // audia
                             else if (asset._audioNode && asset._audioNode.dispose) {
