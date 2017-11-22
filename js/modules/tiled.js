@@ -16,6 +16,7 @@
  * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
  * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
  * @param {Function} [settings.onComplete] - Called when the reader passed all layers
+ * @param {Boolean} [settings.drawTiles] - Draw tiles (default: true)
  * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
  * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
  * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
@@ -183,6 +184,7 @@ bento.define('bento/tiled', [
 
     var Tiled = function (settings) {
         var assetName = settings.assetName;
+        var drawTiles = Utils.isDefined(settings.drawTiles) ? settings.drawTiles : true;
         var json = settings.tiled || Bento.assets.getJson(assetName);
         var width = json.width || 0;
         var height = json.height || 0;
@@ -278,6 +280,9 @@ bento.define('bento/tiled', [
                 }
             },
             onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
+                if (!drawTiles) {
+                    return;
+                }
                 // get destination position
                 var x = tileX * tileWidth;
                 var y = tileY * tileHeight;
@@ -342,7 +347,7 @@ bento.define('bento/tiled', [
                         });
                         entity = new Entity({
                             z: 0,
-                            name: tiledLayer ?  tiledLayer.name || 'tiledLayer' : 'tiledLayer',
+                            name: tiledLayer ? tiledLayer.name || 'tiledLayer' : 'tiledLayer',
                             family: ['backgrounds'],
                             position: new Vector2(
                                 offset.x + canvasSize.x * (j % spritesCountX),
