@@ -92,14 +92,19 @@ bento.define('bento/screen', [
                  */
                 onHide: function (data) {
                     var viewport = Bento.getViewport();
-                    // remove all objects
-                    Bento.removeAll();
+                    // 1st callback
+                    if (settings.onHide) {
+                        settings.onHide.call(module, data);
+                    }
                     // reset viewport scroll when hiding screen
                     viewport.x = 0;
                     viewport.y = 0;
-                    // callback
-                    if (settings.onHide) {
-                        settings.onHide.call(module, data);
+                    // remove all objects
+                    Bento.removeAll();
+
+                    // 2nd callback
+                    if (settings.onHidden) {
+                        settings.onHidden.call(module, data);
                     }
                     // reset pause level
                     Bento.objects.resume();
