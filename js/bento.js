@@ -309,7 +309,7 @@ bento.define('bento', [
                     // start watching for new modules
                     bento.watch();
                     // reload keys
-                    if (settings.reload) {
+                    if (settings.reload && settings.dev) {
                         if (settings.reload.simple) {
                             EventSystem.on(settings.reload.simple, function () {
                                 Bento.reload();
@@ -331,7 +331,7 @@ bento.define('bento', [
                     }
 
                     // screenshot key
-                    if (settings.screenshot) {
+                    if (settings.screenshot && settings.dev) {
                         setScreenshotListener(settings.screenshot);
                     }
                 });
