@@ -8937,10 +8937,15 @@ bento.define('bento/managers/asset', [
                 var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
                 if (!!canPlay || window.ejecta) {
                     // success!
-                    audio.onload = function () {
-                        callback(null, name, audio);
-                    };
                     audio.src = src;
+                    if (!manager.skipAudioCallback) {
+                        audio.onload = function () {
+                            callback(null, name, audio);
+                        };
+                    } else {
+                        // callback immediately
+                        callback(null, name, audio);
+                    }
                     failed = false;
                     return true;
                 }
@@ -8975,18 +8980,27 @@ bento.define('bento/managers/asset', [
             };
             xhr.onreadystatechange = function () {
                 var jsonData;
+                var response;
                 if (xhr.readyState === 4) {
                     if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
                         try {
+                            response = xhr.responseText;
+                            // read header
+                            if (response[0] === 'L' && response[1] === 'Z' && response[2] === 'S') {
+                                isCompressed = true;
+                                // trim header
+                                response = response.substring(3);
+                            }
+
                             if (isCompressed) {
                                 // decompress if needed
-                                jsonData = JSON.parse(LZString.decompressFromBase64(xhr.responseText));
+                                jsonData = JSON.parse(LZString.decompressFromBase64(response));
                             } else {
-                                jsonData = JSON.parse(xhr.responseText);
+                                jsonData = JSON.parse(response);
                             }
                         } catch (e) {
-                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source);
-                            console.log('Trying to parse', xhr.responseText);
+                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source + ': ' + e);
+                            console.log('Trying to parse', response);
                             jsonData = xhr.responseText;
                         }
                         callback(null, name, jsonData);
@@ -9995,7 +10009,8 @@ bento.define('bento/managers/asset', [
                 onReady();
             }
         };
-        return {
+        var manager = {
+            skipAudioCallback: false,
             reload: reload,
             loadAllAssets: loadAllAssets,
             loadAssetGroups: loadAssetGroups,
@@ -10014,6 +10029,7 @@ bento.define('bento/managers/asset', [
             getAssets: getAssets,
             getAssetGroups: getAssetGroups
         };
+        return manager;
     };
 });
 /**
