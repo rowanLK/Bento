@@ -92,6 +92,7 @@ bento.define('bento/gui/counter', [
             };
             var sprite = new Sprite({
                 image: spriteSettings.image,
+                padding: spriteSettings.padding,
                 imageName: spriteSettings.imageName,
                 frameWidth: spriteSettings.frameWidth,
                 frameHeight: spriteSettings.frameHeight,
@@ -175,6 +176,7 @@ bento.define('bento/gui/counter', [
         // copy spritesettings
         spriteSettings.image = settings.image;
         spriteSettings.imageName = settings.imageName;
+        spriteSettings.padding = settings.padding;
         spriteSettings.frameWidth = settings.frameWidth;
         spriteSettings.frameHeight = settings.frameHeight;
         spriteSettings.frameCountX = settings.frameCountX;
@@ -184,6 +186,7 @@ bento.define('bento/gui/counter', [
             settings.sprite = settings.sprite.animationSettings;
             spriteSettings.image = settings.sprite.image;
             spriteSettings.imageName = settings.sprite.imageName;
+            spriteSettings.padding = settings.sprite.padding;
             spriteSettings.frameWidth = settings.sprite.frameWidth;
             spriteSettings.frameHeight = settings.sprite.frameHeight;
             spriteSettings.frameCountX = settings.sprite.frameCountX;
