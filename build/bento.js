@@ -8944,7 +8944,9 @@ bento.define('bento/managers/asset', [
                         };
                     } else {
                         // callback immediately
-                        callback(null, name, audio);
+                        window.setTimeout(function () {
+                            callback(null, name, audio);
+                        }, 0);
                     }
                     failed = false;
                     return true;
