@@ -30,7 +30,7 @@ bento.define('bento/components/fill', [
         this.rootIndex = -1;
         this.name = 'fill';
         this.color = settings.color || [0, 0, 0, 1];
-        this.dimension = settings.dimension || settings.size || viewport;
+        this.dimension = settings.dimension || settings.size || settings.rectangle || viewport.getSize();
         this.origin = settings.origin || new Vector2(0, 0);
         if (settings.originRelative) {
             this.origin.x = this.dimension.width * settings.originRelative.x;
@@ -40,7 +40,17 @@ bento.define('bento/components/fill', [
     Fill.prototype.draw = function (data) {
         var dimension = this.dimension;
         var origin = this.origin;
-        data.renderer.fillRect(this.color, dimension.x - origin.x, dimension.y - origin.y, dimension.width, dimension.height);
+        data.renderer.fillRect(
+            this.color,
+            dimension.x - origin.x,
+            dimension.y - origin.y,
+            dimension.width,
+            dimension.height
+        );
+    };
+    Fill.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = this.dimension.width * originRelative.x;
+        this.origin.y = this.dimension.height * originRelative.y;
     };
     Fill.prototype.toString = function () {
         return '[object Fill]';
