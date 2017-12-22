@@ -3899,37 +3899,9 @@ bento.define('bento', [
         x: 1,
         y: 1
     };
-    var debug = {
-        debugBar: null,
-        fps: 0,
-        fpsAccumulator: 0,
-        fpsTicks: 0,
-        fpsMaxAverage: 600,
-        avg: 0,
-        lastTime: 0
-    };
     var dev = false;
     var gameData = {};
     var viewport = new Rectangle(0, 0, 640, 480);
-    var setupDebug = function () {
-        if (Utils.isCocoonJS()) {
-            return;
-        }
-        // TODO: make a proper debug bar
-        debug.debugBar = document.createElement('div');
-        debug.debugBar.style['font-family'] = 'Arial';
-        debug.debugBar.style.padding = '8px';
-        debug.debugBar.style.position = 'absolute';
-        debug.debugBar.style.right = '0px';
-        debug.debugBar.style.top = '0px';
-        debug.debugBar.style.color = 'white';
-        debug.debugBar.innerHTML = 'fps: 0';
-        document.body.appendChild(debug.debugBar);
-
-        var button = document.createElement('button');
-        button.innerHTML = 'button';
-        debug.debugBar.appendChild(button);
-    };
     var setupCanvas = function (settings) {
         var parent;
         var pixelSize = settings.pixelSize || 1;
@@ -4002,31 +3974,14 @@ bento.define('bento', [
     };
     var setScreenshotListener = function (evtName) {
         var takeScreenshot = false;
-        var openNewBackgroundTab = function (link) {
-            // TODO: different behavior in Windows, check navigator.platform
-            var a = document.createElement("a");
-            var evt = document.createEvent("MouseEvents");
-            a.href = link;
-
-            //the tenth parameter of initMouseEvent sets ctrl key
-            evt.initMouseEvent(
-                "click", // type
-                true, // canBubble
-                true, // canceable
-                window, // view
-                0, // detail
-                0, // screenX
-                0, // screenY
-                0, // clientX
-                0, // clientY
-                false, // ctrlKey
-                true, // altKey
-                false, // shiftKey
-                false, // metaKey
-                0, // button
-                null // relatedTarget
-            );
-            a.dispatchEvent(evt);
+        // web only
+        var downloadImage = function (uri, name) {
+            var link = document.createElement("a");
+            link.download = name;
+            link.href = uri;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         };
 
         if (navigator.isCocoonJS || window.Windows || window.ejecta) {
@@ -4044,7 +3999,7 @@ bento.define('bento', [
         EventSystem.on('postDraw', function (data) {
             if (takeScreenshot) {
                 takeScreenshot = false;
-                openNewBackgroundTab(canvas.toDataURL());
+                downloadImage(canvas.toDataURL(), 'screenshot');
             }
         });
 
@@ -11168,7 +11123,6 @@ bento.define('bento/managers/input', [
  * @param {Function} getGameData - Function that returns gameData object
  * @param {Object} settings - Settings object
  * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
- * @param {Object} settings.debug - Show debug info
  * @param {Object} settings.useDeltaT - Use delta time (note: untested)
  * @returns ObjectManager
  */
@@ -11222,10 +11176,6 @@ bento.define('bento/managers/object', [
                 return;
             }
 
-            if (settings.debug && fpsMeter) {
-                fpsMeter.tickStart();
-            }
-
             lastTime = currentTime;
             cumulativeTime += deltaT;
             data = getGameData();
@@ -11253,9 +11203,6 @@ bento.define('bento/managers/object', [
             draw(data);
 
             lastFrameTime = time;
-            if (settings.debug && fpsMeter) {
-                fpsMeter.tick();
-            }
 
             window.requestAnimationFrame(mainLoop);
         };
@@ -11635,17 +11582,6 @@ bento.define('bento/managers/object', [
                 return currentObject;
             }
         };
-
-        if (!window.performance) {
-            window.performance = {
-                now: Date.now
-            };
-        }
-        // TODO: deprecate this
-        if (settings.debug && Utils.isDefined(window.FPSMeter)) {
-            window.FPSMeter.defaults.graph = 1;
-            fpsMeter = new window.FPSMeter();
-        }
 
         // swap sort method with default sorting method
         if (settings.defaultSort) {

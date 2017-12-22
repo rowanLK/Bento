@@ -8,7 +8,6 @@
  * @param {Function} getGameData - Function that returns gameData object
  * @param {Object} settings - Settings object
  * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
- * @param {Object} settings.debug - Show debug info
  * @param {Object} settings.useDeltaT - Use delta time (note: untested)
  * @returns ObjectManager
  */
@@ -62,10 +61,6 @@ bento.define('bento/managers/object', [
                 return;
             }
 
-            if (settings.debug && fpsMeter) {
-                fpsMeter.tickStart();
-            }
-
             lastTime = currentTime;
             cumulativeTime += deltaT;
             data = getGameData();
@@ -93,9 +88,6 @@ bento.define('bento/managers/object', [
             draw(data);
 
             lastFrameTime = time;
-            if (settings.debug && fpsMeter) {
-                fpsMeter.tick();
-            }
 
             window.requestAnimationFrame(mainLoop);
         };
@@ -475,17 +467,6 @@ bento.define('bento/managers/object', [
                 return currentObject;
             }
         };
-
-        if (!window.performance) {
-            window.performance = {
-                now: Date.now
-            };
-        }
-        // TODO: deprecate this
-        if (settings.debug && Utils.isDefined(window.FPSMeter)) {
-            window.FPSMeter.defaults.graph = 1;
-            fpsMeter = new window.FPSMeter();
-        }
 
         // swap sort method with default sorting method
         if (settings.defaultSort) {
