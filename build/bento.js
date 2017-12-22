@@ -13673,7 +13673,7 @@ bento.define('bento/canvas', [
             origin = settings.origin;
         } else if (settings.originRelative) {
             origin = new Vector2(
-                settings.width * settings.originRelative.x, 
+                settings.width * settings.originRelative.x,
                 settings.height * settings.originRelative.y
             );
         }
@@ -13697,7 +13697,7 @@ bento.define('bento/canvas', [
         }
         entity = new Entity({
             z: settings.z,
-            name: settings.name,
+            name: settings.name || 'canvas',
             position: settings.position,
             components: components,
             family: settings.family,
@@ -13725,6 +13725,30 @@ bento.define('bento/canvas', [
              */
             getContext: function () {
                 return context;
+            },
+            /**
+             * Get the base64 string of the canvas
+             * @function
+             * @instance
+             * @returns String
+             * @name getBase64
+             */
+            getBase64: function () {
+                return canvas.toDataURL();
+            },
+            /**
+             * Download the canvas as png
+             * @function
+             * @instance
+             * @name downloadImage
+             */
+            downloadImage: function (name) {
+                var link = document.createElement("a");
+                link.download = name || entity.name;
+                link.href = canvas.toDataURL();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         });
 
