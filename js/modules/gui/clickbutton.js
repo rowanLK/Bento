@@ -296,6 +296,14 @@ bento.define('bento/gui/clickbutton', [
             }
         });
 
+        // active property
+        Object.defineProperty(entity, 'active', {
+            get: function () {
+                return active;
+            },
+            set: setActive
+        });
+
         return entity;
     };
 
