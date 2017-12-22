@@ -100,12 +100,19 @@ bento.define('bento/entity', [
          */
         this.rootIndex = -1;
         /**
-         * Timer value, incremented every update step
+         * Timer value, incremented every update step (dependent on game speed)
          * @instance
          * @default 0
          * @name timer
          */
         this.timer = 0;
+        /**
+         * Ticker value, incremented every update step (independent of game speed)
+         * @instance
+         * @default 0
+         * @name ticker
+         */
+        this.ticker = 0;
         /**
          * Indicates if an object should not be destroyed when a Screen ends
          * @instance
@@ -838,6 +845,7 @@ Bento.objects.attach(entity);
         }
 
         this.timer += data.speed;
+        this.ticker += 1;
 
         // clean up
         cleanComponents(this);
