@@ -21,6 +21,7 @@ bento.define('bento/managers/asset', [
     'use strict';
     return function () {
         var assetGroups = {};
+        var loadedGroups = {};
         var path = '';
         var assets = {
             audio: {},
@@ -47,7 +48,6 @@ bento.define('bento/managers/asset', [
                 var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
                 if (!!canPlay || window.ejecta) {
                     // success!
-                    audio.src = src;
                     if (!manager.skipAudioCallback) {
                         audio.onload = function () {
                             callback(null, name, audio);
@@ -58,6 +58,7 @@ bento.define('bento/managers/asset', [
                             callback(null, name, audio);
                         }, 0);
                     }
+                    audio.src = src;
                     failed = false;
                     return true;
                 }
@@ -466,12 +467,15 @@ bento.define('bento/managers/asset', [
                 initPackedImages();
                 unpackJson();
                 unpackSpriteSheets();
+                // mark as loaded
+                loadedGroups[groupName] = true;
+                // callback
                 if (Utils.isDefined(onReady)) {
                     onReady(null, groupName);
                 }
             };
             var checkLoaded = function () {
-                if (assetsLoaded === assetCount) {
+                if (assetCount === 0 || (assetCount > 0 && assetsLoaded === assetCount)) {
                     postLoad();
                 }
             };
@@ -606,6 +610,7 @@ bento.define('bento/managers/asset', [
                     data = toLoad[i];
                     data.fn(data.asset, data.path, data.callback);
                 }
+                checkLoaded();
             };
 
             if (!Utils.isDefined(group)) {
@@ -897,6 +902,8 @@ bento.define('bento/managers/asset', [
                     }
                 });
             });
+            // mark as unloaded
+            loadedGroups[groupName] = false;
         };
         /**
          * Returns a previously loaded image
@@ -1004,29 +1011,43 @@ bento.define('bento/managers/asset', [
             return assetGroups;
         };
         /**
-         * Reloads all assets
+         * Reloads all previously loaded assets
          * @function
          * @instance
          * @param {Function} callback - called when all assets are loaded
          * @name reload
          */
         var reload = function (callback) {
-            var group,
-                count = 0,
-                loaded = 0,
-                end = function () {
-                    loaded += 1;
-                    if (loaded === count && callback) {
-                        callback();
-                    }
-                };
+            var group;
+            var loaded = 0;
+            var groupsToLoad = [];
+            var loadGroups = function () {
+                var i;
+                for (i = 0; i < groupsToLoad.length; ++i) {
+                    load(groupsToLoad[i], end, function (current, total, name) {});
+                }
+            };
+            var end = function () {
+                loaded += 1;
+
+                if (loaded === groupsToLoad.length && callback) {
+                    callback();
+                }
+            };
+            // collect groups
             for (group in assetGroups) {
                 if (!assetGroups.hasOwnProperty(group)) {
                     continue;
                 }
-                load(group, end, function (current, total) {});
-                count += 1;
+                if (!loadedGroups[group]) {
+                    // havent loaded this group yet
+                    continue;
+                }
+                groupsToLoad.push(group);
             }
+
+            // load them
+            loadGroups();
         };
         /**
          * Attempts to load ./assets.json and interpret it as assetgroups
