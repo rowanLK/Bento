@@ -257,6 +257,14 @@ bento.define('bento/gui/togglebutton', [
             }
         });
 
+        // active property
+        Object.defineProperty(entity, 'active', {
+            get: function () {
+                return active;
+            },
+            set: entity.setActive
+        });
+
         return entity;
     };
 });
