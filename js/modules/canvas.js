@@ -59,59 +59,60 @@ bento.define('bento/canvas', [
         }
     });
     return function (settings) {
-        var viewport = Bento.getViewport(),
-            i,
-            l,
-            sprite,
-            canvas,
-            context,
-            originalRenderer,
-            renderer,
-            packedImage,
-            entity,
-            components,
-            drawn = false,
-            // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
-            component = {
-                name: 'rendererSwapper',
-                draw: function (data) {
-                    // draw once
-                    if (drawn) {
-                        return;
-                    }
-
-                    // clear up canvas
-                    if (!settings.preventAutoClear) {
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-
-                    // clear up webgl
-                    if (canvas.texture) {
-                        canvas.texture = null;
-                    }
-
-                    // swap renderer
-                    originalRenderer = data.renderer;
-                    data.renderer = renderer;
-
-                    // re-apply the origin translation
-                    data.renderer.save();
-                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
-                },
-                postDraw: function (data) {
-                    if (drawn) {
-                        return;
-                    }
-                    data.renderer.restore();
-                    // swap back
-                    data.renderer = originalRenderer;
-
-                    // draw once
-                    if (settings.drawOnce) {
-                        drawn = true;
-                    }
+        var viewport = Bento.getViewport();
+        var i;
+        var l;
+        var sprite;
+        var canvas;
+        var context;
+        var originalRenderer;
+        var renderer;
+        var packedImage;
+        var origin = new Vector2(0, 0);
+        var entity;
+        var components;
+        var drawn = false;
+        // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
+        var component = {
+            name: 'rendererSwapper',
+            draw: function (data) {
+                // draw once
+                if (drawn) {
+                    return;
                 }
-            };
+
+                // clear up canvas
+                if (!settings.preventAutoClear) {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                // clear up webgl
+                if (canvas.texture) {
+                    canvas.texture = null;
+                }
+
+                // swap renderer
+                originalRenderer = data.renderer;
+                data.renderer = renderer;
+
+                // re-apply the origin translation
+                data.renderer.save();
+                data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+            },
+            postDraw: function (data) {
+                if (drawn) {
+                    return;
+                }
+                data.renderer.restore();
+                // swap back
+                data.renderer = originalRenderer;
+
+                // draw once
+                if (settings.drawOnce) {
+                    drawn = true;
+                }
+            }
+        };
 
         // init canvas
         if (settings.canvas) {
@@ -127,6 +128,15 @@ bento.define('bento/canvas', [
         renderer = new Canvas2D(canvas, {
             pixelSize: settings.pixelSize || 1
         });
+
+        if (settings.origin) {
+            origin = settings.origin;
+        } else if (settings.originRelative) {
+            origin = new Vector2(
+                settings.width * settings.originRelative.x, 
+                settings.height * settings.originRelative.y
+            );
+        }
 
         // init sprite
         packedImage = new PackedImage(canvas);
