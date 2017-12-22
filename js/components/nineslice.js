@@ -4,7 +4,7 @@
  * <br>Exports: Constructor
  * @module bento/components/nineslice
  * @moduleName NineSlice
- * @snippet NineSlice.snippet
+ * @snippet NineSlice|constructor
 NineSlice({
     imageName: '${1}',
     originRelative: new Vector2(${2:0.5}, ${3:0.5}),

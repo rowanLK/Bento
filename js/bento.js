@@ -12,37 +12,37 @@
  * @moduleName Bento
  *
  *
- * @snippet getJson.AssetManager
+ * @snippet Bento.assets.getJson
 Bento.assets.getJson('${1}');
  *
- * @snippet attach.ObjectManager
+ * @snippet Bento.objects.attach
 Bento.objects.attach(${1:entity});
- * @snippet remove.ObjectManager
+ * @snippet Bento.objects.remove
 Bento.objects.remove(${1:entity});
- * @snippet get.ObjectManager
+ * @snippet Bento.objects.get
 Bento.objects.get('${1}', function (${1:entity}) {
     $2
 });
- * @snippet getByFamily.ObjectManager
+ * @snippet Bento.objects.getByFamily
 Bento.objects.getByFamily('${1}');
  *
- * @snippet playSound.AudioManager
+ * @snippet Bento.audio.playSound
 Bento.audio.playSound('sfx_${1}');
- * @snippet stopSound.AudioManager
+ * @snippet Bento.audio.stopSound
 Bento.audio.stopSound('sfx_${1}');
- * @snippet playMusic.AudioManager
+ * @snippet Bento.audio.playMusic
 Bento.audio.playMusic('bgm_${1}');
- * @snippet stopAllMusic.AudioManager
+ * @snippet Bento.audio.stopAllMusic|AudioManager
 Bento.audio.stopAllMusic();
  *
- * @snippet save.SaveState
+ * @snippet Bento.saveState.save
 Bento.saveState.save('${1}', ${2:value});
- * @snippet load.SaveState
+ * @snippet Bento.saveState.load
 Bento.saveState.load('${1}', ${2:defaultValue});
  *
- * @snippet show.ScreenManager
+ * @snippet Bento.screens.show
 Bento.screens.show('screens/${1:name}');
- * @snippet getCurrentScreen.ScreenManager
+ * @snippet Bento.screens.getCurrentScreen
 Bento.screens.getCurrentScreen();
  *
  */

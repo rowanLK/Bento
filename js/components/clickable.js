@@ -4,7 +4,7 @@
  * <br>Exports: Constructor
  * @module bento/components/clickable
  * @moduleName Clickable
- * @snippet Clickable.snippet
+ * @snippet Clickable|constructor
 Clickable({
     pointerDown: function (data) {},
     pointerUp: function (data) {},

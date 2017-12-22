@@ -8,7 +8,7 @@
  * @param {Number} width - Width of the rectangle
  * @param {Number} height - Height of the rectangle
  * @returns {Rectangle} Returns a rectangle.
- * @snippet Rectangle.snippet
+ * @snippet Rectangle|constructor
 Rectangle(${1:0}, ${2:0}, ${3:1}, ${4:0})
  */
 bento.define('bento/math/rectangle', [

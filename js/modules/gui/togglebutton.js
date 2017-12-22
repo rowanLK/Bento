@@ -10,7 +10,7 @@
  * @module bento/gui/togglebutton
  * @moduleName ToggleButton
  * @returns Entity
- * @snippet ToggleButton.snippet
+ * @snippet ToggleButton|constructor
 ToggleButton({
     z: ${1:0},
     name: '$2',

@@ -24,7 +24,7 @@
  * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
  * @returns Entity
- * @snippet Tween.snippet
+ * @snippet Tween|constructor
 Tween({
     from: ${1:0},
     to: ${2:1},

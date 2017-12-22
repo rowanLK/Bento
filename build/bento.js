@@ -3826,37 +3826,37 @@ or implied, of the author(s).
  * @moduleName Bento
  *
  *
- * @snippet getJson.AssetManager
+ * @snippet Bento.assets.getJson
 Bento.assets.getJson('${1}');
  *
- * @snippet attach.ObjectManager
+ * @snippet Bento.objects.attach
 Bento.objects.attach(${1:entity});
- * @snippet remove.ObjectManager
+ * @snippet Bento.objects.remove
 Bento.objects.remove(${1:entity});
- * @snippet get.ObjectManager
+ * @snippet Bento.objects.get
 Bento.objects.get('${1}', function (${1:entity}) {
     $2
 });
- * @snippet getByFamily.ObjectManager
+ * @snippet Bento.objects.getByFamily
 Bento.objects.getByFamily('${1}');
  *
- * @snippet playSound.AudioManager
+ * @snippet Bento.audio.playSound
 Bento.audio.playSound('sfx_${1}');
- * @snippet stopSound.AudioManager
+ * @snippet Bento.audio.stopSound
 Bento.audio.stopSound('sfx_${1}');
- * @snippet playMusic.AudioManager
+ * @snippet Bento.audio.playMusic
 Bento.audio.playMusic('bgm_${1}');
- * @snippet stopAllMusic.AudioManager
+ * @snippet Bento.audio.stopAllMusic|AudioManager
 Bento.audio.stopAllMusic();
  *
- * @snippet save.SaveState
+ * @snippet Bento.saveState.save
 Bento.saveState.save('${1}', ${2:value});
- * @snippet load.SaveState
+ * @snippet Bento.saveState.load
 Bento.saveState.load('${1}', ${2:defaultValue});
  *
- * @snippet show.ScreenManager
+ * @snippet Bento.screens.show
 Bento.screens.show('screens/${1:name}');
- * @snippet getCurrentScreen.ScreenManager
+ * @snippet Bento.screens.getCurrentScreen
 Bento.screens.getCurrentScreen();
  *
  */
@@ -4325,11 +4325,11 @@ var entity = new Entity({
  * // attach entity to Bento Objects
  * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
- * @snippet getComponent.Entity
+ * @snippet getComponent|Entity
 getComponent('${1}', function (${1:component}) {
     $2
 });
- * @snippet Entity.snippet
+ * @snippet Entity|constructor
 Entity({
     z: ${1:0},
     name: '$2',
@@ -5874,13 +5874,13 @@ bento.define('bento/transform', [
  * <br>Exports: Object
  * @module bento/utils
  * @moduleName Utils
- * @snippet forEach.Utils
+ * @snippet Utils.foreach
 Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
     ${3:// code here}
 });
- * @snippet log.Utils
+ * @snippet Utils.log
 Utils.log('WARNING: ${1}');
- * @snippet clamp.Utils
+ * @snippet Utils.clamp
 Utils.clamp(${1:min}, ${2:value}, ${3:max});
  */
 bento.define('bento/utils', [], function () {
@@ -6837,7 +6837,7 @@ bento.define('bento/utils', [], function () {
  * <br>Exports: Constructor
  * @module bento/components/clickable
  * @moduleName Clickable
- * @snippet Clickable.snippet
+ * @snippet Clickable|constructor
 Clickable({
     pointerDown: function (data) {},
     pointerUp: function (data) {},
@@ -7243,7 +7243,7 @@ bento.define('bento/components/fill', [
  * <br>Exports: Constructor
  * @module bento/components/nineslice
  * @moduleName NineSlice
- * @snippet NineSlice.snippet
+ * @snippet NineSlice|constructor
 NineSlice({
     imageName: '${1}',
     originRelative: new Vector2(${2:0.5}, ${3:0.5}),
@@ -12565,7 +12565,7 @@ bento.define('bento/math/polygon', [
  * @param {Number} width - Width of the rectangle
  * @param {Number} height - Height of the rectangle
  * @returns {Rectangle} Returns a rectangle.
- * @snippet Rectangle.snippet
+ * @snippet Rectangle|constructor
 Rectangle(${1:0}, ${2:0}, ${3:1}, ${4:0})
  */
 bento.define('bento/math/rectangle', [
@@ -13144,7 +13144,7 @@ bento.define('bento/math/transformmatrix', [
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
- * @snippet Vector2.snippet
+ * @snippet Vector2|constructor
 Vector2(${1:0}, ${2:0})
  *
  */
@@ -15343,7 +15343,7 @@ bento.define('bento/tiledreader', [], function () {
  * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
  * @returns Entity
- * @snippet Tween.snippet
+ * @snippet Tween|constructor
 Tween({
     from: ${1:0},
     to: ${2:1},
@@ -16406,7 +16406,7 @@ bento.define('bento/components/pixi/sprite', [
  * @module bento/gui/clickbutton
  * @moduleName ClickButton
  * @returns Entity
- * @snippet ClickButton.snippet
+ * @snippet ClickButton|constructor
 ClickButton({
     z: ${1:0},
     name: '$2',
@@ -16968,7 +16968,7 @@ bento.define('bento/gui/counter', [
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
  * @moduleName Text
- * @snippet Text.snippet
+ * @snippet Text|constructor
 Text({
     z: ${1:0},
     position: new Vector2(${2:0}, ${3:0}),
@@ -17806,7 +17806,7 @@ bento.define('bento/gui/text', [
  * @module bento/gui/togglebutton
  * @moduleName ToggleButton
  * @returns Entity
- * @snippet ToggleButton.snippet
+ * @snippet ToggleButton|constructor
 ToggleButton({
     z: ${1:0},
     name: '$2',

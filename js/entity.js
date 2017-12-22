@@ -32,11 +32,11 @@ var entity = new Entity({
  * // attach entity to Bento Objects
  * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
- * @snippet getComponent.Entity
+ * @snippet getComponent|Entity
 getComponent('${1}', function (${1:component}) {
     $2
 });
- * @snippet Entity.snippet
+ * @snippet Entity|constructor
 Entity({
     z: ${1:0},
     name: '$2',

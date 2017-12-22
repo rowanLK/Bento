@@ -7,7 +7,7 @@
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
- * @snippet Vector2.snippet
+ * @snippet Vector2|constructor
 Vector2(${1:0}, ${2:0})
  *
  */

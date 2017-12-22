@@ -26,7 +26,7 @@
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
  * @moduleName Text
- * @snippet Text.snippet
+ * @snippet Text|constructor
 Text({
     z: ${1:0},
     position: new Vector2(${2:0}, ${3:0}),

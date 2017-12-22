@@ -12,7 +12,7 @@
  * @module bento/gui/clickbutton
  * @moduleName ClickButton
  * @returns Entity
- * @snippet ClickButton.snippet
+ * @snippet ClickButton|constructor
 ClickButton({
     z: ${1:0},
     name: '$2',
