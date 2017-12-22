@@ -361,7 +361,8 @@ bento.define('bento/utils', [], function () {
                     "175": ["volUp"]
                 };
             for (aI = 65; aI <= 90; aI += 1) {
-                keys[aI] = String.fromCharCode(aI + 32);
+                keys[aI] = keys[aI] || [];
+                keys[aI].push(String.fromCharCode(aI + 32));
             }
 
             return keys;
