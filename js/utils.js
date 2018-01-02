@@ -412,42 +412,56 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isString
+         * @snippet Utils.isString|Boolean
+        Utils.isString(${1});
          */
         isString: isString,
         /**
          * @function
          * @instance
          * @name isArray
+         * @snippet Utils.isArray|Boolean
+        Utils.isArray(${1});
          */
         isArray: isArray,
         /**
          * @function
          * @instance
          * @name isObject
+         * @snippet Utils.isObject|Boolean
+        Utils.isObject(${1});
          */
         isObject: isObject,
         /**
          * @function
          * @instance
          * @name isFunction
+         * @snippet Utils.isFunction|Boolean
+        Utils.isFunction(${1});
          */
         isFunction: isFunction,
         /**
          * @function
          * @instance
          * @name isNumber
+         * @snippet Utils.isString|Boolean
+        Utils.isFunction(${1});
          */
         isNumber: isNumber,
         /**
          * @function
          * @instance
          * @name isBoolean
+         * @snippet Utils.isBoolean|Boolean
+        Utils.isBoolean(${1});
          */
         isBoolean: isBoolean,
         /**
          * @function
          * @instance
          * @name isInt
+         * @snippet Utils.isInt|Boolean
+        Utils.isInt(${1});
          */
         isInt: isInt,
         /**
@@ -457,6 +471,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is undefined
          * @instance
+         * @snippet Utils.isUndefined|Boolean
+        Utils.isUndefined(${1});
          */
         isUndefined: isUndefined,
         /**
@@ -466,6 +482,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is not undefined
          * @name isDefined
+         * @snippet Utils.isDefined|Boolean
+        Utils.isDefined(${1});
          */
         isDefined: isDefined,
         /**
@@ -475,6 +493,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is null or undefined
          * @name isEmpty
+         * @snippet Utils.isEmpty|Boolean
+        Utils.isEmpty(${1});
          */
         isEmpty: isEmpty,
         /**
@@ -484,6 +504,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is not null or undefined
          * @name isNotEmpty
+         * @snippet Utils.isNotEmpty|Boolean
+        Utils.isNotEmpty(${1});
          */
         isNotEmpty: isNotEmpty,
         /**
@@ -720,7 +742,7 @@ bento.define('bento/utils', [], function () {
          * @param {Object} value - The value in the array or object literal
          * @param {Number} index - Index of the array or key in object literal
          * @param {Number} length - Length of the array or key count in object literal
-         * @param {Fuction} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
+         * @param {Function} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
          */
         /**
          * Loops through an array
