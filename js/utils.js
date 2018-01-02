@@ -409,162 +409,86 @@ bento.define('bento/utils', [], function () {
 
     Utils = {
         /**
+         * Checks if environment is iOS (using Cocoon.io)
          * @function
          * @instance
-         * @name isString
-         * @snippet Utils.isString|Boolean
-        Utils.isString(${1:String});
+         * @name isNativeIos
+         * @snippet Utils.isNativeIos|Boolean
+        Utils.isNativeIos();
          */
-        isString: isString,
+        isNativeIos: function () {
+            if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
+                return true;
+            }
+            return false;
+        },
         /**
+         * Checks if environment is Android (using Cocoon.io)
          * @function
          * @instance
-         * @name isArray
-         * @snippet Utils.isArray|Boolean
-        Utils.isArray(${1:Array});
+         * @name isNativeAndroid
+         * @snippet Utils.isNativeAndroid|Boolean
+        Utils.isNativeAndroid();
          */
-        isArray: isArray,
+        isNativeAndroid: function () {
+            var platform;
+            if (navigator.isCocoonJS && window.Cocoon) {
+                platform = window.Cocoon.getPlatform();
+                if (platform === 'android' || platform === 'amazon') {
+                    return true;
+                }
+            }
+            return false;
+        },
         /**
-         * @function
-         * @instance
-         * @name isObject
-         * @snippet Utils.isObject|Boolean
-        Utils.isObject(${1:Object});
+         * Callback during foreach
+         *
+         * @callback IteratorCallback
+         * @param {Object} value - The value in the array or object literal
+         * @param {Number} index - Index of the array or key in object literal
+         * @param {Number} length - Length of the array or key count in object literal
+         * @param {Function} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
          */
-        isObject: isObject,
         /**
+         * Loops through an array
          * @function
          * @instance
-         * @name isFunction
-         * @snippet Utils.isFunction|Boolean
-        Utils.isFunction(${1:Function});
-         */
-        isFunction: isFunction,
-        /**
-         * @function
-         * @instance
-         * @name isNumber
-         * @snippet Utils.isNumber|Boolean
-        Utils.isNumber(${1:Number});
-         */
-        isNumber: isNumber,
-        /**
-         * @function
-         * @instance
-         * @name isBoolean
-         * @snippet Utils.isBoolean|Boolean
-        Utils.isBoolean(${1:Boolean});
-         */
-        isBoolean: isBoolean,
-        /**
-         * @function
-         * @instance
-         * @name isInt
-         * @snippet Utils.isInt|Boolean
-        Utils.isInt(${1:Integer});
-         */
-        isInt: isInt,
-        /**
-         * Is parameter undefined?
-         * @function
-         * @name isUndefined
-         * @snippet Utils.isUndefined|Boolean
-        Utils.isUndefined(${1});
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is undefined
-         * @instance
-         */
-        isUndefined: isUndefined,
-        /**
-         * Is parameter anything other than undefined?
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is not undefined
-         * @name isDefined
-         * @snippet Utils.isDefined|Boolean
-        Utils.isDefined(${1});
-         */
-        isDefined: isDefined,
-        /**
-         * Is parameter null or undefined
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is null or undefined
-         * @name isEmpty
-         * @snippet Utils.isEmpty|Boolean
-        Utils.isEmpty(${1});
-         */
-        isEmpty: isEmpty,
-        /**
-         * Is parameter anything other than null or undefined
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is not null or undefined
-         * @name isNotEmpty
-         * @snippet Utils.isNotEmpty|Boolean
-        Utils.isNotEmpty(${1});
-         */
-        isNotEmpty: isNotEmpty,
-        /**
-         * Removes entry from array (note: only removes all matching values it finds)
-         * @function
-         * @instance
-         * @param {Array} array - array
-         * @param {Anything} value - any type
-         * @return {Bool} True if removal was successful, false if the value was not found
-         * @name removeFromArray
-         * @snippet Utils.removeFromArray|Object
-        Utils.removeFromArray(${1:Array}, ${2:Value});
-         */
-        removeFromArray: removeFromArray,
-        /**
-         * Extends object literal properties with another object
-         * If the objects have the same property name, then the old one is pushed to a property called "base"
-         * @function
-         * @instance
-         * @name extend
-         * @snippet Utils.extend|Object
-        Utils.extend(${1:Object}, ${2:Object2});
-         * @snippet Utils.extend|conflict
-Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
-    ${4://code here}
+         * @param {Array/Object} array - Array or Object literal to loop through
+         * @param {IteratorCallback} callback - Callback function
+         * @name forEach
+         * @snippet Utils.foreach
+        Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+    ${3:// code here}
 });
-         * @param {Object} object1 - original object
-         * @param {Object} object2 - new object
-         * @param {Bool} [force] - Overwrites properties (defaults to false)
-         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
-         * @return {Array} The updated array
          */
-        extend: extend,
-        /**
-         * Counts the number of keys in an object literal
-         * @function
-         * @instance
-         * @name getKeyLength
-         * @snippet Utils.getKeyLength|Number
-        Utils.getKeyLength(${1});
-         * @param {Object} object - object literal
-         * @return {Number} Number of keys
-         */
-        getKeyLength: getKeyLength,
-        /**
-         * Returns a (shallow) copy of an object literal
-         * @function
-         * @instance
-         * @name copyObject
-         * @snippet Utils.copyObject|Object
-        Utils.copyObject(${1:Object});
-         * @param {Object} object - object literal
-         * @return {Object} Shallow copy
-         */
-        copyObject: copyObject,
-        stableSort: stableSort,
-        keyboardMapping: keyboardMapping,
-        remoteMapping: remoteMapping,
-        gamepadMapping: gamepadMapping,
+        forEach: function (array, callback) {
+            var obj;
+            var i;
+            var l;
+            var stop = false;
+            var breakLoop = function () {
+                stop = true;
+            };
+            if (Utils.isArray(array)) {
+                for (i = 0, l = array.length; i < l; ++i) {
+                    callback(array[i], i, l, breakLoop, array[i + 1]);
+                    if (stop) {
+                        return;
+                    }
+                }
+            } else {
+                l = Utils.getKeyLength(array);
+                for (i in array) {
+                    if (!array.hasOwnProperty(i)) {
+                        continue;
+                    }
+                    callback(array[i], i, l, breakLoop);
+                    if (stop) {
+                        return;
+                    }
+                }
+            }
+        },
         /**
          * Returns either the provided value, or the provided fallback value in case the provided value was undefined
          * @function
@@ -773,55 +697,6 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
             return out;
         },
         /**
-         * Callback during foreach
-         *
-         * @callback IteratorCallback
-         * @param {Object} value - The value in the array or object literal
-         * @param {Number} index - Index of the array or key in object literal
-         * @param {Number} length - Length of the array or key count in object literal
-         * @param {Function} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
-         */
-        /**
-         * Loops through an array
-         * @function
-         * @instance
-         * @param {Array/Object} array - Array or Object literal to loop through
-         * @param {IteratorCallback} callback - Callback function
-         * @name forEach
-         * @snippet Utils.foreach
-        Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
-    ${3:// code here}
-});
-         */
-        forEach: function (array, callback) {
-            var obj;
-            var i;
-            var l;
-            var stop = false;
-            var breakLoop = function () {
-                stop = true;
-            };
-            if (Utils.isArray(array)) {
-                for (i = 0, l = array.length; i < l; ++i) {
-                    callback(array[i], i, l, breakLoop, array[i + 1]);
-                    if (stop) {
-                        return;
-                    }
-                }
-            } else {
-                l = Utils.getKeyLength(array);
-                for (i in array) {
-                    if (!array.hasOwnProperty(i)) {
-                        continue;
-                    }
-                    callback(array[i], i, l, breakLoop);
-                    if (stop) {
-                        return;
-                    }
-                }
-            }
-        },
-        /**
          * Checks whether a value is between two other values
          * @function
          * @instance
@@ -919,38 +794,6 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
             return check;
         },
         /**
-         * Checks if environment is iOS (using Cocoon.io)
-         * @function
-         * @instance
-         * @name isNativeIos
-         * @snippet Utils.isNativeIos|Boolean
-        Utils.isNativeIos();
-         */
-        isNativeIos: function () {
-            if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
-                return true;
-            }
-            return false;
-        },
-        /**
-         * Checks if environment is Android (using Cocoon.io)
-         * @function
-         * @instance
-         * @name isNativeAndroid
-         * @snippet Utils.isNativeAndroid|Boolean
-        Utils.isNativeAndroid();
-         */
-        isNativeAndroid: function () {
-            var platform;
-            if (navigator.isCocoonJS && window.Cocoon) {
-                platform = window.Cocoon.getPlatform();
-                if (platform === 'android' || platform === 'amazon') {
-                    return true;
-                }
-            }
-            return false;
-        },
-        /**
          * Checks if environment is Android (using Cordova Device plugin)
          * @function
          * @instance
@@ -1031,6 +874,163 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
         log: function (msg) {
             console.error(msg);
         },
+        /**
+         * @function
+         * @instance
+         * @name isString
+         * @snippet Utils.isString|Boolean
+        Utils.isString(${1:String});
+         */
+        isString: isString,
+        /**
+         * @function
+         * @instance
+         * @name isArray
+         * @snippet Utils.isArray|Boolean
+        Utils.isArray(${1:Array});
+         */
+        isArray: isArray,
+        /**
+         * @function
+         * @instance
+         * @name isObject
+         * @snippet Utils.isObject|Boolean
+        Utils.isObject(${1:Object});
+         */
+        isObject: isObject,
+        /**
+         * @function
+         * @instance
+         * @name isFunction
+         * @snippet Utils.isFunction|Boolean
+        Utils.isFunction(${1:Function});
+         */
+        isFunction: isFunction,
+        /**
+         * @function
+         * @instance
+         * @name isNumber
+         * @snippet Utils.isNumber|Boolean
+        Utils.isNumber(${1:Number});
+         */
+        isNumber: isNumber,
+        /**
+         * @function
+         * @instance
+         * @name isBoolean
+         * @snippet Utils.isBoolean|Boolean
+        Utils.isBoolean(${1:Boolean});
+         */
+        isBoolean: isBoolean,
+        /**
+         * @function
+         * @instance
+         * @name isInt
+         * @snippet Utils.isInt|Boolean
+        Utils.isInt(${1:Integer});
+         */
+        isInt: isInt,
+        /**
+         * Is parameter undefined?
+         * @function
+         * @name isUndefined
+         * @snippet Utils.isUndefined|Boolean
+        Utils.isUndefined(${1});
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is undefined
+         * @instance
+         */
+        isUndefined: isUndefined,
+        /**
+         * Is parameter anything other than undefined?
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not undefined
+         * @name isDefined
+         * @snippet Utils.isDefined|Boolean
+        Utils.isDefined(${1});
+         */
+        isDefined: isDefined,
+        /**
+         * Is parameter null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is null or undefined
+         * @name isEmpty
+         * @snippet Utils.isEmpty|Boolean
+        Utils.isEmpty(${1});
+         */
+        isEmpty: isEmpty,
+        /**
+         * Is parameter anything other than null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not null or undefined
+         * @name isNotEmpty
+         * @snippet Utils.isNotEmpty|Boolean
+        Utils.isNotEmpty(${1});
+         */
+        isNotEmpty: isNotEmpty,
+        /**
+         * Removes entry from array (note: only removes all matching values it finds)
+         * @function
+         * @instance
+         * @param {Array} array - array
+         * @param {Anything} value - any type
+         * @return {Bool} True if removal was successful, false if the value was not found
+         * @name removeFromArray
+         * @snippet Utils.removeFromArray|Object
+        Utils.removeFromArray(${1:Array}, ${2:Value});
+         */
+        removeFromArray: removeFromArray,
+        /**
+         * Extends object literal properties with another object
+         * If the objects have the same property name, then the old one is pushed to a property called "base"
+         * @function
+         * @instance
+         * @name extend
+         * @snippet Utils.extend|Object
+        Utils.extend(${1:Object}, ${2:Object2});
+         * @snippet Utils.extend|conflict
+Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
+    ${4://code here}
+});
+         * @param {Object} object1 - original object
+         * @param {Object} object2 - new object
+         * @param {Bool} [force] - Overwrites properties (defaults to false)
+         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
+         * @return {Array} The updated array
+         */
+        extend: extend,
+        /**
+         * Counts the number of keys in an object literal
+         * @function
+         * @instance
+         * @name getKeyLength
+         * @snippet Utils.getKeyLength|Number
+        Utils.getKeyLength(${1});
+         * @param {Object} object - object literal
+         * @return {Number} Number of keys
+         */
+        getKeyLength: getKeyLength,
+        /**
+         * Returns a (shallow) copy of an object literal
+         * @function
+         * @instance
+         * @name copyObject
+         * @snippet Utils.copyObject|Object
+        Utils.copyObject(${1:Object});
+         * @param {Object} object - object literal
+         * @return {Object} Shallow copy
+         */
+        copyObject: copyObject,
+        stableSort: stableSort,
+        keyboardMapping: keyboardMapping,
+        remoteMapping: remoteMapping,
+        gamepadMapping: gamepadMapping,
         /**
          * Enum for sort mode, pass this to Bento.setup
          * @readonly
