@@ -22,6 +22,49 @@
  * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
  * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
  * @returns Object
+ * @snippet Tiled|constructor
+Tiled({
+    assetName: '$1',
+    drawTiles: ${2:true},
+    merge: ${3:false},
+    spawnEntities: ${4:true}, // require the module (asynchronously)
+    spawnBackground: ${5:true}, // spawn background entities (drawn tile layers)
+    attachEntities: ${6:true}, // attach after spawning
+    onInit: function (tiledJson, externalTilesets) {
+        // Callback after initial parsing
+        $7
+    },
+    onLayer: function (layer) {
+        // Callback when the reader passes a layer
+        $8
+    },
+    onTile: function (tileX, tileY, tilesetJSON, tileIndex) {
+        // Callback after tile is drawn
+        $9
+    },
+    onObject: function (objectJSON, tilesetJSON, tileIndex) {
+        // Callback when the reader passes a Tiled object
+        ${10}
+    },
+    onComplete: function () {
+        // Synchronous callback when the reader passed all layers
+        // `this` references the tiled object (to get width and height)
+        ${11}
+    },
+    onLayerMergeCheck: function (layer) {
+        // called for each layer when merge: true
+        // return false if layer should not merge
+        return ${12:true};
+    },
+    onSpawn: function (entity) {
+        // called after all a module is spawned (asynchronous)
+        ${13}
+    },
+    onSpawnComplete: function () {
+        // called after all modules are spawned (asynchronous)
+        ${14}
+    }
+});
  */
 bento.define('bento/tiled', [
     'bento',

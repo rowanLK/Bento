@@ -54,6 +54,8 @@ Bento.audio.isPlayingMusic: function ('${1:name}');
 Bento.saveState.save('${1}', ${2:value});
  * @snippet Bento.saveState.load|Value
 Bento.saveState.load('${1}', ${2:defaultValue});
+ * @snippet Bento.saveState.add|snippet
+Bento.saveState.add('${1}', ${2:value});
  *
  * @snippet Bento.screens.show|snippet
 Bento.screens.show('screens/${1:name}');
