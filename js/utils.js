@@ -3,14 +3,6 @@
  * <br>Exports: Object
  * @module bento/utils
  * @moduleName Utils
- * @snippet Utils.foreach
-Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
-    ${3:// code here}
-});
- * @snippet Utils.log
-Utils.log('WARNING: ${1}');
- * @snippet Utils.clamp
-Utils.clamp(${1:min}, ${2:value}, ${3:max});
  */
 bento.define('bento/utils', [], function () {
     'use strict';
@@ -737,6 +729,10 @@ bento.define('bento/utils', [], function () {
          * @param {Array/Object} array - Array or Object literal to loop through
          * @param {IteratorCallback} callback - Callback function
          * @name forEach
+         * @snippet Utils.foreach
+        Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+            ${3:// code here}
+        });
          */
         forEach: function (array, callback) {
             var obj;
@@ -799,6 +795,8 @@ bento.define('bento/utils', [], function () {
          * @param {Number} value - value to clamp between min and max
          * @param {Number} max - upper limit
          * @name clamp
+         * @snippet Utils.clamp
+        Utils.clamp(${1:min}, ${2:value}, ${3:max});
          */
         clamp: function (min, value, max) {
             return Math.max(min, Math.min(value, max));
@@ -942,6 +940,8 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {String} msg - the message to log
          * @name log
+         * @snippet Utils.log
+        Utils.log('WARNING: ${1}');
          */
         log: function (msg) {
             console.error(msg);
