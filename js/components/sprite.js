@@ -3,11 +3,11 @@
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
- * @snippet Sprite.spriteSheet
+ * @snippet Sprite|spriteSheet
 Sprite({
     spriteSheet: '${1}'
 })
- * @snippet Sprite.imageName
+ * @snippet Sprite|imageName
 Sprite({
     imageName: '${1}',
     originRelative: new Vector2(${2:0.5}, ${3:0.5}),
@@ -122,6 +122,23 @@ bento.define('bento/components/sprite', [
      * @instance
      * @param {Object} settings - Settings object
      * @name setup
+     * @snippet #Sprite.setup|spriteSheet
+setup({
+    spriteSheet: '${1}'
+});
+     * @snippet #Sprite.setup|imageName
+setup({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    frameCountX: ${4:1},
+    frameCountY: ${5:1},
+    animations: {
+        default: {
+            speed: 0,
+            frames: [0]
+        }
+    }
+});
      */
     Sprite.prototype.setup = function (settings) {
         var self = this,
@@ -267,6 +284,12 @@ bento.define('bento/components/sprite', [
      * @param {Function} callback - Called when animation ends.
      * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
      * @name setAnimation
+     * @snippet #Sprite.setAnimation|snippet
+setAnimation('${1:name}');
+     * @snippet #Sprite.setAnimation|callback
+setAnimation('${1:name}', function () {
+    $2
+});
      */
     Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
@@ -302,6 +325,12 @@ bento.define('bento/components/sprite', [
      * @param {String} name - Name of the spritesheet.
      * @param {Function} callback - Called when animation ends.
      * @name setAnimation
+     * @snippet #Sprite.setSpriteSheet|snippet
+setSpriteSheet('${1:name}');
+     * @snippet #Sprite.setSpriteSheet|callback
+setSpriteSheet('${1:name}', function () {
+    $2
+});
      */
     Sprite.prototype.setSpriteSheet = function (name, callback) {
         if (this.currentSpriteSheet === name) {
@@ -320,6 +349,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {String} Name of the animation playing, null if not playing anything
      * @name getAnimationName
+     * @snippet #Sprite.getAnimationName|String
+getAnimationName();
      */
     Sprite.prototype.getAnimationName = function () {
         return this.currentAnimation.name;
@@ -330,6 +361,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @param {Number} frameNumber - Frame number.
      * @name setFrame
+     * @snippet #Sprite.getAnimationName|snippet
+setFrame(${1:number});
      */
     Sprite.prototype.setFrame = function (frameNumber) {
         this.currentFrame = frameNumber;
@@ -340,6 +373,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {Number} Speed of the current animation
      * @name getCurrentSpeed
+     * @snippet #Sprite.getCurrentSpeed|Number
+getCurrentSpeed();
      */
     Sprite.prototype.getCurrentSpeed = function () {
         return this.currentAnimation.speed;
@@ -350,6 +385,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @param {Number} speed - Speed at which the animation plays.
      * @name setCurrentSpeed
+     * @snippet #Sprite.setCurrentSpeed|snippet
+setCurrentSpeed(${1:number});
      */
     Sprite.prototype.setCurrentSpeed = function (value) {
         this.currentAnimation.speed = value;
@@ -360,6 +397,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {Number} frameNumber - Not necessarily a round number.
      * @name getCurrentFrame
+     * @snippet #Sprite.getCurrentFrame|Number
+getCurrentFrame();
      */
     Sprite.prototype.getCurrentFrame = function () {
         return this.currentFrame;
@@ -370,9 +409,23 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {Number} width - Width of the image frame.
      * @name getFrameWidth
+     * @snippet #Sprite.getFrameWidth|Number
+getFrameWidth();
      */
     Sprite.prototype.getFrameWidth = function () {
         return this.frameWidth;
+    };
+    /**
+     * Returns the frame height
+     * @function
+     * @instance
+     * @returns {Number} height - Height of the image frame.
+     * @name getFrameHeight
+     * @snippet #Sprite.getFrameHeight|Number
+getFrameHeight();
+     */
+    Sprite.prototype.getFrameHeight = function () {
+        return this.frameHeight;
     };
     /**
      * Sets the origin relatively (0...1), relative to the size of the frame.
@@ -380,6 +433,8 @@ bento.define('bento/components/sprite', [
      * @param {Vector2} origin - Position of the origin (relative to upper left corner)
      * @instance
      * @name setOriginRelative
+     * @snippet #Sprite.setOriginRelative|snippet
+setOriginRelative(new Vector2(${1:0}, ${2:0}));
      */
     Sprite.prototype.setOriginRelative = function (originRelative) {
         this.origin.x = originRelative.x * this.frameWidth;

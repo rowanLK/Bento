@@ -32,10 +32,6 @@ var entity = new Entity({
  * // attach entity to Bento Objects
  * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
- * @snippet getComponent|Entity
-getComponent('${1}', function (${1:component}) {
-    $2
-});
  * @snippet Entity|constructor
 Entity({
     z: ${1:0},
@@ -309,6 +305,8 @@ entity.extend({
 });
 
 entity.addX(10);
+    * @snippet #Entity.extend|Entity
+extend(${1:{}});
      * @returns {Entity} Returns itself
      * @name extend
      */
@@ -324,6 +322,8 @@ entity.addX(10);
      * @returns {Rectangle} boundingbox - Entity's boundingbox with translation and scaling
      * @instance
      * @name getBoundingBox
+    * @snippet #Entity.getBoundingBox|Rectangle
+getBoundingBox();
      * @returns {Rectangle} A rectangle representing the boundingbox of the entity
      */
     var correctBoundingBox = function (entity, boundingBox) {
@@ -379,6 +379,8 @@ entity.attach(child);
 // attach the entity to the game
 Bento.objects.attach(entity);
      * @name attach
+     * @snippet #Entity.attach|Entity
+attach(${1});
      * @returns {Entity} Returns itself (useful for chaining attach calls)
      */
     Entity.prototype.attach = function (child, force) {
@@ -435,6 +437,8 @@ Bento.objects.attach(entity);
      * @param {Object} child - The child object to remove
      * @instance
      * @name remove
+     * @snippet #Entity.remove|Entity
+remove();
      * @returns {Entity} Returns itself
      */
     Entity.prototype.remove = function (child) {
@@ -484,6 +488,8 @@ Bento.objects.attach(entity);
      * @param {String} name - The name of the child object to remove
      * @instance
      * @name removeByName
+     * @snippet #Entity.removeByName|Entity
+removeByName('$1');
      * @returns {Entity} Returns itself
      */
     Entity.prototype.removeByName = function (name) {
@@ -499,6 +505,8 @@ Bento.objects.attach(entity);
      * @function
      * @instance
      * @name removeSelf
+     * @snippet #Entity.removeSelf|Entity
+removeSelf();
      * @returns {Entity} Returns itself
      */
     Entity.prototype.removeSelf = function (name) {
@@ -529,6 +537,10 @@ Bento.objects.attach(entity);
      * @param {String} name - name of the component
      * @param {FoundCallback} callback - called when component is found
      * @name getComponent
+     * @snippet #Entity.getComponent|Entity
+getComponent('${1}', function (${1:component}) {
+    $2
+});
      * @returns {Entity} Returns the component, null if not found
      */
     Entity.prototype.getComponent = function (name, callback) {
@@ -552,6 +564,8 @@ Bento.objects.attach(entity);
      * @param {Object} child - reference to the child
      * @param {Number} index - new index
      * @name moveComponentTo
+     * @snippet #Entity.moveComponentTo|Entity
+moveComponentTo(component, index);
      */
     Entity.prototype.moveComponentTo = function (component, newIndex) {
         // note: currently dangerous to do during an update loop
@@ -583,14 +597,29 @@ Bento.objects.attach(entity);
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Entity} settings.rectangle - Or if you want to check collision with a shape directly instead of entity
-     * @param {Boolean} settings.withComponent - Swap entity's boundingBox with this component's boundingBox
+     * @param {String} settings.withComponent - Swap entity's boundingBox with this component's boundingBox
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
      * @name collidesWith
+     * @snippet #Entity.collidesWith|Entity/Array
+collidesWith({
+    entity: obj, // when you have the reference
+    entities: [], // or when colliding with this array
+    name: '', // or when colliding with a single entity
+    family: '', // or when colliding with a family
+    rectangle: rect, // or when colliding with a rectangle
+
+    withComponent: '', // name of component that has a boundingBox property 
+    offset: vec2, // offset the collision check on original entity's position
+    firstOnly: true, // onCollide stops after having found single collision 
+    onCollide: function (other) {
+        // other is the other entity that is collided with
+        // onCollide is not called if no collision occurred 
+    }
+});
      * @returns {Entity/Array} The collided entity/entities, otherwise null
      */
-    // TODO: make examples
     // * @param {Array} settings.families - multiple families
     Entity.prototype.collidesWith = function (settings, deprecated_offset, deprecated_callback) {
         var intersect = false;
@@ -751,6 +780,8 @@ Bento.objects.attach(entity);
      * @instance
      * @name getWorldPosition
      * @returns {Vector2} Returns a position
+     * @snippet #Entity.getWorldPosition|Entity
+getWorldPosition();
      */
     Entity.prototype.getWorldPosition = function () {
         return this.transform.getWorldPosition();
@@ -786,6 +817,8 @@ Bento.objects.attach(entity);
      * @name toComparablePosition
      * @param {Vector2} worldPosition - A vector2 to transform
      * @returns {Vector2} Returns a position relative to the entity's parent
+     * @snippet #Entity.toComparablePosition|Entity
+toComparablePosition(${1:worldPosition});
      */
     Entity.prototype.toComparablePosition = function (worldPosition) {
         return this.transform.toComparablePosition(worldPosition);
