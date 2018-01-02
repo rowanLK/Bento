@@ -413,7 +413,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isString
          * @snippet Utils.isString|Boolean
-        Utils.isString(${1});
+        Utils.isString(${1:String});
          */
         isString: isString,
         /**
@@ -421,7 +421,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isArray
          * @snippet Utils.isArray|Boolean
-        Utils.isArray(${1});
+        Utils.isArray(${1:Array});
          */
         isArray: isArray,
         /**
@@ -429,7 +429,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isObject
          * @snippet Utils.isObject|Boolean
-        Utils.isObject(${1});
+        Utils.isObject(${1:Object});
          */
         isObject: isObject,
         /**
@@ -437,15 +437,15 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isFunction
          * @snippet Utils.isFunction|Boolean
-        Utils.isFunction(${1});
+        Utils.isFunction(${1:Function});
          */
         isFunction: isFunction,
         /**
          * @function
          * @instance
          * @name isNumber
-         * @snippet Utils.isString|Boolean
-        Utils.isFunction(${1});
+         * @snippet Utils.isNumber|Boolean
+        Utils.isNumber(${1:Number});
          */
         isNumber: isNumber,
         /**
@@ -453,7 +453,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isBoolean
          * @snippet Utils.isBoolean|Boolean
-        Utils.isBoolean(${1});
+        Utils.isBoolean(${1:Boolean});
          */
         isBoolean: isBoolean,
         /**
@@ -461,18 +461,18 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isInt
          * @snippet Utils.isInt|Boolean
-        Utils.isInt(${1});
+        Utils.isInt(${1:Integer});
          */
         isInt: isInt,
         /**
          * Is parameter undefined?
          * @function
          * @name isUndefined
+         * @snippet Utils.isUndefined|Boolean
+        Utils.isUndefined(${1});
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is undefined
          * @instance
-         * @snippet Utils.isUndefined|Boolean
-        Utils.isUndefined(${1});
          */
         isUndefined: isUndefined,
         /**
@@ -516,6 +516,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} value - any type
          * @return {Bool} True if removal was successful, false if the value was not found
          * @name removeFromArray
+         * @snippet Utils.removeFromArray|Object
+        Utils.removeFromArray(${1:Array}, ${2:Value});
          */
         removeFromArray: removeFromArray,
         /**
@@ -524,6 +526,12 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name extend
+         * @snippet Utils.extend|Object
+        Utils.extend(${1:Object}, ${2:Object2});
+         * @snippet Utils.extend|conflict
+Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
+    ${4://code here}
+});
          * @param {Object} object1 - original object
          * @param {Object} object2 - new object
          * @param {Bool} [force] - Overwrites properties (defaults to false)
@@ -536,6 +544,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name getKeyLength
+         * @snippet Utils.getKeyLength|Number
+        Utils.getKeyLength(${1});
          * @param {Object} object - object literal
          * @return {Number} Number of keys
          */
@@ -545,6 +555,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name copyObject
+         * @snippet Utils.copyObject|Object
+        Utils.copyObject(${1:Object});
          * @param {Object} object - object literal
          * @return {Object} Shallow copy
          */
