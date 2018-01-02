@@ -567,6 +567,13 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
         gamepadMapping: gamepadMapping,
         /**
          * Returns either the provided value, or the provided fallback value in case the provided value was undefined
+         * @function
+         * @instance
+         * @name getDefault
+         * @snippet Utils.getDefault|Object
+        Utils.getDefault(${1:Object, ${2:default}});
+         * @param {Anything} value - any type
+         * @param {Anything} value - any type
          */
         getDefault: function (param, fallback) {
             return (param !== void(0)) ? param : fallback;
@@ -576,6 +583,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name getRandom
+         * @snippet Utils.getRandom|Number
+        Utils.getRandom(${1:Number});
          * @param {Number} n - limit of random number
          * @return {Number} Randomized integer
          */
@@ -587,6 +596,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name getRandomRange
+         * @snippet Utils.getRandomRange|Number
+        Utils.getRandomRange(${1:Minimum, ${2:Number}});
          * @param {Number} min - minimum value
          * @param {Number} max - maximum value
          * @return {Number} Randomized integer
@@ -600,6 +611,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name getRandomFloat
+         * @snippet Utils.getRandomFloat|Number
+        Utils.getRandomFloat(${1:Number});
          * @param {Number} n - limit of random number
          * @return {Number} Randomized number
          */
@@ -611,6 +624,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name getRandomRangeFloat
+         * @snippet Utils.getRandomRangeFloat|Number
+        Utils.getRandomRangeFloat(${1:Minimum, ${2:Number}});
          * @param {Number} min - minimum value
          * @param {Number} max - maximum value
          * @return {Number} Randomized number
@@ -624,6 +639,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name toRadian
+         * @snippet Utils.toRadian|Number
+        Utils.toRadian(${1:Degrees});
          * @param {Number} degree - value in degrees
          * @return {Number} radians
          */
@@ -635,6 +652,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name toDegree
+         * @snippet Utils.toDegree|Number
+        Utils.toDegree(${1:Radians});
          * @param {Number} radians - value in radians
          * @return {Number} degree
          */
@@ -647,6 +666,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @param {Number} value - value to check
          * @name sign
+         * @snippet Utils.sign|Number
+        Utils.sign(${1:Number});
          */
         sign: function (value) {
             if (value > 0) {
