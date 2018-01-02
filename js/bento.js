@@ -12,37 +12,41 @@
  * @moduleName Bento
  *
  *
- * @snippet Bento.assets.getJson
+ * @snippet Bento.assets.getJson|Object
 Bento.assets.getJson('${1}');
  *
- * @snippet Bento.objects.attach
+ * @snippet Bento.objects.attach|snippet
 Bento.objects.attach(${1:entity});
- * @snippet Bento.objects.remove
+ * @snippet Bento.objects.remove|snippet
 Bento.objects.remove(${1:entity});
- * @snippet Bento.objects.get
+ * @snippet Bento.objects.get|Entity/Object
 Bento.objects.get('${1}', function (${1:entity}) {
     $2
 });
- * @snippet Bento.objects.getByFamily
-Bento.objects.getByFamily('${1}');
+ * @snippet Bento.objects.getByFamily|Entity/Object
+Bento.objects.getByFamily('${1}', function (array) {$2});
  *
- * @snippet Bento.audio.playSound
+ * @snippet Bento.audio.playSound|snippet
 Bento.audio.playSound('sfx_${1}');
- * @snippet Bento.audio.stopSound
+ * @snippet Bento.audio.stopSound|snippet
 Bento.audio.stopSound('sfx_${1}');
- * @snippet Bento.audio.playMusic
+ * @snippet Bento.audio.playMusic|snippet
 Bento.audio.playMusic('bgm_${1}');
- * @snippet Bento.audio.stopAllMusic|AudioManager
+ * @snippet Bento.audio.stopAllMusic|snippet
 Bento.audio.stopAllMusic();
+ * @snippet Bento.audio.setVolume|snippet
+Bento.audio.setVolume: function (${1:1}, '${2:name}');
+ * @snippet Bento.audio.isPlayingMusic|Boolean
+Bento.audio.isPlayingMusic: function ('${1:name}');
  *
- * @snippet Bento.saveState.save
+ * @snippet Bento.saveState.save|snippet
 Bento.saveState.save('${1}', ${2:value});
- * @snippet Bento.saveState.load
+ * @snippet Bento.saveState.load|Value
 Bento.saveState.load('${1}', ${2:defaultValue});
  *
- * @snippet Bento.screens.show
+ * @snippet Bento.screens.show|snippet
 Bento.screens.show('screens/${1:name}');
- * @snippet Bento.screens.getCurrentScreen
+ * @snippet Bento.screens.getCurrentScreen|Screen
 Bento.screens.getCurrentScreen();
  *
  */
