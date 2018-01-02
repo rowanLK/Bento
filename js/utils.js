@@ -3,14 +3,6 @@
  * <br>Exports: Object
  * @module bento/utils
  * @moduleName Utils
- * @snippet Utils.foreach
-Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
-    ${3:// code here}
-});
- * @snippet Utils.log
-Utils.log('WARNING: ${1}');
- * @snippet Utils.clamp
-Utils.clamp(${1:min}, ${2:value}, ${3:max});
  */
 bento.define('bento/utils', [], function () {
     'use strict';
@@ -420,48 +412,64 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isString
+         * @snippet Utils.isString|Boolean
+        Utils.isString(${1:String});
          */
         isString: isString,
         /**
          * @function
          * @instance
          * @name isArray
+         * @snippet Utils.isArray|Boolean
+        Utils.isArray(${1:Array});
          */
         isArray: isArray,
         /**
          * @function
          * @instance
          * @name isObject
+         * @snippet Utils.isObject|Boolean
+        Utils.isObject(${1:Object});
          */
         isObject: isObject,
         /**
          * @function
          * @instance
          * @name isFunction
+         * @snippet Utils.isFunction|Boolean
+        Utils.isFunction(${1:Function});
          */
         isFunction: isFunction,
         /**
          * @function
          * @instance
          * @name isNumber
+         * @snippet Utils.isNumber|Boolean
+        Utils.isNumber(${1:Number});
          */
         isNumber: isNumber,
         /**
          * @function
          * @instance
          * @name isBoolean
+         * @snippet Utils.isBoolean|Boolean
+        Utils.isBoolean(${1:Boolean});
          */
         isBoolean: isBoolean,
         /**
          * @function
          * @instance
          * @name isInt
+         * @snippet Utils.isInt|Boolean
+        Utils.isInt(${1:Integer});
          */
         isInt: isInt,
         /**
          * Is parameter undefined?
          * @function
          * @name isUndefined
+         * @snippet Utils.isUndefined|Boolean
+        Utils.isUndefined(${1});
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is undefined
          * @instance
@@ -474,6 +482,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is not undefined
          * @name isDefined
+         * @snippet Utils.isDefined|Boolean
+        Utils.isDefined(${1});
          */
         isDefined: isDefined,
         /**
@@ -483,6 +493,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is null or undefined
          * @name isEmpty
+         * @snippet Utils.isEmpty|Boolean
+        Utils.isEmpty(${1});
          */
         isEmpty: isEmpty,
         /**
@@ -492,6 +504,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is not null or undefined
          * @name isNotEmpty
+         * @snippet Utils.isNotEmpty|Boolean
+        Utils.isNotEmpty(${1});
          */
         isNotEmpty: isNotEmpty,
         /**
@@ -502,6 +516,8 @@ bento.define('bento/utils', [], function () {
          * @param {Anything} value - any type
          * @return {Bool} True if removal was successful, false if the value was not found
          * @name removeFromArray
+         * @snippet Utils.removeFromArray|Object
+        Utils.removeFromArray(${1:Array}, ${2:Value});
          */
         removeFromArray: removeFromArray,
         /**
@@ -510,6 +526,12 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name extend
+         * @snippet Utils.extend|Object
+        Utils.extend(${1:Object}, ${2:Object2});
+         * @snippet Utils.extend|conflict
+Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
+    ${4://code here}
+});
          * @param {Object} object1 - original object
          * @param {Object} object2 - new object
          * @param {Bool} [force] - Overwrites properties (defaults to false)
@@ -522,6 +544,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name getKeyLength
+         * @snippet Utils.getKeyLength|Number
+        Utils.getKeyLength(${1});
          * @param {Object} object - object literal
          * @return {Number} Number of keys
          */
@@ -531,6 +555,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name copyObject
+         * @snippet Utils.copyObject|Object
+        Utils.copyObject(${1:Object});
          * @param {Object} object - object literal
          * @return {Object} Shallow copy
          */
@@ -728,7 +754,7 @@ bento.define('bento/utils', [], function () {
          * @param {Object} value - The value in the array or object literal
          * @param {Number} index - Index of the array or key in object literal
          * @param {Number} length - Length of the array or key count in object literal
-         * @param {Fuction} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
+         * @param {Function} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
          */
         /**
          * Loops through an array
@@ -737,6 +763,10 @@ bento.define('bento/utils', [], function () {
          * @param {Array/Object} array - Array or Object literal to loop through
          * @param {IteratorCallback} callback - Callback function
          * @name forEach
+         * @snippet Utils.foreach
+        Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+            ${3:// code here}
+        });
          */
         forEach: function (array, callback) {
             var obj;
@@ -799,6 +829,8 @@ bento.define('bento/utils', [], function () {
          * @param {Number} value - value to clamp between min and max
          * @param {Number} max - upper limit
          * @name clamp
+         * @snippet Utils.clamp
+        Utils.clamp(${1:min}, ${2:value}, ${3:max});
          */
         clamp: function (min, value, max) {
             return Math.max(min, Math.min(value, max));
@@ -942,6 +974,8 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {String} msg - the message to log
          * @name log
+         * @snippet Utils.log
+        Utils.log('WARNING: ${1}');
          */
         log: function (msg) {
             console.error(msg);

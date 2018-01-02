@@ -12,6 +12,17 @@
  * @moduleName Bento
  *
  *
+ * @snippet Bento.assets|assets
+Bento.assets
+ * @snippet Bento.objects|objects
+Bento.objects
+ * @snippet Bento.saveState|saveState
+Bento.saveState
+ * @snippet Bento.screens|screens
+Bento.screens
+ * @snippet Bento.audio|audio
+Bento.audio
+ *
  * @snippet Bento.assets.getJson|Object
 Bento.assets.getJson('${1}');
  *
