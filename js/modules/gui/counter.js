@@ -1,10 +1,71 @@
 /**
  * An entity that behaves like a counter.
- * TODO: document settings parameter
  * <br>Exports: Constructor
  * @module bento/gui/counter
  * @moduleName Counter
  * @returns Entity
+ * @snippet Counter|constructor
+Counter({
+    z: ${1:0},
+    name: '$2',
+    value: ${3:0},
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:10},
+    padding: ${7:0},
+    align: '${8:center}',
+    spacing: new Vector2(${9:0}, ${10:0}),
+    position: new Vector2(${11:0}, ${12:0}),
+    updateWhenPaused: ${13:0},
+    float: ${14:false},
+});
+ * @snippet Counter|animations
+Counter({
+    z: ${1:0},
+    name: '$2',
+    value: ${3:0},
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:10},
+    animations: {
+        '0': {
+            frames: [0]
+        },
+        '1': {
+            frames: [1]
+        },
+        '2': {
+            frames: [2]
+        },
+        '3': {
+            frames: [3]
+        },
+        '4': {
+            frames: [4]
+        },
+        '5': {
+            frames: [5]
+        },
+        '6': {
+            frames: [6]
+        },
+        '7': {
+            frames: [7]
+        },
+        '8': {
+            frames: [8]
+        },
+        '9': {
+            frames: [9]
+        }
+    },
+    padding: ${7:0},
+    align: '${8:center}',
+    spacing: new Vector2(${9:0}, ${10:0}),
+    position: new Vector2(${11:0}, ${12:0}),
+    updateWhenPaused: ${13:0},
+    float: ${14:false},
+});
  */
 bento.define('bento/gui/counter', [
     'bento',

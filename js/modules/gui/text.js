@@ -787,6 +787,8 @@ bento.define('bento/gui/text', [
              * @instance
              * @name getText
              * @returns String
+             * @snippet #Text.getText|String
+getText();
              */
             getText: function () {
                 return text;
@@ -796,6 +798,8 @@ bento.define('bento/gui/text', [
              * @function
              * @instance
              * @name getStrings
+             * @snippet #Text.getStrings|Array
+getStrings();
              * @returns Array
              */
             getStrings: function () {
@@ -808,6 +812,10 @@ bento.define('bento/gui/text', [
              * @function
              * @instance
              * @name setText
+             * @snippet #Text.setText|snippet
+setText('$1');
+             * @snippet #Text.setText|settings
+setText('$1', ${2:{}});
              */
             setText: function (str, settings) {
                 var cachedFontSize = 0,
