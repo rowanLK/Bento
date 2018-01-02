@@ -11,7 +11,7 @@
  * @module bento/canvas
  * @moduleName Canvas
  * @returns Entity
- * @snippet Canvas|snippet
+ * @snippet Canvas|constructor
 Canvas({
     z: ${1:0},
     width: ${2:64},
