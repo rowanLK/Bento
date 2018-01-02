@@ -378,7 +378,7 @@ bento.define('bento/tween', [
              * @returns {Entity} Returns self
              * @name begin
              * @snippet #Tween.begin|Tween
-begin();
+            begin();
              */
             begin: function () {
                 time = 0;
@@ -396,7 +396,7 @@ begin();
              * @returns {Entity} Returns self
              * @name stop
              * @snippet #Tween.stop|Tween
-stop();
+            stop();
              */
             stop: function () {
                 time = 0;

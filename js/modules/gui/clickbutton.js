@@ -234,7 +234,7 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name setActive
              * @snippet #ClickButton.setActive|snippet
-setActive(${1:true});
+            setActive(${1:true});
              */
             setActive: setActive,
             /**
@@ -243,7 +243,7 @@ setActive(${1:true});
              * @instance
              * @name doCallback
              * @snippet #ClickButton.doCallback|snippet
-doCallback();
+            doCallback();
              */
             doCallback: function () {
                 settings.onClick.apply(entity);
@@ -255,7 +255,7 @@ doCallback();
              * @name isActive
              * @returns {Bool} Whether the button is active
              * @snippet #ClickButton.isActive|Boolean
-isActive(${1:true});
+            isActive(${1:true});
              */
             isActive: function () {
                 return active;

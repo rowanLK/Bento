@@ -263,6 +263,8 @@ bento.define('bento/gui/counter', [
         container = new Entity(entitySettings).extend({
             /*
              * Sets current value
+             * @snippet #Counter.setValue|snippet
+                setValue(${1:0});
              */
             setValue: function (val) {
                 value = val;
@@ -270,17 +272,34 @@ bento.define('bento/gui/counter', [
             },
             /*
              * Retrieves current value
+             * @snippet #Counter.getValue|Number
+                getValue();
              */
             getValue: function () {
                 return value;
             },
+            /*
+             * Add value
+             * @snippet #Counter.addValue|snippet
+                addValue(${1:0});
+             */
             addValue: function (val) {
                 value += val;
                 updateDigits();
             },
+            /*
+             * Get number of digits
+             * @snippet #Counter.getDigits|Number
+                getDigits();
+             */
             getDigits: function () {
                 return getDigits();
             },
+            /*
+             * Loop through digits
+             * @snippet #Counter.loopDigits|snippet
+                loopDigits(function (digitEntity) {$1});
+             */
             loopDigits: function (callback) {
                 var i = 0;
                 for (i = 0; i < children.length; ++i) {

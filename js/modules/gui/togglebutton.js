@@ -159,7 +159,7 @@ bento.define('bento/gui/togglebutton', [
              * @instance
              * @name isToggled
              * @snippet #ToggleButton.isToggled|Boolean
-isToggled();
+                isToggled();
              * @returns {Bool} Whether the button is toggled
              */
             isToggled: function () {
@@ -173,9 +173,9 @@ isToggled();
              * @instance
              * @name toggle
              * @snippet #ToggleButton.toggle|snippet
-toggle(${1:true});
+                toggle(${1:true});
              * @snippet #ToggleButton.toggle|do callback
-toggle(${1:true}, true);
+                toggle(${1:true}, true);
              */
             toggle: function (state, doCallback) {
                 if (Utils.isDefined(state)) {
@@ -204,7 +204,7 @@ toggle(${1:true}, true);
              * @instance
              * @name setActive
              * @snippet #ToggleButton.setActive|snippet
-setActive(${1:true});
+                setActive(${1:true});
              */
             setActive: function (bool) {
                 active = bool;
@@ -220,7 +220,7 @@ setActive(${1:true});
              * @instance
              * @name doCallback
              * @snippet #ToggleButton.doCallback|snippet
-doCallback();
+                doCallback();
              */
             doCallback: function () {
                 settings.onToggle.apply(entity);
@@ -232,7 +232,7 @@ doCallback();
              * @name isActive
              * @returns {Bool} Whether the button is active
              * @snippet #ToggleButton.isActive|Boolean
-isActive();
+                isActive();
              */
             isActive: function () {
                 return active;
