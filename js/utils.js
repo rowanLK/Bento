@@ -686,6 +686,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Number} end - target value
          * @param {Number} step - step to take (should always be a positive value)
          * @name approach
+         * @snippet Utils.approach|Number
+        Utils.approach(${1:start, ${2:end}, ${3:step}});
          */
         approach: function (start, end, max) {
             max = Math.abs(max);
@@ -703,8 +705,10 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Function} fn - function to perform
          * @param {Array} [params] - Parameters to pass to function
          * @name repeat
+         * @snippet Utils.repeat|snippet
+        Utils.repeat(${1:1, ${2:Function}});
          */
-        repeat: function (number, fn, params) {
+        repeat: function (number, fn) {
             var i;
             var count;
             var action;
@@ -721,11 +725,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
                 return;
             }
             for (i = 0; i < count; ++i) {
-                if (params) {
-                    action.apply(window, params);
-                } else {
-                    action();
-                }
+                action(i, count);
             }
         },
         /**
@@ -735,6 +735,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @param {String} string - String to hash
          * @name checksum
+         * @snippet Utils.checksum|Number
+        Utils.checksum(${1:String});
          */
         checksum: function (str) {
             var hash = 0,
@@ -757,6 +759,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @param {Object} jsonObj - Object literal that adheres to JSON standards
          * @name cloneJson
+         * @snippet Utils.cloneJson|Object
+        Utils.cloneJson(${1:JSON});
          */
         cloneJson: function (jsonObj) {
             var out;
@@ -786,8 +790,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @name forEach
          * @snippet Utils.foreach
         Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
-            ${3:// code here}
-        });
+    ${3:// code here}
+});
          */
         forEach: function (array, callback) {
             var obj;
@@ -826,6 +830,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Number} max - upper limit
          * @param {Boolean} includeEdge - includes edge values
          * @name isBetween
+         * @snippet Utils.isBetween|Boolean
+        Utils.isBetween(${1:minimum}, ${2:value}, ${3:maximum}, ${4:false});
          */
         isBetween: function (min, value, max, includeEdge) {
             if (includeEdge) {
@@ -838,6 +844,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name pickRandom
+         * @snippet Utils.pickRandom|Object
+        Utils.pickRandom(${1:});
          */
         pickRandom: function () {
             return arguments[this.getRandom(arguments.length)];
@@ -861,6 +869,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isApple
+         * @snippet Utils.isApple|Boolean
+        Utils.isApple();
          */
         isApple: function () {
             var device = (navigator.userAgent).match(/iPhone|iPad|iPod/i);
@@ -871,6 +881,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isAndroid
+         * @snippet Utils.isAndroid|Boolean
+        Utils.isAndroid();
          */
         isAndroid: function () {
             return /Android/i.test(navigator.userAgent);
@@ -880,6 +892,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isCocoonJs
+         * @snippet Utils.isCocoonJs|Boolean
+        Utils.isCocoonJs();
          */
         isCocoonJS: function () {
             return navigator.isCocoonJS;
@@ -892,6 +906,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isMobileBrowser
+         * @snippet Utils.isMobileBrowser|Boolean
+        Utils.isMobileBrowser();
          */
         isMobileBrowser: function () {
             var check = false;
@@ -907,6 +923,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isNativeIos
+         * @snippet Utils.isNativeIos|Boolean
+        Utils.isNativeIos();
          */
         isNativeIos: function () {
             if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
@@ -919,6 +937,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isNativeAndroid
+         * @snippet Utils.isNativeAndroid|Boolean
+        Utils.isNativeAndroid();
          */
         isNativeAndroid: function () {
             var platform;
@@ -935,6 +955,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isAndroidDevice
+         * @snippet Utils.isAndroidDevice|Boolean
+        Utils.isAndroidDevice();
          */
         isAndroidDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -948,6 +970,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isIosDevice
+         * @snippet Utils.isIosDevice|Boolean
+        Utils.isIosDevice();
          */
         isIosDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -961,6 +985,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isAmazonDevice
+         * @snippet Utils.isAmazonDevice|Boolean
+        Utils.isAmazonDevice();
          */
         isAmazonDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -976,6 +1002,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @param {Boolean} bool - set to true to use throws instead of console.logs
          * @name setDev
+         * @snippet Utils.setDev|snippet
+        Utils.setDev();
          */
         setDev: function (bool) {
             dev = bool;
@@ -985,6 +1013,8 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @instance
          * @name isDev
+         * @snippet Utils.isDev|Boolean
+        Utils.isDev();
          */
         isDev: function () {
             return dev;
