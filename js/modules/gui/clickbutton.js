@@ -12,7 +12,7 @@
  * @module bento/gui/clickbutton
  * @moduleName ClickButton
  * @returns Entity
- * @snippet ClickButton.snippet
+ * @snippet ClickButton|constructor
 ClickButton({
     z: ${1:0},
     name: '$2',
@@ -233,6 +233,8 @@ bento.define('bento/gui/clickbutton', [
              * @param {Bool} active - Should be active or not
              * @instance
              * @name setActive
+             * @snippet #ClickButton.setActive|snippet
+            setActive(${1:true});
              */
             setActive: setActive,
             /**
@@ -240,6 +242,8 @@ bento.define('bento/gui/clickbutton', [
              * @function
              * @instance
              * @name doCallback
+             * @snippet #ClickButton.doCallback|snippet
+            doCallback();
              */
             doCallback: function () {
                 settings.onClick.apply(entity);
@@ -250,6 +254,8 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name isActive
              * @returns {Bool} Whether the button is active
+             * @snippet #ClickButton.isActive|Boolean
+            isActive(${1:true});
              */
             isActive: function () {
                 return active;
@@ -294,6 +300,14 @@ bento.define('bento/gui/clickbutton', [
                     ClickButton.currentlyPressing = null;
                 }
             }
+        });
+
+        // active property
+        Object.defineProperty(entity, 'active', {
+            get: function () {
+                return active;
+            },
+            set: setActive
         });
 
         return entity;

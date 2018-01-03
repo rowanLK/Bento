@@ -89,7 +89,7 @@ bento.require([
         });
 
         canvasEntity1.attach(bunny1);
-        // Bento.objects.attach(canvasEntity1);
+        Bento.objects.attach(canvasEntity1);
 
         // ==== example 2 ======
         // draw bunny first
@@ -109,11 +109,11 @@ bento.require([
             }
         });
 
-        // Bento.objects.attach(canvasEntity2);
+        Bento.objects.attach(canvasEntity2);
 
         // ==== example 3 ======
         // using MaskedContainer
-        var bunny3 = new Bunny().attach(new Clickable({
+        /*var bunny3 = new Bunny().attach(new Clickable({
             pointerDown: function () {
                 // bunny3.scale.x -= 0.1;
                 // bunny3.scale.y -= 0.1;
@@ -145,7 +145,7 @@ bento.require([
                 bunny3
             ]
         });
-        Bento.objects.attach(maskedContainer);
+        Bento.objects.attach(maskedContainer);*/
     };
     Bento.setup({
         canvasId: 'canvas',

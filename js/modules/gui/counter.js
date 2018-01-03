@@ -1,10 +1,71 @@
 /**
  * An entity that behaves like a counter.
- * TODO: document settings parameter
  * <br>Exports: Constructor
  * @module bento/gui/counter
  * @moduleName Counter
  * @returns Entity
+ * @snippet Counter|constructor
+Counter({
+    z: ${1:0},
+    name: '$2',
+    value: ${3:0},
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:10},
+    padding: ${7:0},
+    align: '${8:center}',
+    spacing: new Vector2(${9:0}, ${10:0}),
+    position: new Vector2(${11:0}, ${12:0}),
+    updateWhenPaused: ${13:0},
+    float: ${14:false},
+});
+ * @snippet Counter|animations
+Counter({
+    z: ${1:0},
+    name: '$2',
+    value: ${3:0},
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:10},
+    animations: {
+        '0': {
+            frames: [0]
+        },
+        '1': {
+            frames: [1]
+        },
+        '2': {
+            frames: [2]
+        },
+        '3': {
+            frames: [3]
+        },
+        '4': {
+            frames: [4]
+        },
+        '5': {
+            frames: [5]
+        },
+        '6': {
+            frames: [6]
+        },
+        '7': {
+            frames: [7]
+        },
+        '8': {
+            frames: [8]
+        },
+        '9': {
+            frames: [9]
+        }
+    },
+    padding: ${7:0},
+    align: '${8:center}',
+    spacing: new Vector2(${9:0}, ${10:0}),
+    position: new Vector2(${11:0}, ${12:0}),
+    updateWhenPaused: ${13:0},
+    float: ${14:false},
+});
  */
 bento.define('bento/gui/counter', [
     'bento',
@@ -202,6 +263,8 @@ bento.define('bento/gui/counter', [
         container = new Entity(entitySettings).extend({
             /*
              * Sets current value
+             * @snippet #Counter.setValue|snippet
+                setValue(${1:0});
              */
             setValue: function (val) {
                 value = val;
@@ -209,17 +272,34 @@ bento.define('bento/gui/counter', [
             },
             /*
              * Retrieves current value
+             * @snippet #Counter.getValue|Number
+                getValue();
              */
             getValue: function () {
                 return value;
             },
+            /*
+             * Add value
+             * @snippet #Counter.addValue|snippet
+                addValue(${1:0});
+             */
             addValue: function (val) {
                 value += val;
                 updateDigits();
             },
+            /*
+             * Get number of digits
+             * @snippet #Counter.getDigits|Number
+                getDigits();
+             */
             getDigits: function () {
                 return getDigits();
             },
+            /*
+             * Loop through digits
+             * @snippet #Counter.loopDigits|snippet
+                loopDigits(function (digitEntity) {$1});
+             */
             loopDigits: function (callback) {
                 var i = 0;
                 for (i = 0; i < children.length; ++i) {

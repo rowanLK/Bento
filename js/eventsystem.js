@@ -4,12 +4,12 @@
  * <br>Exports: Object
  * @module bento/eventsystem
  * @moduleName EventSystem
- * @snippet EventSystem.on
+ * @snippet EventSystem.on|snippet
 EventSystem.on('${1}', ${2:fn});
- * @snippet EventSystem.off
+ * @snippet EventSystem.off|snippet
 EventSystem.off('${1}', ${2:fn});
- * @snippet EventSystem.fire
-EventSystem.fire('${1}', ${2:{}});
+ * @snippet EventSystem.fire|snippet
+EventSystem.fire('${1}', ${2:data});
  */
 bento.define('bento/eventsystem', [
     'bento/utils'

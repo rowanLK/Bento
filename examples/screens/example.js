@@ -18,6 +18,8 @@ bento.require([
             'assets': 'assets/assets.json'
         },
         preventContextMenu: true,
+        dev: true,
+        screenshot: 'buttonDown-q',
         reload: {
             simple: 'mouseDown-right'
         },

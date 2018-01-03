@@ -12,37 +12,54 @@
  * @moduleName Bento
  *
  *
- * @snippet getJson.AssetManager
+ * @snippet Bento.assets|assets
+Bento.assets
+ * @snippet Bento.objects|objects
+Bento.objects
+ * @snippet Bento.saveState|saveState
+Bento.saveState
+ * @snippet Bento.screens|screens
+Bento.screens
+ * @snippet Bento.audio|audio
+Bento.audio
+ *
+ * @snippet Bento.assets.getJson|Object
 Bento.assets.getJson('${1}');
  *
- * @snippet attach.ObjectManager
+ * @snippet Bento.objects.attach|snippet
 Bento.objects.attach(${1:entity});
- * @snippet remove.ObjectManager
+ * @snippet Bento.objects.remove|snippet
 Bento.objects.remove(${1:entity});
- * @snippet get.ObjectManager
+ * @snippet Bento.objects.get|Entity/Object
 Bento.objects.get('${1}', function (${1:entity}) {
     $2
 });
- * @snippet getByFamily.ObjectManager
-Bento.objects.getByFamily('${1}');
+ * @snippet Bento.objects.getByFamily|Entity/Object
+Bento.objects.getByFamily('${1}', function (array) {$2});
  *
- * @snippet playSound.AudioManager
+ * @snippet Bento.audio.playSound|snippet
 Bento.audio.playSound('sfx_${1}');
- * @snippet stopSound.AudioManager
+ * @snippet Bento.audio.stopSound|snippet
 Bento.audio.stopSound('sfx_${1}');
- * @snippet playMusic.AudioManager
+ * @snippet Bento.audio.playMusic|snippet
 Bento.audio.playMusic('bgm_${1}');
- * @snippet stopAllMusic.AudioManager
+ * @snippet Bento.audio.stopAllMusic|snippet
 Bento.audio.stopAllMusic();
+ * @snippet Bento.audio.setVolume|snippet
+Bento.audio.setVolume: function (${1:1}, '${2:name}');
+ * @snippet Bento.audio.isPlayingMusic|Boolean
+Bento.audio.isPlayingMusic: function ('${1:name}');
  *
- * @snippet save.SaveState
+ * @snippet Bento.saveState.save|snippet
 Bento.saveState.save('${1}', ${2:value});
- * @snippet load.SaveState
+ * @snippet Bento.saveState.load|Value
 Bento.saveState.load('${1}', ${2:defaultValue});
+ * @snippet Bento.saveState.add|snippet
+Bento.saveState.add('${1}', ${2:value});
  *
- * @snippet show.ScreenManager
+ * @snippet Bento.screens.show|snippet
 Bento.screens.show('screens/${1:name}');
- * @snippet getCurrentScreen.ScreenManager
+ * @snippet Bento.screens.getCurrentScreen|Screen
 Bento.screens.getCurrentScreen();
  *
  */
@@ -85,37 +102,9 @@ bento.define('bento', [
         x: 1,
         y: 1
     };
-    var debug = {
-        debugBar: null,
-        fps: 0,
-        fpsAccumulator: 0,
-        fpsTicks: 0,
-        fpsMaxAverage: 600,
-        avg: 0,
-        lastTime: 0
-    };
     var dev = false;
     var gameData = {};
     var viewport = new Rectangle(0, 0, 640, 480);
-    var setupDebug = function () {
-        if (Utils.isCocoonJS()) {
-            return;
-        }
-        // TODO: make a proper debug bar
-        debug.debugBar = document.createElement('div');
-        debug.debugBar.style['font-family'] = 'Arial';
-        debug.debugBar.style.padding = '8px';
-        debug.debugBar.style.position = 'absolute';
-        debug.debugBar.style.right = '0px';
-        debug.debugBar.style.top = '0px';
-        debug.debugBar.style.color = 'white';
-        debug.debugBar.innerHTML = 'fps: 0';
-        document.body.appendChild(debug.debugBar);
-
-        var button = document.createElement('button');
-        button.innerHTML = 'button';
-        debug.debugBar.appendChild(button);
-    };
     var setupCanvas = function (settings) {
         var parent;
         var pixelSize = settings.pixelSize || 1;
@@ -188,31 +177,14 @@ bento.define('bento', [
     };
     var setScreenshotListener = function (evtName) {
         var takeScreenshot = false;
-        var openNewBackgroundTab = function (link) {
-            // TODO: different behavior in Windows, check navigator.platform
-            var a = document.createElement("a");
-            var evt = document.createEvent("MouseEvents");
-            a.href = link;
-
-            //the tenth parameter of initMouseEvent sets ctrl key
-            evt.initMouseEvent(
-                "click", // type
-                true, // canBubble
-                true, // canceable
-                window, // view
-                0, // detail
-                0, // screenX
-                0, // screenY
-                0, // clientX
-                0, // clientY
-                false, // ctrlKey
-                true, // altKey
-                false, // shiftKey
-                false, // metaKey
-                0, // button
-                null // relatedTarget
-            );
-            a.dispatchEvent(evt);
+        // web only
+        var downloadImage = function (uri, name) {
+            var link = document.createElement("a");
+            link.download = name;
+            link.href = uri;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         };
 
         if (navigator.isCocoonJS || window.Windows || window.ejecta) {
@@ -230,7 +202,7 @@ bento.define('bento', [
         EventSystem.on('postDraw', function (data) {
             if (takeScreenshot) {
                 takeScreenshot = false;
-                openNewBackgroundTab(canvas.toDataURL());
+                downloadImage(canvas.toDataURL(), 'screenshot');
             }
         });
 

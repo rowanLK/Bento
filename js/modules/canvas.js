@@ -11,6 +11,17 @@
  * @module bento/canvas
  * @moduleName Canvas
  * @returns Entity
+ * @snippet Canvas|constructor
+Canvas({
+    z: ${1:0},
+    width: ${2:64},
+    height: ${3:64},
+    preventAutoClear: ${4:false}, // prevent canvas from clearing every tick
+    pixelSize: ${5:1}, // multiplies internal canvas size
+    drawOnce: ${6:false}, // draw canvas only once
+    originRelative: new Vector2(${7:0}, ${8:0}),
+    components: []
+});
  */
 bento.define('bento/canvas', [
     'bento',
@@ -59,59 +70,60 @@ bento.define('bento/canvas', [
         }
     });
     return function (settings) {
-        var viewport = Bento.getViewport(),
-            i,
-            l,
-            sprite,
-            canvas,
-            context,
-            originalRenderer,
-            renderer,
-            packedImage,
-            entity,
-            components,
-            drawn = false,
-            // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
-            component = {
-                name: 'rendererSwapper',
-                draw: function (data) {
-                    // draw once
-                    if (drawn) {
-                        return;
-                    }
-
-                    // clear up canvas
-                    if (!settings.preventAutoClear) {
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-
-                    // clear up webgl
-                    if (canvas.texture) {
-                        canvas.texture = null;
-                    }
-
-                    // swap renderer
-                    originalRenderer = data.renderer;
-                    data.renderer = renderer;
-
-                    // re-apply the origin translation
-                    data.renderer.save();
-                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
-                },
-                postDraw: function (data) {
-                    if (drawn) {
-                        return;
-                    }
-                    data.renderer.restore();
-                    // swap back
-                    data.renderer = originalRenderer;
-
-                    // draw once
-                    if (settings.drawOnce) {
-                        drawn = true;
-                    }
+        var viewport = Bento.getViewport();
+        var i;
+        var l;
+        var sprite;
+        var canvas;
+        var context;
+        var originalRenderer;
+        var renderer;
+        var packedImage;
+        var origin = new Vector2(0, 0);
+        var entity;
+        var components;
+        var drawn = false;
+        // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
+        var component = {
+            name: 'rendererSwapper',
+            draw: function (data) {
+                // draw once
+                if (drawn) {
+                    return;
                 }
-            };
+
+                // clear up canvas
+                if (!settings.preventAutoClear) {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                // clear up webgl
+                if (canvas.texture) {
+                    canvas.texture = null;
+                }
+
+                // swap renderer
+                originalRenderer = data.renderer;
+                data.renderer = renderer;
+
+                // re-apply the origin translation
+                data.renderer.save();
+                data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+            },
+            postDraw: function (data) {
+                if (drawn) {
+                    return;
+                }
+                data.renderer.restore();
+                // swap back
+                data.renderer = originalRenderer;
+
+                // draw once
+                if (settings.drawOnce) {
+                    drawn = true;
+                }
+            }
+        };
 
         // init canvas
         if (settings.canvas) {
@@ -127,6 +139,15 @@ bento.define('bento/canvas', [
         renderer = new Canvas2D(canvas, {
             pixelSize: settings.pixelSize || 1
         });
+
+        if (settings.origin) {
+            origin = settings.origin;
+        } else if (settings.originRelative) {
+            origin = new Vector2(
+                settings.width * settings.originRelative.x,
+                settings.height * settings.originRelative.y
+            );
+        }
 
         // init sprite
         packedImage = new PackedImage(canvas);
@@ -147,7 +168,7 @@ bento.define('bento/canvas', [
         }
         entity = new Entity({
             z: settings.z,
-            name: settings.name,
+            name: settings.name || 'canvas',
             position: settings.position,
             components: components,
             family: settings.family,
@@ -162,6 +183,8 @@ bento.define('bento/canvas', [
              * @instance
              * @returns HTML Canvas Element
              * @name getCanvas
+             * @snippet #Canvas.getCanvas|CanvasElement
+                getCanvas();
              */
             getCanvas: function () {
                 return canvas;
@@ -171,10 +194,57 @@ bento.define('bento/canvas', [
              * @function
              * @instance
              * @returns HTML Canvas 2d Context
+             * @snippet #Canvas.getContext|Context2D
+                getContext();
              * @name getContext
              */
             getContext: function () {
                 return context;
+            },
+            /**
+             * Get the base64 string of the canvas
+             * @function
+             * @instance
+             * @returns String
+             * @name getBase64
+             * @snippet #Canvas.getBase64|String
+                getBase64();
+             */
+            getBase64: function () {
+                return canvas.toDataURL();
+            },
+            /**
+             * Download the canvas as png (useful for debugging purposes)
+             * @function
+             * @instance
+             * @name downloadImage
+             * @snippet #Canvas.downloadImage|debug
+                downloadImage();
+             */
+            downloadImage: function (name) {
+                var link = document.createElement("a");
+                link.download = name || entity.name;
+                link.href = canvas.toDataURL();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            },
+            /**
+             * Call this function if you have no intent on attaching the canvas,
+             * but you do want to draw on the canvas once
+             * @function
+             * @instance
+             * @name drawOnce
+             * @snippet #Canvas.drawOnce|snippet
+                drawOnce();
+             */
+            drawOnce: function (data) {
+                if (canvas.isAdded) {
+                    Utils.log('This Canvas is already attached, no need to call this function.');
+                    return;
+                }
+                canvas.start(data);
+                canvas.draw(data);
             }
         });
 

@@ -7,8 +7,12 @@
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
- * @snippet Vector2.snippet
+ * @snippet Vector2|constructor
 Vector2(${1:0}, ${2:0})
+ * @snippet #Vector2.x|Number
+    x
+ * @snippet #Vector2.y|Number
+    y
  *
  */
 bento.define('bento/math/vector2', [
@@ -42,6 +46,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name add
+     * @snippet #Vector2.add|Vector2
+        add(${1:otherVector});
      */
     Vector2.prototype.add = function (vector) {
         var v = this.clone();
@@ -55,6 +61,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name addTo
+     * @snippet #Vector2.addTo|self
+        addTo(${1:otherVector});
      */
     Vector2.prototype.addTo = function (vector) {
         this.x += vector.x;
@@ -68,6 +76,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name subtract
+     * @snippet #Vector2.subtract|Vector2
+        subtract(${1:otherVector});
      */
     Vector2.prototype.subtract = function (vector) {
         var v = this.clone();
@@ -81,6 +91,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name subtractFrom
+     * @snippet #Vector2.subtractFrom|self
+        subtractFrom(${1:otherVector});
      */
     Vector2.prototype.subtractFrom = function (vector) {
         this.x -= vector.x;
@@ -95,6 +107,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Angle in radians
      * @instance
      * @name angle
+     * @snippet #Vector2.angle|radians
+        angle();
      */
     Vector2.prototype.angle = function () {
         return Math.atan2(this.y, this.x);
@@ -106,6 +120,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Angle in radians
      * @instance
      * @name angleBetween
+     * @snippet #Vector2.angleBetween|radians
+        angleBetween(${1:otherVector});
      */
     Vector2.prototype.angleBetween = function (vector) {
         return Math.atan2(
@@ -120,6 +136,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Dot product of 2 vectors
      * @instance
      * @name dotProduct
+     * @snippet #Vector2.dotProduct|Number
+        dotProduct(${1:otherVector});
      */
     Vector2.prototype.dotProduct = function (vector) {
         return this.x * vector.x + this.y * vector.y;
@@ -131,6 +149,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name multiply
+     * @snippet #Vector2.multiply|Vector2
+        multiply(${1:otherVector});
      */
     Vector2.prototype.multiply = function (vector) {
         var v = this.clone();
@@ -144,6 +164,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name multiplyWith
+     * @snippet #Vector2.multiplyWith|self
+        multiplyWith(${1:otherVector});
      */
     Vector2.prototype.multiplyWith = function (vector) {
         this.x *= vector.x;
@@ -157,6 +179,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name divide
+     * @snippet #Vector2.divide|Vector2
+        divide(${1:otherVector});
      */
     Vector2.prototype.divide = function (vector) {
         var v = this.clone();
@@ -170,6 +194,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name divideBy
+     * @snippet #Vector2.divideBy|Vector2
+        divideBy(${1:otherVector});
      */
     Vector2.prototype.divideBy = function (vector) {
         this.x /= vector.x;
@@ -183,6 +209,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name scalarMultiply
+     * @snippet #Vector2.scalarMultiply|Vector2
+        scalarMultiply(${1:1});
      */
     Vector2.prototype.scalarMultiply = function (value) {
         var v = this.clone();
@@ -196,6 +224,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name scalarMultiplyWith
+     * @snippet #Vector2.scalarMultiplyWith|self
+        scalarMultiplyWith(${1:1});
      */
     Vector2.prototype.scalarMultiplyWith = function (value) {
         this.x *= value;
@@ -209,6 +239,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name scale
+     * @snippet #Vector2.scale|self
+        scale(${1:1});
      */
     Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith;
     /**
@@ -217,6 +249,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Modulus of the vector
      * @instance
      * @name magnitude
+     * @snippet #Vector2.magnitude|Number
+        magnitude();
      */
     Vector2.prototype.magnitude = function () {
         return Math.sqrt(this.sqrMagnitude());
@@ -227,6 +261,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Modulus squared of the vector
      * @instance
      * @name sqrMagnitude
+     * @snippet #Vector2.sqrMagnitude|Number
+        sqrMagnitude();
      */
     Vector2.prototype.sqrMagnitude = function () {
         return this.dotProduct(this);
@@ -237,9 +273,17 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name normalize
+     * @snippet #Vector2.normalize|self
+        normalize();
      */
     Vector2.prototype.normalize = function () {
         var magnitude = this.magnitude();
+        if (magnitude === 0) {
+            // divide by zero
+            this.x = 0;
+            this.y = 0;
+            return this;
+        }
         this.x /= magnitude;
         this.y /= magnitude;
         return this;
@@ -251,6 +295,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Distance between the two vectors
      * @instance
      * @name distance
+     * @snippet #Vector2.distance|Number
+        distance(${1:otherVector});
      */
     Vector2.prototype.distance = function (vector) {
         return vector.substract(this).magnitude();
@@ -264,6 +310,8 @@ bento.define('bento/math/vector2', [
      * @returns {Boolean} Returns true if farther than distance
      * @instance
      * @name isFartherThan
+     * @snippet #Vector2.isFartherThan|Boolean
+        isFartherThan(${1:otherVector}, ${2:1});
      */
     Vector2.prototype.isFartherThan = function (vector, distance) {
         var diff = vector.substract(this);
@@ -278,6 +326,8 @@ bento.define('bento/math/vector2', [
      * @returns {Boolean} Returns true if farther than distance
      * @instance
      * @name isCloserThan
+     * @snippet #Vector2.isCloserThan|Boolean
+        isCloserThan(${1:otherVector}, ${2:1});
      */
     Vector2.prototype.isCloserThan = function (vector, distance) {
         var diff = vector.substract(this);
@@ -290,6 +340,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name rotateRadian
+     * @snippet #Vector2.rotateRadian|self
+        rotateRadian(${1:radians});
      */
     Vector2.prototype.rotateRadian = function (angle) {
         var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
@@ -305,6 +357,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name rotateDegree
+     * @snippet #Vector2.rotateDegree|self
+        rotateRadian(${1:degrees});
      */
     Vector2.prototype.rotateDegree = function (angle) {
         return this.rotateRadian(angle * Math.PI / 180);
@@ -316,6 +370,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns new Vector2 instance
      * @instance
      * @name clone
+     * @snippet #Vector2.clone|Vector2
+        clone();
      */
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
@@ -340,6 +396,8 @@ bento.define('bento/math/vector2', [
      * @param {Vector2} mirror - Vector2 through which the current vector is reflected.
      * @instance
      * @name reflect
+     * @snippet #Vector2.reflect|Vector2
+        reflect(${1:mirrorVector});
      */
     Vector2.prototype.reflect = function (mirror) {
         var normal = mirror.normalize(); // reflect through this normal

@@ -3826,37 +3826,54 @@ or implied, of the author(s).
  * @moduleName Bento
  *
  *
- * @snippet getJson.AssetManager
+ * @snippet Bento.assets|assets
+Bento.assets
+ * @snippet Bento.objects|objects
+Bento.objects
+ * @snippet Bento.saveState|saveState
+Bento.saveState
+ * @snippet Bento.screens|screens
+Bento.screens
+ * @snippet Bento.audio|audio
+Bento.audio
+ *
+ * @snippet Bento.assets.getJson|Object
 Bento.assets.getJson('${1}');
  *
- * @snippet attach.ObjectManager
+ * @snippet Bento.objects.attach|snippet
 Bento.objects.attach(${1:entity});
- * @snippet remove.ObjectManager
+ * @snippet Bento.objects.remove|snippet
 Bento.objects.remove(${1:entity});
- * @snippet get.ObjectManager
+ * @snippet Bento.objects.get|Entity/Object
 Bento.objects.get('${1}', function (${1:entity}) {
     $2
 });
- * @snippet getByFamily.ObjectManager
-Bento.objects.getByFamily('${1}');
+ * @snippet Bento.objects.getByFamily|Entity/Object
+Bento.objects.getByFamily('${1}', function (array) {$2});
  *
- * @snippet playSound.AudioManager
+ * @snippet Bento.audio.playSound|snippet
 Bento.audio.playSound('sfx_${1}');
- * @snippet stopSound.AudioManager
+ * @snippet Bento.audio.stopSound|snippet
 Bento.audio.stopSound('sfx_${1}');
- * @snippet playMusic.AudioManager
+ * @snippet Bento.audio.playMusic|snippet
 Bento.audio.playMusic('bgm_${1}');
- * @snippet stopAllMusic.AudioManager
+ * @snippet Bento.audio.stopAllMusic|snippet
 Bento.audio.stopAllMusic();
+ * @snippet Bento.audio.setVolume|snippet
+Bento.audio.setVolume: function (${1:1}, '${2:name}');
+ * @snippet Bento.audio.isPlayingMusic|Boolean
+Bento.audio.isPlayingMusic: function ('${1:name}');
  *
- * @snippet save.SaveState
+ * @snippet Bento.saveState.save|snippet
 Bento.saveState.save('${1}', ${2:value});
- * @snippet load.SaveState
+ * @snippet Bento.saveState.load|Value
 Bento.saveState.load('${1}', ${2:defaultValue});
+ * @snippet Bento.saveState.add|snippet
+Bento.saveState.add('${1}', ${2:value});
  *
- * @snippet show.ScreenManager
+ * @snippet Bento.screens.show|snippet
 Bento.screens.show('screens/${1:name}');
- * @snippet getCurrentScreen.ScreenManager
+ * @snippet Bento.screens.getCurrentScreen|Screen
 Bento.screens.getCurrentScreen();
  *
  */
@@ -3899,37 +3916,9 @@ bento.define('bento', [
         x: 1,
         y: 1
     };
-    var debug = {
-        debugBar: null,
-        fps: 0,
-        fpsAccumulator: 0,
-        fpsTicks: 0,
-        fpsMaxAverage: 600,
-        avg: 0,
-        lastTime: 0
-    };
     var dev = false;
     var gameData = {};
     var viewport = new Rectangle(0, 0, 640, 480);
-    var setupDebug = function () {
-        if (Utils.isCocoonJS()) {
-            return;
-        }
-        // TODO: make a proper debug bar
-        debug.debugBar = document.createElement('div');
-        debug.debugBar.style['font-family'] = 'Arial';
-        debug.debugBar.style.padding = '8px';
-        debug.debugBar.style.position = 'absolute';
-        debug.debugBar.style.right = '0px';
-        debug.debugBar.style.top = '0px';
-        debug.debugBar.style.color = 'white';
-        debug.debugBar.innerHTML = 'fps: 0';
-        document.body.appendChild(debug.debugBar);
-
-        var button = document.createElement('button');
-        button.innerHTML = 'button';
-        debug.debugBar.appendChild(button);
-    };
     var setupCanvas = function (settings) {
         var parent;
         var pixelSize = settings.pixelSize || 1;
@@ -4002,31 +3991,14 @@ bento.define('bento', [
     };
     var setScreenshotListener = function (evtName) {
         var takeScreenshot = false;
-        var openNewBackgroundTab = function (link) {
-            // TODO: different behavior in Windows, check navigator.platform
-            var a = document.createElement("a");
-            var evt = document.createEvent("MouseEvents");
-            a.href = link;
-
-            //the tenth parameter of initMouseEvent sets ctrl key
-            evt.initMouseEvent(
-                "click", // type
-                true, // canBubble
-                true, // canceable
-                window, // view
-                0, // detail
-                0, // screenX
-                0, // screenY
-                0, // clientX
-                0, // clientY
-                false, // ctrlKey
-                true, // altKey
-                false, // shiftKey
-                false, // metaKey
-                0, // button
-                null // relatedTarget
-            );
-            a.dispatchEvent(evt);
+        // web only
+        var downloadImage = function (uri, name) {
+            var link = document.createElement("a");
+            link.download = name;
+            link.href = uri;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         };
 
         if (navigator.isCocoonJS || window.Windows || window.ejecta) {
@@ -4044,7 +4016,7 @@ bento.define('bento', [
         EventSystem.on('postDraw', function (data) {
             if (takeScreenshot) {
                 takeScreenshot = false;
-                openNewBackgroundTab(canvas.toDataURL());
+                downloadImage(canvas.toDataURL(), 'screenshot');
             }
         });
 
@@ -4370,11 +4342,7 @@ var entity = new Entity({
  * // attach entity to Bento Objects
  * Bento.objects.attach(entity);
  * @returns {Entity} Returns a new entity object
- * @snippet getComponent.Entity
-getComponent('${1}', function (${1:component}) {
-    $2
-});
- * @snippet Entity.snippet
+ * @snippet Entity|constructor
 Entity({
     z: ${1:0},
     name: '$2',
@@ -4421,6 +4389,8 @@ bento.define('bento/entity', [
          * Unique id
          * @instance
          * @name id
+         * @snippet #Entity.id|Number
+            id
          */
         this.id = id++;
         /**
@@ -4428,6 +4398,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name z
+         * @snippet #Entity.z|Number
+            z
          */
         this.z = 0;
         /**
@@ -4438,17 +4410,30 @@ bento.define('bento/entity', [
          */
         this.rootIndex = -1;
         /**
-         * Timer value, incremented every update step
+         * Timer value, incremented every update step (dependent on game speed)
          * @instance
          * @default 0
          * @name timer
+         * @snippet #Entity.timer|Number
+            timer
          */
         this.timer = 0;
+        /**
+         * Ticker value, incremented every update step (independent of game speed)
+         * @instance
+         * @default 0
+         * @name ticker
+         * @snippet #Entity.ticker|Number
+            ticker
+         */
+        this.ticker = 0;
         /**
          * Indicates if an object should not be destroyed when a Screen ends
          * @instance
          * @default false
          * @name global
+         * @snippet #Entity.global|Boolean
+            global
          */
         this.global = false;
         /**
@@ -4456,6 +4441,8 @@ bento.define('bento/entity', [
          * @instance
          * @default false
          * @name float
+         * @snippet #Entity.float|Boolean
+            float
          */
         this.float = false;
         /**
@@ -4465,6 +4452,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name updateWhenPaused
+         * @snippet #Entity.updateWhenPaused|Number
+            updateWhenPaused
          */
         this.updateWhenPaused = 0;
         /**
@@ -4472,6 +4461,10 @@ bento.define('bento/entity', [
          * @instance
          * @default ''
          * @name name
+         * @snippet #Entity.name|String
+            name
+         * @snippet #Entity.isAdded|read-only
+            isAdded
          */
         this.name = '';
         this.isAdded = false;
@@ -4480,6 +4473,8 @@ bento.define('bento/entity', [
          * @instance
          * @default Vector2(0, 0)
          * @name position
+         * @snippet #Entity.position|Vector2
+            position
          */
         this.position = new Vector2(0, 0);
         /**
@@ -4495,6 +4490,8 @@ bento.define('bento/entity', [
          * @instance
          * @default []
          * @name components
+         * @snippet #Entity.components|Array
+            components
          */
         this.components = [];
         /**
@@ -4502,6 +4499,8 @@ bento.define('bento/entity', [
          * @instance
          * @default Rectangle(0, 0, 0, 0)
          * @name dimension
+         * @snippet #Entity.dimension|Rectangle
+            dimension
          */
         this.dimension = new Rectangle(0, 0, 0, 0);
         /**
@@ -4510,6 +4509,8 @@ bento.define('bento/entity', [
          * @default null
          * @see module:bento/entity#getBoundingBox for usage
          * @name boundingBox
+         * @snippet #Entity.boundingBox|Rectangle
+            boundingBox
          */
         this.boundingBox = settings.boundingBox || null;
         /**
@@ -4517,6 +4518,8 @@ bento.define('bento/entity', [
          * @instance
          * @default Vector2(1, 1)
          * @name scale
+         * @snippet #Entity.scale|Vector2
+            scale
          */
         this.scale = new Vector2(1, 1);
         /**
@@ -4524,6 +4527,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name rotation
+         * @snippet #Entity.rotation|Number
+            scale
          */
         this.rotation = 0;
         /**
@@ -4531,6 +4536,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 1
          * @name alpha
+         * @snippet #Entity.alpha|Number
+            alpha
          */
         this.alpha = 1;
         /**
@@ -4538,12 +4545,16 @@ bento.define('bento/entity', [
          * @instance
          * @default true
          * @name visible
+         * @snippet #Entity.visible|Boolean
+            visible
          */
         this.visible = true;
         /**
          * Transform module
          * @instance
          * @name transform
+         * @snippet #Entity.transform|Transform
+            transform
          */
         this.transform = new Transform(this);
         /**
@@ -4552,12 +4563,16 @@ bento.define('bento/entity', [
          * @default null
          * @see module:bento/entity#attach
          * @name parent
+         * @snippet #Entity.parent|read-only
+            parent
          */
         this.parent = null;
         /**
          * Reference to the settings parameter passed to the constructor
          * @instance
          * @name settings
+         * @snippet #Entity.settings|Object
+            settings
          */
         this.settings = settings;
         // Current component that is being processed, useful for debugging
@@ -4640,6 +4655,8 @@ entity.extend({
 });
 
 entity.addX(10);
+    * @snippet #Entity.extend|Entity
+extend(${1:{}});
      * @returns {Entity} Returns itself
      * @name extend
      */
@@ -4655,6 +4672,8 @@ entity.addX(10);
      * @returns {Rectangle} boundingbox - Entity's boundingbox with translation and scaling
      * @instance
      * @name getBoundingBox
+    * @snippet #Entity.getBoundingBox|Rectangle
+getBoundingBox();
      * @returns {Rectangle} A rectangle representing the boundingbox of the entity
      */
     var correctBoundingBox = function (entity, boundingBox) {
@@ -4710,6 +4729,8 @@ entity.attach(child);
 // attach the entity to the game
 Bento.objects.attach(entity);
      * @name attach
+     * @snippet #Entity.attach|Entity
+attach(${1});
      * @returns {Entity} Returns itself (useful for chaining attach calls)
      */
     Entity.prototype.attach = function (child, force) {
@@ -4766,6 +4787,8 @@ Bento.objects.attach(entity);
      * @param {Object} child - The child object to remove
      * @instance
      * @name remove
+     * @snippet #Entity.remove|Entity
+remove();
      * @returns {Entity} Returns itself
      */
     Entity.prototype.remove = function (child) {
@@ -4815,6 +4838,8 @@ Bento.objects.attach(entity);
      * @param {String} name - The name of the child object to remove
      * @instance
      * @name removeByName
+     * @snippet #Entity.removeByName|Entity
+removeByName('$1');
      * @returns {Entity} Returns itself
      */
     Entity.prototype.removeByName = function (name) {
@@ -4830,6 +4855,8 @@ Bento.objects.attach(entity);
      * @function
      * @instance
      * @name removeSelf
+     * @snippet #Entity.removeSelf|Entity
+removeSelf();
      * @returns {Entity} Returns itself
      */
     Entity.prototype.removeSelf = function (name) {
@@ -4860,6 +4887,10 @@ Bento.objects.attach(entity);
      * @param {String} name - name of the component
      * @param {FoundCallback} callback - called when component is found
      * @name getComponent
+     * @snippet #Entity.getComponent|Entity
+getComponent('${1}', function (${1:component}) {
+    $2
+});
      * @returns {Entity} Returns the component, null if not found
      */
     Entity.prototype.getComponent = function (name, callback) {
@@ -4883,6 +4914,8 @@ Bento.objects.attach(entity);
      * @param {Object} child - reference to the child
      * @param {Number} index - new index
      * @name moveComponentTo
+     * @snippet #Entity.moveComponentTo|Entity
+moveComponentTo(component, index);
      */
     Entity.prototype.moveComponentTo = function (component, newIndex) {
         // note: currently dangerous to do during an update loop
@@ -4914,14 +4947,29 @@ Bento.objects.attach(entity);
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Entity} settings.rectangle - Or if you want to check collision with a shape directly instead of entity
-     * @param {Boolean} settings.withComponent - Swap entity's boundingBox with this component's boundingBox
+     * @param {String} settings.withComponent - Swap entity's boundingBox with this component's boundingBox
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
      * @name collidesWith
+     * @snippet #Entity.collidesWith|Entity/Array
+collidesWith({
+    entity: obj, // when you have the reference
+    entities: [], // or when colliding with this array
+    name: '', // or when colliding with a single entity
+    family: '', // or when colliding with a family
+    rectangle: rect, // or when colliding with a rectangle
+
+    withComponent: '', // name of component that has a boundingBox property 
+    offset: vec2, // offset the collision check on original entity's position
+    firstOnly: true, // onCollide stops after having found single collision 
+    onCollide: function (other) {
+        // other is the other entity that is collided with
+        // onCollide is not called if no collision occurred 
+    }
+});
      * @returns {Entity/Array} The collided entity/entities, otherwise null
      */
-    // TODO: make examples
     // * @param {Array} settings.families - multiple families
     Entity.prototype.collidesWith = function (settings, deprecated_offset, deprecated_callback) {
         var intersect = false;
@@ -5082,6 +5130,8 @@ Bento.objects.attach(entity);
      * @instance
      * @name getWorldPosition
      * @returns {Vector2} Returns a position
+     * @snippet #Entity.getWorldPosition|Entity
+getWorldPosition();
      */
     Entity.prototype.getWorldPosition = function () {
         return this.transform.getWorldPosition();
@@ -5117,6 +5167,8 @@ Bento.objects.attach(entity);
      * @name toComparablePosition
      * @param {Vector2} worldPosition - A vector2 to transform
      * @returns {Vector2} Returns a position relative to the entity's parent
+     * @snippet #Entity.toComparablePosition|Entity
+toComparablePosition(${1:worldPosition});
      */
     Entity.prototype.toComparablePosition = function (worldPosition) {
         return this.transform.toComparablePosition(worldPosition);
@@ -5176,6 +5228,7 @@ Bento.objects.attach(entity);
         }
 
         this.timer += data.speed;
+        this.ticker += 1;
 
         // clean up
         cleanComponents(this);
@@ -5300,12 +5353,12 @@ Bento.objects.attach(entity);
  * <br>Exports: Object
  * @module bento/eventsystem
  * @moduleName EventSystem
- * @snippet EventSystem.on
+ * @snippet EventSystem.on|snippet
 EventSystem.on('${1}', ${2:fn});
- * @snippet EventSystem.off
+ * @snippet EventSystem.off|snippet
 EventSystem.off('${1}', ${2:fn});
- * @snippet EventSystem.fire
-EventSystem.fire('${1}', ${2:{}});
+ * @snippet EventSystem.fire|snippet
+EventSystem.fire('${1}', ${2:data});
  */
 bento.define('bento/eventsystem', [
     'bento/utils'
@@ -5522,6 +5575,10 @@ bento.define('bento/eventsystem', [
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
  * @returns {HTMLImage} rectangle.image - Reference to the image
+ * @snippet PackedImage|constructor
+PackedImage(${1:image});
+ * @snippet PackedImage|frame
+PackedImage(${1:image}, new Rectangle(${2:0}, ${3:0}, ${4:32}, ${5:32}));
  */
 bento.define('bento/packedimage', [
     'bento/math/rectangle'
@@ -5911,14 +5968,6 @@ bento.define('bento/transform', [
  * <br>Exports: Object
  * @module bento/utils
  * @moduleName Utils
- * @snippet forEach.Utils
-Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
-    ${3:// code here}
-});
- * @snippet log.Utils
-Utils.log('WARNING: ${1}');
- * @snippet clamp.Utils
-Utils.clamp(${1:min}, ${2:value}, ${3:max});
  */
 bento.define('bento/utils', [], function () {
     'use strict';
@@ -6269,7 +6318,8 @@ bento.define('bento/utils', [], function () {
                     "175": ["volUp"]
                 };
             for (aI = 65; aI <= 90; aI += 1) {
-                keys[aI] = String.fromCharCode(aI + 32);
+                keys[aI] = keys[aI] || [];
+                keys[aI].push(String.fromCharCode(aI + 32));
             }
 
             return keys;
@@ -6324,309 +6374,36 @@ bento.define('bento/utils', [], function () {
 
     Utils = {
         /**
+         * Checks if environment is iOS (using Cocoon.io)
          * @function
          * @instance
-         * @name isString
+         * @name isNativeIos
+         * @snippet Utils.isNativeIos|Boolean
+        Utils.isNativeIos();
          */
-        isString: isString,
-        /**
-         * @function
-         * @instance
-         * @name isArray
-         */
-        isArray: isArray,
-        /**
-         * @function
-         * @instance
-         * @name isObject
-         */
-        isObject: isObject,
-        /**
-         * @function
-         * @instance
-         * @name isFunction
-         */
-        isFunction: isFunction,
-        /**
-         * @function
-         * @instance
-         * @name isNumber
-         */
-        isNumber: isNumber,
-        /**
-         * @function
-         * @instance
-         * @name isBoolean
-         */
-        isBoolean: isBoolean,
-        /**
-         * @function
-         * @instance
-         * @name isInt
-         */
-        isInt: isInt,
-        /**
-         * Is parameter undefined?
-         * @function
-         * @name isUndefined
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is undefined
-         * @instance
-         */
-        isUndefined: isUndefined,
-        /**
-         * Is parameter anything other than undefined?
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is not undefined
-         * @name isDefined
-         */
-        isDefined: isDefined,
-        /**
-         * Is parameter null or undefined
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is null or undefined
-         * @name isEmpty
-         */
-        isEmpty: isEmpty,
-        /**
-         * Is parameter anything other than null or undefined
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is not null or undefined
-         * @name isNotEmpty
-         */
-        isNotEmpty: isNotEmpty,
-        /**
-         * Removes entry from array (note: only removes all matching values it finds)
-         * @function
-         * @instance
-         * @param {Array} array - array
-         * @param {Anything} value - any type
-         * @return {Bool} True if removal was successful, false if the value was not found
-         * @name removeFromArray
-         */
-        removeFromArray: removeFromArray,
-        /**
-         * Extends object literal properties with another object
-         * If the objects have the same property name, then the old one is pushed to a property called "base"
-         * @function
-         * @instance
-         * @name extend
-         * @param {Object} object1 - original object
-         * @param {Object} object2 - new object
-         * @param {Bool} [force] - Overwrites properties (defaults to false)
-         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
-         * @return {Array} The updated array
-         */
-        extend: extend,
-        /**
-         * Counts the number of keys in an object literal
-         * @function
-         * @instance
-         * @name getKeyLength
-         * @param {Object} object - object literal
-         * @return {Number} Number of keys
-         */
-        getKeyLength: getKeyLength,
-        /**
-         * Returns a (shallow) copy of an object literal
-         * @function
-         * @instance
-         * @name copyObject
-         * @param {Object} object - object literal
-         * @return {Object} Shallow copy
-         */
-        copyObject: copyObject,
-        stableSort: stableSort,
-        keyboardMapping: keyboardMapping,
-        remoteMapping: remoteMapping,
-        gamepadMapping: gamepadMapping,
-        /**
-         * Returns either the provided value, or the provided fallback value in case the provided value was undefined
-         */
-        getDefault: function (param, fallback) {
-            return (param !== void(0)) ? param : fallback;
-        },
-        /**
-         * Returns a random integer [0...n)
-         * @function
-         * @instance
-         * @name getRandom
-         * @param {Number} n - limit of random number
-         * @return {Number} Randomized integer
-         */
-        getRandom: function (n) {
-            return Math.floor(Math.random() * n);
-        },
-        /**
-         * Returns a random integer between range [min...max)
-         * @function
-         * @instance
-         * @name getRandomRange
-         * @param {Number} min - minimum value
-         * @param {Number} max - maximum value
-         * @return {Number} Randomized integer
-         */
-        getRandomRange: function (min, max) {
-            var diff = max - min;
-            return min + Math.floor(Math.random() * diff);
-        },
-        /**
-         * Returns a random float [0...n)
-         * @function
-         * @instance
-         * @name getRandomFloat
-         * @param {Number} n - limit of random number
-         * @return {Number} Randomized number
-         */
-        getRandomFloat: function (n) {
-            return Math.random() * n;
-        },
-        /**
-         * Returns a random float between range [min...max)
-         * @function
-         * @instance
-         * @name getRandomRangeFloat
-         * @param {Number} min - minimum value
-         * @param {Number} max - maximum value
-         * @return {Number} Randomized number
-         */
-        getRandomRangeFloat: function (min, max) {
-            var diff = max - min;
-            return min + Math.random() * diff;
-        },
-        /**
-         * Turns degrees into radians
-         * @function
-         * @instance
-         * @name toRadian
-         * @param {Number} degree - value in degrees
-         * @return {Number} radians
-         */
-        toRadian: function (degree) {
-            return degree * Math.PI / 180;
-        },
-        /**
-         * Turns radians into degrees
-         * @function
-         * @instance
-         * @name toDegree
-         * @param {Number} radians - value in radians
-         * @return {Number} degree
-         */
-        toDegree: function (radian) {
-            return radian / Math.PI * 180;
-        },
-        /**
-         * Sign of a number. Returns 0 if value is 0.
-         * @function
-         * @instance
-         * @param {Number} value - value to check
-         * @name sign
-         */
-        sign: function (value) {
-            if (value > 0) {
-                return 1;
-            } else if (value < 0) {
-                return -1;
-            } else {
-                return 0;
+        isNativeIos: function () {
+            if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
+                return true;
             }
+            return false;
         },
         /**
-         * Steps towards a number without going over the limit
+         * Checks if environment is Android (using Cocoon.io)
          * @function
          * @instance
-         * @param {Number} start - current value
-         * @param {Number} end - target value
-         * @param {Number} step - step to take (should always be a positive value)
-         * @name approach
+         * @name isNativeAndroid
+         * @snippet Utils.isNativeAndroid|Boolean
+        Utils.isNativeAndroid();
          */
-        approach: function (start, end, max) {
-            max = Math.abs(max);
-            if (start < end) {
-                return Math.min(start + max, end);
-            } else {
-                return Math.max(start - max, end);
-            }
-        },
-        /**
-         * Repeats a function for a number of times
-         * @function
-         * @instance
-         * @param {Number} number - Number of times to repeat
-         * @param {Function} fn - function to perform
-         * @param {Array} [params] - Parameters to pass to function
-         * @name repeat
-         */
-        repeat: function (number, fn, params) {
-            var i;
-            var count;
-            var action;
-            if (typeof number === "number") {
-                count = number;
-                action = fn;
-            } else {
-                // swapped the parameters
-                count = fn;
-                action = number;
-            }
-            if (!action.apply) {
-                Utils.log("Did not pass a function");
-                return;
-            }
-            for (i = 0; i < count; ++i) {
-                if (params) {
-                    action.apply(window, params);
-                } else {
-                    action();
+        isNativeAndroid: function () {
+            var platform;
+            if (navigator.isCocoonJS && window.Cocoon) {
+                platform = window.Cocoon.getPlatform();
+                if (platform === 'android' || platform === 'amazon') {
+                    return true;
                 }
             }
-        },
-        /**
-         * A simple hashing function, similar to Java's String.hashCode()
-         * source: http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
-         * @function
-         * @instance
-         * @param {String} string - String to hash
-         * @name checksum
-         */
-        checksum: function (str) {
-            var hash = 0,
-                strlen = (str || '').length,
-                i,
-                c;
-            if (strlen === 0) {
-                return hash;
-            }
-            for (i = 0; i < strlen; ++i) {
-                c = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + c;
-                hash = hash & hash; // Convert to 32bit integer
-            }
-            return hash;
-        },
-        /**
-         * Returns a clone of a JSON object
-         * @function
-         * @instance
-         * @param {Object} jsonObj - Object literal that adheres to JSON standards
-         * @name cloneJson
-         */
-        cloneJson: function (jsonObj) {
-            var out;
-            try {
-                out = JSON.parse(JSON.stringify(jsonObj));
-            } catch (e) {
-                out = {};
-                console.log('WARNING: object cloning failed');
-            }
-            return out;
+            return false;
         },
         /**
          * Callback during foreach
@@ -6635,7 +6412,7 @@ bento.define('bento/utils', [], function () {
          * @param {Object} value - The value in the array or object literal
          * @param {Number} index - Index of the array or key in object literal
          * @param {Number} length - Length of the array or key count in object literal
-         * @param {Fuction} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
+         * @param {Function} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
          */
         /**
          * Loops through an array
@@ -6644,6 +6421,10 @@ bento.define('bento/utils', [], function () {
          * @param {Array/Object} array - Array or Object literal to loop through
          * @param {IteratorCallback} callback - Callback function
          * @name forEach
+         * @snippet Utils.forEach
+        Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+    ${3:// code here}
+});
          */
         forEach: function (array, callback) {
             var obj;
@@ -6674,6 +6455,266 @@ bento.define('bento/utils', [], function () {
             }
         },
         /**
+         * Returns either the provided value, or the provided fallback value in case the provided value was undefined
+         * @function
+         * @instance
+         * @name getDefault
+         * @snippet Utils.getDefault|Object
+        Utils.getDefault(${1:Object, ${2:default}});
+         * @param {Anything} value - any type
+         * @param {Anything} value - any type
+         */
+        getDefault: function (param, fallback) {
+            return (param !== void(0)) ? param : fallback;
+        },
+        /**
+         * Returns a random integer [0...n)
+         * @function
+         * @instance
+         * @name getRandom
+         * @snippet Utils.getRandom|Number
+        Utils.getRandom(${1:Number});
+         * @param {Number} n - limit of random number
+         * @return {Number} Randomized integer
+         */
+        getRandom: function (n) {
+            return Math.floor(Math.random() * n);
+        },
+        /**
+         * Returns a random integer between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRange
+         * @snippet Utils.getRandomRange|Number
+        Utils.getRandomRange(${1:Minimum, ${2:Number}});
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized integer
+         */
+        getRandomRange: function (min, max) {
+            var diff = max - min;
+            return min + Math.floor(Math.random() * diff);
+        },
+        /**
+         * Returns a random float [0...n)
+         * @function
+         * @instance
+         * @name getRandomFloat
+         * @snippet Utils.getRandomFloat|Number
+        Utils.getRandomFloat(${1:Number});
+         * @param {Number} n - limit of random number
+         * @return {Number} Randomized number
+         */
+        getRandomFloat: function (n) {
+            return Math.random() * n;
+        },
+        /**
+         * Returns a random float between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRangeFloat
+         * @snippet Utils.getRandomRangeFloat|Number
+        Utils.getRandomRangeFloat(${1:Minimum, ${2:Number}});
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized number
+         */
+        getRandomRangeFloat: function (min, max) {
+            var diff = max - min;
+            return min + Math.random() * diff;
+        },
+        /**
+         * Turns degrees into radians
+         * @function
+         * @instance
+         * @name toRadian
+         * @snippet Utils.toRadian|Number
+        Utils.toRadian(${1:Degrees});
+         * @param {Number} degree - value in degrees
+         * @return {Number} radians
+         */
+        toRadian: function (degree) {
+            return degree * Math.PI / 180;
+        },
+        /**
+         * Turns radians into degrees
+         * @function
+         * @instance
+         * @name toDegree
+         * @snippet Utils.toDegree|Number
+        Utils.toDegree(${1:Radians});
+         * @param {Number} radians - value in radians
+         * @return {Number} degree
+         */
+        toDegree: function (radian) {
+            return radian / Math.PI * 180;
+        },
+        /**
+         * Sign of a number. Returns 0 if value is 0.
+         * @function
+         * @instance
+         * @param {Number} value - value to check
+         * @name sign
+         * @snippet Utils.sign|Number
+        Utils.sign(${1:Number});
+         */
+        sign: function (value) {
+            if (value > 0) {
+                return 1;
+            } else if (value < 0) {
+                return -1;
+            } else {
+                return 0;
+            }
+        },
+        /**
+         * Steps towards a number without going over the limit
+         * @function
+         * @instance
+         * @param {Number} start - current value
+         * @param {Number} end - target value
+         * @param {Number} step - step to take (should always be a positive value)
+         * @name approach
+         * @snippet Utils.approach|Number
+        Utils.approach(${1:start, ${2:end}, ${3:step}});
+         */
+        approach: function (start, end, max) {
+            max = Math.abs(max);
+            if (start < end) {
+                return Math.min(start + max, end);
+            } else {
+                return Math.max(start - max, end);
+            }
+        },
+        /**
+         * Repeats a function for a number of times
+         * @function
+         * @instance
+         * @param {Number} number - Number of times to repeat
+         * @param {Function} fn - function to perform
+         * @param {Array} [params] - Parameters to pass to function
+         * @name repeat
+         * @snippet Utils.repeat|snippet
+        Utils.repeat(${1:1, ${2:Function}});
+         */
+        repeat: function (number, fn) {
+            var i;
+            var count;
+            var action;
+            if (typeof number === "number") {
+                count = number;
+                action = fn;
+            } else {
+                // swapped the parameters
+                count = fn;
+                action = number;
+            }
+            if (!action.apply) {
+                Utils.log("Did not pass a function");
+                return;
+            }
+            for (i = 0; i < count; ++i) {
+                action(i, count);
+            }
+        },
+        /**
+         * A simple hashing function, similar to Java's String.hashCode()
+         * source: http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+         * @function
+         * @instance
+         * @param {String} string - String to hash
+         * @name checksum
+         * @snippet Utils.checksum|Number
+        Utils.checksum(${1:String});
+         */
+        checksum: function (str) {
+            var hash = 0,
+                strlen = (str || '').length,
+                i,
+                c;
+            if (strlen === 0) {
+                return hash;
+            }
+            for (i = 0; i < strlen; ++i) {
+                c = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + c;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash;
+        },
+        /**
+         * Extends object literal properties with another object
+         * If the objects have the same property name, then the old one is pushed to a property called "base"
+         * @function
+         * @instance
+         * @name extend
+         * @snippet Utils.extend|Object
+        Utils.extend(${1:Object}, ${2:Object2});
+         * @snippet Utils.extend|conflict
+Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
+    ${4://code here}
+});
+         * @param {Object} object1 - original object
+         * @param {Object} object2 - new object
+         * @param {Bool} [force] - Overwrites properties (defaults to false)
+         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
+         * @return {Array} The updated array
+         */
+        extend: extend,
+        /**
+         * Counts the number of keys in an object literal
+         * @function
+         * @instance
+         * @name getKeyLength
+         * @snippet Utils.getKeyLength|Number
+        Utils.getKeyLength(${1});
+         * @param {Object} object - object literal
+         * @return {Number} Number of keys
+         */
+        getKeyLength: getKeyLength,
+        /**
+         * Returns a (shallow) copy of an object literal
+         * @function
+         * @instance
+         * @name copyObject
+         * @snippet Utils.copyObject|Object
+        Utils.copyObject(${1:Object});
+         * @param {Object} object - object literal
+         * @return {Object} Shallow copy
+         */
+        copyObject: copyObject,
+        /**
+         * Returns a clone of a JSON object
+         * @function
+         * @instance
+         * @param {Object} jsonObj - Object literal that adheres to JSON standards
+         * @name cloneJson
+         * @snippet Utils.cloneJson|Object
+        Utils.cloneJson(${1:JSON});
+         */
+        cloneJson: function (jsonObj) {
+            var out;
+            try {
+                out = JSON.parse(JSON.stringify(jsonObj));
+            } catch (e) {
+                out = {};
+                console.log('WARNING: object cloning failed');
+            }
+            return out;
+        },
+        /**
+         * Removes entry from array (note: only removes all matching values it finds)
+         * @function
+         * @instance
+         * @param {Array} array - array
+         * @param {Anything} value - any type
+         * @return {Bool} True if removal was successful, false if the value was not found
+         * @name removeFromArray
+         * @snippet Utils.removeFromArray|Object
+        Utils.removeFromArray(${1:Array}, ${2:Value});
+         */
+        removeFromArray: removeFromArray,
+        /**
          * Checks whether a value is between two other values
          * @function
          * @instance
@@ -6682,6 +6723,8 @@ bento.define('bento/utils', [], function () {
          * @param {Number} max - upper limit
          * @param {Boolean} includeEdge - includes edge values
          * @name isBetween
+         * @snippet Utils.isBetween|Boolean
+        Utils.isBetween(${1:minimum}, ${2:value}, ${3:maximum}, ${4:false});
          */
         isBetween: function (min, value, max, includeEdge) {
             if (includeEdge) {
@@ -6694,6 +6737,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name pickRandom
+         * @snippet Utils.pickRandom|Object
+        Utils.pickRandom(${1:});
          */
         pickRandom: function () {
             return arguments[this.getRandom(arguments.length)];
@@ -6706,6 +6751,8 @@ bento.define('bento/utils', [], function () {
          * @param {Number} value - value to clamp between min and max
          * @param {Number} max - upper limit
          * @name clamp
+         * @snippet Utils.clamp
+        Utils.clamp(${1:min}, ${2:value}, ${3:max});
          */
         clamp: function (min, value, max) {
             return Math.max(min, Math.min(value, max));
@@ -6715,6 +6762,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isApple
+         * @snippet Utils.isApple|Boolean
+        Utils.isApple();
          */
         isApple: function () {
             var device = (navigator.userAgent).match(/iPhone|iPad|iPod/i);
@@ -6725,6 +6774,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isAndroid
+         * @snippet Utils.isAndroid|Boolean
+        Utils.isAndroid();
          */
         isAndroid: function () {
             return /Android/i.test(navigator.userAgent);
@@ -6734,6 +6785,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isCocoonJs
+         * @snippet Utils.isCocoonJs|Boolean
+        Utils.isCocoonJs();
          */
         isCocoonJS: function () {
             return navigator.isCocoonJS;
@@ -6746,6 +6799,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isMobileBrowser
+         * @snippet Utils.isMobileBrowser|Boolean
+        Utils.isMobileBrowser();
          */
         isMobileBrowser: function () {
             var check = false;
@@ -6757,38 +6812,12 @@ bento.define('bento/utils', [], function () {
             return check;
         },
         /**
-         * Checks if environment is iOS (using Cocoon.io)
-         * @function
-         * @instance
-         * @name isNativeIos
-         */
-        isNativeIos: function () {
-            if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
-                return true;
-            }
-            return false;
-        },
-        /**
-         * Checks if environment is Android (using Cocoon.io)
-         * @function
-         * @instance
-         * @name isNativeAndroid
-         */
-        isNativeAndroid: function () {
-            var platform;
-            if (navigator.isCocoonJS && window.Cocoon) {
-                platform = window.Cocoon.getPlatform();
-                if (platform === 'android' || platform === 'amazon') {
-                    return true;
-                }
-            }
-            return false;
-        },
-        /**
          * Checks if environment is Android (using Cordova Device plugin)
          * @function
          * @instance
          * @name isAndroidDevice
+         * @snippet Utils.isAndroidDevice|Boolean
+        Utils.isAndroidDevice();
          */
         isAndroidDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -6802,6 +6831,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isIosDevice
+         * @snippet Utils.isIosDevice|Boolean
+        Utils.isIosDevice();
          */
         isIosDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -6815,6 +6846,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isAmazonDevice
+         * @snippet Utils.isAmazonDevice|Boolean
+        Utils.isAmazonDevice();
          */
         isAmazonDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -6830,6 +6863,8 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Boolean} bool - set to true to use throws instead of console.logs
          * @name setDev
+         * @snippet Utils.setDev|snippet
+        Utils.setDev();
          */
         setDev: function (bool) {
             dev = bool;
@@ -6839,6 +6874,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isDev
+         * @snippet Utils.isDev|Boolean
+        Utils.isDev();
          */
         isDev: function () {
             return dev;
@@ -6849,10 +6886,116 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {String} msg - the message to log
          * @name log
+         * @snippet Utils.log
+        Utils.log('WARNING: ${1}');
          */
         log: function (msg) {
             console.error(msg);
         },
+        /**
+         * @function
+         * @instance
+         * @name isString
+         * @snippet Utils.isString|Boolean
+        Utils.isString(${1:String});
+         */
+        isString: isString,
+        /**
+         * @function
+         * @instance
+         * @name isArray
+         * @snippet Utils.isArray|Boolean
+        Utils.isArray(${1:Array});
+         */
+        isArray: isArray,
+        /**
+         * @function
+         * @instance
+         * @name isObject
+         * @snippet Utils.isObject|Boolean
+        Utils.isObject(${1:Object});
+         */
+        isObject: isObject,
+        /**
+         * @function
+         * @instance
+         * @name isFunction
+         * @snippet Utils.isFunction|Boolean
+        Utils.isFunction(${1:Function});
+         */
+        isFunction: isFunction,
+        /**
+         * @function
+         * @instance
+         * @name isNumber
+         * @snippet Utils.isNumber|Boolean
+        Utils.isNumber(${1:Number});
+         */
+        isNumber: isNumber,
+        /**
+         * @function
+         * @instance
+         * @name isBoolean
+         * @snippet Utils.isBoolean|Boolean
+        Utils.isBoolean(${1:Boolean});
+         */
+        isBoolean: isBoolean,
+        /**
+         * @function
+         * @instance
+         * @name isInt
+         * @snippet Utils.isInt|Boolean
+        Utils.isInt(${1:Integer});
+         */
+        isInt: isInt,
+        /**
+         * Is parameter undefined?
+         * @function
+         * @name isUndefined
+         * @snippet Utils.isUndefined|Boolean
+        Utils.isUndefined(${1});
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is undefined
+         * @instance
+         */
+        isUndefined: isUndefined,
+        /**
+         * Is parameter anything other than undefined?
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not undefined
+         * @name isDefined
+         * @snippet Utils.isDefined|Boolean
+        Utils.isDefined(${1});
+         */
+        isDefined: isDefined,
+        /**
+         * Is parameter null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is null or undefined
+         * @name isEmpty
+         * @snippet Utils.isEmpty|Boolean
+        Utils.isEmpty(${1});
+         */
+        isEmpty: isEmpty,
+        /**
+         * Is parameter anything other than null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not null or undefined
+         * @name isNotEmpty
+         * @snippet Utils.isNotEmpty|Boolean
+        Utils.isNotEmpty(${1});
+         */
+        isNotEmpty: isNotEmpty,
+        stableSort: stableSort,
+        keyboardMapping: keyboardMapping,
+        remoteMapping: remoteMapping,
+        gamepadMapping: gamepadMapping,
         /**
          * Enum for sort mode, pass this to Bento.setup
          * @readonly
@@ -6866,14 +7009,13 @@ bento.define('bento/utils', [], function () {
     };
     return Utils;
 });
-
 /**
  * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
  * unless entity.updateWhenPaused is turned on.
  * <br>Exports: Constructor
  * @module bento/components/clickable
  * @moduleName Clickable
- * @snippet Clickable.snippet
+ * @snippet Clickable|constructor
 Clickable({
     pointerDown: function (data) {},
     pointerUp: function (data) {},
@@ -7355,7 +7497,7 @@ bento.define('components/modal', [
  * <br>Exports: Constructor
  * @module bento/components/nineslice
  * @moduleName NineSlice
- * @snippet NineSlice.snippet
+ * @snippet NineSlice|constructor
 NineSlice({
     imageName: '${1}',
     originRelative: new Vector2(${2:0.5}, ${3:0.5}),
@@ -7816,11 +7958,11 @@ bento.define('bento/components/nineslice', [
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
- * @snippet Sprite.spriteSheet
+ * @snippet Sprite|spriteSheet
 Sprite({
     spriteSheet: '${1}'
 })
- * @snippet Sprite.imageName
+ * @snippet Sprite|imageName
 Sprite({
     imageName: '${1}',
     originRelative: new Vector2(${2:0.5}, ${3:0.5}),
@@ -7935,6 +8077,23 @@ bento.define('bento/components/sprite', [
      * @instance
      * @param {Object} settings - Settings object
      * @name setup
+     * @snippet #Sprite.setup|spriteSheet
+setup({
+    spriteSheet: '${1}'
+});
+     * @snippet #Sprite.setup|imageName
+setup({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    frameCountX: ${4:1},
+    frameCountY: ${5:1},
+    animations: {
+        default: {
+            speed: 0,
+            frames: [0]
+        }
+    }
+});
      */
     Sprite.prototype.setup = function (settings) {
         var self = this,
@@ -8080,6 +8239,12 @@ bento.define('bento/components/sprite', [
      * @param {Function} callback - Called when animation ends.
      * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
      * @name setAnimation
+     * @snippet #Sprite.setAnimation|snippet
+setAnimation('${1:name}');
+     * @snippet #Sprite.setAnimation|callback
+setAnimation('${1:name}', function () {
+    $2
+});
      */
     Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
         var anim = this.animations[name];
@@ -8115,6 +8280,12 @@ bento.define('bento/components/sprite', [
      * @param {String} name - Name of the spritesheet.
      * @param {Function} callback - Called when animation ends.
      * @name setAnimation
+     * @snippet #Sprite.setSpriteSheet|snippet
+setSpriteSheet('${1:name}');
+     * @snippet #Sprite.setSpriteSheet|callback
+setSpriteSheet('${1:name}', function () {
+    $2
+});
      */
     Sprite.prototype.setSpriteSheet = function (name, callback) {
         if (this.currentSpriteSheet === name) {
@@ -8133,6 +8304,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {String} Name of the animation playing, null if not playing anything
      * @name getAnimationName
+     * @snippet #Sprite.getAnimationName|String
+getAnimationName();
      */
     Sprite.prototype.getAnimationName = function () {
         return this.currentAnimation.name;
@@ -8143,6 +8316,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @param {Number} frameNumber - Frame number.
      * @name setFrame
+     * @snippet #Sprite.getAnimationName|snippet
+setFrame(${1:number});
      */
     Sprite.prototype.setFrame = function (frameNumber) {
         this.currentFrame = frameNumber;
@@ -8153,6 +8328,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {Number} Speed of the current animation
      * @name getCurrentSpeed
+     * @snippet #Sprite.getCurrentSpeed|Number
+getCurrentSpeed();
      */
     Sprite.prototype.getCurrentSpeed = function () {
         return this.currentAnimation.speed;
@@ -8163,6 +8340,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @param {Number} speed - Speed at which the animation plays.
      * @name setCurrentSpeed
+     * @snippet #Sprite.setCurrentSpeed|snippet
+setCurrentSpeed(${1:number});
      */
     Sprite.prototype.setCurrentSpeed = function (value) {
         this.currentAnimation.speed = value;
@@ -8173,6 +8352,8 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {Number} frameNumber - Not necessarily a round number.
      * @name getCurrentFrame
+     * @snippet #Sprite.getCurrentFrame|Number
+getCurrentFrame();
      */
     Sprite.prototype.getCurrentFrame = function () {
         return this.currentFrame;
@@ -8183,9 +8364,23 @@ bento.define('bento/components/sprite', [
      * @instance
      * @returns {Number} width - Width of the image frame.
      * @name getFrameWidth
+     * @snippet #Sprite.getFrameWidth|Number
+getFrameWidth();
      */
     Sprite.prototype.getFrameWidth = function () {
         return this.frameWidth;
+    };
+    /**
+     * Returns the frame height
+     * @function
+     * @instance
+     * @returns {Number} height - Height of the image frame.
+     * @name getFrameHeight
+     * @snippet #Sprite.getFrameHeight|Number
+getFrameHeight();
+     */
+    Sprite.prototype.getFrameHeight = function () {
+        return this.frameHeight;
     };
     /**
      * Sets the origin relatively (0...1), relative to the size of the frame.
@@ -8193,6 +8388,8 @@ bento.define('bento/components/sprite', [
      * @param {Vector2} origin - Position of the origin (relative to upper left corner)
      * @instance
      * @name setOriginRelative
+     * @snippet #Sprite.setOriginRelative|snippet
+setOriginRelative(new Vector2(${1:0}, ${2:0}));
      */
     Sprite.prototype.setOriginRelative = function (originRelative) {
         this.origin.x = originRelative.x * this.frameWidth;
@@ -8987,6 +9184,7 @@ bento.define('bento/managers/asset', [
     'use strict';
     return function () {
         var assetGroups = {};
+        var loadedGroups = {};
         var path = '';
         var assets = {
             audio: {},
@@ -9013,7 +9211,6 @@ bento.define('bento/managers/asset', [
                 var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
                 if (!!canPlay || window.ejecta) {
                     // success!
-                    audio.src = src;
                     if (!manager.skipAudioCallback) {
                         audio.onload = function () {
                             callback(null, name, audio);
@@ -9024,6 +9221,7 @@ bento.define('bento/managers/asset', [
                             callback(null, name, audio);
                         }, 0);
                     }
+                    audio.src = src;
                     failed = false;
                     return true;
                 }
@@ -9432,12 +9630,15 @@ bento.define('bento/managers/asset', [
                 initPackedImages();
                 unpackJson();
                 unpackSpriteSheets();
+                // mark as loaded
+                loadedGroups[groupName] = true;
+                // callback
                 if (Utils.isDefined(onReady)) {
                     onReady(null, groupName);
                 }
             };
             var checkLoaded = function () {
-                if (assetsLoaded === assetCount) {
+                if (assetCount === 0 || (assetCount > 0 && assetsLoaded === assetCount)) {
                     postLoad();
                 }
             };
@@ -9572,6 +9773,7 @@ bento.define('bento/managers/asset', [
                     data = toLoad[i];
                     data.fn(data.asset, data.path, data.callback);
                 }
+                checkLoaded();
             };
 
             if (!Utils.isDefined(group)) {
@@ -9863,6 +10065,8 @@ bento.define('bento/managers/asset', [
                     }
                 });
             });
+            // mark as unloaded
+            loadedGroups[groupName] = false;
         };
         /**
          * Returns a previously loaded image
@@ -9970,29 +10174,43 @@ bento.define('bento/managers/asset', [
             return assetGroups;
         };
         /**
-         * Reloads all assets
+         * Reloads all previously loaded assets
          * @function
          * @instance
          * @param {Function} callback - called when all assets are loaded
          * @name reload
          */
         var reload = function (callback) {
-            var group,
-                count = 0,
-                loaded = 0,
-                end = function () {
-                    loaded += 1;
-                    if (loaded === count && callback) {
-                        callback();
-                    }
-                };
+            var group;
+            var loaded = 0;
+            var groupsToLoad = [];
+            var loadGroups = function () {
+                var i;
+                for (i = 0; i < groupsToLoad.length; ++i) {
+                    load(groupsToLoad[i], end, function (current, total, name) {});
+                }
+            };
+            var end = function () {
+                loaded += 1;
+
+                if (loaded === groupsToLoad.length && callback) {
+                    callback();
+                }
+            };
+            // collect groups
             for (group in assetGroups) {
                 if (!assetGroups.hasOwnProperty(group)) {
                     continue;
                 }
-                load(group, end, function (current, total) {});
-                count += 1;
+                if (!loadedGroups[group]) {
+                    // havent loaded this group yet
+                    continue;
+                }
+                groupsToLoad.push(group);
             }
+
+            // load them
+            loadGroups();
         };
         /**
          * Attempts to load ./assets.json and interpret it as assetgroups
@@ -11236,7 +11454,6 @@ bento.define('bento/managers/input', [
  * @param {Function} getGameData - Function that returns gameData object
  * @param {Object} settings - Settings object
  * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
- * @param {Object} settings.debug - Show debug info
  * @param {Object} settings.useDeltaT - Use delta time (note: untested)
  * @returns ObjectManager
  */
@@ -11290,10 +11507,6 @@ bento.define('bento/managers/object', [
                 return;
             }
 
-            if (settings.debug && fpsMeter) {
-                fpsMeter.tickStart();
-            }
-
             lastTime = currentTime;
             cumulativeTime += deltaT;
             data = getGameData();
@@ -11321,9 +11534,6 @@ bento.define('bento/managers/object', [
             draw(data);
 
             lastFrameTime = time;
-            if (settings.debug && fpsMeter) {
-                fpsMeter.tick();
-            }
 
             window.requestAnimationFrame(mainLoop);
         };
@@ -11703,17 +11913,6 @@ bento.define('bento/managers/object', [
                 return currentObject;
             }
         };
-
-        if (!window.performance) {
-            window.performance = {
-                now: Date.now
-            };
-        }
-        // TODO: deprecate this
-        if (settings.debug && Utils.isDefined(window.FPSMeter)) {
-            window.FPSMeter.defaults.graph = 1;
-            fpsMeter = new window.FPSMeter();
-        }
 
         // swap sort method with default sorting method
         if (settings.defaultSort) {
@@ -12675,7 +12874,7 @@ bento.define('bento/math/polygon', [
  * @param {Number} width - Width of the rectangle
  * @param {Number} height - Height of the rectangle
  * @returns {Rectangle} Returns a rectangle.
- * @snippet Rectangle.snippet
+ * @snippet Rectangle|constructor
 Rectangle(${1:0}, ${2:0}, ${3:1}, ${4:0})
  */
 bento.define('bento/math/rectangle', [
@@ -12714,24 +12913,32 @@ bento.define('bento/math/rectangle', [
          * X position
          * @instance
          * @name x
+         * @snippet #Rectangle.x|Number
+            x
          */
         this.x = x || 0;
         /**
          * Y position
          * @instance
          * @name y
+         * @snippet #Rectangle.y|Number
+            y
          */
         this.y = y || 0;
         /**
          * Width of the rectangle
          * @instance
          * @name width
+         * @snippet #Rectangle.width|Number
+            width
          */
         this.width = width || 0;
         /**
          * Height of the rectangle
          * @instance
          * @name height
+         * @snippet #Rectangle.height|Number
+            height
          */
         this.height = height || 0;
     };
@@ -12751,6 +12958,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Number} Coordinate of the lower right position
      * @instance
      * @name getX2
+     * @snippet #Rectangle.getX2|Number
+        getX2();
      */
     Rectangle.prototype.getX2 = function () {
         return this.x + this.width;
@@ -12761,6 +12970,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Number} Coordinate of the lower right position
      * @instance
      * @name getY2
+     * @snippet #Rectangle.getY2|Number
+        getY2();
      */
     Rectangle.prototype.getY2 = function () {
         return this.y + this.height;
@@ -12772,6 +12983,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} Union of the 2 rectangles
      * @instance
      * @name union
+     * @snippet #Rectangle.union|Rectangle
+        union(${1:otherRectangle});
      */
     Rectangle.prototype.union = function (rectangle) {
         var x1 = Math.min(this.x, rectangle.x),
@@ -12787,6 +13000,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} True if 2 rectangles intersect
      * @instance
      * @name intersect
+     * @snippet #Rectangle.intersect|Boolean
+        intersect(${1:otherRectangle});
      */
     Rectangle.prototype.intersect = function (other) {
         if (other.isPolygon) {
@@ -12805,6 +13020,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} Intersection of the 2 rectangles
      * @instance
      * @name intersection
+     * @snippet #Rectangle.intersection|Rectangle
+        intersectuib(${1:otherRectangle});
      */
     Rectangle.prototype.intersection = function (rectangle) {
         var inter = new Rectangle(0, 0, 0, 0);
@@ -12824,6 +13041,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} True if rectangle and circle intersect
      * @instance
      * @name intersectsCircle
+     * @snippet #Rectangle.intersectsCircle|Boolean
+        intersectsCircle(${1:centerVector}, ${2:radius});
      */
     Rectangle.prototype.intersectsCircle = function (circleCenter, radius) {
         var rectHalfWidth = this.width * 0.5;
@@ -12853,6 +13072,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} True if rectangle and line intersect
      * @instance
      * @name intersectsLine
+     * @snippet #Rectangle.intersectsLine|Boolean
+        intersectsLine(${1:originVector}, ${2:endVector});
      */
     Rectangle.prototype.intersectsLine = function (lineOrigin, lineEnd) {
         // linesIntersect adapted from: https://gist.github.com/Joncom/e8e8d18ebe7fe55c3894
@@ -12886,6 +13107,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} Returns a new rectangle instance
      * @instance
      * @name offset
+     * @snippet #Rectangle.offset|Rectangle
+        offset(${1:vector});
      */
     Rectangle.prototype.offset = function (pos) {
         return new Rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
@@ -12896,6 +13119,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} a clone of the current rectangle
      * @instance
      * @name clone
+     * @snippet #Rectangle.clone|Rectangle
+        clone();
      */
     Rectangle.prototype.clone = function () {
         return new Rectangle(this.x, this.y, this.width, this.height);
@@ -12906,6 +13131,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} true if position is inside
      * @instance
      * @name hasPosition
+     * @snippet #Rectangle.hasPosition|Boolean
+        hasPosition(${1:vector});
      */
     Rectangle.prototype.hasPosition = function (vector) {
         return !(
@@ -12924,6 +13151,12 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} the resized rectangle
      * @instance
      * @name grow
+     * @snippet #Rectangle.grow|Rectangle
+        hasPosition(${1:Number});
+     * @snippet #Rectangle.grow|skip width
+        hasPosition(${1:Number}, true);
+     * @snippet #Rectangle.grow|skip height
+        hasPosition(${1:Number}, false, true);
      */
     Rectangle.prototype.grow = function (size, skipWidth, skipHeight) {
         if (!skipWidth) {
@@ -12943,6 +13176,18 @@ bento.define('bento/math/rectangle', [
      * @returns {Vector2} Vector position
      * @instance
      * @name getCorner
+     * @snippet #Rectangle.getCorner|Vector2
+        getCorner(Rectangle.BOTTOMRIGHT);
+     * @snippet Rectangle.TOPLEFT|corner
+        Rectangle.TOPLEFT
+     * @snippet Rectangle.TOPRIGHT|corner
+        Rectangle.TOPRIGHT
+     * @snippet Rectangle.BOTTOMLEFT|corner
+        Rectangle.BOTTOMLEFT
+     * @snippet Rectangle.BOTTOMRIGHT|corner
+        Rectangle.BOTTOMRIGHT
+     * @snippet Rectangle.CENTER|corner
+        Rectangle.CENTER
      */
     Rectangle.TOPLEFT = 0;
     Rectangle.TOPRIGHT = 1;
@@ -12968,6 +13213,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Vector2} Vector position
      * @instance
      * @name getCenter
+     * @snippet #Rectangle.getCenter|Vector2
+        getCenter();
      */
     Rectangle.prototype.getCenter = function () {
         return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
@@ -12978,6 +13225,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} a clone of the current rectangle with x and y set to 0
      * @instance
      * @name getSize
+     * @snippet #Rectangle.getSize|Rectangle
+        getSize();
      */
     Rectangle.prototype.getSize = function () {
         return new Rectangle(0, 0, this.width, this.height);
@@ -12988,6 +13237,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Vector2} Vector2 half the size of the rectangle
      * @instance
      * @name getExtents
+     * @snippet #Rectangle.getExtents|Vector2
+        getExtents();
      */
     Rectangle.prototype.getExtents = function () {
         return new Vector2(this.width / 2, this.height / 2);
@@ -13254,8 +13505,12 @@ bento.define('bento/math/transformmatrix', [
  * @param {Number} x - x position
  * @param {Number} y - y position
  * @returns {Vector2} Returns a 2d vector.
- * @snippet Vector2.snippet
+ * @snippet Vector2|constructor
 Vector2(${1:0}, ${2:0})
+ * @snippet #Vector2.x|Number
+    x
+ * @snippet #Vector2.y|Number
+    y
  *
  */
 bento.define('bento/math/vector2', [
@@ -13289,6 +13544,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name add
+     * @snippet #Vector2.add|Vector2
+        add(${1:otherVector});
      */
     Vector2.prototype.add = function (vector) {
         var v = this.clone();
@@ -13302,6 +13559,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name addTo
+     * @snippet #Vector2.addTo|self
+        addTo(${1:otherVector});
      */
     Vector2.prototype.addTo = function (vector) {
         this.x += vector.x;
@@ -13315,6 +13574,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name subtract
+     * @snippet #Vector2.subtract|Vector2
+        subtract(${1:otherVector});
      */
     Vector2.prototype.subtract = function (vector) {
         var v = this.clone();
@@ -13328,6 +13589,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name subtractFrom
+     * @snippet #Vector2.subtractFrom|self
+        subtractFrom(${1:otherVector});
      */
     Vector2.prototype.subtractFrom = function (vector) {
         this.x -= vector.x;
@@ -13342,6 +13605,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Angle in radians
      * @instance
      * @name angle
+     * @snippet #Vector2.angle|radians
+        angle();
      */
     Vector2.prototype.angle = function () {
         return Math.atan2(this.y, this.x);
@@ -13353,6 +13618,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Angle in radians
      * @instance
      * @name angleBetween
+     * @snippet #Vector2.angleBetween|radians
+        angleBetween(${1:otherVector});
      */
     Vector2.prototype.angleBetween = function (vector) {
         return Math.atan2(
@@ -13367,6 +13634,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Dot product of 2 vectors
      * @instance
      * @name dotProduct
+     * @snippet #Vector2.dotProduct|Number
+        dotProduct(${1:otherVector});
      */
     Vector2.prototype.dotProduct = function (vector) {
         return this.x * vector.x + this.y * vector.y;
@@ -13378,6 +13647,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name multiply
+     * @snippet #Vector2.multiply|Vector2
+        multiply(${1:otherVector});
      */
     Vector2.prototype.multiply = function (vector) {
         var v = this.clone();
@@ -13391,6 +13662,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name multiplyWith
+     * @snippet #Vector2.multiplyWith|self
+        multiplyWith(${1:otherVector});
      */
     Vector2.prototype.multiplyWith = function (vector) {
         this.x *= vector.x;
@@ -13404,6 +13677,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name divide
+     * @snippet #Vector2.divide|Vector2
+        divide(${1:otherVector});
      */
     Vector2.prototype.divide = function (vector) {
         var v = this.clone();
@@ -13417,6 +13692,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name divideBy
+     * @snippet #Vector2.divideBy|Vector2
+        divideBy(${1:otherVector});
      */
     Vector2.prototype.divideBy = function (vector) {
         this.x /= vector.x;
@@ -13430,6 +13707,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns a new Vector2 instance
      * @instance
      * @name scalarMultiply
+     * @snippet #Vector2.scalarMultiply|Vector2
+        scalarMultiply(${1:1});
      */
     Vector2.prototype.scalarMultiply = function (value) {
         var v = this.clone();
@@ -13443,6 +13722,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name scalarMultiplyWith
+     * @snippet #Vector2.scalarMultiplyWith|self
+        scalarMultiplyWith(${1:1});
      */
     Vector2.prototype.scalarMultiplyWith = function (value) {
         this.x *= value;
@@ -13456,6 +13737,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name scale
+     * @snippet #Vector2.scale|self
+        scale(${1:1});
      */
     Vector2.prototype.scale = Vector2.prototype.scalarMultiplyWith;
     /**
@@ -13464,6 +13747,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Modulus of the vector
      * @instance
      * @name magnitude
+     * @snippet #Vector2.magnitude|Number
+        magnitude();
      */
     Vector2.prototype.magnitude = function () {
         return Math.sqrt(this.sqrMagnitude());
@@ -13474,6 +13759,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Modulus squared of the vector
      * @instance
      * @name sqrMagnitude
+     * @snippet #Vector2.sqrMagnitude|Number
+        sqrMagnitude();
      */
     Vector2.prototype.sqrMagnitude = function () {
         return this.dotProduct(this);
@@ -13484,9 +13771,17 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name normalize
+     * @snippet #Vector2.normalize|self
+        normalize();
      */
     Vector2.prototype.normalize = function () {
         var magnitude = this.magnitude();
+        if (magnitude === 0) {
+            // divide by zero
+            this.x = 0;
+            this.y = 0;
+            return this;
+        }
         this.x /= magnitude;
         this.y /= magnitude;
         return this;
@@ -13498,6 +13793,8 @@ bento.define('bento/math/vector2', [
      * @returns {Number} Distance between the two vectors
      * @instance
      * @name distance
+     * @snippet #Vector2.distance|Number
+        distance(${1:otherVector});
      */
     Vector2.prototype.distance = function (vector) {
         return vector.substract(this).magnitude();
@@ -13511,6 +13808,8 @@ bento.define('bento/math/vector2', [
      * @returns {Boolean} Returns true if farther than distance
      * @instance
      * @name isFartherThan
+     * @snippet #Vector2.isFartherThan|Boolean
+        isFartherThan(${1:otherVector}, ${2:1});
      */
     Vector2.prototype.isFartherThan = function (vector, distance) {
         var diff = vector.substract(this);
@@ -13525,6 +13824,8 @@ bento.define('bento/math/vector2', [
      * @returns {Boolean} Returns true if farther than distance
      * @instance
      * @name isCloserThan
+     * @snippet #Vector2.isCloserThan|Boolean
+        isCloserThan(${1:otherVector}, ${2:1});
      */
     Vector2.prototype.isCloserThan = function (vector, distance) {
         var diff = vector.substract(this);
@@ -13537,6 +13838,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name rotateRadian
+     * @snippet #Vector2.rotateRadian|self
+        rotateRadian(${1:radians});
      */
     Vector2.prototype.rotateRadian = function (angle) {
         var x = this.x * Math.cos(angle) - this.y * Math.sin(angle),
@@ -13552,6 +13855,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns self
      * @instance
      * @name rotateDegree
+     * @snippet #Vector2.rotateDegree|self
+        rotateRadian(${1:degrees});
      */
     Vector2.prototype.rotateDegree = function (angle) {
         return this.rotateRadian(angle * Math.PI / 180);
@@ -13563,6 +13868,8 @@ bento.define('bento/math/vector2', [
      * @returns {Vector2} Returns new Vector2 instance
      * @instance
      * @name clone
+     * @snippet #Vector2.clone|Vector2
+        clone();
      */
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
@@ -13587,6 +13894,8 @@ bento.define('bento/math/vector2', [
      * @param {Vector2} mirror - Vector2 through which the current vector is reflected.
      * @instance
      * @name reflect
+     * @snippet #Vector2.reflect|Vector2
+        reflect(${1:mirrorVector});
      */
     Vector2.prototype.reflect = function (mirror) {
         var normal = mirror.normalize(); // reflect through this normal
@@ -13683,6 +13992,17 @@ bento.define('bento/autoresize', [
  * @module bento/canvas
  * @moduleName Canvas
  * @returns Entity
+ * @snippet Canvas|constructor
+Canvas({
+    z: ${1:0},
+    width: ${2:64},
+    height: ${3:64},
+    preventAutoClear: ${4:false}, // prevent canvas from clearing every tick
+    pixelSize: ${5:1}, // multiplies internal canvas size
+    drawOnce: ${6:false}, // draw canvas only once
+    originRelative: new Vector2(${7:0}, ${8:0}),
+    components: []
+});
  */
 bento.define('bento/canvas', [
     'bento',
@@ -13731,59 +14051,60 @@ bento.define('bento/canvas', [
         }
     });
     return function (settings) {
-        var viewport = Bento.getViewport(),
-            i,
-            l,
-            sprite,
-            canvas,
-            context,
-            originalRenderer,
-            renderer,
-            packedImage,
-            entity,
-            components,
-            drawn = false,
-            // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
-            component = {
-                name: 'rendererSwapper',
-                draw: function (data) {
-                    // draw once
-                    if (drawn) {
-                        return;
-                    }
-
-                    // clear up canvas
-                    if (!settings.preventAutoClear) {
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-
-                    // clear up webgl
-                    if (canvas.texture) {
-                        canvas.texture = null;
-                    }
-
-                    // swap renderer
-                    originalRenderer = data.renderer;
-                    data.renderer = renderer;
-
-                    // re-apply the origin translation
-                    data.renderer.save();
-                    data.renderer.translate(Math.round(entity.origin.x), Math.round(entity.origin.y));
-                },
-                postDraw: function (data) {
-                    if (drawn) {
-                        return;
-                    }
-                    data.renderer.restore();
-                    // swap back
-                    data.renderer = originalRenderer;
-
-                    // draw once
-                    if (settings.drawOnce) {
-                        drawn = true;
-                    }
+        var viewport = Bento.getViewport();
+        var i;
+        var l;
+        var sprite;
+        var canvas;
+        var context;
+        var originalRenderer;
+        var renderer;
+        var packedImage;
+        var origin = new Vector2(0, 0);
+        var entity;
+        var components;
+        var drawn = false;
+        // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
+        var component = {
+            name: 'rendererSwapper',
+            draw: function (data) {
+                // draw once
+                if (drawn) {
+                    return;
                 }
-            };
+
+                // clear up canvas
+                if (!settings.preventAutoClear) {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                // clear up webgl
+                if (canvas.texture) {
+                    canvas.texture = null;
+                }
+
+                // swap renderer
+                originalRenderer = data.renderer;
+                data.renderer = renderer;
+
+                // re-apply the origin translation
+                data.renderer.save();
+                data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+            },
+            postDraw: function (data) {
+                if (drawn) {
+                    return;
+                }
+                data.renderer.restore();
+                // swap back
+                data.renderer = originalRenderer;
+
+                // draw once
+                if (settings.drawOnce) {
+                    drawn = true;
+                }
+            }
+        };
 
         // init canvas
         if (settings.canvas) {
@@ -13799,6 +14120,15 @@ bento.define('bento/canvas', [
         renderer = new Canvas2D(canvas, {
             pixelSize: settings.pixelSize || 1
         });
+
+        if (settings.origin) {
+            origin = settings.origin;
+        } else if (settings.originRelative) {
+            origin = new Vector2(
+                settings.width * settings.originRelative.x,
+                settings.height * settings.originRelative.y
+            );
+        }
 
         // init sprite
         packedImage = new PackedImage(canvas);
@@ -13819,7 +14149,7 @@ bento.define('bento/canvas', [
         }
         entity = new Entity({
             z: settings.z,
-            name: settings.name,
+            name: settings.name || 'canvas',
             position: settings.position,
             components: components,
             family: settings.family,
@@ -13834,6 +14164,8 @@ bento.define('bento/canvas', [
              * @instance
              * @returns HTML Canvas Element
              * @name getCanvas
+             * @snippet #Canvas.getCanvas|CanvasElement
+                getCanvas();
              */
             getCanvas: function () {
                 return canvas;
@@ -13843,10 +14175,57 @@ bento.define('bento/canvas', [
              * @function
              * @instance
              * @returns HTML Canvas 2d Context
+             * @snippet #Canvas.getContext|Context2D
+                getContext();
              * @name getContext
              */
             getContext: function () {
                 return context;
+            },
+            /**
+             * Get the base64 string of the canvas
+             * @function
+             * @instance
+             * @returns String
+             * @name getBase64
+             * @snippet #Canvas.getBase64|String
+                getBase64();
+             */
+            getBase64: function () {
+                return canvas.toDataURL();
+            },
+            /**
+             * Download the canvas as png (useful for debugging purposes)
+             * @function
+             * @instance
+             * @name downloadImage
+             * @snippet #Canvas.downloadImage|debug
+                downloadImage();
+             */
+            downloadImage: function (name) {
+                var link = document.createElement("a");
+                link.download = name || entity.name;
+                link.href = canvas.toDataURL();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            },
+            /**
+             * Call this function if you have no intent on attaching the canvas,
+             * but you do want to draw on the canvas once
+             * @function
+             * @instance
+             * @name drawOnce
+             * @snippet #Canvas.drawOnce|snippet
+                drawOnce();
+             */
+            drawOnce: function (data) {
+                if (canvas.isAdded) {
+                    Utils.log('This Canvas is already attached, no need to call this function.');
+                    return;
+                }
+                canvas.start(data);
+                canvas.draw(data);
             }
         });
 
@@ -13876,6 +14255,7 @@ bento.define('bento/color', ['bento/utils'], function (Utils) {
     };
 });
 /*
+ * DEPRECATED
  * Simple container that masks the children's sprites in a rectangle. Does not work with rotated children.
  * The container's boundingbox is used as mask.
  * @moduleName MaskedContainer
@@ -14566,6 +14946,49 @@ bento.define('bento/sortedeventsystem', [
  * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
  * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
  * @returns Object
+ * @snippet Tiled|constructor
+Tiled({
+    assetName: '$1',
+    drawTiles: ${2:true},
+    merge: ${3:false},
+    spawnEntities: ${4:true}, // require the module (asynchronously)
+    spawnBackground: ${5:true}, // spawn background entities (drawn tile layers)
+    attachEntities: ${6:true}, // attach after spawning
+    onInit: function (tiledJson, externalTilesets) {
+        // Callback after initial parsing
+        $7
+    },
+    onLayer: function (layer) {
+        // Callback when the reader passes a layer
+        $8
+    },
+    onTile: function (tileX, tileY, tilesetJSON, tileIndex) {
+        // Callback after tile is drawn
+        $9
+    },
+    onObject: function (objectJSON, tilesetJSON, tileIndex) {
+        // Callback when the reader passes a Tiled object
+        ${10}
+    },
+    onComplete: function () {
+        // Synchronous callback when the reader passed all layers
+        // `this` references the tiled object (to get width and height)
+        ${11}
+    },
+    onLayerMergeCheck: function (layer) {
+        // called for each layer when merge: true
+        // return false if layer should not merge
+        return ${12:true};
+    },
+    onSpawn: function (entity) {
+        // called after all a module is spawned (asynchronous)
+        ${13}
+    },
+    onSpawnComplete: function () {
+        // called after all modules are spawned (asynchronous)
+        ${14}
+    }
+});
  */
 bento.define('bento/tiled', [
     'bento',
@@ -15418,7 +15841,7 @@ bento.define('bento/tiledreader', [], function () {
  * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
  * @returns Entity
- * @snippet Tween.snippet
+ * @snippet Tween|constructor
 Tween({
     from: ${1:0},
     to: ${2:1},
@@ -15771,6 +16194,8 @@ bento.define('bento/tween', [
              * @instance
              * @returns {Entity} Returns self
              * @name begin
+             * @snippet #Tween.begin|Tween
+            begin();
              */
             begin: function () {
                 time = 0;
@@ -15787,6 +16212,8 @@ bento.define('bento/tween', [
              * @instance
              * @returns {Entity} Returns self
              * @name stop
+             * @snippet #Tween.stop|Tween
+            stop();
              */
             stop: function () {
                 time = 0;
@@ -16481,7 +16908,7 @@ bento.define('bento/components/pixi/sprite', [
  * @module bento/gui/clickbutton
  * @moduleName ClickButton
  * @returns Entity
- * @snippet ClickButton.snippet
+ * @snippet ClickButton|constructor
 ClickButton({
     z: ${1:0},
     name: '$2',
@@ -16702,6 +17129,8 @@ bento.define('bento/gui/clickbutton', [
              * @param {Bool} active - Should be active or not
              * @instance
              * @name setActive
+             * @snippet #ClickButton.setActive|snippet
+            setActive(${1:true});
              */
             setActive: setActive,
             /**
@@ -16709,6 +17138,8 @@ bento.define('bento/gui/clickbutton', [
              * @function
              * @instance
              * @name doCallback
+             * @snippet #ClickButton.doCallback|snippet
+            doCallback();
              */
             doCallback: function () {
                 settings.onClick.apply(entity);
@@ -16719,6 +17150,8 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name isActive
              * @returns {Bool} Whether the button is active
+             * @snippet #ClickButton.isActive|Boolean
+            isActive(${1:true});
              */
             isActive: function () {
                 return active;
@@ -16765,6 +17198,14 @@ bento.define('bento/gui/clickbutton', [
             }
         });
 
+        // active property
+        Object.defineProperty(entity, 'active', {
+            get: function () {
+                return active;
+            },
+            set: setActive
+        });
+
         return entity;
     };
 
@@ -16774,11 +17215,72 @@ bento.define('bento/gui/clickbutton', [
 });
 /**
  * An entity that behaves like a counter.
- * TODO: document settings parameter
  * <br>Exports: Constructor
  * @module bento/gui/counter
  * @moduleName Counter
  * @returns Entity
+ * @snippet Counter|constructor
+Counter({
+    z: ${1:0},
+    name: '$2',
+    value: ${3:0},
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:10},
+    padding: ${7:0},
+    align: '${8:center}',
+    spacing: new Vector2(${9:0}, ${10:0}),
+    position: new Vector2(${11:0}, ${12:0}),
+    updateWhenPaused: ${13:0},
+    float: ${14:false},
+});
+ * @snippet Counter|animations
+Counter({
+    z: ${1:0},
+    name: '$2',
+    value: ${3:0},
+    imageName: '$4',
+    frameCountX: ${5:1},
+    frameCountY: ${6:10},
+    animations: {
+        '0': {
+            frames: [0]
+        },
+        '1': {
+            frames: [1]
+        },
+        '2': {
+            frames: [2]
+        },
+        '3': {
+            frames: [3]
+        },
+        '4': {
+            frames: [4]
+        },
+        '5': {
+            frames: [5]
+        },
+        '6': {
+            frames: [6]
+        },
+        '7': {
+            frames: [7]
+        },
+        '8': {
+            frames: [8]
+        },
+        '9': {
+            frames: [9]
+        }
+    },
+    padding: ${7:0},
+    align: '${8:center}',
+    spacing: new Vector2(${9:0}, ${10:0}),
+    position: new Vector2(${11:0}, ${12:0}),
+    updateWhenPaused: ${13:0},
+    float: ${14:false},
+});
  */
 bento.define('bento/gui/counter', [
     'bento',
@@ -16976,6 +17478,8 @@ bento.define('bento/gui/counter', [
         container = new Entity(entitySettings).extend({
             /*
              * Sets current value
+             * @snippet #Counter.setValue|snippet
+                setValue(${1:0});
              */
             setValue: function (val) {
                 value = val;
@@ -16983,17 +17487,34 @@ bento.define('bento/gui/counter', [
             },
             /*
              * Retrieves current value
+             * @snippet #Counter.getValue|Number
+                getValue();
              */
             getValue: function () {
                 return value;
             },
+            /*
+             * Add value
+             * @snippet #Counter.addValue|snippet
+                addValue(${1:0});
+             */
             addValue: function (val) {
                 value += val;
                 updateDigits();
             },
+            /*
+             * Get number of digits
+             * @snippet #Counter.getDigits|Number
+                getDigits();
+             */
             getDigits: function () {
                 return getDigits();
             },
+            /*
+             * Loop through digits
+             * @snippet #Counter.loopDigits|snippet
+                loopDigits(function (digitEntity) {$1});
+             */
             loopDigits: function (callback) {
                 var i = 0;
                 for (i = 0; i < children.length; ++i) {
@@ -17035,7 +17556,7 @@ bento.define('bento/gui/counter', [
  * @param {Boolean} [settings.drawDebug] - Draws the maxWidth and maxHeight as a box. Also available as static value Text.drawDebug, affecting every Text object.
  * @module bento/gui/text
  * @moduleName Text
- * @snippet Text.snippet
+ * @snippet Text|constructor
 Text({
     z: ${1:0},
     position: new Vector2(${2:0}, ${3:0}),
@@ -17796,6 +18317,8 @@ bento.define('bento/gui/text', [
              * @instance
              * @name getText
              * @returns String
+             * @snippet #Text.getText|String
+                getText();
              */
             getText: function () {
                 return text;
@@ -17805,6 +18328,8 @@ bento.define('bento/gui/text', [
              * @function
              * @instance
              * @name getStrings
+             * @snippet #Text.getStrings|Array
+                getStrings();
              * @returns Array
              */
             getStrings: function () {
@@ -17817,6 +18342,10 @@ bento.define('bento/gui/text', [
              * @function
              * @instance
              * @name setText
+             * @snippet #Text.setText|snippet
+                setText('$1');
+             * @snippet #Text.setText|settings
+                setText('$1', ${2:{}});
              */
             setText: function (str, settings) {
                 var cachedFontSize = 0,
@@ -17873,7 +18402,7 @@ bento.define('bento/gui/text', [
  * @module bento/gui/togglebutton
  * @moduleName ToggleButton
  * @returns Entity
- * @snippet ToggleButton.snippet
+ * @snippet ToggleButton|constructor
 ToggleButton({
     z: ${1:0},
     name: '$2',
@@ -17882,10 +18411,10 @@ ToggleButton({
     frameCountX: ${5:1},
     frameCountY: ${6:3},
     position: new Vector2(${7:0}, ${8:0}),
-    updateWhenPaused: ${10:0},
-    float: ${9:false},
+    updateWhenPaused: ${9:0},
+    float: ${10:false},
     onToggle: function () {
-        $10
+        ${11}
     }
 });
  */
@@ -18021,6 +18550,8 @@ bento.define('bento/gui/togglebutton', [
              * @function
              * @instance
              * @name isToggled
+             * @snippet #ToggleButton.isToggled|Boolean
+                isToggled();
              * @returns {Bool} Whether the button is toggled
              */
             isToggled: function () {
@@ -18033,6 +18564,10 @@ bento.define('bento/gui/togglebutton', [
              * @param {Bool} doCallback - Perform the onToggle callback or not
              * @instance
              * @name toggle
+             * @snippet #ToggleButton.toggle|snippet
+                toggle(${1:true});
+             * @snippet #ToggleButton.toggle|do callback
+                toggle(${1:true}, true);
              */
             toggle: function (state, doCallback) {
                 if (Utils.isDefined(state)) {
@@ -18060,6 +18595,8 @@ bento.define('bento/gui/togglebutton', [
              * @param {Bool} active - Should be active or not
              * @instance
              * @name setActive
+             * @snippet #ToggleButton.setActive|snippet
+                setActive(${1:true});
              */
             setActive: function (bool) {
                 active = bool;
@@ -18074,6 +18611,8 @@ bento.define('bento/gui/togglebutton', [
              * @function
              * @instance
              * @name doCallback
+             * @snippet #ToggleButton.doCallback|snippet
+                doCallback();
              */
             doCallback: function () {
                 settings.onToggle.apply(entity);
@@ -18084,6 +18623,8 @@ bento.define('bento/gui/togglebutton', [
              * @instance
              * @name isActive
              * @returns {Bool} Whether the button is active
+             * @snippet #ToggleButton.isActive|Boolean
+                isActive();
              */
             isActive: function () {
                 return active;
@@ -18118,6 +18659,14 @@ bento.define('bento/gui/togglebutton', [
                     entity: entity
                 });
             }
+        });
+
+        // active property
+        Object.defineProperty(entity, 'active', {
+            get: function () {
+                return active;
+            },
+            set: entity.setActive
         });
 
         return entity;
