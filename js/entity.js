@@ -79,6 +79,8 @@ bento.define('bento/entity', [
          * Unique id
          * @instance
          * @name id
+         * @snippet #Entity.id|Number
+            id
          */
         this.id = id++;
         /**
@@ -86,6 +88,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name z
+         * @snippet #Entity.z|Number
+            z
          */
         this.z = 0;
         /**
@@ -100,6 +104,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name timer
+         * @snippet #Entity.timer|Number
+            timer
          */
         this.timer = 0;
         /**
@@ -107,6 +113,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name ticker
+         * @snippet #Entity.ticker|Number
+            ticker
          */
         this.ticker = 0;
         /**
@@ -114,6 +122,8 @@ bento.define('bento/entity', [
          * @instance
          * @default false
          * @name global
+         * @snippet #Entity.global|Boolean
+            global
          */
         this.global = false;
         /**
@@ -121,6 +131,8 @@ bento.define('bento/entity', [
          * @instance
          * @default false
          * @name float
+         * @snippet #Entity.float|Boolean
+            float
          */
         this.float = false;
         /**
@@ -130,6 +142,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name updateWhenPaused
+         * @snippet #Entity.updateWhenPaused|Number
+            updateWhenPaused
          */
         this.updateWhenPaused = 0;
         /**
@@ -137,6 +151,10 @@ bento.define('bento/entity', [
          * @instance
          * @default ''
          * @name name
+         * @snippet #Entity.name|String
+            name
+         * @snippet #Entity.isAdded|read-only
+            isAdded
          */
         this.name = '';
         this.isAdded = false;
@@ -145,6 +163,8 @@ bento.define('bento/entity', [
          * @instance
          * @default Vector2(0, 0)
          * @name position
+         * @snippet #Entity.position|Vector2
+            position
          */
         this.position = new Vector2(0, 0);
         /**
@@ -160,6 +180,8 @@ bento.define('bento/entity', [
          * @instance
          * @default []
          * @name components
+         * @snippet #Entity.components|Array
+            components
          */
         this.components = [];
         /**
@@ -167,6 +189,8 @@ bento.define('bento/entity', [
          * @instance
          * @default Rectangle(0, 0, 0, 0)
          * @name dimension
+         * @snippet #Entity.dimension|Rectangle
+            dimension
          */
         this.dimension = new Rectangle(0, 0, 0, 0);
         /**
@@ -175,6 +199,8 @@ bento.define('bento/entity', [
          * @default null
          * @see module:bento/entity#getBoundingBox for usage
          * @name boundingBox
+         * @snippet #Entity.boundingBox|Rectangle
+            boundingBox
          */
         this.boundingBox = settings.boundingBox || null;
         /**
@@ -182,6 +208,8 @@ bento.define('bento/entity', [
          * @instance
          * @default Vector2(1, 1)
          * @name scale
+         * @snippet #Entity.scale|Vector2
+            scale
          */
         this.scale = new Vector2(1, 1);
         /**
@@ -189,6 +217,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 0
          * @name rotation
+         * @snippet #Entity.rotation|Number
+            scale
          */
         this.rotation = 0;
         /**
@@ -196,6 +226,8 @@ bento.define('bento/entity', [
          * @instance
          * @default 1
          * @name alpha
+         * @snippet #Entity.alpha|Number
+            alpha
          */
         this.alpha = 1;
         /**
@@ -203,12 +235,16 @@ bento.define('bento/entity', [
          * @instance
          * @default true
          * @name visible
+         * @snippet #Entity.visible|Boolean
+            visible
          */
         this.visible = true;
         /**
          * Transform module
          * @instance
          * @name transform
+         * @snippet #Entity.transform|Transform
+            transform
          */
         this.transform = new Transform(this);
         /**
@@ -217,12 +253,16 @@ bento.define('bento/entity', [
          * @default null
          * @see module:bento/entity#attach
          * @name parent
+         * @snippet #Entity.parent|read-only
+            parent
          */
         this.parent = null;
         /**
          * Reference to the settings parameter passed to the constructor
          * @instance
          * @name settings
+         * @snippet #Entity.settings|Object
+            settings
          */
         this.settings = settings;
         // Current component that is being processed, useful for debugging
