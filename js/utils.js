@@ -494,8 +494,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name getDefault
-         * @snippet Utils.getDefault|Object
-        Utils.getDefault(${1:Object, ${2:default}});
+         * @snippet Utils.getDefault|snippet
+        Utils.getDefault(${1:value}, ${2:default});
          * @param {Anything} value - any type
          * @param {Anything} value - any type
          */
@@ -521,7 +521,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name getRandomRange
          * @snippet Utils.getRandomRange|Number
-        Utils.getRandomRange(${1:Minimum, ${2:Number}});
+        Utils.getRandomRange(${1:Minimum}, ${2:Number});
          * @param {Number} min - minimum value
          * @param {Number} max - maximum value
          * @return {Number} Randomized integer
@@ -549,7 +549,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name getRandomRangeFloat
          * @snippet Utils.getRandomRangeFloat|Number
-        Utils.getRandomRangeFloat(${1:Minimum, ${2:Number}});
+        Utils.getRandomRangeFloat(${1:Minimum}, ${2:Number});
          * @param {Number} min - minimum value
          * @param {Number} max - maximum value
          * @return {Number} Randomized number
@@ -611,7 +611,7 @@ bento.define('bento/utils', [], function () {
          * @param {Number} step - step to take (should always be a positive value)
          * @name approach
          * @snippet Utils.approach|Number
-        Utils.approach(${1:start, ${2:end}, ${3:step}});
+        Utils.approach(${1:start}, ${2:end}, ${3:step});
          */
         approach: function (start, end, max) {
             max = Math.abs(max);
@@ -630,7 +630,7 @@ bento.define('bento/utils', [], function () {
          * @param {Array} [params] - Parameters to pass to function
          * @name repeat
          * @snippet Utils.repeat|snippet
-        Utils.repeat(${1:1, ${2:Function}});
+        Utils.repeat(${1:1}, ${2:Function});
          */
         repeat: function (number, fn) {
             var i;
@@ -725,7 +725,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Object} jsonObj - Object literal that adheres to JSON standards
          * @name cloneJson
          * @snippet Utils.cloneJson|Object
-        Utils.cloneJson(${1:JSON});
+        Utils.cloneJson(${1:json});
          */
         cloneJson: function (jsonObj) {
             var out;
@@ -773,7 +773,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name pickRandom
          * @snippet Utils.pickRandom|Object
-        Utils.pickRandom(${1:});
+        Utils.pickRandom(${1}, ${2}, ${3:...});
          */
         pickRandom: function () {
             return arguments[this.getRandom(arguments.length)];
