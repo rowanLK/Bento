@@ -678,6 +678,47 @@ bento.define('bento/utils', [], function () {
             return hash;
         },
         /**
+         * Extends object literal properties with another object
+         * If the objects have the same property name, then the old one is pushed to a property called "base"
+         * @function
+         * @instance
+         * @name extend
+         * @snippet Utils.extend|Object
+        Utils.extend(${1:Object}, ${2:Object2});
+         * @snippet Utils.extend|conflict
+Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
+    ${4://code here}
+});
+         * @param {Object} object1 - original object
+         * @param {Object} object2 - new object
+         * @param {Bool} [force] - Overwrites properties (defaults to false)
+         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
+         * @return {Array} The updated array
+         */
+        extend: extend,
+        /**
+         * Counts the number of keys in an object literal
+         * @function
+         * @instance
+         * @name getKeyLength
+         * @snippet Utils.getKeyLength|Number
+        Utils.getKeyLength(${1});
+         * @param {Object} object - object literal
+         * @return {Number} Number of keys
+         */
+        getKeyLength: getKeyLength,
+        /**
+         * Returns a (shallow) copy of an object literal
+         * @function
+         * @instance
+         * @name copyObject
+         * @snippet Utils.copyObject|Object
+        Utils.copyObject(${1:Object});
+         * @param {Object} object - object literal
+         * @return {Object} Shallow copy
+         */
+        copyObject: copyObject,
+        /**
          * Returns a clone of a JSON object
          * @function
          * @instance
@@ -696,6 +737,18 @@ bento.define('bento/utils', [], function () {
             }
             return out;
         },
+        /**
+         * Removes entry from array (note: only removes all matching values it finds)
+         * @function
+         * @instance
+         * @param {Array} array - array
+         * @param {Anything} value - any type
+         * @return {Bool} True if removal was successful, false if the value was not found
+         * @name removeFromArray
+         * @snippet Utils.removeFromArray|Object
+        Utils.removeFromArray(${1:Array}, ${2:Value});
+         */
+        removeFromArray: removeFromArray,
         /**
          * Checks whether a value is between two other values
          * @function
@@ -974,59 +1027,6 @@ bento.define('bento/utils', [], function () {
         Utils.isNotEmpty(${1});
          */
         isNotEmpty: isNotEmpty,
-        /**
-         * Removes entry from array (note: only removes all matching values it finds)
-         * @function
-         * @instance
-         * @param {Array} array - array
-         * @param {Anything} value - any type
-         * @return {Bool} True if removal was successful, false if the value was not found
-         * @name removeFromArray
-         * @snippet Utils.removeFromArray|Object
-        Utils.removeFromArray(${1:Array}, ${2:Value});
-         */
-        removeFromArray: removeFromArray,
-        /**
-         * Extends object literal properties with another object
-         * If the objects have the same property name, then the old one is pushed to a property called "base"
-         * @function
-         * @instance
-         * @name extend
-         * @snippet Utils.extend|Object
-        Utils.extend(${1:Object}, ${2:Object2});
-         * @snippet Utils.extend|conflict
-Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
-    ${4://code here}
-});
-         * @param {Object} object1 - original object
-         * @param {Object} object2 - new object
-         * @param {Bool} [force] - Overwrites properties (defaults to false)
-         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
-         * @return {Array} The updated array
-         */
-        extend: extend,
-        /**
-         * Counts the number of keys in an object literal
-         * @function
-         * @instance
-         * @name getKeyLength
-         * @snippet Utils.getKeyLength|Number
-        Utils.getKeyLength(${1});
-         * @param {Object} object - object literal
-         * @return {Number} Number of keys
-         */
-        getKeyLength: getKeyLength,
-        /**
-         * Returns a (shallow) copy of an object literal
-         * @function
-         * @instance
-         * @name copyObject
-         * @snippet Utils.copyObject|Object
-        Utils.copyObject(${1:Object});
-         * @param {Object} object - object literal
-         * @return {Object} Shallow copy
-         */
-        copyObject: copyObject,
         stableSort: stableSort,
         keyboardMapping: keyboardMapping,
         remoteMapping: remoteMapping,
