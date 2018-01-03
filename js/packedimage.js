@@ -10,6 +10,10 @@
  * @param {Rectangle} frame - Frame boundaries in the image
  * @returns {Rectangle} rectangle - Returns a rectangle with additional image property
  * @returns {HTMLImage} rectangle.image - Reference to the image
+ * @snippet PackedImage|constructor
+PackedImage(${1:image});
+ * @snippet PackedImage|frame
+PackedImage(${1:image}, new Rectangle(${2:0}, ${3:0}, ${4:32}, ${5:32}));
  */
 bento.define('bento/packedimage', [
     'bento/math/rectangle'

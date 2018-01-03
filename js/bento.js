@@ -12,37 +12,54 @@
  * @moduleName Bento
  *
  *
- * @snippet getJson.AssetManager
+ * @snippet Bento.assets|assets
+Bento.assets
+ * @snippet Bento.objects|objects
+Bento.objects
+ * @snippet Bento.saveState|saveState
+Bento.saveState
+ * @snippet Bento.screens|screens
+Bento.screens
+ * @snippet Bento.audio|audio
+Bento.audio
+ *
+ * @snippet Bento.assets.getJson|Object
 Bento.assets.getJson('${1}');
  *
- * @snippet attach.ObjectManager
+ * @snippet Bento.objects.attach|snippet
 Bento.objects.attach(${1:entity});
- * @snippet remove.ObjectManager
+ * @snippet Bento.objects.remove|snippet
 Bento.objects.remove(${1:entity});
- * @snippet get.ObjectManager
+ * @snippet Bento.objects.get|Entity/Object
 Bento.objects.get('${1}', function (${1:entity}) {
     $2
 });
- * @snippet getByFamily.ObjectManager
-Bento.objects.getByFamily('${1}');
+ * @snippet Bento.objects.getByFamily|Entity/Object
+Bento.objects.getByFamily('${1}', function (array) {$2});
  *
- * @snippet playSound.AudioManager
+ * @snippet Bento.audio.playSound|snippet
 Bento.audio.playSound('sfx_${1}');
- * @snippet stopSound.AudioManager
+ * @snippet Bento.audio.stopSound|snippet
 Bento.audio.stopSound('sfx_${1}');
- * @snippet playMusic.AudioManager
+ * @snippet Bento.audio.playMusic|snippet
 Bento.audio.playMusic('bgm_${1}');
- * @snippet stopAllMusic.AudioManager
+ * @snippet Bento.audio.stopAllMusic|snippet
 Bento.audio.stopAllMusic();
+ * @snippet Bento.audio.setVolume|snippet
+Bento.audio.setVolume: function (${1:1}, '${2:name}');
+ * @snippet Bento.audio.isPlayingMusic|Boolean
+Bento.audio.isPlayingMusic: function ('${1:name}');
  *
- * @snippet save.SaveState
+ * @snippet Bento.saveState.save|snippet
 Bento.saveState.save('${1}', ${2:value});
- * @snippet load.SaveState
+ * @snippet Bento.saveState.load|Value
 Bento.saveState.load('${1}', ${2:defaultValue});
+ * @snippet Bento.saveState.add|snippet
+Bento.saveState.add('${1}', ${2:value});
  *
- * @snippet show.ScreenManager
+ * @snippet Bento.screens.show|snippet
 Bento.screens.show('screens/${1:name}');
- * @snippet getCurrentScreen.ScreenManager
+ * @snippet Bento.screens.getCurrentScreen|Screen
 Bento.screens.getCurrentScreen();
  *
  */

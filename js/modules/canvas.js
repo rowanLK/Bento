@@ -11,6 +11,17 @@
  * @module bento/canvas
  * @moduleName Canvas
  * @returns Entity
+ * @snippet Canvas|constructor
+Canvas({
+    z: ${1:0},
+    width: ${2:64},
+    height: ${3:64},
+    preventAutoClear: ${4:false}, // prevent canvas from clearing every tick
+    pixelSize: ${5:1}, // multiplies internal canvas size
+    drawOnce: ${6:false}, // draw canvas only once
+    originRelative: new Vector2(${7:0}, ${8:0}),
+    components: []
+});
  */
 bento.define('bento/canvas', [
     'bento',
@@ -172,6 +183,8 @@ bento.define('bento/canvas', [
              * @instance
              * @returns HTML Canvas Element
              * @name getCanvas
+             * @snippet #Canvas.getCanvas|CanvasElement
+                getCanvas();
              */
             getCanvas: function () {
                 return canvas;
@@ -181,6 +194,8 @@ bento.define('bento/canvas', [
              * @function
              * @instance
              * @returns HTML Canvas 2d Context
+             * @snippet #Canvas.getContext|Context2D
+                getContext();
              * @name getContext
              */
             getContext: function () {
@@ -192,15 +207,19 @@ bento.define('bento/canvas', [
              * @instance
              * @returns String
              * @name getBase64
+             * @snippet #Canvas.getBase64|String
+                getBase64();
              */
             getBase64: function () {
                 return canvas.toDataURL();
             },
             /**
-             * Download the canvas as png
+             * Download the canvas as png (useful for debugging purposes)
              * @function
              * @instance
              * @name downloadImage
+             * @snippet #Canvas.downloadImage|debug
+                downloadImage();
              */
             downloadImage: function (name) {
                 var link = document.createElement("a");
@@ -209,6 +228,23 @@ bento.define('bento/canvas', [
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+            },
+            /**
+             * Call this function if you have no intent on attaching the canvas,
+             * but you do want to draw on the canvas once
+             * @function
+             * @instance
+             * @name drawOnce
+             * @snippet #Canvas.drawOnce|snippet
+                drawOnce();
+             */
+            drawOnce: function (data) {
+                if (canvas.isAdded) {
+                    Utils.log('This Canvas is already attached, no need to call this function.');
+                    return;
+                }
+                canvas.start(data);
+                canvas.draw(data);
             }
         });
 

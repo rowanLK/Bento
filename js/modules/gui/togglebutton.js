@@ -10,7 +10,7 @@
  * @module bento/gui/togglebutton
  * @moduleName ToggleButton
  * @returns Entity
- * @snippet ToggleButton.snippet
+ * @snippet ToggleButton|constructor
 ToggleButton({
     z: ${1:0},
     name: '$2',
@@ -19,10 +19,10 @@ ToggleButton({
     frameCountX: ${5:1},
     frameCountY: ${6:3},
     position: new Vector2(${7:0}, ${8:0}),
-    updateWhenPaused: ${10:0},
-    float: ${9:false},
+    updateWhenPaused: ${9:0},
+    float: ${10:false},
     onToggle: function () {
-        $10
+        ${11}
     }
 });
  */
@@ -158,6 +158,8 @@ bento.define('bento/gui/togglebutton', [
              * @function
              * @instance
              * @name isToggled
+             * @snippet #ToggleButton.isToggled|Boolean
+                isToggled();
              * @returns {Bool} Whether the button is toggled
              */
             isToggled: function () {
@@ -170,6 +172,10 @@ bento.define('bento/gui/togglebutton', [
              * @param {Bool} doCallback - Perform the onToggle callback or not
              * @instance
              * @name toggle
+             * @snippet #ToggleButton.toggle|snippet
+                toggle(${1:true});
+             * @snippet #ToggleButton.toggle|do callback
+                toggle(${1:true}, true);
              */
             toggle: function (state, doCallback) {
                 if (Utils.isDefined(state)) {
@@ -197,6 +203,8 @@ bento.define('bento/gui/togglebutton', [
              * @param {Bool} active - Should be active or not
              * @instance
              * @name setActive
+             * @snippet #ToggleButton.setActive|snippet
+                setActive(${1:true});
              */
             setActive: function (bool) {
                 active = bool;
@@ -211,6 +219,8 @@ bento.define('bento/gui/togglebutton', [
              * @function
              * @instance
              * @name doCallback
+             * @snippet #ToggleButton.doCallback|snippet
+                doCallback();
              */
             doCallback: function () {
                 settings.onToggle.apply(entity);
@@ -221,6 +231,8 @@ bento.define('bento/gui/togglebutton', [
              * @instance
              * @name isActive
              * @returns {Bool} Whether the button is active
+             * @snippet #ToggleButton.isActive|Boolean
+                isActive();
              */
             isActive: function () {
                 return active;

@@ -3,14 +3,6 @@
  * <br>Exports: Object
  * @module bento/utils
  * @moduleName Utils
- * @snippet forEach.Utils
-Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
-    ${3:// code here}
-});
- * @snippet log.Utils
-Utils.log('WARNING: ${1}');
- * @snippet clamp.Utils
-Utils.clamp(${1:min}, ${2:value}, ${3:max});
  */
 bento.define('bento/utils', [], function () {
     'use strict';
@@ -417,309 +409,36 @@ bento.define('bento/utils', [], function () {
 
     Utils = {
         /**
+         * Checks if environment is iOS (using Cocoon.io)
          * @function
          * @instance
-         * @name isString
+         * @name isNativeIos
+         * @snippet Utils.isNativeIos|Boolean
+        Utils.isNativeIos();
          */
-        isString: isString,
-        /**
-         * @function
-         * @instance
-         * @name isArray
-         */
-        isArray: isArray,
-        /**
-         * @function
-         * @instance
-         * @name isObject
-         */
-        isObject: isObject,
-        /**
-         * @function
-         * @instance
-         * @name isFunction
-         */
-        isFunction: isFunction,
-        /**
-         * @function
-         * @instance
-         * @name isNumber
-         */
-        isNumber: isNumber,
-        /**
-         * @function
-         * @instance
-         * @name isBoolean
-         */
-        isBoolean: isBoolean,
-        /**
-         * @function
-         * @instance
-         * @name isInt
-         */
-        isInt: isInt,
-        /**
-         * Is parameter undefined?
-         * @function
-         * @name isUndefined
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is undefined
-         * @instance
-         */
-        isUndefined: isUndefined,
-        /**
-         * Is parameter anything other than undefined?
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is not undefined
-         * @name isDefined
-         */
-        isDefined: isDefined,
-        /**
-         * Is parameter null or undefined
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is null or undefined
-         * @name isEmpty
-         */
-        isEmpty: isEmpty,
-        /**
-         * Is parameter anything other than null or undefined
-         * @function
-         * @instance
-         * @param {Anything} obj - any type
-         * @return {Bool} True if parameter is not null or undefined
-         * @name isNotEmpty
-         */
-        isNotEmpty: isNotEmpty,
-        /**
-         * Removes entry from array (note: only removes all matching values it finds)
-         * @function
-         * @instance
-         * @param {Array} array - array
-         * @param {Anything} value - any type
-         * @return {Bool} True if removal was successful, false if the value was not found
-         * @name removeFromArray
-         */
-        removeFromArray: removeFromArray,
-        /**
-         * Extends object literal properties with another object
-         * If the objects have the same property name, then the old one is pushed to a property called "base"
-         * @function
-         * @instance
-         * @name extend
-         * @param {Object} object1 - original object
-         * @param {Object} object2 - new object
-         * @param {Bool} [force] - Overwrites properties (defaults to false)
-         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
-         * @return {Array} The updated array
-         */
-        extend: extend,
-        /**
-         * Counts the number of keys in an object literal
-         * @function
-         * @instance
-         * @name getKeyLength
-         * @param {Object} object - object literal
-         * @return {Number} Number of keys
-         */
-        getKeyLength: getKeyLength,
-        /**
-         * Returns a (shallow) copy of an object literal
-         * @function
-         * @instance
-         * @name copyObject
-         * @param {Object} object - object literal
-         * @return {Object} Shallow copy
-         */
-        copyObject: copyObject,
-        stableSort: stableSort,
-        keyboardMapping: keyboardMapping,
-        remoteMapping: remoteMapping,
-        gamepadMapping: gamepadMapping,
-        /**
-         * Returns either the provided value, or the provided fallback value in case the provided value was undefined
-         */
-        getDefault: function (param, fallback) {
-            return (param !== void(0)) ? param : fallback;
-        },
-        /**
-         * Returns a random integer [0...n)
-         * @function
-         * @instance
-         * @name getRandom
-         * @param {Number} n - limit of random number
-         * @return {Number} Randomized integer
-         */
-        getRandom: function (n) {
-            return Math.floor(Math.random() * n);
-        },
-        /**
-         * Returns a random integer between range [min...max)
-         * @function
-         * @instance
-         * @name getRandomRange
-         * @param {Number} min - minimum value
-         * @param {Number} max - maximum value
-         * @return {Number} Randomized integer
-         */
-        getRandomRange: function (min, max) {
-            var diff = max - min;
-            return min + Math.floor(Math.random() * diff);
-        },
-        /**
-         * Returns a random float [0...n)
-         * @function
-         * @instance
-         * @name getRandomFloat
-         * @param {Number} n - limit of random number
-         * @return {Number} Randomized number
-         */
-        getRandomFloat: function (n) {
-            return Math.random() * n;
-        },
-        /**
-         * Returns a random float between range [min...max)
-         * @function
-         * @instance
-         * @name getRandomRangeFloat
-         * @param {Number} min - minimum value
-         * @param {Number} max - maximum value
-         * @return {Number} Randomized number
-         */
-        getRandomRangeFloat: function (min, max) {
-            var diff = max - min;
-            return min + Math.random() * diff;
-        },
-        /**
-         * Turns degrees into radians
-         * @function
-         * @instance
-         * @name toRadian
-         * @param {Number} degree - value in degrees
-         * @return {Number} radians
-         */
-        toRadian: function (degree) {
-            return degree * Math.PI / 180;
-        },
-        /**
-         * Turns radians into degrees
-         * @function
-         * @instance
-         * @name toDegree
-         * @param {Number} radians - value in radians
-         * @return {Number} degree
-         */
-        toDegree: function (radian) {
-            return radian / Math.PI * 180;
-        },
-        /**
-         * Sign of a number. Returns 0 if value is 0.
-         * @function
-         * @instance
-         * @param {Number} value - value to check
-         * @name sign
-         */
-        sign: function (value) {
-            if (value > 0) {
-                return 1;
-            } else if (value < 0) {
-                return -1;
-            } else {
-                return 0;
+        isNativeIos: function () {
+            if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
+                return true;
             }
+            return false;
         },
         /**
-         * Steps towards a number without going over the limit
+         * Checks if environment is Android (using Cocoon.io)
          * @function
          * @instance
-         * @param {Number} start - current value
-         * @param {Number} end - target value
-         * @param {Number} step - step to take (should always be a positive value)
-         * @name approach
+         * @name isNativeAndroid
+         * @snippet Utils.isNativeAndroid|Boolean
+        Utils.isNativeAndroid();
          */
-        approach: function (start, end, max) {
-            max = Math.abs(max);
-            if (start < end) {
-                return Math.min(start + max, end);
-            } else {
-                return Math.max(start - max, end);
-            }
-        },
-        /**
-         * Repeats a function for a number of times
-         * @function
-         * @instance
-         * @param {Number} number - Number of times to repeat
-         * @param {Function} fn - function to perform
-         * @param {Array} [params] - Parameters to pass to function
-         * @name repeat
-         */
-        repeat: function (number, fn, params) {
-            var i;
-            var count;
-            var action;
-            if (typeof number === "number") {
-                count = number;
-                action = fn;
-            } else {
-                // swapped the parameters
-                count = fn;
-                action = number;
-            }
-            if (!action.apply) {
-                Utils.log("Did not pass a function");
-                return;
-            }
-            for (i = 0; i < count; ++i) {
-                if (params) {
-                    action.apply(window, params);
-                } else {
-                    action();
+        isNativeAndroid: function () {
+            var platform;
+            if (navigator.isCocoonJS && window.Cocoon) {
+                platform = window.Cocoon.getPlatform();
+                if (platform === 'android' || platform === 'amazon') {
+                    return true;
                 }
             }
-        },
-        /**
-         * A simple hashing function, similar to Java's String.hashCode()
-         * source: http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
-         * @function
-         * @instance
-         * @param {String} string - String to hash
-         * @name checksum
-         */
-        checksum: function (str) {
-            var hash = 0,
-                strlen = (str || '').length,
-                i,
-                c;
-            if (strlen === 0) {
-                return hash;
-            }
-            for (i = 0; i < strlen; ++i) {
-                c = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + c;
-                hash = hash & hash; // Convert to 32bit integer
-            }
-            return hash;
-        },
-        /**
-         * Returns a clone of a JSON object
-         * @function
-         * @instance
-         * @param {Object} jsonObj - Object literal that adheres to JSON standards
-         * @name cloneJson
-         */
-        cloneJson: function (jsonObj) {
-            var out;
-            try {
-                out = JSON.parse(JSON.stringify(jsonObj));
-            } catch (e) {
-                out = {};
-                console.log('WARNING: object cloning failed');
-            }
-            return out;
+            return false;
         },
         /**
          * Callback during foreach
@@ -728,7 +447,7 @@ bento.define('bento/utils', [], function () {
          * @param {Object} value - The value in the array or object literal
          * @param {Number} index - Index of the array or key in object literal
          * @param {Number} length - Length of the array or key count in object literal
-         * @param {Fuction} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
+         * @param {Function} breakLoop - Calling this breaks the loop and stops iterating over the array or object literal
          */
         /**
          * Loops through an array
@@ -737,6 +456,10 @@ bento.define('bento/utils', [], function () {
          * @param {Array/Object} array - Array or Object literal to loop through
          * @param {IteratorCallback} callback - Callback function
          * @name forEach
+         * @snippet Utils.forEach
+        Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+    ${3:// code here}
+});
          */
         forEach: function (array, callback) {
             var obj;
@@ -767,6 +490,266 @@ bento.define('bento/utils', [], function () {
             }
         },
         /**
+         * Returns either the provided value, or the provided fallback value in case the provided value was undefined
+         * @function
+         * @instance
+         * @name getDefault
+         * @snippet Utils.getDefault|Object
+        Utils.getDefault(${1:Object, ${2:default}});
+         * @param {Anything} value - any type
+         * @param {Anything} value - any type
+         */
+        getDefault: function (param, fallback) {
+            return (param !== void(0)) ? param : fallback;
+        },
+        /**
+         * Returns a random integer [0...n)
+         * @function
+         * @instance
+         * @name getRandom
+         * @snippet Utils.getRandom|Number
+        Utils.getRandom(${1:Number});
+         * @param {Number} n - limit of random number
+         * @return {Number} Randomized integer
+         */
+        getRandom: function (n) {
+            return Math.floor(Math.random() * n);
+        },
+        /**
+         * Returns a random integer between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRange
+         * @snippet Utils.getRandomRange|Number
+        Utils.getRandomRange(${1:Minimum, ${2:Number}});
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized integer
+         */
+        getRandomRange: function (min, max) {
+            var diff = max - min;
+            return min + Math.floor(Math.random() * diff);
+        },
+        /**
+         * Returns a random float [0...n)
+         * @function
+         * @instance
+         * @name getRandomFloat
+         * @snippet Utils.getRandomFloat|Number
+        Utils.getRandomFloat(${1:Number});
+         * @param {Number} n - limit of random number
+         * @return {Number} Randomized number
+         */
+        getRandomFloat: function (n) {
+            return Math.random() * n;
+        },
+        /**
+         * Returns a random float between range [min...max)
+         * @function
+         * @instance
+         * @name getRandomRangeFloat
+         * @snippet Utils.getRandomRangeFloat|Number
+        Utils.getRandomRangeFloat(${1:Minimum, ${2:Number}});
+         * @param {Number} min - minimum value
+         * @param {Number} max - maximum value
+         * @return {Number} Randomized number
+         */
+        getRandomRangeFloat: function (min, max) {
+            var diff = max - min;
+            return min + Math.random() * diff;
+        },
+        /**
+         * Turns degrees into radians
+         * @function
+         * @instance
+         * @name toRadian
+         * @snippet Utils.toRadian|Number
+        Utils.toRadian(${1:Degrees});
+         * @param {Number} degree - value in degrees
+         * @return {Number} radians
+         */
+        toRadian: function (degree) {
+            return degree * Math.PI / 180;
+        },
+        /**
+         * Turns radians into degrees
+         * @function
+         * @instance
+         * @name toDegree
+         * @snippet Utils.toDegree|Number
+        Utils.toDegree(${1:Radians});
+         * @param {Number} radians - value in radians
+         * @return {Number} degree
+         */
+        toDegree: function (radian) {
+            return radian / Math.PI * 180;
+        },
+        /**
+         * Sign of a number. Returns 0 if value is 0.
+         * @function
+         * @instance
+         * @param {Number} value - value to check
+         * @name sign
+         * @snippet Utils.sign|Number
+        Utils.sign(${1:Number});
+         */
+        sign: function (value) {
+            if (value > 0) {
+                return 1;
+            } else if (value < 0) {
+                return -1;
+            } else {
+                return 0;
+            }
+        },
+        /**
+         * Steps towards a number without going over the limit
+         * @function
+         * @instance
+         * @param {Number} start - current value
+         * @param {Number} end - target value
+         * @param {Number} step - step to take (should always be a positive value)
+         * @name approach
+         * @snippet Utils.approach|Number
+        Utils.approach(${1:start, ${2:end}, ${3:step}});
+         */
+        approach: function (start, end, max) {
+            max = Math.abs(max);
+            if (start < end) {
+                return Math.min(start + max, end);
+            } else {
+                return Math.max(start - max, end);
+            }
+        },
+        /**
+         * Repeats a function for a number of times
+         * @function
+         * @instance
+         * @param {Number} number - Number of times to repeat
+         * @param {Function} fn - function to perform
+         * @param {Array} [params] - Parameters to pass to function
+         * @name repeat
+         * @snippet Utils.repeat|snippet
+        Utils.repeat(${1:1, ${2:Function}});
+         */
+        repeat: function (number, fn) {
+            var i;
+            var count;
+            var action;
+            if (typeof number === "number") {
+                count = number;
+                action = fn;
+            } else {
+                // swapped the parameters
+                count = fn;
+                action = number;
+            }
+            if (!action.apply) {
+                Utils.log("Did not pass a function");
+                return;
+            }
+            for (i = 0; i < count; ++i) {
+                action(i, count);
+            }
+        },
+        /**
+         * A simple hashing function, similar to Java's String.hashCode()
+         * source: http://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+         * @function
+         * @instance
+         * @param {String} string - String to hash
+         * @name checksum
+         * @snippet Utils.checksum|Number
+        Utils.checksum(${1:String});
+         */
+        checksum: function (str) {
+            var hash = 0,
+                strlen = (str || '').length,
+                i,
+                c;
+            if (strlen === 0) {
+                return hash;
+            }
+            for (i = 0; i < strlen; ++i) {
+                c = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + c;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash;
+        },
+        /**
+         * Extends object literal properties with another object
+         * If the objects have the same property name, then the old one is pushed to a property called "base"
+         * @function
+         * @instance
+         * @name extend
+         * @snippet Utils.extend|Object
+        Utils.extend(${1:Object}, ${2:Object2});
+         * @snippet Utils.extend|conflict
+Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
+    ${4://code here}
+});
+         * @param {Object} object1 - original object
+         * @param {Object} object2 - new object
+         * @param {Bool} [force] - Overwrites properties (defaults to false)
+         * @param {Function} [onConflict] - Called when properties have the same name. Only called if force is false.
+         * @return {Array} The updated array
+         */
+        extend: extend,
+        /**
+         * Counts the number of keys in an object literal
+         * @function
+         * @instance
+         * @name getKeyLength
+         * @snippet Utils.getKeyLength|Number
+        Utils.getKeyLength(${1});
+         * @param {Object} object - object literal
+         * @return {Number} Number of keys
+         */
+        getKeyLength: getKeyLength,
+        /**
+         * Returns a (shallow) copy of an object literal
+         * @function
+         * @instance
+         * @name copyObject
+         * @snippet Utils.copyObject|Object
+        Utils.copyObject(${1:Object});
+         * @param {Object} object - object literal
+         * @return {Object} Shallow copy
+         */
+        copyObject: copyObject,
+        /**
+         * Returns a clone of a JSON object
+         * @function
+         * @instance
+         * @param {Object} jsonObj - Object literal that adheres to JSON standards
+         * @name cloneJson
+         * @snippet Utils.cloneJson|Object
+        Utils.cloneJson(${1:JSON});
+         */
+        cloneJson: function (jsonObj) {
+            var out;
+            try {
+                out = JSON.parse(JSON.stringify(jsonObj));
+            } catch (e) {
+                out = {};
+                console.log('WARNING: object cloning failed');
+            }
+            return out;
+        },
+        /**
+         * Removes entry from array (note: only removes all matching values it finds)
+         * @function
+         * @instance
+         * @param {Array} array - array
+         * @param {Anything} value - any type
+         * @return {Bool} True if removal was successful, false if the value was not found
+         * @name removeFromArray
+         * @snippet Utils.removeFromArray|Object
+        Utils.removeFromArray(${1:Array}, ${2:Value});
+         */
+        removeFromArray: removeFromArray,
+        /**
          * Checks whether a value is between two other values
          * @function
          * @instance
@@ -775,6 +758,8 @@ bento.define('bento/utils', [], function () {
          * @param {Number} max - upper limit
          * @param {Boolean} includeEdge - includes edge values
          * @name isBetween
+         * @snippet Utils.isBetween|Boolean
+        Utils.isBetween(${1:minimum}, ${2:value}, ${3:maximum}, ${4:false});
          */
         isBetween: function (min, value, max, includeEdge) {
             if (includeEdge) {
@@ -787,6 +772,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name pickRandom
+         * @snippet Utils.pickRandom|Object
+        Utils.pickRandom(${1:});
          */
         pickRandom: function () {
             return arguments[this.getRandom(arguments.length)];
@@ -799,6 +786,8 @@ bento.define('bento/utils', [], function () {
          * @param {Number} value - value to clamp between min and max
          * @param {Number} max - upper limit
          * @name clamp
+         * @snippet Utils.clamp
+        Utils.clamp(${1:min}, ${2:value}, ${3:max});
          */
         clamp: function (min, value, max) {
             return Math.max(min, Math.min(value, max));
@@ -808,6 +797,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isApple
+         * @snippet Utils.isApple|Boolean
+        Utils.isApple();
          */
         isApple: function () {
             var device = (navigator.userAgent).match(/iPhone|iPad|iPod/i);
@@ -818,6 +809,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isAndroid
+         * @snippet Utils.isAndroid|Boolean
+        Utils.isAndroid();
          */
         isAndroid: function () {
             return /Android/i.test(navigator.userAgent);
@@ -827,6 +820,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isCocoonJs
+         * @snippet Utils.isCocoonJs|Boolean
+        Utils.isCocoonJs();
          */
         isCocoonJS: function () {
             return navigator.isCocoonJS;
@@ -839,6 +834,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isMobileBrowser
+         * @snippet Utils.isMobileBrowser|Boolean
+        Utils.isMobileBrowser();
          */
         isMobileBrowser: function () {
             var check = false;
@@ -850,38 +847,12 @@ bento.define('bento/utils', [], function () {
             return check;
         },
         /**
-         * Checks if environment is iOS (using Cocoon.io)
-         * @function
-         * @instance
-         * @name isNativeIos
-         */
-        isNativeIos: function () {
-            if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
-                return true;
-            }
-            return false;
-        },
-        /**
-         * Checks if environment is Android (using Cocoon.io)
-         * @function
-         * @instance
-         * @name isNativeAndroid
-         */
-        isNativeAndroid: function () {
-            var platform;
-            if (navigator.isCocoonJS && window.Cocoon) {
-                platform = window.Cocoon.getPlatform();
-                if (platform === 'android' || platform === 'amazon') {
-                    return true;
-                }
-            }
-            return false;
-        },
-        /**
          * Checks if environment is Android (using Cordova Device plugin)
          * @function
          * @instance
          * @name isAndroidDevice
+         * @snippet Utils.isAndroidDevice|Boolean
+        Utils.isAndroidDevice();
          */
         isAndroidDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -895,6 +866,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isIosDevice
+         * @snippet Utils.isIosDevice|Boolean
+        Utils.isIosDevice();
          */
         isIosDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -908,6 +881,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isAmazonDevice
+         * @snippet Utils.isAmazonDevice|Boolean
+        Utils.isAmazonDevice();
          */
         isAmazonDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -923,6 +898,8 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {Boolean} bool - set to true to use throws instead of console.logs
          * @name setDev
+         * @snippet Utils.setDev|snippet
+        Utils.setDev();
          */
         setDev: function (bool) {
             dev = bool;
@@ -932,6 +909,8 @@ bento.define('bento/utils', [], function () {
          * @function
          * @instance
          * @name isDev
+         * @snippet Utils.isDev|Boolean
+        Utils.isDev();
          */
         isDev: function () {
             return dev;
@@ -942,10 +921,116 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @param {String} msg - the message to log
          * @name log
+         * @snippet Utils.log
+        Utils.log('WARNING: ${1}');
          */
         log: function (msg) {
             console.error(msg);
         },
+        /**
+         * @function
+         * @instance
+         * @name isString
+         * @snippet Utils.isString|Boolean
+        Utils.isString(${1:String});
+         */
+        isString: isString,
+        /**
+         * @function
+         * @instance
+         * @name isArray
+         * @snippet Utils.isArray|Boolean
+        Utils.isArray(${1:Array});
+         */
+        isArray: isArray,
+        /**
+         * @function
+         * @instance
+         * @name isObject
+         * @snippet Utils.isObject|Boolean
+        Utils.isObject(${1:Object});
+         */
+        isObject: isObject,
+        /**
+         * @function
+         * @instance
+         * @name isFunction
+         * @snippet Utils.isFunction|Boolean
+        Utils.isFunction(${1:Function});
+         */
+        isFunction: isFunction,
+        /**
+         * @function
+         * @instance
+         * @name isNumber
+         * @snippet Utils.isNumber|Boolean
+        Utils.isNumber(${1:Number});
+         */
+        isNumber: isNumber,
+        /**
+         * @function
+         * @instance
+         * @name isBoolean
+         * @snippet Utils.isBoolean|Boolean
+        Utils.isBoolean(${1:Boolean});
+         */
+        isBoolean: isBoolean,
+        /**
+         * @function
+         * @instance
+         * @name isInt
+         * @snippet Utils.isInt|Boolean
+        Utils.isInt(${1:Integer});
+         */
+        isInt: isInt,
+        /**
+         * Is parameter undefined?
+         * @function
+         * @name isUndefined
+         * @snippet Utils.isUndefined|Boolean
+        Utils.isUndefined(${1});
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is undefined
+         * @instance
+         */
+        isUndefined: isUndefined,
+        /**
+         * Is parameter anything other than undefined?
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not undefined
+         * @name isDefined
+         * @snippet Utils.isDefined|Boolean
+        Utils.isDefined(${1});
+         */
+        isDefined: isDefined,
+        /**
+         * Is parameter null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is null or undefined
+         * @name isEmpty
+         * @snippet Utils.isEmpty|Boolean
+        Utils.isEmpty(${1});
+         */
+        isEmpty: isEmpty,
+        /**
+         * Is parameter anything other than null or undefined
+         * @function
+         * @instance
+         * @param {Anything} obj - any type
+         * @return {Bool} True if parameter is not null or undefined
+         * @name isNotEmpty
+         * @snippet Utils.isNotEmpty|Boolean
+        Utils.isNotEmpty(${1});
+         */
+        isNotEmpty: isNotEmpty,
+        stableSort: stableSort,
+        keyboardMapping: keyboardMapping,
+        remoteMapping: remoteMapping,
+        gamepadMapping: gamepadMapping,
         /**
          * Enum for sort mode, pass this to Bento.setup
          * @readonly
