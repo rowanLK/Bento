@@ -47,24 +47,32 @@ bento.define('bento/math/rectangle', [
          * X position
          * @instance
          * @name x
+         * @snippet #Rectangle.x|Number
+            x
          */
         this.x = x || 0;
         /**
          * Y position
          * @instance
          * @name y
+         * @snippet #Rectangle.y|Number
+            y
          */
         this.y = y || 0;
         /**
          * Width of the rectangle
          * @instance
          * @name width
+         * @snippet #Rectangle.width|Number
+            width
          */
         this.width = width || 0;
         /**
          * Height of the rectangle
          * @instance
          * @name height
+         * @snippet #Rectangle.height|Number
+            height
          */
         this.height = height || 0;
     };
@@ -84,6 +92,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Number} Coordinate of the lower right position
      * @instance
      * @name getX2
+     * @snippet #Rectangle.getX2|Number
+        getX2();
      */
     Rectangle.prototype.getX2 = function () {
         return this.x + this.width;
@@ -94,6 +104,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Number} Coordinate of the lower right position
      * @instance
      * @name getY2
+     * @snippet #Rectangle.getY2|Number
+        getY2();
      */
     Rectangle.prototype.getY2 = function () {
         return this.y + this.height;
@@ -105,6 +117,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} Union of the 2 rectangles
      * @instance
      * @name union
+     * @snippet #Rectangle.union|Rectangle
+        union(${1:otherRectangle});
      */
     Rectangle.prototype.union = function (rectangle) {
         var x1 = Math.min(this.x, rectangle.x),
@@ -120,6 +134,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} True if 2 rectangles intersect
      * @instance
      * @name intersect
+     * @snippet #Rectangle.intersect|Boolean
+        intersect(${1:otherRectangle});
      */
     Rectangle.prototype.intersect = function (other) {
         if (other.isPolygon) {
@@ -138,6 +154,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} Intersection of the 2 rectangles
      * @instance
      * @name intersection
+     * @snippet #Rectangle.intersection|Rectangle
+        intersectuib(${1:otherRectangle});
      */
     Rectangle.prototype.intersection = function (rectangle) {
         var inter = new Rectangle(0, 0, 0, 0);
@@ -157,6 +175,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} True if rectangle and circle intersect
      * @instance
      * @name intersectsCircle
+     * @snippet #Rectangle.intersectsCircle|Boolean
+        intersectsCircle(${1:centerVector}, ${2:radius});
      */
     Rectangle.prototype.intersectsCircle = function (circleCenter, radius) {
         var rectHalfWidth = this.width * 0.5;
@@ -186,6 +206,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} True if rectangle and line intersect
      * @instance
      * @name intersectsLine
+     * @snippet #Rectangle.intersectsLine|Boolean
+        intersectsLine(${1:originVector}, ${2:endVector});
      */
     Rectangle.prototype.intersectsLine = function (lineOrigin, lineEnd) {
         // linesIntersect adapted from: https://gist.github.com/Joncom/e8e8d18ebe7fe55c3894
@@ -219,6 +241,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} Returns a new rectangle instance
      * @instance
      * @name offset
+     * @snippet #Rectangle.offset|Rectangle
+        offset(${1:vector});
      */
     Rectangle.prototype.offset = function (pos) {
         return new Rectangle(this.x + pos.x, this.y + pos.y, this.width, this.height);
@@ -229,6 +253,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} a clone of the current rectangle
      * @instance
      * @name clone
+     * @snippet #Rectangle.clone|Rectangle
+        clone();
      */
     Rectangle.prototype.clone = function () {
         return new Rectangle(this.x, this.y, this.width, this.height);
@@ -239,6 +265,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Boolean} true if position is inside
      * @instance
      * @name hasPosition
+     * @snippet #Rectangle.hasPosition|Boolean
+        hasPosition(${1:vector});
      */
     Rectangle.prototype.hasPosition = function (vector) {
         return !(
@@ -257,6 +285,12 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} the resized rectangle
      * @instance
      * @name grow
+     * @snippet #Rectangle.grow|Rectangle
+        hasPosition(${1:Number});
+     * @snippet #Rectangle.grow|skip width
+        hasPosition(${1:Number}, true);
+     * @snippet #Rectangle.grow|skip height
+        hasPosition(${1:Number}, false, true);
      */
     Rectangle.prototype.grow = function (size, skipWidth, skipHeight) {
         if (!skipWidth) {
@@ -276,6 +310,18 @@ bento.define('bento/math/rectangle', [
      * @returns {Vector2} Vector position
      * @instance
      * @name getCorner
+     * @snippet #Rectangle.getCorner|Vector2
+        getCorner(Rectangle.BOTTOMRIGHT);
+     * @snippet Rectangle.TOPLEFT|corner
+        Rectangle.TOPLEFT
+     * @snippet Rectangle.TOPRIGHT|corner
+        Rectangle.TOPRIGHT
+     * @snippet Rectangle.BOTTOMLEFT|corner
+        Rectangle.BOTTOMLEFT
+     * @snippet Rectangle.BOTTOMRIGHT|corner
+        Rectangle.BOTTOMRIGHT
+     * @snippet Rectangle.CENTER|corner
+        Rectangle.CENTER
      */
     Rectangle.TOPLEFT = 0;
     Rectangle.TOPRIGHT = 1;
@@ -301,6 +347,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Vector2} Vector position
      * @instance
      * @name getCenter
+     * @snippet #Rectangle.getCenter|Vector2
+        getCenter();
      */
     Rectangle.prototype.getCenter = function () {
         return new Vector2(this.x + this.width / 2, this.y + this.height / 2);
@@ -311,6 +359,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Rectangle} a clone of the current rectangle with x and y set to 0
      * @instance
      * @name getSize
+     * @snippet #Rectangle.getSize|Rectangle
+        getSize();
      */
     Rectangle.prototype.getSize = function () {
         return new Rectangle(0, 0, this.width, this.height);
@@ -321,6 +371,8 @@ bento.define('bento/math/rectangle', [
      * @returns {Vector2} Vector2 half the size of the rectangle
      * @instance
      * @name getExtents
+     * @snippet #Rectangle.getExtents|Vector2
+        getExtents();
      */
     Rectangle.prototype.getExtents = function () {
         return new Vector2(this.width / 2, this.height / 2);
