@@ -605,7 +605,7 @@ getComponent('${1}', function (${1:component}) {
      * @param {Number} index - new index
      * @name moveComponentTo
      * @snippet #Entity.moveComponentTo|Entity
-moveComponentTo(component, index);
+moveComponentTo(${1:component}, ${2:index});
      */
     Entity.prototype.moveComponentTo = function (component, newIndex) {
         // note: currently dangerous to do during an update loop

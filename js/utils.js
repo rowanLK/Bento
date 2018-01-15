@@ -414,7 +414,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isNativeIos
          * @snippet Utils.isNativeIos|Boolean
-        Utils.isNativeIos();
+        Utils.isNativeIos()
          */
         isNativeIos: function () {
             if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
@@ -428,7 +428,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name isNativeAndroid
          * @snippet Utils.isNativeAndroid|Boolean
-        Utils.isNativeAndroid();
+        Utils.isNativeAndroid()
          */
         isNativeAndroid: function () {
             var platform;
@@ -495,7 +495,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name getDefault
          * @snippet Utils.getDefault|snippet
-        Utils.getDefault(${1:value}, ${2:default});
+        Utils.getDefault(${1:value}, ${2:default})
          * @param {Anything} value - any type
          * @param {Anything} value - any type
          */
@@ -508,7 +508,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name getRandom
          * @snippet Utils.getRandom|Number
-        Utils.getRandom(${1:Number});
+        Utils.getRandom(${1:Number})
          * @param {Number} n - limit of random number
          * @return {Number} Randomized integer
          */
@@ -521,7 +521,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name getRandomRange
          * @snippet Utils.getRandomRange|Number
-        Utils.getRandomRange(${1:Minimum}, ${2:Number});
+        Utils.getRandomRange(${1:Minimum}, ${2:Number})
          * @param {Number} min - minimum value
          * @param {Number} max - maximum value
          * @return {Number} Randomized integer
@@ -536,7 +536,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name getRandomFloat
          * @snippet Utils.getRandomFloat|Number
-        Utils.getRandomFloat(${1:Number});
+        Utils.getRandomFloat(${1:Number})
          * @param {Number} n - limit of random number
          * @return {Number} Randomized number
          */
@@ -549,7 +549,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name getRandomRangeFloat
          * @snippet Utils.getRandomRangeFloat|Number
-        Utils.getRandomRangeFloat(${1:Minimum}, ${2:Number});
+        Utils.getRandomRangeFloat(${1:Minimum}, ${2:Number})
          * @param {Number} min - minimum value
          * @param {Number} max - maximum value
          * @return {Number} Randomized number
@@ -564,7 +564,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name toRadian
          * @snippet Utils.toRadian|Number
-        Utils.toRadian(${1:Degrees});
+        Utils.toRadian(${1:Degrees})
          * @param {Number} degree - value in degrees
          * @return {Number} radians
          */
@@ -577,7 +577,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name toDegree
          * @snippet Utils.toDegree|Number
-        Utils.toDegree(${1:Radians});
+        Utils.toDegree(${1:Radians})
          * @param {Number} radians - value in radians
          * @return {Number} degree
          */
@@ -591,7 +591,7 @@ bento.define('bento/utils', [], function () {
          * @param {Number} value - value to check
          * @name sign
          * @snippet Utils.sign|Number
-        Utils.sign(${1:Number});
+        Utils.sign(${1:Number})
          */
         sign: function (value) {
             if (value > 0) {
@@ -611,7 +611,7 @@ bento.define('bento/utils', [], function () {
          * @param {Number} step - step to take (should always be a positive value)
          * @name approach
          * @snippet Utils.approach|Number
-        Utils.approach(${1:start}, ${2:end}, ${3:step});
+        Utils.approach(${1:start}, ${2:end}, ${3:step})
          */
         approach: function (start, end, max) {
             max = Math.abs(max);
@@ -630,7 +630,7 @@ bento.define('bento/utils', [], function () {
          * @param {Array} [params] - Parameters to pass to function
          * @name repeat
          * @snippet Utils.repeat|snippet
-        Utils.repeat(${1:1}, ${2:Function});
+        Utils.repeat(${1:1}, ${2:Function})
          */
         repeat: function (number, fn) {
             var i;
@@ -660,7 +660,7 @@ bento.define('bento/utils', [], function () {
          * @param {String} string - String to hash
          * @name checksum
          * @snippet Utils.checksum|Number
-        Utils.checksum(${1:String});
+        Utils.checksum(${1:String})
          */
         checksum: function (str) {
             var hash = 0,
@@ -684,7 +684,7 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name extend
          * @snippet Utils.extend|Object
-        Utils.extend(${1:Object}, ${2:Object2});
+        Utils.extend(${1:Object}, ${2:Object2})
          * @snippet Utils.extend|conflict
 Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
     ${4://code here}
@@ -702,7 +702,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name getKeyLength
          * @snippet Utils.getKeyLength|Number
-        Utils.getKeyLength(${1});
+        Utils.getKeyLength(${1})
          * @param {Object} object - object literal
          * @return {Number} Number of keys
          */
@@ -713,7 +713,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name copyObject
          * @snippet Utils.copyObject|Object
-        Utils.copyObject(${1:Object});
+        Utils.copyObject(${1:Object})
          * @param {Object} object - object literal
          * @return {Object} Shallow copy
          */
@@ -725,7 +725,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Object} jsonObj - Object literal that adheres to JSON standards
          * @name cloneJson
          * @snippet Utils.cloneJson|Object
-        Utils.cloneJson(${1:json});
+        Utils.cloneJson(${1:json})
          */
         cloneJson: function (jsonObj) {
             var out;
@@ -746,7 +746,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @return {Bool} True if removal was successful, false if the value was not found
          * @name removeFromArray
          * @snippet Utils.removeFromArray|Object
-        Utils.removeFromArray(${1:Array}, ${2:Value});
+        Utils.removeFromArray(${1:Array}, ${2:Value})
          */
         removeFromArray: removeFromArray,
         /**
@@ -759,7 +759,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Boolean} includeEdge - includes edge values
          * @name isBetween
          * @snippet Utils.isBetween|Boolean
-        Utils.isBetween(${1:minimum}, ${2:value}, ${3:maximum}, ${4:false});
+        Utils.isBetween(${1:minimum}, ${2:value}, ${3:maximum}, ${4:false})
          */
         isBetween: function (min, value, max, includeEdge) {
             if (includeEdge) {
@@ -773,7 +773,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name pickRandom
          * @snippet Utils.pickRandom|Object
-        Utils.pickRandom(${1}, ${2}, ${3:...});
+        Utils.pickRandom(${1}, ${2}, ${3:...})
          */
         pickRandom: function () {
             return arguments[this.getRandom(arguments.length)];
@@ -787,7 +787,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Number} max - upper limit
          * @name clamp
          * @snippet Utils.clamp
-        Utils.clamp(${1:min}, ${2:value}, ${3:max});
+        Utils.clamp(${1:min}, ${2:value}, ${3:max})
          */
         clamp: function (min, value, max) {
             return Math.max(min, Math.min(value, max));
@@ -798,7 +798,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isApple
          * @snippet Utils.isApple|Boolean
-        Utils.isApple();
+        Utils.isApple()
          */
         isApple: function () {
             var device = (navigator.userAgent).match(/iPhone|iPad|iPod/i);
@@ -810,7 +810,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isAndroid
          * @snippet Utils.isAndroid|Boolean
-        Utils.isAndroid();
+        Utils.isAndroid()
          */
         isAndroid: function () {
             return /Android/i.test(navigator.userAgent);
@@ -821,7 +821,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isCocoonJs
          * @snippet Utils.isCocoonJs|Boolean
-        Utils.isCocoonJs();
+        Utils.isCocoonJs()
          */
         isCocoonJS: function () {
             return navigator.isCocoonJS;
@@ -835,7 +835,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isMobileBrowser
          * @snippet Utils.isMobileBrowser|Boolean
-        Utils.isMobileBrowser();
+        Utils.isMobileBrowser()
          */
         isMobileBrowser: function () {
             var check = false;
@@ -852,7 +852,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isAndroidDevice
          * @snippet Utils.isAndroidDevice|Boolean
-        Utils.isAndroidDevice();
+        Utils.isAndroidDevice()
          */
         isAndroidDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -867,7 +867,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isIosDevice
          * @snippet Utils.isIosDevice|Boolean
-        Utils.isIosDevice();
+        Utils.isIosDevice()
          */
         isIosDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -882,7 +882,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isAmazonDevice
          * @snippet Utils.isAmazonDevice|Boolean
-        Utils.isAmazonDevice();
+        Utils.isAmazonDevice()
          */
         isAmazonDevice: function () {
             var platform = window.device && window.device.platform ? window.device.platform.toLowerCase() : '';
@@ -899,7 +899,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {Boolean} bool - set to true to use throws instead of console.logs
          * @name setDev
          * @snippet Utils.setDev|snippet
-        Utils.setDev();
+        Utils.setDev()
          */
         setDev: function (bool) {
             dev = bool;
@@ -910,7 +910,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isDev
          * @snippet Utils.isDev|Boolean
-        Utils.isDev();
+        Utils.isDev()
          */
         isDev: function () {
             return dev;
@@ -922,7 +922,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @param {String} msg - the message to log
          * @name log
          * @snippet Utils.log
-        Utils.log('WARNING: ${1}');
+        Utils.log('WARNING: ${1}')
          */
         log: function (msg) {
             console.error(msg);
@@ -932,7 +932,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isString
          * @snippet Utils.isString|Boolean
-        Utils.isString(${1:String});
+        Utils.isString(${1:String})
          */
         isString: isString,
         /**
@@ -940,7 +940,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isArray
          * @snippet Utils.isArray|Boolean
-        Utils.isArray(${1:Array});
+        Utils.isArray(${1:Array})
          */
         isArray: isArray,
         /**
@@ -948,7 +948,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isObject
          * @snippet Utils.isObject|Boolean
-        Utils.isObject(${1:Object});
+        Utils.isObject(${1:Object})
          */
         isObject: isObject,
         /**
@@ -956,7 +956,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isFunction
          * @snippet Utils.isFunction|Boolean
-        Utils.isFunction(${1:Function});
+        Utils.isFunction(${1:Function})
          */
         isFunction: isFunction,
         /**
@@ -964,7 +964,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isNumber
          * @snippet Utils.isNumber|Boolean
-        Utils.isNumber(${1:Number});
+        Utils.isNumber(${1:Number})
          */
         isNumber: isNumber,
         /**
@@ -972,7 +972,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isBoolean
          * @snippet Utils.isBoolean|Boolean
-        Utils.isBoolean(${1:Boolean});
+        Utils.isBoolean(${1:Boolean})
          */
         isBoolean: isBoolean,
         /**
@@ -980,7 +980,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name isInt
          * @snippet Utils.isInt|Boolean
-        Utils.isInt(${1:Integer});
+        Utils.isInt(${1:Integer})
          */
         isInt: isInt,
         /**
@@ -988,7 +988,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @function
          * @name isUndefined
          * @snippet Utils.isUndefined|Boolean
-        Utils.isUndefined(${1});
+        Utils.isUndefined(${1})
          * @param {Anything} obj - any type
          * @return {Bool} True if parameter is undefined
          * @instance
@@ -1002,7 +1002,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @return {Bool} True if parameter is not undefined
          * @name isDefined
          * @snippet Utils.isDefined|Boolean
-        Utils.isDefined(${1});
+        Utils.isDefined(${1})
          */
         isDefined: isDefined,
         /**
@@ -1013,7 +1013,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @return {Bool} True if parameter is null or undefined
          * @name isEmpty
          * @snippet Utils.isEmpty|Boolean
-        Utils.isEmpty(${1});
+        Utils.isEmpty(${1})
          */
         isEmpty: isEmpty,
         /**
@@ -1024,7 +1024,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @return {Bool} True if parameter is not null or undefined
          * @name isNotEmpty
          * @snippet Utils.isNotEmpty|Boolean
-        Utils.isNotEmpty(${1});
+        Utils.isNotEmpty(${1})
          */
         isNotEmpty: isNotEmpty,
         stableSort: stableSort,
