@@ -139,7 +139,6 @@ bento.define('bento/managers/object', [
         };
         var attach = function (object) {
             var i,
-                type,
                 family,
                 data = getGameData();
 
@@ -164,13 +163,7 @@ bento.define('bento/managers/object', [
             if (object.family) {
                 family = object.family;
                 for (i = 0; i < family.length; ++i) {
-                    type = family[i];
-                    if (!quickAccess[type]) {
-                        quickAccess[type] = [];
-                    }
-                    if (quickAccess[type].indexOf(object) === -1) {
-                        quickAccess[type].push(object);
-                    }
+                    addObjectToFamily(object, family[i]);
                 }
             }
 
@@ -182,6 +175,57 @@ bento.define('bento/managers/object', [
             }
             if (sortMode === Utils.SortMode.SORT_ON_ADD) {
                 sort();
+            }
+        };
+        var remove = function (object) {
+            var i,
+                index,
+                family,
+                data = getGameData();
+            if (!object) {
+                return;
+            }
+            // remove from access pools
+            if (object.family) {
+                family = object.family;
+                for (i = 0; i < family.length; ++i) {
+                    removeObjectFromFamily(object, family[i]);
+                }
+            }
+            // remove from object list
+            index = objects.indexOf(object);
+            if (index >= 0) {
+                objects[index] = null;
+                if (object.destroy) {
+                    object.destroy(data);
+                }
+                if (object.removed) {
+                    object.removed(data);
+                }
+                object.isAdded = false;
+            }
+        };
+        var addObjectToFamily = function (object, family) {
+            if (objects.indexOf(object) === -1) {
+                return;
+            }
+
+            if (!quickAccess[family]) {
+                quickAccess[family] = [];
+            }
+            if (quickAccess[family].indexOf(object) === -1) {
+                quickAccess[family].push(object);
+            }
+        };
+        var removeObjectFromFamily = function (object, family) {
+            var pool = quickAccess[family];
+
+            if (objects.indexOf(object) === -1) {
+                return;
+            }
+
+            if (pool) {
+                Utils.removeFromArray(pool, object);
             }
         };
         var module = {
@@ -202,40 +246,7 @@ bento.define('bento/managers/object', [
              * @param {Object} object - Reference to the object to be removed
              * @name remove
              */
-            remove: function (object) {
-                var i,
-                    type,
-                    index,
-                    family,
-                    pool,
-                    data = getGameData();
-                if (!object) {
-                    return;
-                }
-                // remove from access pools
-                if (object.family) {
-                    family = object.family;
-                    for (i = 0; i < family.length; ++i) {
-                        type = family[i];
-                        pool = quickAccess[type];
-                        if (pool) {
-                            Utils.removeFromArray(quickAccess[type], object);
-                        }
-                    }
-                }
-                // remove from object list
-                index = objects.indexOf(object);
-                if (index >= 0) {
-                    objects[index] = null;
-                    if (object.destroy) {
-                        object.destroy(data);
-                    }
-                    if (object.removed) {
-                        object.removed(data);
-                    }
-                    object.isAdded = false;
-                }
-            },
+            remove: remove,
             /**
              * Removes all entities/objects except ones that have the property "global"
              * @function
@@ -252,7 +263,7 @@ bento.define('bento/managers/object', [
                         continue;
                     }
                     if (!object.global || removeGlobal) {
-                        module.remove(object);
+                        remove(object);
                     }
                 }
                 // re-add all global objects
@@ -261,6 +272,11 @@ bento.define('bento/managers/object', [
                     object = objects[i];
                 }
             },
+            /**
+             * Add or remove objects to a family
+             */
+            addObjectToFamily: addObjectToFamily,
+            removeObjectFromFamily: removeObjectFromFamily,
             /**
              * Returns the first object it can find with this name. Safer to use with a callback.
              * The callback is called immediately if the object is found (it's not asynchronous).
