@@ -491,7 +491,7 @@ remove();
         }
         index = this.components.indexOf(child);
         this.components[index] = null;
-        
+
         if (index >= 0) {
             // the parent entity is an added entity: call destroy on the child
             if (this.isAdded) {
@@ -620,6 +620,42 @@ moveComponentTo(${1:component}, ${2:index});
             // insert at new place
             this.components.splice(newIndex, 0, component);
         }
+    };
+    /**
+     * Add this entity to a family
+     * @function
+     * @instance
+     * @param {String} family - the family that the entity should be added to
+     */
+    Entity.prototype.addToFamily = function (f) {
+        if (this.family.indexOf(f) !== -1) {
+            return;
+        }
+        this.family.push(f);
+        Bento.objects.addObjectToFamily(this, f);
+    };
+    /**
+     * Remove this entity from a family
+     * @function
+     * @instance
+     * @param {String} family - the family that this entity should be removed from
+     */
+    Entity.prototype.removeFromFamily = function (f) {
+        var idx = this.family.indexOf(f)
+        if (idx === -1) {
+            return;
+        }
+        this.family.splice(idx, 1);
+        Bento.objects.removeObjectFromFamily(this, f);
+    };
+    /**
+     * Check if the entity is part of a family
+     * @function
+     * @instance
+     * @param {String} family
+     */
+    Entity.prototype.isFamily = function (f) {
+        return (this.family.indexOf(f) !== -1);
     };
     /**
      * Callback when entities collide.
