@@ -893,6 +893,17 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
             return false;
         },
         /**
+         * Checks if game is running in Duktape
+         * @function
+         * @instance
+         * @name isDuktape
+         * @snippet Utils.isDuktape|Boolean
+        Utils.isDuktape();
+         */
+        isDuktape: function () {
+            return window.duktape;
+        },
+        /**
          * Turn dev mode on or off to use throws or console.logs
          * @function
          * @instance

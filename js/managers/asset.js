@@ -1057,33 +1057,38 @@ bento.define('bento/managers/asset', [
          * @name loadAssetsJson
          */
         var loadAssetsJson = function (onReady) {
-            loadJSON('assets.json', 'assets.json', function (error, name, assetsJson) {
-                var isLoading = false;
-                var groupsToLoad = {};
-                if (error) {
-                    onReady(error);
-                    return;
-                }
-                // check the contents of json
-                Utils.forEach(assetsJson, function (group, groupName, l, breakLoop) {
-                    if (Utils.isString(group)) {
-                        // assume assets.json consists of strings to load json files with
-                        isLoading = true;
-                        groupsToLoad[groupName] = group;
+            if(!Utils.isDuktape()) {
+                loadJSON('assets.json', 'assets.json', function (error, name, assetsJson) {
+                    var isLoading = false;
+                    var groupsToLoad = {};
+                    if (error) {
+                        onReady(error);
+                        return;
+                    }
+                    // check the contents of json
+                    Utils.forEach(assetsJson, function (group, groupName, l, breakLoop) {
+                        if (Utils.isString(group)) {
+                            // assume assets.json consists of strings to load json files with
+                            isLoading = true;
+                            groupsToLoad[groupName] = group;
+                        } else {
+                            // the asset group is present
+                            assetGroups[groupName] = group;
+                        }
+                    });
+
+                    if (isLoading) {
+                        // load jsons
+                        loadAssetGroups(groupsToLoad, onReady);
                     } else {
-                        // the asset group is present
-                        assetGroups[groupName] = group;
+                        // done
+                        onReady(null, 'assetsJson');
                     }
                 });
-
-                if (isLoading) {
-                    // load jsons
-                    loadAssetGroups(groupsToLoad, onReady);
-                } else {
-                    // done
-                    onReady(null, 'assetsJson');
-                }
-            });
+            } else {
+                // Todo: add logic for switch
+                // sfml automatically loads the assets in directly from the folder
+            }
         };
         /**
          * Loads all assets
