@@ -1022,7 +1022,7 @@ bento.define('bento/managers/asset', [
             var loaded = 0;
             var groupsToLoad = [];
             var loadGroups = function () {
-                var i;
+                var i, l;
                 for (i = 0, l = groupsToLoad.length; i < l; ++i) {
                     load(groupsToLoad[i], end, function (current, total, name) {});
                 }
@@ -1123,6 +1123,16 @@ bento.define('bento/managers/asset', [
                     onLoaded(current, assetCount, name, type);
                 }
             };
+            // count groups before any loading
+            for (groupName in assetGroups) {
+                if (!assetGroups.hasOwnProperty(groupName)) {
+                    continue;
+                }
+                if (exceptions.indexOf(groupName) >= 0) {
+                    continue;
+                }
+                groupCount += 1;
+            }
 
             // check every assetgroup and load its assets
             for (groupName in assetGroups) {
@@ -1134,7 +1144,6 @@ bento.define('bento/managers/asset', [
                 }
                 group = assetGroups[groupName];
                 assetCount += load(groupName, end, loadAsset);
-                groupCount += 1;
             }
 
             // nothing to load

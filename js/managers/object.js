@@ -27,7 +27,6 @@ bento.define('bento/managers/object', [
         var sortMode = settings.sortMode || 0;
         var isPaused = 0;
         var isStopped = false;
-        var fpsMeter;
         var sortDefault = function () {
             // default array sorting method (unstable)
             objects.sort(function (a, b) {

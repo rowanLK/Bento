@@ -641,7 +641,7 @@ moveComponentTo(${1:component}, ${2:index});
      * @param {String} family - the family that this entity should be removed from
      */
     Entity.prototype.removeFromFamily = function (f) {
-        var idx = this.family.indexOf(f)
+        var idx = this.family.indexOf(f);
         if (idx === -1) {
             return;
         }
@@ -813,7 +813,7 @@ collidesWith({
      * @returns {Entity} Returns the entity it collides with, null if none found
      */
     Entity.prototype.collidesWithGroup = function (settings, deprecated_offset, deprecated_callback) {
-        var i, obj, box;
+        var i, l, obj, box;
         var array, offset, callback;
 
         // old method with parameters
