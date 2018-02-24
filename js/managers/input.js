@@ -56,25 +56,25 @@ bento.define('bento/managers/input', [
                 removePointer(evt);
             },
             touchStart = function (evt) {
-                var id, i;
+                var id, i, l;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
                     addTouchPosition(evt, i, 'start');
                     pointerDown(evt);
                 }
             },
             touchMove = function (evt) {
-                var id, i;
+                var id, i, l;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
                     addTouchPosition(evt, i, 'move');
                     pointerMove(evt);
                 }
             },
             touchEnd = function (evt) {
-                var id, i;
+                var id, i, l;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
                     addTouchPosition(evt, i, 'end');
                     pointerUp(evt);
                 }
@@ -170,8 +170,8 @@ bento.define('bento/managers/input', [
                 evt.id = -1;
             },
             updatePointer = function (evt) {
-                var i = 0;
-                for (i = 0; i < pointers.length; ++i) {
+                var i = 0, l;
+                for (i = 0, l = pointers.length; i < l; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers[i].position = evt.position;
                         pointers[i].worldPosition = evt.worldPosition;
@@ -181,8 +181,8 @@ bento.define('bento/managers/input', [
                 }
             },
             removePointer = function (evt) {
-                var i = 0;
-                for (i = 0; i < pointers.length; ++i) {
+                var i = 0, l;
+                for (i = 0, l = pointers.length; i < l; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers.splice(i, 1);
                         return;
@@ -253,7 +253,7 @@ bento.define('bento/managers/input', [
 
             },
             keyDown = function (evt) {
-                var i, names;
+                var i, l, names;
                 evt.preventDefault();
                 EventSystem.fire('keyDown', evt);
                 // get names
@@ -263,14 +263,14 @@ bento.define('bento/managers/input', [
                     Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
                     return;
                 }
-                for (i = 0; i < names.length; ++i) {
+                for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = true;
                     EventSystem.fire('buttonDown', names[i]);
                     EventSystem.fire('buttonDown-' + names[i]);
                 }
             },
             keyUp = function (evt) {
-                var i, names;
+                var i, l, names;
                 evt.preventDefault();
                 EventSystem.fire('keyUp', evt);
                 // get names
@@ -280,7 +280,7 @@ bento.define('bento/managers/input', [
                     Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
                     return;
                 }
-                for (i = 0; i < names.length; ++i) {
+                for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = false;
                     EventSystem.fire('buttonUp', names[i]);
                 }
@@ -422,18 +422,18 @@ bento.define('bento/managers/input', [
              * continually checking for input is the only way for now.
              */
             initRemote = function () {
-                var i = 0,
+                var i = 0, l,
                     tvOSGamepads;
 
                 if (window.ejecta) {
                     // get all connected gamepads
                     tvOSGamepads = navigator.getGamepads();
                     // find apple remote gamepad
-                    for (i = 0; i < tvOSGamepads.length; ++i)
+                    for (i = 0, l = tvOSGamepads.length; i < l; ++i)
                         if (tvOSGamepads[i] && tvOSGamepads[i].profile === 'microGamepad')
                             remote = tvOSGamepads[i];
 
-                    for (i = 0; i < remote.buttons.length; ++i)
+                    for (i = 0, l = remote.buttons.length; i < l; ++i)
                         remoteButtonsPressed.push(remote.buttons[i].pressed);
 
                     // check for button input before the regular update
@@ -459,21 +459,21 @@ bento.define('bento/managers/input', [
                 }
             },
             remoteButtonDown = function (id) {
-                var i = 0,
+                var i = 0, l,
                     names = Utils.remoteMapping[id];
                 // save value in array
                 remoteButtonsPressed[id] = true;
 
-                for (i = 0; i < names.length; ++i)
+                for (i = 0, l = names.length; i < l; ++i)
                     remoteButtonStates[names[i]] = true;
             },
             remoteButtonUp = function (id) {
-                var i = 0,
+                var i = 0, l,
                     names = Utils.remoteMapping[id];
                 // save value in array
                 remoteButtonsPressed[id] = false;
 
-                for (i = 0; i < names.length; ++i)
+                for (i = 0, l = names.length; i < l; ++i)
                     remoteButtonStates[names[i]] = false;
             },
             tvPointerDown = function (evt) {
@@ -495,25 +495,25 @@ bento.define('bento/managers/input', [
                 removePointer(evt);
             },
             tvTouchStart = function (evt) {
-                var id, i;
+                var id, i, l;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
                     addTvTouchPosition(evt, i, 'start');
                     tvPointerDown(evt);
                 }
             },
             tvTouchMove = function (evt) {
-                var id, i;
+                var id, i, l;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
                     addTvTouchPosition(evt, i, 'move');
                     tvPointerMove(evt);
                 }
             },
             tvTouchEnd = function (evt) {
-                var id, i;
+                var id, i, l;
                 evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
                     addTvTouchPosition(evt, i, 'end');
                     tvPointerUp(evt);
                 }

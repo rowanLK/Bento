@@ -26,7 +26,7 @@ bento.define('bento/eventsystem', [
         if (isLoopingEvents) {
             return;
         }
-        for (j = 0; j < removedEvents.length; ++j) {
+        for (j = 0, l = removedEvents.length; j < l; ++j) {
             eventName = removedEvents[j].eventName;
             if (removedEvents[j].reset === true) {
                 // reset the whole event listener

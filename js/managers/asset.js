@@ -41,7 +41,7 @@ bento.define('bento/managers/asset', [
          * (Down)Load asset types
          */
         var loadAudio = function (name, source, callback) {
-            var i;
+            var i, l;
             var failed = true;
             var loadAudioFile = function (index, src) {
                 var audio = new Audia();
@@ -69,7 +69,7 @@ bento.define('bento/managers/asset', [
                 source = [source];
             }
             // try every type
-            for (i = 0; i < source.length; ++i) {
+            for (i = 0, l = source.length; i < l; ++i) {
                 if (loadAudioFile(i, path + 'audio/' + source[i])) {
                     break;
                 }
@@ -388,7 +388,7 @@ bento.define('bento/managers/asset', [
             var postLoad = function () {
                 var initPackedImagesLegacy = function () {
                     // old way of packed images
-                    var frame, pack, i, image, json, name;
+                    var frame, pack, i, l, image, json, name;
                     while (packs.length) {
                         pack = packs.pop();
                         image = getImageElement(pack);
@@ -402,7 +402,7 @@ bento.define('bento/managers/asset', [
                         }
 
                         // parse json
-                        for (i = 0; i < json.frames.length; ++i) {
+                        for (i = 0, l = json.frames.length; i < l; ++i) {
                             name = json.frames[i].filename;
                             name = name.substring(0, name.length - 4);
                             frame = json.frames[i].frame;
@@ -604,9 +604,9 @@ bento.define('bento/managers/asset', [
                 });
             };
             var loadAllAssets = function () {
-                var i = 0;
+                var i = 0, l;
                 var data;
-                for (i = 0; i < toLoad.length; ++i) {
+                for (i = 0, l = toLoad.length; i < l; ++i) {
                     data = toLoad[i];
                     data.fn(data.asset, data.path, data.callback);
                 }
@@ -1023,7 +1023,7 @@ bento.define('bento/managers/asset', [
             var groupsToLoad = [];
             var loadGroups = function () {
                 var i;
-                for (i = 0; i < groupsToLoad.length; ++i) {
+                for (i = 0, l = groupsToLoad.length; i < l; ++i) {
                     load(groupsToLoad[i], end, function (current, total, name) {});
                 }
             };

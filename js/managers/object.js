@@ -94,12 +94,12 @@ bento.define('bento/managers/object', [
         var currentObject; // the current object being processed in the main loop
         var update = function (data) {
             var object,
-                i;
+                i, l;
 
             data = data || getGameData();
 
             EventSystem.fire('preUpdate', data);
-            for (i = 0; i < objects.length; ++i) {
+            for (i = 0, l = objects.length; i < l; ++i) {
                 object = objects[i];
                 if (!object) {
                     continue;
@@ -117,13 +117,13 @@ bento.define('bento/managers/object', [
         };
         var draw = function (data) {
             var object,
-                i;
+                i, l;
             data = data || getGameData();
 
             EventSystem.fire('preDraw', data);
             data.renderer.begin();
             EventSystem.fire('preDrawLoop', data);
-            for (i = 0; i < objects.length; ++i) {
+            for (i = 0, l = objects.length; i < l; ++i) {
                 object = objects[i];
                 if (!object) {
                     continue;
@@ -138,7 +138,7 @@ bento.define('bento/managers/object', [
             EventSystem.fire('postDraw', data);
         };
         var attach = function (object) {
-            var i,
+            var i, l,
                 family,
                 data = getGameData();
 
@@ -162,7 +162,7 @@ bento.define('bento/managers/object', [
             // add object to access pools
             if (object.family) {
                 family = object.family;
-                for (i = 0; i < family.length; ++i) {
+                for (i = 0, l = family.length; i < l; ++i) {
                     addObjectToFamily(object, family[i]);
                 }
             }
@@ -178,7 +178,7 @@ bento.define('bento/managers/object', [
             }
         };
         var remove = function (object) {
-            var i,
+            var i, l,
                 index,
                 family,
                 data = getGameData();
@@ -188,7 +188,7 @@ bento.define('bento/managers/object', [
             // remove from access pools
             if (object.family) {
                 family = object.family;
-                for (i = 0; i < family.length; ++i) {
+                for (i = 0, l = family.length; i < l; ++i) {
                     removeObjectFromFamily(object, family[i]);
                 }
             }
@@ -255,9 +255,9 @@ bento.define('bento/managers/object', [
              * @name removeAll
              */
             removeAll: function (removeGlobal) {
-                var i,
+                var i, l,
                     object;
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;
@@ -268,7 +268,7 @@ bento.define('bento/managers/object', [
                 }
                 // re-add all global objects
                 cleanObjects();
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                 }
             },
@@ -289,10 +289,10 @@ bento.define('bento/managers/object', [
              */
             get: function (objectName, callback) {
                 // retrieves the first object it finds by its name
-                var i,
+                var i, l,
                     object;
 
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;
@@ -319,11 +319,11 @@ bento.define('bento/managers/object', [
              * @name getByName
              */
             getByName: function (objectName, callback) {
-                var i,
+                var i, l,
                     object,
                     array = [];
 
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;

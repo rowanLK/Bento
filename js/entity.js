@@ -74,7 +74,7 @@ bento.define('bento/entity', [
         if (!(this instanceof Entity)) {
             return new Entity(settings);
         }
-        var i;
+        var i, l;
         /**
          * Unique id
          * @instance
@@ -286,7 +286,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.family)) {
                     settings.family = [settings.family];
                 }
-                for (i = 0; i < settings.family.length; ++i) {
+                for (i = 0, l = settings.family.length; i < l; ++i) {
                     this.family.push(settings.family[i]);
                 }
             }
@@ -310,7 +310,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
                 }
-                for (i = 0; i < settings.components.length; ++i) {
+                for (i = 0, l = settings.components.length; i < l; ++i) {
                     this.attach(settings.components[i]);
                 }
             }
@@ -701,7 +701,7 @@ collidesWith({
         var intersect = false;
         var box;
         var otherBox;
-        var i;
+        var i, l;
         var obj;
         var array = [];
         var offset = new Vector2(0, 0);
@@ -755,7 +755,7 @@ collidesWith({
             return null;
         }
         box = this.getBoundingBox().offset(offset);
-        for (i = 0; i < array.length; ++i) {
+        for (i = 0, l = array.length; i < l; ++i) {
             obj = array[i];
 
             if (obj.isEntity) {
@@ -835,7 +835,7 @@ collidesWith({
             return null;
         }
         box = this.getBoundingBox().offset(offset);
-        for (i = 0; i < array.length; ++i) {
+        for (i = 0, l = array.length; i < l; ++i) {
             obj = array[i];
             if (obj.id && obj.id === this.id) {
                 continue;
