@@ -610,7 +610,9 @@ bento.define('bento/managers/asset', [
                     data = toLoad[i];
                     data.fn(data.asset, data.path, data.callback);
                 }
-                checkLoaded();
+                if (toLoad.length === 0) {
+                    checkLoaded();
+                }
             };
 
             if (!Utils.isDefined(group)) {

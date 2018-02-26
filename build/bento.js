@@ -2053,888 +2053,6 @@ var requirejs, require, define;
     req(cfg);
 }(this));
 
-/*!
- * FPSMeter 0.3.1 - 9th May 2013
- * https://github.com/Darsain/fpsmeter
- *
- * Licensed under the MIT license.
- * http://opensource.org/licenses/MIT
- */
-;(function (w, undefined) {
-    'use strict';
-
-    /**
-     * Create a new element.
-     *
-     * @param  {String} name Element type name.
-     *
-     * @return {Element}
-     */
-    function newEl(name) {
-        return document.createElement(name);
-    }
-
-    /**
-     * Apply theme CSS properties to element.
-     *
-     * @param  {Element} element DOM element.
-     * @param  {Object}  theme   Theme object.
-     *
-     * @return {Element}
-     */
-    function applyTheme(element, theme) {
-        for (var name in theme) {
-            try {
-                element.style[name] = theme[name];
-            } catch (e) {}
-        }
-        return element;
-    }
-
-    /**
-     * Return type of the value.
-     *
-     * @param  {Mixed} value
-     *
-     * @return {String}
-     */
-    function type(value) {
-        if (value == null) {
-            return String(value);
-        }
-
-        if (typeof value === 'object' || typeof value === 'function') {
-            return Object.prototype.toString.call(value).match(/\s([a-z]+)/i)[1].toLowerCase() || 'object';
-        }
-
-        return typeof value;
-    }
-
-    /**
-     * Check whether the value is in an array.
-     *
-     * @param  {Mixed} value
-     * @param  {Array} array
-     *
-     * @return {Integer} Array index or -1 when not found.
-     */
-    function inArray(value, array) {
-        if (type(array) !== 'array') {
-            return -1;
-        }
-        if (array.indexOf) {
-            return array.indexOf(value);
-        }
-        for (var i = 0, l = array.length; i < l; i++) {
-            if (array[i] === value) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Poor man's deep object extend.
-     *
-     * Example:
-     *   extend({}, defaults, options);
-     *
-     * @return {Void}
-     */
-    function extend() {
-        var args = arguments;
-        for (var key in args[1]) {
-            if (args[1].hasOwnProperty(key)) {
-                switch (type(args[1][key])) {
-                    case 'object':
-                        args[0][key] = extend({}, args[0][key], args[1][key]);
-                        break;
-
-                    case 'array':
-                        args[0][key] = args[1][key].slice(0);
-                        break;
-
-                    default:
-                        args[0][key] = args[1][key];
-                }
-            }
-        }
-        return args.length > 2 ?
-            extend.apply(null, [args[0]].concat(Array.prototype.slice.call(args, 2))) :
-            args[0];
-    }
-
-    /**
-     * Convert HSL color to HEX string.
-     *
-     * @param  {Array} hsl Array with [hue, saturation, lightness].
-     *
-     * @return {Array} Array with [red, green, blue].
-     */
-    function hslToHex(h, s, l) {
-        var r, g, b;
-        var v, min, sv, sextant, fract, vsf;
-
-        if (l <= 0.5) {
-            v = l * (1 + s);
-        } else {
-            v = l + s - l * s;
-        }
-
-        if (v === 0) {
-            return '#000';
-        } else {
-            min = 2 * l - v;
-            sv = (v - min) / v;
-            h = 6 * h;
-            sextant = Math.floor(h);
-            fract = h - sextant;
-            vsf = v * sv * fract;
-            if (sextant === 0 || sextant === 6) {
-                r = v;
-                g = min + vsf;
-                b = min;
-            } else if (sextant === 1) {
-                r = v - vsf;
-                g = v;
-                b = min;
-            } else if (sextant === 2) {
-                r = min;
-                g = v;
-                b = min + vsf;
-            } else if (sextant === 3) {
-                r = min;
-                g = v - vsf;
-                b = v;
-            } else if (sextant === 4) {
-                r = min + vsf;
-                g = min;
-                b = v;
-            } else {
-                r = v;
-                g = min;
-                b = v - vsf;
-            }
-            return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
-        }
-    }
-
-    /**
-     * Helper function for hslToHex.
-     */
-    function componentToHex(c) {
-        c = Math.round(c * 255).toString(16);
-        return c.length === 1 ? '0' + c : c;
-    }
-
-    /**
-     * Manage element event listeners.
-     *
-     * @param  {Node}     element
-     * @param  {Event}    eventName
-     * @param  {Function} handler
-     * @param  {Bool}     remove
-     *
-     * @return {Void}
-     */
-    function listener(element, eventName, handler, remove) {
-        if (element.addEventListener) {
-            element[remove ? 'removeEventListener' : 'addEventListener'](eventName, handler, false);
-        } else if (element.attachEvent) {
-            element[remove ? 'detachEvent' : 'attachEvent']('on' + eventName, handler);
-        }
-    }
-
-    // Preferred timing funtion
-    var getTime;
-    (function () {
-        var perf = w.performance;
-        if (perf && (perf.now || perf.webkitNow)) {
-            var perfNow = perf.now ? 'now' : 'webkitNow';
-            getTime = perf[perfNow].bind(perf);
-        } else {
-            getTime = function () {
-                return +new Date();
-            };
-        }
-    }());
-
-    // Local WindowAnimationTiming interface polyfill
-    var cAF = w.cancelAnimationFrame || w.cancelRequestAnimationFrame;
-    var rAF = w.requestAnimationFrame;
-    (function () {
-        var vendors = ['moz', 'webkit', 'o'];
-        var lastTime = 0;
-
-        // For a more accurate WindowAnimationTiming interface implementation, ditch the native
-        // requestAnimationFrame when cancelAnimationFrame is not present (older versions of Firefox)
-        for (var i = 0, l = vendors.length; i < l && !cAF; ++i) {
-            cAF = w[vendors[i]+'CancelAnimationFrame'] || w[vendors[i]+'CancelRequestAnimationFrame'];
-            rAF = cAF && w[vendors[i]+'RequestAnimationFrame'];
-        }
-
-        if (!cAF) {
-            rAF = function (callback) {
-                var currTime = getTime();
-                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-                lastTime = currTime + timeToCall;
-                return w.setTimeout(function () { callback(currTime + timeToCall); }, timeToCall);
-            };
-
-            cAF = function (id) {
-                clearTimeout(id);
-            };
-        }
-    }());
-
-    // Property name for assigning element text content
-    var textProp = type(document.createElement('div').textContent) === 'string' ? 'textContent' : 'innerText';
-
-    /**
-     * FPSMeter class.
-     *
-     * @param {Element} anchor  Element to append the meter to. Default is document.body.
-     * @param {Object}  options Object with options.
-     */
-    function FPSMeter(anchor, options) {
-        // Optional arguments
-        if (type(anchor) === 'object' && anchor.nodeType === undefined) {
-            options = anchor;
-            anchor = document.body;
-        }
-        if (!anchor) {
-            anchor = document.body;
-        }
-
-        // Private properties
-        var self = this;
-        var o = extend({}, FPSMeter.defaults, options || {});
-
-        var el = {};
-        var cols = [];
-        var theme, heatmaps;
-        var heatDepth = 100;
-        var heating = [];
-
-        var thisFrameTime = 0;
-        var frameTime = o.threshold;
-        var frameStart = 0;
-        var lastLoop = getTime() - frameTime;
-        var time;
-
-        var fpsHistory = [];
-        var durationHistory = [];
-
-        var frameID, renderID;
-        var showFps = o.show === 'fps';
-        var graphHeight, count, i, j;
-
-        // Exposed properties
-        self.options = o;
-        self.fps = 0;
-        self.duration = 0;
-        self.isPaused = 0;
-
-        /**
-         * Tick start for measuring the actual rendering duration.
-         *
-         * @return {Void}
-         */
-        self.tickStart = function () {
-            frameStart = getTime();
-        };
-
-        /**
-         * FPS tick.
-         *
-         * @return {Void}
-         */
-        self.tick = function () {
-            time = getTime();
-            thisFrameTime = time - lastLoop;
-            frameTime += (thisFrameTime - frameTime) / o.smoothing;
-            self.fps = 1000 / frameTime;
-            self.duration = frameStart < lastLoop ? frameTime : time - frameStart;
-            lastLoop = time;
-        };
-
-        /**
-         * Pause display rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.pause = function () {
-            if (frameID) {
-                self.isPaused = 1;
-                clearTimeout(frameID);
-                cAF(frameID);
-                cAF(renderID);
-                frameID = renderID = 0;
-            }
-            return self;
-        };
-
-        /**
-         * Resume display rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.resume = function () {
-            if (!frameID) {
-                self.isPaused = 0;
-                requestRender();
-            }
-            return self;
-        };
-
-        /**
-         * Update options.
-         *
-         * @param {String} name  Option name.
-         * @param {Mixed}  value New value.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.set = function (name, value) {
-            o[name] = value;
-            showFps = o.show === 'fps';
-
-            // Rebuild or reposition elements when specific option has been updated
-            if (inArray(name, rebuilders) !== -1) {
-                createMeter();
-            }
-            if (inArray(name, repositioners) !== -1) {
-                positionMeter();
-            }
-            return self;
-        };
-
-        /**
-         * Change meter into rendering duration mode.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.showDuration = function () {
-            self.set('show', 'ms');
-            return self;
-        };
-
-        /**
-         * Change meter into FPS mode.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.showFps = function () {
-            self.set('show', 'fps');
-            return self;
-        };
-
-        /**
-         * Toggles between show: 'fps' and show: 'duration'.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.toggle = function () {
-            self.set('show', showFps ? 'ms' : 'fps');
-            return self;
-        };
-
-        /**
-         * Hide the FPSMeter. Also pauses the rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.hide = function () {
-            self.pause();
-            el.container.style.display = 'none';
-            return self;
-        };
-
-        /**
-         * Show the FPSMeter. Also resumes the rendering.
-         *
-         * @return {Object} FPSMeter instance.
-         */
-        self.show = function () {
-            self.resume();
-            el.container.style.display = 'block';
-            return self;
-        };
-
-        /**
-         * Check the current FPS and save it in history.
-         *
-         * @return {Void}
-         */
-        function historyTick() {
-            for (i = o.history; i--;) {
-                fpsHistory[i] = i === 0 ? self.fps : fpsHistory[i-1];
-                durationHistory[i] = i === 0 ? self.duration : durationHistory[i-1];
-            }
-        }
-
-        /**
-         * Returns heat hex color based on values passed.
-         *
-         * @param  {Integer} heatmap
-         * @param  {Integer} value
-         * @param  {Integer} min
-         * @param  {Integer} max
-         *
-         * @return {Integer}
-         */
-        function getHeat(heatmap, value, min, max) {
-            return heatmaps[0|heatmap][Math.round(Math.min((value - min) / (max - min) * heatDepth, heatDepth))];
-        }
-
-        /**
-         * Update counter number and legend.
-         *
-         * @return {Void}
-         */
-        function updateCounter() {
-            // Update legend only when changed
-            if (el.legend.fps !== showFps) {
-                el.legend.fps = showFps;
-                el.legend[textProp] = showFps ? 'FPS' : 'ms';
-            }
-            // Update counter with a nicely formated & readable number
-            count = showFps ? self.fps : self.duration;
-            el.count[textProp] = count > 999 ? '999+' : count.toFixed(count > 99 ? 0 : o.decimals);
-        }
-
-        /**
-         * Render current FPS state.
-         *
-         * @return {Void}
-         */
-        function render() {
-            time = getTime();
-            // If renderer stopped reporting, do a simulated drop to 0 fps
-            if (lastLoop < time - o.threshold) {
-                self.fps -= self.fps / Math.max(1, o.smoothing * 60 / o.interval);
-                self.duration = 1000 / self.fps;
-            }
-
-            historyTick();
-            updateCounter();
-
-            // Apply heat to elements
-            if (o.heat) {
-                if (heating.length) {
-                    for (i = heating.length; i--;) {
-                        heating[i].el.style[theme[heating[i].name].heatOn] = showFps ?
-                            getHeat(theme[heating[i].name].heatmap, self.fps, 0, o.maxFps) :
-                            getHeat(theme[heating[i].name].heatmap, self.duration, o.threshold, 0);
-                    }
-                }
-
-                if (el.graph && theme.column.heatOn) {
-                    for (i = cols.length; i--;) {
-                        cols[i].style[theme.column.heatOn] = showFps ?
-                            getHeat(theme.column.heatmap, fpsHistory[i], 0, o.maxFps) :
-                            getHeat(theme.column.heatmap, durationHistory[i], o.threshold, 0);
-                    }
-                }
-            }
-
-            // Update graph columns height
-            if (el.graph) {
-                for (j = 0; j < o.history; j++) {
-                    cols[j].style.height = (showFps ?
-                        (fpsHistory[j] ? Math.round(graphHeight / o.maxFps * Math.min(fpsHistory[j], o.maxFps)) : 0) :
-                        (durationHistory[j] ? Math.round(graphHeight / o.threshold * Math.min(durationHistory[j], o.threshold)) : 0)
-                    ) + 'px';
-                }
-            }
-        }
-
-        /**
-         * Request rendering loop.
-         *
-         * @return {Int} Animation frame index.
-         */
-        function requestRender() {
-            if (o.interval < 20) {
-                frameID = rAF(requestRender);
-                render();
-            } else {
-                frameID = setTimeout(requestRender, o.interval);
-                renderID = rAF(render);
-            }
-        }
-
-        /**
-         * Meter events handler.
-         *
-         * @return {Void}
-         */
-        function eventHandler(event) {
-            event = event || window.event;
-            if (event.preventDefault) {
-                event.preventDefault();
-                event.stopPropagation();
-            } else {
-                event.returnValue = false;
-                event.cancelBubble = true;
-            }
-            self.toggle();
-        }
-
-        /**
-         * Destroys the current FPSMeter instance.
-         *
-         * @return {Void}
-         */
-        self.destroy = function () {
-            // Stop rendering
-            self.pause();
-            // Remove elements
-            removeMeter();
-            // Stop listening
-            self.tick = self.tickStart = function () {};
-        };
-
-        /**
-         * Remove meter element.
-         *
-         * @return {Void}
-         */
-        function removeMeter() {
-            // Unbind listeners
-            if (o.toggleOn) {
-                listener(el.container, o.toggleOn, eventHandler, 1);
-            }
-            // Detach element
-            anchor.removeChild(el.container);
-        }
-
-        /**
-         * Sets the theme, and generates heatmaps when needed.
-         */
-        function setTheme() {
-            theme = FPSMeter.theme[o.theme];
-
-            // Generate heatmaps
-            heatmaps = theme.compiledHeatmaps || [];
-            if (!heatmaps.length && theme.heatmaps.length) {
-                for (j = 0; j < theme.heatmaps.length; j++) {
-                    heatmaps[j] = [];
-                    for (i = 0; i <= heatDepth; i++) {
-                        heatmaps[j][i] = hslToHex(0.33 / heatDepth * i, theme.heatmaps[j].saturation, theme.heatmaps[j].lightness);
-                    }
-                }
-                theme.compiledHeatmaps = heatmaps;
-            }
-        }
-
-        /**
-         * Creates and attaches the meter element.
-         *
-         * @return {Void}
-         */
-        function createMeter() {
-            // Remove old meter if present
-            if (el.container) {
-                removeMeter();
-            }
-
-            // Set theme
-            setTheme();
-
-            // Create elements
-            el.container = applyTheme(newEl('div'), theme.container);
-            el.count = el.container.appendChild(applyTheme(newEl('div'), theme.count));
-            el.legend = el.container.appendChild(applyTheme(newEl('div'), theme.legend));
-            el.graph = o.graph ? el.container.appendChild(applyTheme(newEl('div'), theme.graph)) : 0;
-
-            // Add elements to heating array
-            heating.length = 0;
-            for (var key in el) {
-                if (el[key] && theme[key].heatOn) {
-                    heating.push({
-                        name: key,
-                        el: el[key]
-                    });
-                }
-            }
-
-            // Graph
-            cols.length = 0;
-            if (el.graph) {
-                // Create graph
-                el.graph.style.width = (o.history * theme.column.width + (o.history - 1) * theme.column.spacing) + 'px';
-
-                // Add columns
-                for (i = 0; i < o.history; i++) {
-                    cols[i] = el.graph.appendChild(applyTheme(newEl('div'), theme.column));
-                    cols[i].style.position = 'absolute';
-                    cols[i].style.bottom = 0;
-                    cols[i].style.right = (i * theme.column.width + i * theme.column.spacing) + 'px';
-                    cols[i].style.width = theme.column.width + 'px';
-                    cols[i].style.height = '0px';
-                }
-            }
-
-            // Set the initial state
-            positionMeter();
-            updateCounter();
-
-            // Append container to anchor
-            anchor.appendChild(el.container);
-
-            // Retrieve graph height after it was appended to DOM
-            if (el.graph) {
-                graphHeight = el.graph.clientHeight;
-            }
-
-            // Add event listeners
-            if (o.toggleOn) {
-                if (o.toggleOn === 'click') {
-                    el.container.style.cursor = 'pointer';
-                }
-                listener(el.container, o.toggleOn, eventHandler);
-            }
-        }
-
-        /**
-         * Positions the meter based on options.
-         *
-         * @return {Void}
-         */
-        function positionMeter() {
-            applyTheme(el.container, o);
-        }
-
-        /**
-         * Construct.
-         */
-        (function () {
-            // Create meter element
-            createMeter();
-            // Start rendering
-            requestRender();
-        }());
-    }
-
-    // Expose the extend function
-    FPSMeter.extend = extend;
-
-    // Expose the FPSMeter class
-    window.FPSMeter = FPSMeter;
-
-    // Default options
-    FPSMeter.defaults = {
-        interval:  100,     // Update interval in milliseconds.
-        smoothing: 10,      // Spike smoothing strength. 1 means no smoothing.
-        show:      'fps',   // Whether to show 'fps', or 'ms' = frame duration in milliseconds.
-        toggleOn:  'click', // Toggle between show 'fps' and 'ms' on this event.
-        decimals:  1,       // Number of decimals in FPS number. 1 = 59.9, 2 = 59.94, ...
-        maxFps:    60,      // Max expected FPS value.
-        threshold: 100,     // Minimal tick reporting interval in milliseconds.
-
-        // Meter position
-        position: 'absolute', // Meter position.
-        zIndex:   10,         // Meter Z index.
-        left:     '5px',      // Meter left offset.
-        top:      '5px',      // Meter top offset.
-        right:    'auto',     // Meter right offset.
-        bottom:   'auto',     // Meter bottom offset.
-        margin:   '0 0 0 0',  // Meter margin. Helps with centering the counter when left: 50%;
-
-        // Theme
-        theme: 'dark', // Meter theme. Build in: 'dark', 'light', 'transparent', 'colorful'.
-        heat:  0,      // Allow themes to use coloring by FPS heat. 0 FPS = red, maxFps = green.
-
-        // Graph
-        graph:   0, // Whether to show history graph.
-        history: 20 // How many history states to show in a graph.
-    };
-
-    // Option names that trigger FPSMeter rebuild or reposition when modified
-    var rebuilders = [
-        'toggleOn',
-        'theme',
-        'heat',
-        'graph',
-        'history'
-    ];
-    var repositioners = [
-        'position',
-        'zIndex',
-        'left',
-        'top',
-        'right',
-        'bottom',
-        'margin'
-    ];
-}(window));
-;(function (w, FPSMeter, undefined) {
-    'use strict';
-
-    // Themes object
-    FPSMeter.theme = {};
-
-    // Base theme with layout, no colors
-    var base = FPSMeter.theme.base = {
-        heatmaps: [],
-        container: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            padding: '5px',
-            minWidth: '95px',
-            height: '30px',
-            lineHeight: '30px',
-            textAlign: 'right',
-            textShadow: 'none'
-        },
-        count: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            padding: '5px 10px',
-            height: '30px',
-            fontSize: '24px',
-            fontFamily: 'Consolas, Andale Mono, monospace',
-            zIndex: 2
-        },
-        legend: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            padding: '5px 10px',
-            height: '30px',
-            fontSize: '12px',
-            lineHeight: '32px',
-            fontFamily: 'sans-serif',
-            textAlign: 'left',
-            zIndex: 2
-        },
-        graph: {
-            // Settings
-            heatOn: null,
-            heatmap: null,
-
-            // Styles
-            position: 'relative',
-            boxSizing: 'padding-box',
-            MozBoxSizing: 'padding-box',
-            height: '100%',
-            zIndex: 1
-        },
-        column: {
-            // Settings
-            width: 4,
-            spacing: 1,
-            heatOn: null,
-            heatmap: null
-        }
-    };
-
-    // Dark theme
-    FPSMeter.theme.dark = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.8,
-            lightness: 0.8
-        }],
-        container: {
-            background: '#222',
-            color: '#fff',
-            border: '1px solid #1a1a1a',
-            textShadow: '1px 1px 0 #222'
-        },
-        count: {
-            heatOn: 'color'
-        },
-        column: {
-            background: '#3f3f3f'
-        }
-    });
-
-    // Light theme
-    FPSMeter.theme.light = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.5,
-            lightness: 0.5
-        }],
-        container: {
-            color: '#666',
-            background: '#fff',
-            textShadow: '1px 1px 0 rgba(255,255,255,.5), -1px -1px 0 rgba(255,255,255,.5)',
-            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
-        },
-        count: {
-            heatOn: 'color'
-        },
-        column: {
-            background: '#eaeaea'
-        }
-    });
-
-    // Colorful theme
-    FPSMeter.theme.colorful = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.5,
-            lightness: 0.6
-        }],
-        container: {
-            heatOn: 'backgroundColor',
-            background: '#888',
-            color: '#fff',
-            textShadow: '1px 1px 0 rgba(0,0,0,.2)',
-            boxShadow: '0 0 0 1px rgba(0,0,0,.1)'
-        },
-        column: {
-            background: '#777',
-            backgroundColor: 'rgba(0,0,0,.2)'
-        }
-    });
-
-    // Transparent theme
-    FPSMeter.theme.transparent = FPSMeter.extend({}, base, {
-        heatmaps: [{
-            saturation: 0.8,
-            lightness: 0.5
-        }],
-        container: {
-            padding: 0,
-            color: '#fff',
-            textShadow: '1px 1px 0 rgba(0,0,0,.5)'
-        },
-        count: {
-            padding: '0 5px',
-            height: '40px',
-            lineHeight: '40px'
-        },
-        legend: {
-            padding: '0 5px',
-            height: '40px',
-            lineHeight: '42px'
-        },
-        graph: {
-            height: '40px'
-        },
-        column: {
-            width: 5,
-            background: '#999',
-            heatOn: 'backgroundColor',
-            opacity: 0.5
-        }
-    });
-}(window, FPSMeter));
 /**
  * Main entry point for Bento engine
  * Defines global bento namespace, use bento.require and define.
@@ -3008,6 +2126,9 @@ var requirejs, require, define;
     window.require = undefined;
     window.define = undefined;
 }());
+if (!bento) {
+    var bento = window.bento;
+}
 /*
     Audia: <audio> implemented using the Web Audio API
     by Matt Hackett of Lost Decade Games
@@ -4384,7 +3505,7 @@ bento.define('bento/entity', [
         if (!(this instanceof Entity)) {
             return new Entity(settings);
         }
-        var i;
+        var i, l;
         /**
          * Unique id
          * @instance
@@ -4596,7 +3717,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.family)) {
                     settings.family = [settings.family];
                 }
-                for (i = 0; i < settings.family.length; ++i) {
+                for (i = 0, l = settings.family.length; i < l; ++i) {
                     this.family.push(settings.family[i]);
                 }
             }
@@ -4620,7 +3741,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
                 }
-                for (i = 0; i < settings.components.length; ++i) {
+                for (i = 0, l = settings.components.length; i < l; ++i) {
                     this.attach(settings.components[i]);
                 }
             }
@@ -4951,7 +4072,7 @@ moveComponentTo(${1:component}, ${2:index});
      * @param {String} family - the family that this entity should be removed from
      */
     Entity.prototype.removeFromFamily = function (f) {
-        var idx = this.family.indexOf(f)
+        var idx = this.family.indexOf(f);
         if (idx === -1) {
             return;
         }
@@ -5011,7 +4132,7 @@ collidesWith({
         var intersect = false;
         var box;
         var otherBox;
-        var i;
+        var i, l;
         var obj;
         var array = [];
         var offset = new Vector2(0, 0);
@@ -5065,7 +4186,7 @@ collidesWith({
             return null;
         }
         box = this.getBoundingBox().offset(offset);
-        for (i = 0; i < array.length; ++i) {
+        for (i = 0, l = array.length; i < l; ++i) {
             obj = array[i];
 
             if (obj.isEntity) {
@@ -5123,7 +4244,7 @@ collidesWith({
      * @returns {Entity} Returns the entity it collides with, null if none found
      */
     Entity.prototype.collidesWithGroup = function (settings, deprecated_offset, deprecated_callback) {
-        var i, obj, box;
+        var i, l, obj, box;
         var array, offset, callback;
 
         // old method with parameters
@@ -5145,7 +4266,7 @@ collidesWith({
             return null;
         }
         box = this.getBoundingBox().offset(offset);
-        for (i = 0; i < array.length; ++i) {
+        for (i = 0, l = array.length; i < l; ++i) {
             obj = array[i];
             if (obj.id && obj.id === this.id) {
                 continue;
@@ -5411,7 +4532,7 @@ bento.define('bento/eventsystem', [
         if (isLoopingEvents) {
             return;
         }
-        for (j = 0; j < removedEvents.length; ++j) {
+        for (j = 0, l = removedEvents.length; j < l; ++j) {
             eventName = removedEvents[j].eventName;
             if (removedEvents[j].reset === true) {
                 // reset the whole event listener
@@ -8435,6 +7556,3817 @@ setOriginRelative(new Vector2(${1:0}, ${2:0}));
     return Sprite;
 });
 /**
+ * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/requirejs/domReady for details
+ */
+/*jslint*/
+/*global require: false, define: false, requirejs: false,
+  window: false, clearInterval: false, document: false,
+  self: false, setInterval: false */
+
+
+bento.define('bento/lib/domready', [], function () {
+    'use strict';
+
+    var isTop, testDiv, scrollIntervalId,
+        isBrowser = typeof window !== "undefined" && window.document,
+        isPageLoaded = !isBrowser,
+        doc = isBrowser ? document : null,
+        readyCalls = [];
+
+    function runCallbacks(callbacks) {
+        var i;
+        for (i = 0; i < callbacks.length; i += 1) {
+            callbacks[i](doc);
+        }
+    }
+
+    function callReady() {
+        var callbacks = readyCalls;
+
+        if (isPageLoaded) {
+            //Call the DOM ready callbacks
+            if (callbacks.length) {
+                readyCalls = [];
+                runCallbacks(callbacks);
+            }
+        }
+    }
+
+    /**
+     * Sets the page as loaded.
+     */
+    function pageLoaded() {
+        if (!isPageLoaded) {
+            isPageLoaded = true;
+            if (scrollIntervalId) {
+                clearInterval(scrollIntervalId);
+            }
+
+            callReady();
+        }
+    }
+
+    if (isBrowser) {
+        if (document.addEventListener) {
+            //Standards. Hooray! Assumption here that if standards based,
+            //it knows about DOMContentLoaded.
+            document.addEventListener("DOMContentLoaded", pageLoaded, false);
+            window.addEventListener("load", pageLoaded, false);
+        } else if (window.attachEvent) {
+            window.attachEvent("onload", pageLoaded);
+
+            testDiv = document.createElement('div');
+            try {
+                isTop = window.frameElement === null;
+            } catch (e) {}
+
+            //DOMContentLoaded approximation that uses a doScroll, as found by
+            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
+            //but modified by other contributors, including jdalton
+            if (testDiv.doScroll && isTop && window.external) {
+                scrollIntervalId = setInterval(function () {
+                    try {
+                        testDiv.doScroll();
+                        pageLoaded();
+                    } catch (e) {}
+                }, 30);
+            }
+        }
+
+        //Check if document already complete, and if so, just trigger page load
+        //listeners. Latest webkit browsers also use "interactive", and
+        //will fire the onDOMContentLoaded before "interactive" but not after
+        //entering "interactive" or "complete". More details:
+        //http://dev.w3.org/html5/spec/the-end.html#the-end
+        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
+        //Hmm, this is more complicated on further use, see "firing too early"
+        //bug: https://github.com/requirejs/domReady/issues/1
+        //so removing the || document.readyState === "interactive" test.
+        //There is still a window.onload binding that should get fired if
+        //DOMContentLoaded is missed.
+        if (document.readyState === "complete") {
+            pageLoaded();
+        }
+    }
+
+    /** START OF PUBLIC API **/
+
+    /**
+     * Registers a callback for DOM ready. If DOM is already ready, the
+     * callback is called immediately.
+     * @param {Function} callback
+     */
+    function domReady(callback) {
+        if (isPageLoaded) {
+            callback(doc);
+        } else {
+            readyCalls.push(callback);
+        }
+        return domReady;
+    }
+
+    domReady.version = '2.0.1';
+
+    /**
+     * Loader Plugin API method
+     */
+    domReady.load = function (name, req, onLoad, config) {
+        if (config.isBuild) {
+            onLoad(null);
+        } else {
+            domReady(onLoad);
+        }
+    };
+
+    /** END OF PUBLIC API **/
+
+    return domReady;
+});
+
+/**
+ * https://github.com/pieroxy/lz-string/
+ * Modifications: wrapped in Bento define
+ *
+ * Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
+ * This work is free. You can redistribute it and/or modify it
+ * under the terms of the WTFPL, Version 2
+ * For more information see LICENSE.txt or http://www.wtfpl.net/
+ *
+ * For more information, the home page:
+ * http://pieroxy.net/blog/pages/lz-string/testing.html
+ *
+ * LZ-based compression algorithm, version 1.4.4
+ *
+ * @module lzstring
+ * @moduleName LZString
+ * @returns LZString
+ */
+bento.define('lzstring', [], function () {
+    // private property
+    var f = String.fromCharCode;
+    var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+    var baseReverseDic = {};
+
+    function getBaseValue(alphabet, character) {
+        if (!baseReverseDic[alphabet]) {
+            baseReverseDic[alphabet] = {};
+            for (var i = 0, l = alphabet.length; i < l; i++) {
+                baseReverseDic[alphabet][alphabet.charAt(i)] = i;
+            }
+        }
+        return baseReverseDic[alphabet][character];
+    }
+
+    var LZString = {
+        compressToBase64: function (input) {
+            if (input == null) return "";
+            var res = LZString._compress(input, 6, function (a) {
+                return keyStrBase64.charAt(a);
+            });
+            switch (res.length % 4) { // To produce valid Base64
+                default: // When could this happen ?
+            case 0:
+                return res;
+            case 1:
+                return res + "===";
+            case 2:
+                return res + "==";
+            case 3:
+                return res + "=";
+            }
+        },
+
+        decompressFromBase64: function (input) {
+            if (input == null) return "";
+            if (input == "") return null;
+            return LZString._decompress(input.length, 32, function (index) {
+                return getBaseValue(keyStrBase64, input.charAt(index));
+            });
+        },
+
+        compressToUTF16: function (input) {
+            if (input == null) return "";
+            return LZString._compress(input, 15, function (a) {
+                return f(a + 32);
+            }) + " ";
+        },
+
+        decompressFromUTF16: function (compressed) {
+            if (compressed == null) return "";
+            if (compressed == "") return null;
+            return LZString._decompress(compressed.length, 16384, function (index) {
+                return compressed.charCodeAt(index) - 32;
+            });
+        },
+
+        //compress into uint8array (UCS-2 big endian format)
+        compressToUint8Array: function (uncompressed) {
+            var compressed = LZString.compress(uncompressed);
+            var buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
+
+            for (var i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
+                var current_value = compressed.charCodeAt(i);
+                buf[i * 2] = current_value >>> 8;
+                buf[i * 2 + 1] = current_value % 256;
+            }
+            return buf;
+        },
+
+        //decompress from uint8array (UCS-2 big endian format)
+        decompressFromUint8Array: function (compressed) {
+            if (compressed === null || compressed === undefined) {
+                return LZString.decompress(compressed);
+            } else {
+                var buf = new Array(compressed.length / 2); // 2 bytes per character
+                for (var i = 0, TotalLen = buf.length; i < TotalLen; i++) {
+                    buf[i] = compressed[i * 2] * 256 + compressed[i * 2 + 1];
+                }
+
+                var result = [];
+                buf.forEach(function (c) {
+                    result.push(f(c));
+                });
+                return LZString.decompress(result.join(''));
+
+            }
+
+        },
+
+
+        //compress into a string that is already URI encoded
+        compressToEncodedURIComponent: function (input) {
+            if (input == null) return "";
+            return LZString._compress(input, 6, function (a) {
+                return keyStrUriSafe.charAt(a);
+            });
+        },
+
+        //decompress from an output of compressToEncodedURIComponent
+        decompressFromEncodedURIComponent: function (input) {
+            if (input == null) return "";
+            if (input == "") return null;
+            input = input.replace(/ /g, "+");
+            return LZString._decompress(input.length, 32, function (index) {
+                return getBaseValue(keyStrUriSafe, input.charAt(index));
+            });
+        },
+
+        compress: function (uncompressed) {
+            return LZString._compress(uncompressed, 16, function (a) {
+                return f(a);
+            });
+        },
+        _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
+            if (uncompressed == null) return "";
+            var i, value,
+                context_dictionary = {},
+                context_dictionaryToCreate = {},
+                context_c = "",
+                context_wc = "",
+                context_w = "",
+                context_enlargeIn = 2, // Compensate for the first entry which should not count
+                context_dictSize = 3,
+                context_numBits = 2,
+                context_data = [],
+                context_data_val = 0,
+                context_data_position = 0,
+                ii, l;
+
+            for (ii = 0, l = uncompressed.length; ii < l; ii += 1) {
+                context_c = uncompressed.charAt(ii);
+                if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
+                    context_dictionary[context_c] = context_dictSize++;
+                    context_dictionaryToCreate[context_c] = true;
+                }
+
+                context_wc = context_w + context_c;
+                if (Object.prototype.hasOwnProperty.call(context_dictionary, context_wc)) {
+                    context_w = context_wc;
+                } else {
+                    if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+                        if (context_w.charCodeAt(0) < 256) {
+                            for (i = 0; i < context_numBits; i++) {
+                                context_data_val = (context_data_val << 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                            }
+                            value = context_w.charCodeAt(0);
+                            for (i = 0; i < 8; i++) {
+                                context_data_val = (context_data_val << 1) | (value & 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = value >> 1;
+                            }
+                        } else {
+                            value = 1;
+                            for (i = 0; i < context_numBits; i++) {
+                                context_data_val = (context_data_val << 1) | value;
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = 0;
+                            }
+                            value = context_w.charCodeAt(0);
+                            for (i = 0; i < 16; i++) {
+                                context_data_val = (context_data_val << 1) | (value & 1);
+                                if (context_data_position == bitsPerChar - 1) {
+                                    context_data_position = 0;
+                                    context_data.push(getCharFromInt(context_data_val));
+                                    context_data_val = 0;
+                                } else {
+                                    context_data_position++;
+                                }
+                                value = value >> 1;
+                            }
+                        }
+                        context_enlargeIn--;
+                        if (context_enlargeIn == 0) {
+                            context_enlargeIn = Math.pow(2, context_numBits);
+                            context_numBits++;
+                        }
+                        delete context_dictionaryToCreate[context_w];
+                    } else {
+                        value = context_dictionary[context_w];
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+
+
+                    }
+                    context_enlargeIn--;
+                    if (context_enlargeIn == 0) {
+                        context_enlargeIn = Math.pow(2, context_numBits);
+                        context_numBits++;
+                    }
+                    // Add wc to the dictionary.
+                    context_dictionary[context_wc] = context_dictSize++;
+                    context_w = String(context_c);
+                }
+            }
+
+            // Output the code for w.
+            if (context_w !== "") {
+                if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+                    if (context_w.charCodeAt(0) < 256) {
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                        }
+                        value = context_w.charCodeAt(0);
+                        for (i = 0; i < 8; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+                    } else {
+                        value = 1;
+                        for (i = 0; i < context_numBits; i++) {
+                            context_data_val = (context_data_val << 1) | value;
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = 0;
+                        }
+                        value = context_w.charCodeAt(0);
+                        for (i = 0; i < 16; i++) {
+                            context_data_val = (context_data_val << 1) | (value & 1);
+                            if (context_data_position == bitsPerChar - 1) {
+                                context_data_position = 0;
+                                context_data.push(getCharFromInt(context_data_val));
+                                context_data_val = 0;
+                            } else {
+                                context_data_position++;
+                            }
+                            value = value >> 1;
+                        }
+                    }
+                    context_enlargeIn--;
+                    if (context_enlargeIn == 0) {
+                        context_enlargeIn = Math.pow(2, context_numBits);
+                        context_numBits++;
+                    }
+                    delete context_dictionaryToCreate[context_w];
+                } else {
+                    value = context_dictionary[context_w];
+                    for (i = 0; i < context_numBits; i++) {
+                        context_data_val = (context_data_val << 1) | (value & 1);
+                        if (context_data_position == bitsPerChar - 1) {
+                            context_data_position = 0;
+                            context_data.push(getCharFromInt(context_data_val));
+                            context_data_val = 0;
+                        } else {
+                            context_data_position++;
+                        }
+                        value = value >> 1;
+                    }
+
+
+                }
+                context_enlargeIn--;
+                if (context_enlargeIn == 0) {
+                    context_enlargeIn = Math.pow(2, context_numBits);
+                    context_numBits++;
+                }
+            }
+
+            // Mark the end of the stream
+            value = 2;
+            for (i = 0; i < context_numBits; i++) {
+                context_data_val = (context_data_val << 1) | (value & 1);
+                if (context_data_position == bitsPerChar - 1) {
+                    context_data_position = 0;
+                    context_data.push(getCharFromInt(context_data_val));
+                    context_data_val = 0;
+                } else {
+                    context_data_position++;
+                }
+                value = value >> 1;
+            }
+
+            // Flush the last char
+            while (true) {
+                context_data_val = (context_data_val << 1);
+                if (context_data_position == bitsPerChar - 1) {
+                    context_data.push(getCharFromInt(context_data_val));
+                    break;
+                } else context_data_position++;
+            }
+            return context_data.join('');
+        },
+
+        decompress: function (compressed) {
+            if (compressed == null) return "";
+            if (compressed == "") return null;
+            return LZString._decompress(compressed.length, 32768, function (index) {
+                return compressed.charCodeAt(index);
+            });
+        },
+
+        _decompress: function (length, resetValue, getNextValue) {
+            var dictionary = [],
+                next,
+                enlargeIn = 4,
+                dictSize = 4,
+                numBits = 3,
+                entry = "",
+                result = [],
+                i,
+                w,
+                bits, resb, maxpower, power,
+                c,
+                data = {
+                    val: getNextValue(0),
+                    position: resetValue,
+                    index: 1
+                };
+
+            for (i = 0; i < 3; i += 1) {
+                dictionary[i] = i;
+            }
+
+            bits = 0;
+            maxpower = Math.pow(2, 2);
+            power = 1;
+            while (power != maxpower) {
+                resb = data.val & data.position;
+                data.position >>= 1;
+                if (data.position == 0) {
+                    data.position = resetValue;
+                    data.val = getNextValue(data.index++);
+                }
+                bits |= (resb > 0 ? 1 : 0) * power;
+                power <<= 1;
+            }
+
+            switch (next = bits) {
+            case 0:
+                bits = 0;
+                maxpower = Math.pow(2, 8);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+                c = f(bits);
+                break;
+            case 1:
+                bits = 0;
+                maxpower = Math.pow(2, 16);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+                c = f(bits);
+                break;
+            case 2:
+                return "";
+            }
+            dictionary[3] = c;
+            w = c;
+            result.push(c);
+            while (true) {
+                if (data.index > length) {
+                    return "";
+                }
+
+                bits = 0;
+                maxpower = Math.pow(2, numBits);
+                power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position;
+                    data.position >>= 1;
+                    if (data.position == 0) {
+                        data.position = resetValue;
+                        data.val = getNextValue(data.index++);
+                    }
+                    bits |= (resb > 0 ? 1 : 0) * power;
+                    power <<= 1;
+                }
+
+                switch (c = bits) {
+                case 0:
+                    bits = 0;
+                    maxpower = Math.pow(2, 8);
+                    power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position;
+                        data.position >>= 1;
+                        if (data.position == 0) {
+                            data.position = resetValue;
+                            data.val = getNextValue(data.index++);
+                        }
+                        bits |= (resb > 0 ? 1 : 0) * power;
+                        power <<= 1;
+                    }
+
+                    dictionary[dictSize++] = f(bits);
+                    c = dictSize - 1;
+                    enlargeIn--;
+                    break;
+                case 1:
+                    bits = 0;
+                    maxpower = Math.pow(2, 16);
+                    power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position;
+                        data.position >>= 1;
+                        if (data.position == 0) {
+                            data.position = resetValue;
+                            data.val = getNextValue(data.index++);
+                        }
+                        bits |= (resb > 0 ? 1 : 0) * power;
+                        power <<= 1;
+                    }
+                    dictionary[dictSize++] = f(bits);
+                    c = dictSize - 1;
+                    enlargeIn--;
+                    break;
+                case 2:
+                    return result.join('');
+                }
+
+                if (enlargeIn == 0) {
+                    enlargeIn = Math.pow(2, numBits);
+                    numBits++;
+                }
+
+                if (dictionary[c]) {
+                    entry = dictionary[c];
+                } else {
+                    if (c === dictSize) {
+                        entry = w + w.charAt(0);
+                    } else {
+                        return null;
+                    }
+                }
+                result.push(entry);
+
+                // Add w+entry[0] to the dictionary.
+                dictionary[dictSize++] = w + entry.charAt(0);
+                enlargeIn--;
+
+                w = entry;
+
+                if (enlargeIn == 0) {
+                    enlargeIn = Math.pow(2, numBits);
+                    numBits++;
+                }
+
+            }
+        }
+    };
+    return LZString;
+});
+// http://www.makeitgo.ws/articles/animationframe/
+// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+bento.define('bento/lib/requestanimationframe', [], function () {
+    'use strict';
+
+    var lastTime = 0,
+        vendors = ['ms', 'moz', 'webkit', 'o'];
+    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
+    }
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function (callback, element) {
+            var currTime = new Date().getTime(),
+                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
+                id = window.setTimeout(function () {
+                    callback(currTime + timeToCall);
+                }, timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
+
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function (id) {
+            clearTimeout(id);
+        };
+    return window.requestAnimationFrame;
+});
+/**
+ * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
+ * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
+ * assets to load, and where to find them.
+ * <br>Exports: Constructor, can be accessed through Bento.assets namespace
+ * @module bento/managers/asset
+ * @moduleName AssetManager
+ * @returns AssetManager
+ */
+bento.define('bento/managers/asset', [
+    'bento/packedimage',
+    'bento/utils',
+    'audia',
+    'lzstring'
+], function (
+    PackedImage,
+    Utils,
+    Audia,
+    LZString
+) {
+    'use strict';
+    return function () {
+        var assetGroups = {};
+        var loadedGroups = {};
+        var path = '';
+        var assets = {
+            audio: {},
+            json: {},
+            images: {},
+            binary: {},
+            fonts: {},
+            spritesheets: {},
+            texturePacker: {},
+
+            // packed
+            'packed-images': {},
+            'packed-spritesheets': {},
+            'packed-json': {}
+        };
+        /**
+         * (Down)Load asset types
+         */
+        var loadAudio = function (name, source, callback) {
+            var i, l;
+            var failed = true;
+            var loadAudioFile = function (index, src) {
+                var audio = new Audia();
+                var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
+                if (!!canPlay || window.ejecta) {
+                    // success!
+                    if (!manager.skipAudioCallback) {
+                        audio.onload = function () {
+                            callback(null, name, audio);
+                        };
+                    } else {
+                        // callback immediately
+                        window.setTimeout(function () {
+                            callback(null, name, audio);
+                        }, 0);
+                    }
+                    audio.src = src;
+                    failed = false;
+                    return true;
+                }
+                return false;
+            };
+            if (!Utils.isArray(source)) {
+                // source = [path + 'audio/' + source];
+                source = [source];
+            }
+            // try every type
+            for (i = 0, l = source.length; i < l; ++i) {
+                if (loadAudioFile(i, path + 'audio/' + source[i])) {
+                    break;
+                }
+            }
+            if (failed) {
+                callback('This audio type is not supported:', name, source);
+            }
+        };
+        var loadJSON = function (name, source, callback, isCompressed) {
+            var xhr = new window.XMLHttpRequest();
+            if (xhr.overrideMimeType) {
+                xhr.overrideMimeType('application/json');
+            }
+
+            xhr.open('GET', source, true);
+            xhr.onerror = function () {
+                callback('Error: loading JSON ' + source);
+            };
+            xhr.ontimeout = function () {
+                callback('Timeout: loading JSON ' + source);
+            };
+            xhr.onreadystatechange = function () {
+                var jsonData;
+                var response;
+                if (xhr.readyState === 4) {
+                    if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                        try {
+                            response = xhr.responseText;
+                            // read header
+                            if (response[0] === 'L' && response[1] === 'Z' && response[2] === 'S') {
+                                isCompressed = true;
+                                // trim header
+                                response = response.substring(3);
+                            }
+
+                            if (isCompressed) {
+                                // decompress if needed
+                                jsonData = JSON.parse(LZString.decompressFromBase64(response));
+                            } else {
+                                jsonData = JSON.parse(response);
+                            }
+                        } catch (e) {
+                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source + ': ' + e);
+                            console.log('Trying to parse', response);
+                            jsonData = xhr.responseText;
+                        }
+                        callback(null, name, jsonData);
+                    } else {
+                        callback('Error: State ' + xhr.readyState + ' ' + source);
+                    }
+                }
+            };
+            xhr.send(null);
+        };
+        var loadJsonCompressed = function (name, source, callback) {
+            return loadJSON(name, source, callback, true);
+        };
+        var loadBinary = function (name, source, success, failure) {
+            var xhr = new window.XMLHttpRequest();
+            var arrayBuffer;
+            var byteArray;
+            var buffer;
+            var i = 0;
+
+            xhr.open('GET', source, true);
+            xhr.onerror = function () {
+                failure('ERROR: loading binary ' + source);
+            };
+            xhr.responseType = 'arraybuffer';
+            xhr.onload = function (e) {
+                var binary;
+                arrayBuffer = xhr.response;
+                if (arrayBuffer) {
+                    byteArray = new Uint8Array(arrayBuffer);
+                    buffer = [];
+                    for (i; i < byteArray.byteLength; ++i) {
+                        buffer[i] = String.fromCharCode(byteArray[i]);
+                    }
+                    // loadedAssets.binary[name] = buffer.join('');
+                    binary = buffer.join('');
+                    success(null, name, binary);
+                }
+            };
+            xhr.send();
+        };
+        var loadImage = function (name, source, callback) {
+            var img = new Image();
+
+            // cocoon lazy load, might be useful some day?
+            // img.cocoonLazyLoad = true;
+
+            img.src = source;
+            img.addEventListener('load', function () {
+                callback(null, name, img);
+            }, false);
+            img.addEventListener('error', function (evt) {
+                // TODO: Implement failure: should it retry to load the image?
+                Utils.log('ERROR: loading image ' + source);
+            }, false);
+        };
+        var loadTTF = function (name, source, callback) {
+            // for every font to load we measure the width on a canvas
+            var splitName = name;
+            var canvas = document.createElement('canvas');
+            var context = canvas.getContext('2d');
+            var width = 0;
+            var oldWidth;
+            var intervalId;
+            var checkCount = 0;
+            var measure = function () {
+                width = context.measureText('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,').width;
+                return width;
+            };
+            var loadFont = function () {
+                // append a style element with the font face
+                // this method works with Canvas+
+                var style = document.createElement('style');
+                style.setAttribute("type", "text/css");
+                style.innerHTML = "@font-face { font-family: '" + name +
+                    "'; src: url('" + source + "');}";
+
+                document.body.appendChild(style);
+
+                // try setting it
+                context.font = "normal 16px " + name;
+            };
+            // detect a loaded font by checking if the width changed
+            var isLoaded = function () {
+                return oldWidth !== measure();
+            };
+
+            // unlike other assets, the font name is not allowed to have slashes!
+            if (name.indexOf("/") >= 0) {
+                splitName = name.split("/");
+                // swap name with last word
+                name = splitName[splitName.length - 1];
+            }
+
+            loadFont();
+
+            // measure for the first time
+            oldWidth = measure();
+
+            // check every 100ms
+            intervalId = window.setInterval(function () {
+                if (isLoaded()) {
+                    // done!
+                    window.clearInterval(intervalId);
+                    if (callback) {
+                        callback(null, name, name);
+                    }
+                } else if (checkCount >= 10) {
+                    // give up after 1000ms
+                    // possible scenarios:
+                    // * a mistake was made, for example a typo in the path, and the font was never loaded
+                    // * the font was already loaded (can happen in reloading in Cocoon devapp)
+                    // either way we continue as if nothing happened, not loading the font shouldn't crash the game
+                    window.clearInterval(intervalId);
+                    console.log('Warning: font "' + name + '" timed out with loading.');
+                    if (callback) {
+                        callback(null, name, name);
+                    }
+                }
+                checkCount += 1;
+            }, 100);
+        };
+        var loadSpriteSheet = function (name, source, callback) {
+            var spriteSheet = {
+                image: null,
+                animation: null
+            };
+
+            var checkForCompletion = function () {
+                if (spriteSheet.image !== null && spriteSheet.animation !== null) {
+                    callback(null, name, spriteSheet);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.animation = json;
+                checkForCompletion();
+            });
+
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.image = PackedImage(img);
+                checkForCompletion();
+            });
+        };
+        var loadPackedImage = function (name, source, callback) {
+            // very similar to spritesheet: load an image and load a json
+            var packedImage = {
+                image: null,
+                data: null
+            };
+            var checkForCompletion = function () {
+                if (packedImage.image !== null && packedImage.data !== null) {
+                    callback(null, name, packedImage);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                packedImage.data = json;
+                checkForCompletion();
+            });
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                packedImage.image = img;
+                checkForCompletion();
+            });
+        };
+        var loadSpriteSheetPack = function (name, source, callback) {
+            var spriteSheet = {
+                image: null,
+                data: null
+            };
+
+            var checkForCompletion = function () {
+                if (spriteSheet.image !== null && spriteSheet.data !== null) {
+                    callback(null, name, spriteSheet);
+                }
+            };
+
+            loadJSON(name, source + '.json', function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.data = json;
+                checkForCompletion();
+            });
+
+            loadImage(name, source + '.png', function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spriteSheet.image = img;
+                checkForCompletion();
+            });
+        };
+        /**
+         * Loads asset groups (json files containing names and asset paths to load)
+         * If the assetGroup parameter is passed to Bento.setup, this function will be
+         * called automatically by Bento.
+         * This will not load the assets (merely the assetgroups). To load the assets,
+         * you must call Bento.assets.load()
+         * @function
+         * @instance
+         * @param {Object} jsonFiles - Name with json path
+         * @param {Function} onReady - Callback when ready
+         * @param {Function} onLoaded - Callback when json file is loaded
+         * @name loadAssetGroups
+         */
+        var loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
+            var jsonName;
+            var keyCount = Utils.getKeyLength(jsonFiles);
+            var loaded = 0;
+            var callback = function (err, name, json) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assetGroups[name] = json;
+                loaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(loaded, keyCount, name, 'json');
+                }
+                if (keyCount === loaded && Utils.isDefined(onReady)) {
+                    onReady(null, 'assetGroup');
+                }
+            };
+            for (jsonName in jsonFiles) {
+                if (jsonFiles.hasOwnProperty(jsonName)) {
+                    loadJSON(jsonName, jsonFiles[jsonName], callback);
+                }
+            }
+        };
+        /**
+         * Loads assets from asset group.
+         * @function
+         * @instance
+         * @param {String} groupName - Name of asset group
+         * @param {Function} onReady - Callback when ready
+         * @param {Function} onLoaded - Callback when asset file is loaded
+         * @param {Bool} skipPackedImages - do not initialize texture packed images
+         * @name load
+         */
+        var load = function (groupName, onReady, onLoaded) {
+            var group = assetGroups[groupName];
+            var asset;
+            var assetsLoaded = 0;
+            var assetCount = 0;
+            var toLoad = [];
+            // assets to unpack
+            var toUnpack = {
+                'packed-images': {},
+                'packed-spritesheets': {},
+                'packed-json': {}
+            };
+            var packs = [];
+            var postLoad = function () {
+                var initPackedImagesLegacy = function () {
+                    // old way of packed images
+                    var frame, pack, i, l, image, json, name;
+                    while (packs.length) {
+                        pack = packs.pop();
+                        image = getImageElement(pack);
+                        json = getJson(pack);
+
+                        if (!image || !json) {
+                            // TODO: should have a cleaner method to check if packs are not loaded yet
+                            // return the pack until the image/json is loaded
+                            packs.push(pack);
+                            return;
+                        }
+
+                        // parse json
+                        for (i = 0, l = json.frames.length; i < l; ++i) {
+                            name = json.frames[i].filename;
+                            name = name.substring(0, name.length - 4);
+                            frame = json.frames[i].frame;
+                            assets.texturePacker[name] = new PackedImage(image, frame);
+                        }
+                    }
+                };
+                var initPackedImages = function () {
+                    // expand into images
+                    var packedImages = toUnpack['packed-images'];
+                    Utils.forEach(packedImages, function (packData, name) {
+                        var image = packData.image;
+                        var data = packData.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // turn into image data
+                            var assetName = textureData.assetName;
+                            var frame = {
+                                x: textureData.x,
+                                y: textureData.y,
+                                w: textureData.width,
+                                h: textureData.height,
+                            };
+                            assets.texturePacker[assetName] = new PackedImage(image, frame);
+                        });
+                    });
+                };
+                var unpackJson = function () {
+                    // unpack json into multiple jsons
+                    var key;
+                    var packedJson = toUnpack['packed-json'];
+                    Utils.forEach(packedJson, function (group) {
+                        Utils.forEach(group, function (json, key, l, breakLoop) {
+                            assets.json[key] = json;
+                        });
+                    });
+                };
+                var unpackSpriteSheets = function () {
+                    // expand into images
+                    var packedImages = toUnpack['packed-spritesheets'];
+                    Utils.forEach(packedImages, function (packData, name) {
+                        var image = packData.image;
+                        var data = packData.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // turn into image data
+                            var assetName = textureData.assetName;
+                            var frame = {
+                                x: textureData.x,
+                                y: textureData.y,
+                                w: textureData.width,
+                                h: textureData.height,
+                            };
+                            var spriteSheet = {
+                                image: new PackedImage(image, frame),
+                                animation: textureData.spriteSheet
+                            };
+                            assets.spritesheets[assetName] = spriteSheet;
+                        });
+                    });
+                };
+                // after everything has loaded, do some post processing
+                initPackedImagesLegacy();
+                initPackedImages();
+                unpackJson();
+                unpackSpriteSheets();
+                // mark as loaded
+                loadedGroups[groupName] = true;
+                // callback
+                if (Utils.isDefined(onReady)) {
+                    onReady(null, groupName);
+                }
+            };
+            var checkLoaded = function () {
+                if (assetCount === 0 || (assetCount > 0 && assetsLoaded === assetCount)) {
+                    postLoad();
+                }
+            };
+            var onLoadImage = function (err, name, image) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets.images[name] = image;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'image');
+                }
+                checkLoaded();
+            };
+            // DEPRECATED
+            var onLoadPack = function (err, name, json) {
+                // TODO: fix texturepacker loading
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets.json[name] = json;
+                packs.push(name);
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'pack');
+                }
+                checkLoaded();
+            };
+            var onLoadJson = function (err, name, json) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets.json[name] = json;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'json');
+                }
+                checkLoaded();
+            };
+            var onLoadTTF = function (err, name, ttf) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets.fonts[name] = ttf;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'ttf');
+                }
+                checkLoaded();
+            };
+            var onLoadAudio = function (err, name, audio) {
+                if (err) {
+                    Utils.log(err);
+                } else {
+                    assets.audio[name] = audio;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'audio');
+                }
+                checkLoaded();
+            };
+            var onLoadSpriteSheet = function (err, name, spriteSheet) {
+                if (err) {
+                    Utils.log(err);
+                } else {
+                    assets.spritesheets[name] = spriteSheet;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheet');
+                }
+                checkLoaded();
+            };
+            // packs
+            var onLoadImagePack = function (err, name, imagePack) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets['packed-images'][name] = imagePack;
+                toUnpack['packed-images'][name] = imagePack;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'imagePack');
+                }
+                checkLoaded();
+            };
+            var onLoadJsonPack = function (err, name, json) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                assets['packed-json'][name] = json;
+                toUnpack['packed-json'][name] = json;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'jsonPack');
+                }
+                checkLoaded();
+            };
+            var onLoadSpriteSheetPack = function (err, name, spriteSheetPack) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                assets['packed-spritesheets'][name] = spriteSheetPack;
+                toUnpack['packed-spritesheets'][name] = spriteSheetPack;
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheetPack');
+                }
+                checkLoaded();
+            };
+
+            var readyForLoading = function (fn, asset, path, callback) {
+                toLoad.push({
+                    fn: fn,
+                    asset: asset,
+                    path: path,
+                    callback: callback
+                });
+            };
+            var loadAllAssets = function () {
+                var i = 0, l;
+                var data;
+                for (i = 0, l = toLoad.length; i < l; ++i) {
+                    data = toLoad[i];
+                    data.fn(data.asset, data.path, data.callback);
+                }
+                if (toLoad.length === 0) {
+                    checkLoaded();
+                }
+            };
+
+            if (!Utils.isDefined(group)) {
+                onReady('Could not find asset group ' + groupName);
+                return;
+            }
+            // set path
+            if (Utils.isDefined(group.path)) {
+                path = group.path;
+            }
+            // count the number of assets first
+            // get images
+            if (Utils.isDefined(group.images)) {
+                assetCount += Utils.getKeyLength(group.images);
+                for (asset in group.images) {
+                    if (!group.images.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
+                }
+            }
+            // get packed images
+            if (Utils.isDefined(group.texturePacker)) {
+                assetCount += Utils.getKeyLength(group.texturePacker);
+                for (asset in group.texturePacker) {
+                    if (!group.texturePacker.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                }
+            }
+            // get audio
+            if (Utils.isDefined(group.audio)) {
+                assetCount += Utils.getKeyLength(group.audio);
+                for (asset in group.audio) {
+                    if (!group.audio.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
+                }
+            }
+            // get json
+            if (Utils.isDefined(group.json)) {
+                assetCount += Utils.getKeyLength(group.json);
+                for (asset in group.json) {
+                    if (!group.json.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
+                }
+            }
+            // get fonts
+            if (Utils.isDefined(group.fonts)) {
+                assetCount += Utils.getKeyLength(group.fonts);
+                for (asset in group.fonts) {
+                    if (!group.fonts.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadTTF, asset, path + 'fonts/' + group.fonts[asset], onLoadTTF);
+                }
+            }
+            // get spritesheets
+            if (Utils.isDefined(group.spritesheets)) {
+                assetCount += Utils.getKeyLength(group.spritesheets);
+                for (asset in group.spritesheets) {
+                    if (!group.spritesheets.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
+                }
+            }
+
+            // packed assets
+            if (Utils.isDefined(group['packed-images'])) {
+                assetCount += Utils.getKeyLength(group['packed-images']);
+                Utils.forEach(group['packed-images'], function (assetPath, assetName) {
+                    readyForLoading(loadPackedImage, assetName, path + 'packed-images/' + assetPath, onLoadImagePack);
+                });
+            }
+            // get (compressed) packed json
+            if (Utils.isDefined(group['packed-json'])) {
+                assetCount += Utils.getKeyLength(group['packed-json']);
+                Utils.forEach(group['packed-json'], function (assetPath, assetName) {
+                    readyForLoading(loadJSON, assetName, path + 'packed-json/' + assetPath, onLoadJsonPack);
+                });
+            }
+            // get packed spritesheet
+            if (Utils.isDefined(group['packed-spritesheets'])) {
+                assetCount += Utils.getKeyLength(group['packed-spritesheets']);
+                Utils.forEach(group['packed-spritesheets'], function (assetPath, assetName) {
+                    readyForLoading(loadSpriteSheetPack, assetName, path + 'packed-spritesheets/' + assetPath, onLoadSpriteSheetPack);
+                });
+            }
+
+            // load all assets
+            loadAllAssets();
+
+            return assetCount;
+        };
+        /**
+         * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadImageFromUrl
+         */
+        var loadImageFromUrl = function (name, url, callback) {
+            var onLoadImage = function (err, name, image) {
+                if (err) {
+                    Utils.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.images[name] = image;
+                if (callback) {
+                    callback(null, image);
+                }
+            };
+            loadImage(name, url, onLoadImage);
+        };
+        /**
+         * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadJsonFromUrl
+         */
+        var loadJsonFromUrl = function (name, url, callback) {
+            var onLoadJson = function (err, name, json) {
+                if (err) {
+                    Utils.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.json[name] = json;
+                if (callback) {
+                    callback(null, json);
+                }
+            };
+            loadJSON(name, url, onLoadJson);
+        };
+        /**
+         * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
+         * @function
+         * @instance
+         * @param {String} name - Name of asset
+         * @param {String} url - Url path (relative to your index.html)
+         * @param {Function} callback - Callback function
+         * @name loadAudioFromUrl
+         */
+        var loadAudioFromUrl = function (name, url, callback) {
+            var onLoadAudio = function (err, name, audio) {
+                if (err) {
+                    Utils.log(err);
+                    if (callback) {
+                        callback(err);
+                    }
+                    return;
+                }
+                assets.audio[name] = audio;
+                if (callback) {
+                    callback(audio);
+                }
+            };
+            loadAudio(name, url, onLoadAudio);
+        };
+        /**
+         * Unloads assets
+         * @function
+         * @instance
+         * @param {String} groupName - Name of asset group
+         * @param {Boolean} dispose - Should use Canvas+ dispose
+         * @name unload
+         */
+        var unload = function (groupName, dispose) {
+            // find all assets in this group
+            var assetGroup = assetGroups[groupName];
+
+            if (!assetGroup) {
+                Utils.log('ERROR: asset group ' + groupName + ' does not exist');
+                return;
+            }
+            Utils.forEach(assetGroup, function (group, type) {
+                if (typeof group !== "object") {
+                    return;
+                }
+                Utils.forEach(group, function (assetPath, name) {
+                    // NOTE: from this point on there are a lot of manual checks etc.
+                    // would be nicer to make unify the logic...
+
+                    // find the corresponding asset from the assets object
+                    var assetTypeGroup = assets[type] || {};
+                    var asset = assetTypeGroup[name];
+                    var removePackedImage = function (packedImages) {
+                        // find what it unpacked to
+                        var image = packedImages.image;
+                        var data = packedImages.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // find out the asset name
+                            var assetName = textureData.assetName;
+                            var textureAsset = assets.texturePacker[assetName];
+                            // delete if this asset still exists
+                            if (textureAsset) {
+                                delete assets.texturePacker[assetName];
+                            }
+                        });
+                        // dispose if possible
+                        if (dispose && image.dispose) {
+                            image.dispose();
+                        }
+                        if (dispose && image.image && image.image.dispose) {
+                            image.image.dispose();
+                        }
+                    };
+                    var removePackedSpriteSheet = function (packedSpriteSheets) {
+                        // find what it unpacked to
+                        var image = packedSpriteSheets.image;
+                        var data = packedSpriteSheets.data;
+                        Utils.forEach(data, function (textureData, i) {
+                            // find out the asset name
+                            var assetName = textureData.assetName;
+                            var spriteSheet = assets.spritesheets[assetName];
+                            // delete if this asset still exists
+                            if (spriteSheet) {
+                                delete assets.spritesheets[assetName];
+                            }
+                        });
+                        // dispose if possible
+                        if (dispose && image.dispose) {
+                            image.dispose();
+                        }
+                        if (dispose && image.image && image.image.dispose) {
+                            image.image.dispose();
+                        }
+                    };
+                    var removePackedJson = function (packedJson) {
+                        // find what it unpacked to
+                        Utils.forEach(packedJson, function (json, key, l, breakLoop) {
+                            delete assets.json[key];
+                        });
+                    };
+
+                    if (asset) {
+                        // remove reference to it
+                        assetTypeGroup[name] = undefined;
+                        // delete could be bad for performance(?)
+                        delete assetTypeGroup[name];
+
+                        if (type === 'images') {
+                            // also remove corresponding texturepacker
+                            if (assets.texturePacker[name]) {
+                                assets.texturePacker[name] = undefined;
+                                delete assets.texturePacker[name];
+                            }
+                        } else if (type === 'packed-images') {
+                            removePackedImage(asset);
+                        } else if (type === 'packed-spritesheets') {
+                            removePackedSpriteSheet(asset);
+                        } else if (type === 'packed-json') {
+                            removePackedJson(asset);
+                        }
+
+                        // Canvas+ only: dispose if possible
+                        // https://blog.ludei.com/techniques-to-optimize-memory-use-in-ludeis-canvas-environment/
+                        if (dispose) {
+                            // image
+                            if (asset.dispose) {
+                                asset.dispose();
+                            }
+                            // spritesheet
+                            else if (asset.image && asset.image.dispose) {
+                                asset.image.dispose();
+                            } else if (asset.image && asset.image.image && asset.image.image.dispose) {
+                                asset.image.image.dispose();
+                            }
+                            // audia
+                            else if (asset._audioNode && asset._audioNode.dispose) {
+                                asset._audioNode.dispose();
+                            }
+                        }
+                    }
+                });
+            });
+            // mark as unloaded
+            loadedGroups[groupName] = false;
+        };
+        /**
+         * Returns a previously loaded image
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {PackedImage} Image
+         * @name getImage
+         */
+        var getImage = function (name) {
+            // NOTE: getImage always returns a PackedImage
+            // if the loaded image has not been initialized as PackedImage yet,
+            // getImage will do that now and caches the PackedImage in assets.texturePacker
+            var image, packedImage = assets.texturePacker[name];
+            if (!packedImage) {
+                image = getImageElement(name);
+                if (!image) {
+                    Utils.log("ERROR: Image " + name + " could not be found");
+                    return null;
+                }
+                packedImage = PackedImage(image);
+                assets.texturePacker[name] = packedImage;
+            }
+            return packedImage;
+        };
+        /**
+         * Returns a previously loaded image element
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {HTMLImage} Html Image element
+         * @name getImageElement
+         */
+        var getImageElement = function (name) {
+            var asset = assets.images[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: ImageElement " + name + " could not be found");
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded json object
+         * @function
+         * @instance
+         * @param {String} name - Name of json file
+         * @returns {Object} Json object
+         * @name getJson
+         */
+        var getJson = function (name) {
+            var asset = assets.json[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: JSON " + name + " could not be found");
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded audio element (currently by howler)
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Audia} Audia object
+         * @name getAudio
+         */
+        var getAudio = function (name) {
+            var asset = assets.audio[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Audio " + name + " could not be found");
+            }
+            return asset;
+        };
+        /**
+         * Returns a previously loaded spriteSheet element
+         * @function
+         * @instance
+         * @param {String} name - Name of spriteSheet
+         * @returns {Object} spriteSheet object
+         * @name getSpriteSheet
+         */
+        var getSpriteSheet = function (name) {
+            var asset = assets.spritesheets[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Sprite sheet " + name + " could not be found");
+            }
+            return asset;
+        };
+        /**
+         * Returns all assets
+         * @function
+         * @instance
+         * @param {String} name - Name of image
+         * @returns {Object} assets - Object with reference to all loaded assets
+         * @name getAssets
+         */
+        var getAssets = function () {
+            return assets;
+        };
+        /**
+         * Returns asset group
+         * @function
+         * @instance
+         * @returns {Object} assetGroups - reference to loaded JSON file
+         * @name getAssetGroups
+         */
+        var getAssetGroups = function () {
+            return assetGroups;
+        };
+        /**
+         * Reloads all previously loaded assets
+         * @function
+         * @instance
+         * @param {Function} callback - called when all assets are loaded
+         * @name reload
+         */
+        var reload = function (callback) {
+            var group;
+            var loaded = 0;
+            var groupsToLoad = [];
+            var loadGroups = function () {
+                var i, l;
+                for (i = 0, l = groupsToLoad.length; i < l; ++i) {
+                    load(groupsToLoad[i], end, function (current, total, name) {});
+                }
+            };
+            var end = function () {
+                loaded += 1;
+
+                if (loaded === groupsToLoad.length && callback) {
+                    callback();
+                }
+            };
+            // collect groups
+            for (group in assetGroups) {
+                if (!assetGroups.hasOwnProperty(group)) {
+                    continue;
+                }
+                if (!loadedGroups[group]) {
+                    // havent loaded this group yet
+                    continue;
+                }
+                groupsToLoad.push(group);
+            }
+
+            // load them
+            loadGroups();
+        };
+        /**
+         * Attempts to load ./assets.json and interpret it as assetgroups
+         * @function
+         * @instance
+         * @param {Function} onRead - Called with an error string or null if successful
+         * @name loadAssetsJson
+         */
+        var loadAssetsJson = function (onReady) {
+            loadJSON('assets.json', 'assets.json', function (error, name, assetsJson) {
+                var isLoading = false;
+                var groupsToLoad = {};
+                if (error) {
+                    onReady(error);
+                    return;
+                }
+                // check the contents of json
+                Utils.forEach(assetsJson, function (group, groupName, l, breakLoop) {
+                    if (Utils.isString(group)) {
+                        // assume assets.json consists of strings to load json files with
+                        isLoading = true;
+                        groupsToLoad[groupName] = group;
+                    } else {
+                        // the asset group is present
+                        assetGroups[groupName] = group;
+                    }
+                });
+
+                if (isLoading) {
+                    // load jsons
+                    loadAssetGroups(groupsToLoad, onReady);
+                } else {
+                    // done
+                    onReady(null, 'assetsJson');
+                }
+            });
+        };
+        /**
+         * Loads all assets
+         * @function
+         * @instance
+         * @param {Object} settings
+         * @param {Array} settings.exceptions - array of strings, which asset groups not to load
+         * @param {Function} settings.onComplete - called when all assets are loaded
+         * @param {Function} settings.onLoad - called on every asset loaded
+         * @name reload
+         */
+        var loadAllAssets = function (settings) {
+            var exceptions = settings.exceptions || [];
+            var onReady = settings.onReady || settings.onComplete || function (err, name) {};
+            var onLoaded = settings.onLoaded || settings.onLoad || function (count, total, name, type) {};
+            var group;
+            var groupName;
+            var groupCount = 0;
+            var assetCount = 0;
+            var groupsLoaded = 0;
+            var current = 0;
+            // check if all groups loaded
+            var end = function (err) {
+                if (err) {
+                    Utils.log(err);
+                    return;
+                }
+                groupsLoaded += 1;
+                if (groupsLoaded === groupCount && onReady) {
+                    onReady(null);
+                }
+            };
+            // called on every asset
+            var loadAsset = function (c, a, name, type) {
+                current += 1;
+                if (onLoaded) {
+                    onLoaded(current, assetCount, name, type);
+                }
+            };
+            // count groups before any loading
+            for (groupName in assetGroups) {
+                if (!assetGroups.hasOwnProperty(groupName)) {
+                    continue;
+                }
+                if (exceptions.indexOf(groupName) >= 0) {
+                    continue;
+                }
+                groupCount += 1;
+            }
+
+            // check every assetgroup and load its assets
+            for (groupName in assetGroups) {
+                if (!assetGroups.hasOwnProperty(groupName)) {
+                    continue;
+                }
+                if (exceptions.indexOf(groupName) >= 0) {
+                    continue;
+                }
+                group = assetGroups[groupName];
+                assetCount += load(groupName, end, loadAsset);
+            }
+
+            // nothing to load
+            if (groupCount === 0 && onReady) {
+                onReady();
+            }
+        };
+        var manager = {
+            skipAudioCallback: false,
+            reload: reload,
+            loadAllAssets: loadAllAssets,
+            loadAssetGroups: loadAssetGroups,
+            loadAssetsJson: loadAssetsJson,
+            load: load,
+            loadJson: loadJSON,
+            loadImageFromUrl: loadImageFromUrl,
+            loadJsonFromUrl: loadJsonFromUrl,
+            loadAudioFromUrl: loadAudioFromUrl,
+            unload: unload,
+            getImage: getImage,
+            getImageElement: getImageElement,
+            getJson: getJson,
+            getAudio: getAudio,
+            getSpriteSheet: getSpriteSheet,
+            getAssets: getAssets,
+            getAssetGroups: getAssetGroups
+        };
+        return manager;
+    };
+});
+/**
+ * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
+ * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
+ * asset names with sfx_ and bgm_ respectively.
+ * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
+ * @module bento/managers/audio
+ * @moduleName AudioManager
+ * @returns AudioManager
+ */
+bento.define('bento/managers/audio', [
+    'bento/utils'
+], function (Utils) {
+    return function (bento) {
+        var volume = 1,
+            mutedSound = false,
+            mutedMusic = false,
+            preventSounds = false,
+            isPlayingMusic = false,
+            howler,
+            musicLoop = false,
+            lastMusicPlayed = '',
+            currentMusicId = 0,
+            saveMuteSound,
+            saveMuteMusic,
+            assetManager = bento.assets,
+            canvasElement = bento.getCanvas(),
+            onVisibilityChanged = function (hidden) {
+                if (hidden) {
+                    // save audio preferences and mute
+                    saveMuteSound = mutedSound;
+                    saveMuteMusic = mutedMusic;
+                    obj.muteMusic(true);
+                    obj.muteSound(true);
+                } else {
+                    // reload audio preferences and replay music if necessary
+                    mutedSound = saveMuteSound;
+                    mutedMusic = saveMuteMusic;
+                    if (lastMusicPlayed) {
+                        obj.playMusic(lastMusicPlayed, musicLoop);
+                    }
+                }
+            },
+            obj = {
+                /**
+                 * Sets the volume (0 = minimum, 1 = maximum)
+                 * @name setVolume
+                 * @instance
+                 * @function
+                 * @param {Number} value - the volume
+                 * @param {String} name - name of the sound to change volume
+                 */
+                setVolume: function (value, name) {
+                    var audio = assetManager.getAudio(name);
+                    if (!audio) {
+                        return;
+                    }
+                    audio.volume = value;
+                },
+                /**
+                 * Gets the volume (0 = minimum, 1 = maximum)
+                 * @name getVolume
+                 * @instance
+                 * @function
+                 * @param {String} name - name of the sound
+                 */
+                getVolume: function (name) {
+                    var audio = assetManager.getAudio(name);
+                    if (!audio) {
+                        Utils.log('ERROR: Could not find audio file');
+                        return 0;
+                    }
+                    return audio.volume;
+                },
+                /**
+                 * Plays a sound effect
+                 * @name playSound
+                 * @instance
+                 * @function
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to false)
+                 * @param {Function} [onEnd] - callback when the audio ends
+                 * @param {Boolean} [stopSound] - stops the sound if true
+                 */
+                playSound: function (name, loop, onEnd, stopSound) {
+                    var audio = assetManager.getAudio(name);
+                    var slashIndex = name.lastIndexOf('/');
+                    if (!audio) {
+                        Utils.log('ERROR: Could not find audio file');
+                        return;
+                    }
+
+                    if (name.substr(slashIndex + 1, 4) !== 'sfx_') {
+                        Utils.log("Warning: file names of sound effects should start with 'sfx_'");
+                    }
+
+                    if (!mutedSound && !preventSounds) {
+                        if (stopSound)
+                            obj.stopSound(name);
+                        if (Utils.isDefined(loop)) {
+                            audio.loop = loop;
+                        }
+                        if (Utils.isDefined(onEnd)) {
+                            audio.onended = onEnd;
+                        }
+                        audio.play();
+                    }
+                },
+                /**
+                 * Stops a specific sound effect
+                 * @name stopSound
+                 * @instance
+                 * @function
+                 */
+                stopSound: function (name) {
+                    var i, l, node;
+                    var audio = assetManager.getAudio(name);
+                    if (!audio) {
+                        Utils.log('ERROR: Could not find audio file');
+                        return;
+                    }
+                    audio.stop();
+                },
+                /**
+                 * Plays a music
+                 * @name playMusic
+                 * @instance
+                 * @function
+                 * @param {String} name - name of the audio asset
+                 * @param {Boolean} [loop] - should the audio loop (defaults to true)
+                 * @param {Function} [onEnd] - callback when the audio ends
+                 * @param {Boolean} [stopAllMusic] - stops all music if true
+                 */
+                playMusic: function (name, loop, onEnd, stopAllMusic) {
+                    var audio;
+                    var slashIndex = name.lastIndexOf('/');
+
+                    if (stopAllMusic) {
+                        obj.stopAllMusic();
+                    }
+
+                    if (name.substr(slashIndex + 1, 4) !== 'bgm_') {
+                        Utils.log("Warning: file names of music tracks should start with 'bgm_'");
+                    }
+
+                    lastMusicPlayed = name;
+                    if (Utils.isDefined(loop)) {
+                        musicLoop = loop;
+                    } else {
+                        musicLoop = true;
+                    }
+                    // set end event
+                    if (!mutedMusic && lastMusicPlayed !== '') {
+                        audio = assetManager.getAudio(name);
+                        if (!audio) {
+                            Utils.log('ERROR: Could not find audio file');
+                            return;
+                        }
+                        if (onEnd) {
+                            audio.onended = onEnd;
+                        }
+                        audio.loop = musicLoop;
+                        audio.play();
+                        isPlayingMusic = true;
+                    }
+                },
+                /**
+                 * Stops a specific music
+                 * @name stopMusic
+                 * @param {String} name - name of the audio asset
+                 * @instance
+                 * @function
+                 */
+                stopMusic: function (name) {
+                    var i, l, node;
+                    assetManager.getAudio(name).stop();
+                    isPlayingMusic = false;
+                },
+                /**
+                 * Mute or unmute all sound
+                 * @name muteSound
+                 * @instance
+                 * @function
+                 * @param {Boolean} mute - whether to mute or not
+                 */
+                muteSound: function (mute) {
+                    mutedSound = mute;
+                    if (mutedSound) {
+                        // we stop all sounds because setting volume is not supported on all devices
+                        this.stopAllSound();
+                    }
+                },
+                /**
+                 * Mute or unmute all music
+                 * @instance
+                 * @name muteMusic
+                 * @function
+                 * @param {Boolean} mute - whether to mute or not
+                 * @param {Boolean} continueMusic - whether the music continues
+                 */
+                muteMusic: function (mute, continueMusic) {
+                    var last = lastMusicPlayed;
+                    mutedMusic = mute;
+
+                    if (!Utils.isDefined(continueMusic)) {
+                        continueMusic = false;
+                    }
+                    if (mutedMusic) {
+                        obj.stopAllMusic();
+                        lastMusicPlayed = last;
+                    } else if (continueMusic && lastMusicPlayed !== '') {
+                        obj.playMusic(lastMusicPlayed, musicLoop);
+                    }
+                },
+                /**
+                 * Stop all sound effects currently playing
+                 * @instance
+                 * @name stopAllSound
+                 * @function
+                 */
+                stopAllSound: function () {
+                    var sound,
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.indexOf('sfx_') >= 0) {
+                            sounds[sound].stop();
+                        }
+                    }
+                },
+                /**
+                 * Stop all music currently playing
+                 * @instance
+                 * @name stopAllMusic
+                 * @function
+                 */
+                stopAllMusic: function () {
+                    var sound,
+                        sounds = assetManager.getAssets().audio;
+                    for (sound in sounds) {
+                        if (sounds.hasOwnProperty(sound) && sound.indexOf('bgm_') >= 0) {
+                            sounds[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
+                        }
+                    }
+                    lastMusicPlayed = '';
+                    isPlayingMusic = false;
+                },
+                /**
+                 * Prevents any sound from playing without interrupting current sounds
+                 * @instance
+                 * @name preventSounds
+                 * @function
+                 */
+                preventSounds: function (bool) {
+                    preventSounds = bool;
+                },
+                /**
+                 * Returns true if any music is playing
+                 * @instance
+                 * @name isPlayingMusic
+                 * @param {String} [name] - Check whether this particular music is playing
+                 * @function
+                 */
+                isPlayingMusic: function (name) {
+                    if (name) {
+                        return lastMusicPlayed === name;
+                    }
+                    return isPlayingMusic;
+                }
+            };
+        // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
+        if ('hidden' in document) {
+            document.addEventListener("visibilitychange", function () {
+                onVisibilityChanged(document.hidden);
+            }, false);
+        } else if ('mozHidden' in document) {
+            document.addEventListener("mozvisibilitychange", function () {
+                onVisibilityChanged(document.mozHidden);
+            }, false);
+        } else if ('webkitHidden' in document) {
+            document.addEventListener("webkitvisibilitychange", function () {
+                onVisibilityChanged(document.webkitHidden);
+            }, false);
+        } else if ('msHidden' in document) {
+            document.addEventListener("msvisibilitychange", function () {
+                onVisibilityChanged(document.msHidden);
+            }, false);
+        } else if ('onpagehide' in window) {
+            window.addEventListener('pagehide', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('pageshow', function () {
+                onVisibilityChanged(false);
+            }, false);
+        } else if ('onblur' in document) {
+            window.addEventListener('blur', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focus', function () {
+                onVisibilityChanged(false);
+            }, false);
+        } else if ('onfocusout' in document) {
+            window.addEventListener('focusout', function () {
+                onVisibilityChanged(true);
+            }, false);
+            window.addEventListener('focusin', function () {
+                onVisibilityChanged(false);
+            }, false);
+        }
+        return obj;
+    };
+});
+/**
+ * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
+ * <br>Exports: Constructor, can be accessed through Bento.input namespace.
+ * @module bento/managers/input
+ * @moduleName InputManager
+ * @param {Object} gameData - gameData
+ * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
+ * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
+ * @param {Rectangle} gameData.viewport - Reference to viewport.
+ * @param {Object} settings - settings passed from Bento.setup
+ * @param {Boolean} [settings.preventContextMenu] - Prevents right click menu
+ * @param {Boolean} [settings.globalMouseUp] - Catch mouseup events outside canvas (only useful for desktop)
+ * @returns InputManager
+ */
+bento.define('bento/managers/input', [
+    'bento/utils',
+    'bento/math/vector2',
+    'bento/eventsystem'
+], function (Utils, Vector2, EventSystem) {
+    'use strict';
+    var startPositions = {};
+    return function (gameData, settings) {
+        var isPaused = false,
+            isListening = false,
+            canvas,
+            canvasScale,
+            viewport,
+            pointers = [],
+            keyStates = {},
+            offsetLeft = 0,
+            offsetTop = 0,
+            offsetLocal = new Vector2(0, 0),
+            gamepad,
+            gamepads,
+            gamepadButtonsPressed = [],
+            gamepadButtonStates = {},
+            remote,
+            remoteButtonsPressed = [],
+            remoteButtonStates = {},
+            pointerDown = function (evt) {
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition,
+                    worldPosition: evt.worldPosition
+                });
+                EventSystem.fire('pointerDown', evt);
+            },
+            pointerMove = function (evt) {
+                EventSystem.fire('pointerMove', evt);
+                updatePointer(evt);
+            },
+            pointerUp = function (evt) {
+                EventSystem.fire('pointerUp', evt);
+                removePointer(evt);
+            },
+            touchStart = function (evt) {
+                var id, i, l;
+                evt.preventDefault();
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
+                    addTouchPosition(evt, i, 'start');
+                    pointerDown(evt);
+                }
+            },
+            touchMove = function (evt) {
+                var id, i, l;
+                evt.preventDefault();
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
+                    addTouchPosition(evt, i, 'move');
+                    pointerMove(evt);
+                }
+            },
+            touchEnd = function (evt) {
+                var id, i, l;
+                evt.preventDefault();
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
+                    addTouchPosition(evt, i, 'end');
+                    pointerUp(evt);
+                }
+            },
+            mouseDown = function (evt) {
+                // evt.preventDefault();
+                addMousePosition(evt, 'start');
+                pointerDown(evt);
+            },
+            mouseMove = function (evt) {
+                // evt.preventDefault();
+                addMousePosition(evt, 'move');
+                pointerMove(evt);
+            },
+            mouseUp = function (evt) {
+                // evt.preventDefault();
+                addMousePosition(evt, 'end');
+                pointerUp(evt);
+            },
+            addTouchPosition = function (evt, n, type) {
+                var touch = evt.changedTouches[n];
+                var x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x;
+                var y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y;
+                var startPos = {};
+
+                evt.preventDefault();
+                evt.id = 0;
+                evt.eventType = 'touch';
+                touch.position = new Vector2(x, y);
+                touch.worldPosition = touch.position.clone();
+                touch.worldPosition.x += viewport.x;
+                touch.worldPosition.y += viewport.y;
+                touch.localPosition = touch.position.clone();
+                // add 'normal' position
+                evt.position = touch.position.clone();
+                evt.worldPosition = touch.worldPosition.clone();
+                evt.localPosition = touch.localPosition.clone();
+                // id
+                evt.id = touch.identifier + 1;
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = touch.position.clone();
+                    startPos.startWorldPosition = touch.worldPosition.clone();
+                    startPos.startLocalPosition = touch.localPosition.clone();
+                    // save startPos
+                    startPositions[evt.id] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[evt.id];
+                    if (startPos && startPos.startPosition) {
+                        touch.diffPosition = touch.position.substract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        evt.diffPosition = touch.diffPosition.clone();
+                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
+                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
+                        delete startPositions[evt.id];
+                    } else {
+                        Utils.log("ERROR: touch startPosition was not defined");
+                    }
+                }
+
+            },
+            addMousePosition = function (evt, type) {
+                var x = (evt.pageX - offsetLeft) / canvasScale.x + offsetLocal.x,
+                    y = (evt.pageY - offsetTop) / canvasScale.y + offsetLocal.y,
+                    startPos = {},
+                    n = -1;
+                evt.id = 0;
+                evt.eventType = 'mouse';
+                evt.position = new Vector2(x, y);
+                evt.worldPosition = evt.position.clone();
+                evt.worldPosition.x += viewport.x;
+                evt.worldPosition.y += viewport.y;
+                evt.localPosition = evt.position.clone();
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = evt.position.clone();
+                    startPos.startWorldPosition = evt.worldPosition.clone();
+                    startPos.startLocalPosition = evt.localPosition.clone();
+                    // save startPos
+                    startPositions[n] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[n];
+                    evt.diffPosition = evt.position.substract(startPos.startPosition);
+                    evt.diffWorldPosition = evt.worldPosition.substract(startPos.startWorldPosition);
+                    evt.diffLocalPosition = evt.localPosition.substract(startPos.startLocalPosition);
+                }
+                // give it an id that doesn't clash with touch id
+                evt.id = -1;
+            },
+            updatePointer = function (evt) {
+                var i = 0, l;
+                for (i = 0, l = pointers.length; i < l; ++i) {
+                    if (pointers[i].id === evt.id) {
+                        pointers[i].position = evt.position;
+                        pointers[i].worldPosition = evt.worldPosition;
+                        pointers[i].localPosition = evt.position;
+                        return;
+                    }
+                }
+            },
+            removePointer = function (evt) {
+                var i = 0, l;
+                for (i = 0, l = pointers.length; i < l; ++i) {
+                    if (pointers[i].id === evt.id) {
+                        pointers.splice(i, 1);
+                        return;
+                    }
+                }
+            },
+            initTouch = function () {
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
+                }
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                if (settings.globalMouseUp) {
+                    // TODO: add correction for position
+                    window.addEventListener('mouseup', mouseUp);
+                } else {
+                    canvas.addEventListener('mouseup', mouseUp);
+                }
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                isListening = true;
+
+                if (!Utils.isCocoonJs()) {
+                    canvas.addEventListener('touchstart', function (evt) {
+                        if (evt && evt.preventDefault) {
+                            evt.preventDefault();
+                        }
+                        if (evt && evt.stopPropagation) {
+                            evt.stopPropagation();
+                        }
+                        return false;
+                    });
+                    canvas.addEventListener('touchmove', function (evt) {
+                        if (evt && evt.preventDefault) {
+                            evt.preventDefault();
+                        }
+                        if (evt && evt.stopPropagation) {
+                            evt.stopPropagation();
+                        }
+                        return false;
+                    });
+                }
+
+                // touchcancel can be used when system interveness with the game
+                canvas.addEventListener('touchcancel', function (evt) {
+                    EventSystem.fire('touchcancel', evt);
+                });
+            },
+            initKeyboard = function () {
+                var element = gameData.canvas || window,
+                    refocus = function (evt) {
+                        if (element.focus) {
+                            element.focus();
+                        }
+                    };
+                // fix for iframes
+                element.tabIndex = 0;
+                if (element.focus) {
+                    element.focus();
+                }
+                element.addEventListener('keydown', keyDown, false);
+                element.addEventListener('keyup', keyUp, false);
+                // refocus
+                element.addEventListener('mousedown', refocus, false);
+
+            },
+            keyDown = function (evt) {
+                var i, l, names;
+                evt.preventDefault();
+                EventSystem.fire('keyDown', evt);
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                // catch unknown keys
+                if (!names) {
+                    Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
+                    return;
+                }
+                for (i = 0, l = names.length; i < l; ++i) {
+                    keyStates[names[i]] = true;
+                    EventSystem.fire('buttonDown', names[i]);
+                    EventSystem.fire('buttonDown-' + names[i]);
+                }
+            },
+            keyUp = function (evt) {
+                var i, l, names;
+                evt.preventDefault();
+                EventSystem.fire('keyUp', evt);
+                // get names
+                names = Utils.keyboardMapping[evt.keyCode];
+                // catch unknown keys
+                if (!names) {
+                    Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
+                    return;
+                }
+                for (i = 0, l = names.length; i < l; ++i) {
+                    keyStates[names[i]] = false;
+                    EventSystem.fire('buttonUp', names[i]);
+                }
+            },
+            destroy = function () {
+                // remove all event listeners
+            },
+            /**
+             * Changes the offsets after resizing or screen re-orientation.
+             */
+            updateCanvas = function () {
+                if (Utils.isCocoonJs()) {
+                    // assumes full screen
+                    canvasScale.x = window.innerWidth / viewport.width;
+                    canvasScale.y = window.innerHeight / viewport.height;
+                } else {
+                    // use offsetWidth and offsetHeight to determine visual size
+                    canvasScale.x = canvas.offsetWidth / viewport.width;
+                    canvasScale.y = canvas.offsetHeight / viewport.height;
+                    // get the topleft position
+                    offsetLeft = canvas.offsetLeft;
+                    offsetTop = canvas.offsetTop;
+                }
+            },
+            initMouseClicks = function () {
+                if (!canvas || !canvas.addEventListener) {
+                    return;
+                }
+                canvas.addEventListener('contextmenu', function (e) {
+                    EventSystem.fire('mouseDown-right');
+                    // prevent context menu
+                    if (settings.preventContextMenu) {
+                        e.preventDefault();
+                    }
+                }, false);
+                canvas.addEventListener('click', function (e) {
+                    if (e.which === 1) {
+                        EventSystem.fire('mouseDown-left');
+                        e.preventDefault();
+                    } else if (e.which === 2) {
+                        EventSystem.fire('mouseDown-middle');
+                        e.preventDefault();
+                    }
+                }, false);
+            },
+            /**
+             * Adds event listeners for connecting/disconnecting a gamepad
+             */
+            initGamepad = function () {
+                window.addEventListener('gamepadconnected', gamepadConnected);
+                window.addEventListener('gamepaddisconnected', gamepadDisconnected);
+            },
+            /**
+             * Fired when the browser detects that a gamepad has been connected or the first time a button/axis of the gamepad is used.
+             * Adds a pre-update loop check for gamepads and gamepad input
+             * @param {GamepadEvent} evt
+             */
+            gamepadConnected = function (evt) {
+                // check for button input before the regular update
+                EventSystem.on('preUpdate', checkGamepad);
+
+                console.log('Gamepad connected:', evt.gamepad);
+            },
+            /**
+             * Fired when the browser detects that a gamepad has been disconnected.
+             * Removes the reference to the gamepad
+             * @param {GamepadEvent} evt
+             */
+            gamepadDisconnected = function (evt) {
+                gamepad = undefined;
+
+                // stop checking for button input
+                EventSystem.off('preUpdate', checkGamepad);
+            },
+            /**
+             * Gets a list of all gamepads and checks if any buttons are pressed.
+             */
+            checkGamepad = function () {
+                var i = 0,
+                    len = 0;
+
+                // get gamepad every frame because Chrome doesn't store a reference to the gamepad's state
+                gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+                for (i = 0, len = gamepads.length; i < len; ++i) {
+                    if (gamepads[i]) {
+                        gamepad = gamepads[i];
+                    }
+                }
+
+                if (!gamepad)
+                    return;
+
+                // uses an array to check against the state of the buttons from the previous frame
+                for (i = 0, len = gamepad.buttons.length; i < len; ++i) {
+                    if (gamepad.buttons[i].pressed !== gamepadButtonsPressed[i]) {
+                        if (gamepad.buttons[i].pressed) {
+                            gamepadButtonDown(i);
+                        } else {
+                            gamepadButtonUp(i);
+                        }
+                    }
+                }
+            },
+            gamepadButtonDown = function (id) {
+                var i = 0,
+                    names = Utils.gamepadMapping[id],
+                    len = 0;
+
+                // confusing name is used to keep the terminology similar to keyDown/keyUp
+                EventSystem.fire('gamepadKeyDown', id);
+                // save value in array
+                gamepadButtonsPressed[id] = true;
+
+                for (i = 0, len = names.length; i < len; ++i) {
+                    gamepadButtonStates[names[i]] = true;
+                    EventSystem.fire('gamepadButtonDown', names[i]);
+                    EventSystem.fire('gamepadButtonDown-' + names[i]);
+                }
+            },
+            gamepadButtonUp = function (id) {
+                var i = 0,
+                    names = Utils.gamepadMapping[id],
+                    len = 0;
+
+                // confusing name is used to keep the terminology similar to keyDown/keyUp
+                EventSystem.fire('gamepadKeyUp', id);
+                // save value in array
+                gamepadButtonsPressed[id] = false;
+
+                for (i = 0, len = names.length; i < len; ++i) {
+                    gamepadButtonStates[names[i]] = false;
+                    EventSystem.fire('gamepadButtonUp', names[i]);
+                }
+            },
+            /**
+             * Adds a check for input from the apple remote before every update. Only if on tvOS.
+             *
+             * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
+             * continually checking for input is the only way for now.
+             */
+            initRemote = function () {
+                var i = 0, l,
+                    tvOSGamepads;
+
+                if (window.ejecta) {
+                    // get all connected gamepads
+                    tvOSGamepads = navigator.getGamepads();
+                    // find apple remote gamepad
+                    for (i = 0, l = tvOSGamepads.length; i < l; ++i)
+                        if (tvOSGamepads[i] && tvOSGamepads[i].profile === 'microGamepad')
+                            remote = tvOSGamepads[i];
+
+                    for (i = 0, l = remote.buttons.length; i < l; ++i)
+                        remoteButtonsPressed.push(remote.buttons[i].pressed);
+
+                    // check for button input before the regular update
+                    EventSystem.on('preUpdate', checkRemote);
+                }
+            },
+            /**
+             * Checks if a remote button has been pressed. Runs before every frame, if added.
+             */
+            checkRemote = function () {
+                var i = 0,
+                    len = 0;
+
+                // uses an array to check against the state of the buttons from the previous frame
+                for (i = 0, len = remote.buttons.length; i < len; ++i) {
+                    if (remote.buttons[i].pressed !== remoteButtonsPressed[i]) {
+                        if (remote.buttons[i].pressed) {
+                            remoteButtonDown(i);
+                        } else {
+                            remoteButtonUp(i);
+                        }
+                    }
+                }
+            },
+            remoteButtonDown = function (id) {
+                var i = 0, l,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = true;
+
+                for (i = 0, l = names.length; i < l; ++i)
+                    remoteButtonStates[names[i]] = true;
+            },
+            remoteButtonUp = function (id) {
+                var i = 0, l,
+                    names = Utils.remoteMapping[id];
+                // save value in array
+                remoteButtonsPressed[id] = false;
+
+                for (i = 0, l = names.length; i < l; ++i)
+                    remoteButtonStates[names[i]] = false;
+            },
+            tvPointerDown = function (evt) {
+                pointers.push({
+                    id: evt.id,
+                    position: evt.position,
+                    eventType: evt.eventType,
+                    localPosition: evt.localPosition,
+                    worldPosition: evt.worldPosition
+                });
+                EventSystem.fire('tvPointerDown', evt);
+            },
+            tvPointerMove = function (evt) {
+                EventSystem.fire('tvPointerMove', evt);
+                updatePointer(evt);
+            },
+            tvPointerUp = function (evt) {
+                EventSystem.fire('tvPointerUp', evt);
+                removePointer(evt);
+            },
+            tvTouchStart = function (evt) {
+                var id, i, l;
+                evt.preventDefault();
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
+                    addTvTouchPosition(evt, i, 'start');
+                    tvPointerDown(evt);
+                }
+            },
+            tvTouchMove = function (evt) {
+                var id, i, l;
+                evt.preventDefault();
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
+                    addTvTouchPosition(evt, i, 'move');
+                    tvPointerMove(evt);
+                }
+            },
+            tvTouchEnd = function (evt) {
+                var id, i, l;
+                evt.preventDefault();
+                for (i = 0, l = evt.changedTouches.length; i < l; ++i) {
+                    addTvTouchPosition(evt, i, 'end');
+                    tvPointerUp(evt);
+                }
+            },
+            addTvTouchPosition = function (evt, n, type) {
+                var touch = evt.changedTouches[n],
+                    x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x,
+                    y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y,
+                    startPos = {};
+
+                evt.preventDefault();
+                evt.id = 0;
+                evt.eventType = 'tvtouch';
+                touch.position = new Vector2(x, y);
+                touch.worldPosition = touch.position.clone();
+                touch.worldPosition.x += viewport.x;
+                touch.worldPosition.y += viewport.y;
+                touch.localPosition = touch.position.clone();
+                // add 'normal' position
+                evt.position = touch.position.clone();
+                evt.worldPosition = touch.worldPosition.clone();
+                evt.localPosition = touch.localPosition.clone();
+                // id
+                evt.id = touch.identifier + 1;
+                // diff position
+                if (type === 'start') {
+                    startPos.startPosition = touch.position.clone();
+                    startPos.startWorldPosition = touch.worldPosition.clone();
+                    startPos.startLocalPosition = touch.localPosition.clone();
+                    // save startPos
+                    startPositions[evt.id] = startPos;
+                }
+                if (type === 'end') {
+                    // load startPos
+                    startPos = startPositions[evt.id];
+                    if (startPos && startPos.startPosition) {
+                        touch.diffPosition = touch.position.substract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        evt.diffPosition = touch.diffPosition.clone();
+                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
+                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
+                        delete startPositions[evt.id];
+                    } else {
+                        Utils.log("ERROR: touch startPosition was not defined");
+                    }
+                }
+            };
+
+        if (!gameData) {
+            throw 'Supply a gameData object';
+        }
+        // canvasScale is needed to take css scaling into account
+        canvasScale = gameData.canvasScale;
+        canvas = gameData.canvas;
+        viewport = gameData.viewport;
+
+        // TODO: it's a bit tricky with order of event listeners
+        if (canvas) {
+            window.addEventListener('resize', updateCanvas, false);
+            window.addEventListener('orientationchange', updateCanvas, false);
+            updateCanvas();
+        }
+
+        // touch device
+        initTouch();
+        // keyboard
+        initKeyboard();
+        // init clicks
+        initMouseClicks();
+        // apple remote (only on tvOS)
+        initRemote();
+        // start listening for gamepads
+        initGamepad();
+
+        return {
+            /**
+             * Returns all current pointers down
+             * @function
+             * @instance
+             * @returns {Array} pointers - Array with pointer positions
+             * @name getPointers
+             */
+            getPointers: function () {
+                return pointers;
+            },
+            /**
+             * Removes all current pointers down
+             * @function
+             * @instance
+             * @name resetPointers
+             */
+            resetPointers: function () {
+                pointers.length = 0;
+            },
+            /**
+             * Checks if a keyboard key is down
+             * @function
+             * @instance
+             * @param {String} name - name of the key
+             * @returns {Boolean} Returns true if the provided key is down.
+             * @name isKeyDown
+             */
+            isKeyDown: function (name) {
+                return keyStates[name] || false;
+            },
+            /**
+             * Checks if any keyboard key is pressed
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if any provided key is down.
+             * @name isAnyKeyDown
+             */
+            isAnyKeyDown: function () {
+                var state;
+
+                for (state in keyStates)
+                    if (keyStates[state])
+                        return true;
+
+                return false;
+            },
+            /**
+             * Is the gamepad connected?
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if gamepad is connected, false otherwise.
+             * @name isGamepadButtonDown
+             */
+            isGamepadConnected: function () {
+                if (gamepad)
+                    return true;
+                else
+                    return false;
+            },
+            /**
+             * Checks if a gamepad button is down
+             * @function
+             * @instance
+             * @param {String} name - name of the button
+             * @returns {Boolean} Returns true if the provided button is down.
+             * @name isGamepadButtonDown
+             */
+            isGamepadButtonDown: function (name) {
+                return gamepadButtonStates[name] || false;
+            },
+            /**
+             * Checks if any gamepad button is pressed
+             * @function
+             * @instance
+             * @returns {Boolean} Returns true if any button is down.
+             * @name isAnyGamepadButtonDown
+             */
+            isAnyGamepadButtonDown: function () {
+                var state;
+
+                for (state in gamepadButtonStates)
+                    if (gamepadButtonStates[state])
+                        return true;
+
+                return false;
+            },
+            /**
+             * Returns the current float values of the x and y axes of left thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesLeft
+             */
+            getGamepadAxesLeft: function () {
+                return new Vector2(gamepad.axes[0], gamepad.axes[1]);
+            },
+            /**
+             * Returns the current float values of the x and y axes of right thumbstick
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getGamepadAxesRight
+             */
+            getGamepadAxesRight: function () {
+                return new Vector2(gamepad.axes[2], gamepad.axes[3]);
+            },
+            /**
+             * Checks if a remote button is down
+             * @function
+             * @instance
+             * @param {String} name - name of the button
+             * @returns {Boolean} Returns true if the provided button is down.
+             * @name isRemoteButtonDown
+             */
+            isRemoteButtonDown: function (name) {
+                return remoteButtonStates[name] || false;
+            },
+            /**
+             * Defines if pressing 'menu' button will go back to Apple TV home screen
+             * @function
+             * @instance
+             * @param {Boolean} Set to false if you want to assign custom behaviour for the 'menu' button
+             * @name setRemoteExitOnMenuPress
+             */
+            setRemoteExitOnMenuPress: function (bool) {
+                remote.exitOnMenuPress = bool;
+            },
+            /**
+             * Returns the current float values of the x and y axes of the touch area
+             * @function
+             * @instance
+             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
+             * @name getRemoteAxes
+             */
+            getRemoteAxes: function () {
+                return new Vector2(remote.axes[0], remote.axes[1]);
+            },
+            /**
+             * Stop all pointer input
+             * @function
+             * @instance
+             * @name stop
+             */
+            stop: function () {
+                if (!isListening) {
+                    return;
+                }
+                if (window.ejecta) {
+                    canvas.removeEventListener('tvtouchstart', tvTouchStart);
+                    canvas.removeEventListener('tvtouchmove', tvTouchMove);
+                    canvas.removeEventListener('tvtouchend', tvTouchEnd);
+                }
+                canvas.removeEventListener('touchstart', touchStart);
+                canvas.removeEventListener('touchmove', touchMove);
+                canvas.removeEventListener('touchend', touchEnd);
+                canvas.removeEventListener('mousedown', mouseDown);
+                canvas.removeEventListener('mousemove', mouseMove);
+                if (settings.globalMouseUp) {
+                    window.removeEventListener('mouseup', mouseUp);
+                } else {
+                    canvas.removeEventListener('mouseup', mouseUp);
+                }
+
+                isListening = false;
+            },
+            /**
+             * Resumes all pointer input
+             * @function
+             * @instance
+             * @name resume
+             */
+            resume: function () {
+                if (isListening) {
+                    return;
+                }
+                if (window.ejecta) {
+                    canvas.addEventListener('tvtouchstart', tvTouchStart);
+                    canvas.addEventListener('tvtouchmove', tvTouchMove);
+                    canvas.addEventListener('tvtouchend', tvTouchEnd);
+                }
+                canvas.addEventListener('touchstart', touchStart);
+                canvas.addEventListener('touchmove', touchMove);
+                canvas.addEventListener('touchend', touchEnd);
+                canvas.addEventListener('mousedown', mouseDown);
+                canvas.addEventListener('mousemove', mouseMove);
+                if (settings.globalMouseUp) {
+                    window.addEventListener('mouseup', mouseUp);
+                } else {
+                    canvas.addEventListener('mouseup', mouseUp);
+                }
+
+                isListening = true;
+            },
+            /**
+             * Changes the offsets after resizing or screen re-orientation.
+             * @function
+             * @instance
+             * @name updateCanvas
+             */
+            updateCanvas: updateCanvas,
+            /**
+             * Adds an offset to all pointer input
+             * Note that this is in local space
+             * @function
+             * @instance
+             * @param {Vector2} offset - Offset as Vector2
+             * @name setOffset
+             */
+            setOffset: function (offset) {
+                offsetLocal = offset;
+            }
+        };
+    };
+});
+/**
+ * Manager that controls mainloop and all objects. Attach entities to the object manager
+ * to add them to the game. The object manager loops through every object's update and
+ * draw functions. The settings object passed here is passed through Bento.setup().
+ * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
+ * @module bento/managers/object
+ * @moduleName ObjectManager
+ * @param {Function} getGameData - Function that returns gameData object
+ * @param {Object} settings - Settings object
+ * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
+ * @param {Object} settings.useDeltaT - Use delta time (note: untested)
+ * @returns ObjectManager
+ */
+bento.define('bento/managers/object', [
+    'bento/utils',
+    'bento/eventsystem'
+], function (Utils, EventSystem) {
+    'use strict';
+    return function (getGameData, settings) {
+        var objects = [];
+        var lastTime = new Date().getTime();
+        var cumulativeTime = 0;
+        var minimumFps = 30;
+        var lastFrameTime = new Date().getTime();
+        var quickAccess = {};
+        var isRunning = false;
+        var sortMode = settings.sortMode || 0;
+        var isPaused = 0;
+        var isStopped = false;
+        var sortDefault = function () {
+            // default array sorting method (unstable)
+            objects.sort(function (a, b) {
+                return a.z - b.z;
+            });
+        };
+        var sortStable = function () {
+            // default method for sorting: stable sort
+            Utils.stableSort.inplace(objects, function (a, b) {
+                return a.z - b.z;
+            });
+        };
+        var sort = sortStable;
+        var cleanObjects = function () {
+            var i;
+            // loop objects array from end to start and remove null elements
+            for (i = objects.length - 1; i >= 0; --i) {
+                if (objects[i] === null) {
+                    objects.splice(i, 1);
+                }
+            }
+        };
+        var mainLoop = function (time) {
+            var object,
+                i,
+                currentTime = new Date().getTime(),
+                deltaT = currentTime - lastTime,
+                data = getGameData();
+
+            if (!isRunning) {
+                return;
+            }
+
+            lastTime = currentTime;
+            cumulativeTime += deltaT;
+            data = getGameData();
+            data.deltaT = deltaT;
+            if (settings.useDeltaT) {
+                cumulativeTime = 1000 / 60;
+            }
+            while (cumulativeTime >= 1000 / 60) {
+                cumulativeTime -= 1000 / 60;
+                if (cumulativeTime > 1000 / minimumFps) {
+                    // deplete cumulative time
+                    while (cumulativeTime >= 1000 / 60) {
+                        cumulativeTime -= 1000 / 60;
+                    }
+                }
+                if (settings.useDeltaT) {
+                    cumulativeTime = 0;
+                }
+                update(data);
+            }
+            cleanObjects();
+            if (sortMode === Utils.SortMode.ALWAYS) {
+                sort();
+            }
+            draw(data);
+
+            lastFrameTime = time;
+
+            window.requestAnimationFrame(mainLoop);
+        };
+        var currentObject; // the current object being processed in the main loop
+        var update = function (data) {
+            var object,
+                i, l;
+
+            data = data || getGameData();
+
+            EventSystem.fire('preUpdate', data);
+            for (i = 0, l = objects.length; i < l; ++i) {
+                object = objects[i];
+                if (!object) {
+                    continue;
+                }
+                currentObject = object;
+                if (object.update && (object.updateWhenPaused >= isPaused)) {
+                    object.update(data);
+                }
+                // update its rootIndex
+                if (object.rootIndex !== undefined) {
+                    object.rootIndex = i;
+                }
+            }
+            EventSystem.fire('postUpdate', data);
+        };
+        var draw = function (data) {
+            var object,
+                i, l;
+            data = data || getGameData();
+
+            EventSystem.fire('preDraw', data);
+            data.renderer.begin();
+            EventSystem.fire('preDrawLoop', data);
+            for (i = 0, l = objects.length; i < l; ++i) {
+                object = objects[i];
+                if (!object) {
+                    continue;
+                }
+                currentObject = object;
+                if (object.draw) {
+                    object.draw(data);
+                }
+            }
+            EventSystem.fire('postDrawLoop', data);
+            data.renderer.flush();
+            EventSystem.fire('postDraw', data);
+        };
+        var attach = function (object) {
+            var i, l,
+                family,
+                data = getGameData();
+
+            if (!object) {
+                Utils.log("ERROR: trying to attach " + object);
+                return;
+            }
+
+            if (object.isAdded || object.parent) {
+                Utils.log("ERROR: Entity " + object.name + " was already added.");
+                return;
+            }
+
+            object.z = object.z || 0;
+            object.updateWhenPaused = object.updateWhenPaused || 0;
+            objects.push(object);
+            object.isAdded = true;
+            if (object.init) {
+                object.init();
+            }
+            // add object to access pools
+            if (object.family) {
+                family = object.family;
+                for (i = 0, l = family.length; i < l; ++i) {
+                    addObjectToFamily(object, family[i]);
+                }
+            }
+
+            if (object.start) {
+                object.start(data);
+            }
+            if (object.attached) {
+                object.attached(data);
+            }
+            if (sortMode === Utils.SortMode.SORT_ON_ADD) {
+                sort();
+            }
+        };
+        var remove = function (object) {
+            var i, l,
+                index,
+                family,
+                data = getGameData();
+            if (!object) {
+                return;
+            }
+            // remove from access pools
+            if (object.family) {
+                family = object.family;
+                for (i = 0, l = family.length; i < l; ++i) {
+                    removeObjectFromFamily(object, family[i]);
+                }
+            }
+            // remove from object list
+            index = objects.indexOf(object);
+            if (index >= 0) {
+                objects[index] = null;
+                if (object.destroy) {
+                    object.destroy(data);
+                }
+                if (object.removed) {
+                    object.removed(data);
+                }
+                object.isAdded = false;
+            }
+        };
+        var addObjectToFamily = function (object, family) {
+            if (objects.indexOf(object) === -1) {
+                return;
+            }
+
+            if (!quickAccess[family]) {
+                quickAccess[family] = [];
+            }
+            if (quickAccess[family].indexOf(object) === -1) {
+                quickAccess[family].push(object);
+            }
+        };
+        var removeObjectFromFamily = function (object, family) {
+            var pool = quickAccess[family];
+
+            if (objects.indexOf(object) === -1) {
+                return;
+            }
+
+            if (pool) {
+                Utils.removeFromArray(pool, object);
+            }
+        };
+        var module = {
+            /**
+             * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
+             * has the functions update and draw, they will be called during the loop.
+             * @function
+             * @instance
+             * @param {Object} object - Any object, preferably an Entity
+             * @name attach
+             */
+            attach: attach,
+            add: attach,
+            /**
+             * Removes entity/object
+             * @function
+             * @instance
+             * @param {Object} object - Reference to the object to be removed
+             * @name remove
+             */
+            remove: remove,
+            /**
+             * Removes all entities/objects except ones that have the property "global"
+             * @function
+             * @instance
+             * @param {Boolean} removeGlobal - Also remove global objects
+             * @name removeAll
+             */
+            removeAll: function (removeGlobal) {
+                var i, l,
+                    object;
+                for (i = 0, l = objects.length; i < l; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (!object.global || removeGlobal) {
+                        remove(object);
+                    }
+                }
+                // re-add all global objects
+                cleanObjects();
+                for (i = 0, l = objects.length; i < l; ++i) {
+                    object = objects[i];
+                }
+            },
+            /**
+             * Add or remove objects to a family
+             */
+            addObjectToFamily: addObjectToFamily,
+            removeObjectFromFamily: removeObjectFromFamily,
+            /**
+             * Returns the first object it can find with this name. Safer to use with a callback.
+             * The callback is called immediately if the object is found (it's not asynchronous).
+             * @function
+             * @instance
+             * @param {String} objectName - Name of the object
+             * @param {Function} [callback] - Called if the object is found
+             * @returns {Object} null if not found
+             * @name get
+             */
+            get: function (objectName, callback) {
+                // retrieves the first object it finds by its name
+                var i, l,
+                    object;
+
+                for (i = 0, l = objects.length; i < l; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (!object.name) {
+                        continue;
+                    }
+                    if (object.name === objectName) {
+                        if (callback) {
+                            callback(object);
+                        }
+                        return object;
+                    }
+                }
+                return null;
+            },
+            /**
+             * Returns an array of objects with a certain name
+             * @function
+             * @instance
+             * @param {String} objectName - Name of the object
+             * @param {Function} [callback] - Called with the object array
+             * @returns {Array} An array of objects, empty if no objects found
+             * @name getByName
+             */
+            getByName: function (objectName, callback) {
+                var i, l,
+                    object,
+                    array = [];
+
+                for (i = 0, l = objects.length; i < l; ++i) {
+                    object = objects[i];
+                    if (!object) {
+                        continue;
+                    }
+                    if (!object.name) {
+                        continue;
+                    }
+                    if (object.name === objectName) {
+                        array.push(object);
+                    }
+                }
+                if (callback && array.length) {
+                    callback(array);
+                }
+                return array;
+            },
+            /**
+             * Returns an array of objects by family name. Entities are added to pools
+             * of each family you indicate in the Entity.family array the moment you call
+             * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
+             * This allows quick access of a group of similar entities. Families are cached so you
+             * may get a reference to the array of objects even if it's not filled yet.
+             * @function
+             * @instance
+             * @param {String} familyName - Name of the family
+             * @param {Function} [callback] - Called with the object array
+             * @returns {Array} An array of objects, empty if no objects found
+             * @name getByFamily
+             */
+            getByFamily: function (type, callback) {
+                var array = quickAccess[type];
+                if (!array) {
+                    // initialize it
+                    array = [];
+                    quickAccess[type] = array;
+                    // Utils.log('Warning: family called ' + type + ' does not exist', true);
+                }
+                if (callback && array.length) {
+                    callback(array);
+                }
+                return array;
+            },
+            /**
+             * Stops the mainloop on the next tick
+             * @function
+             * @instance
+             * @name stop
+             */
+            stop: function () {
+                isRunning = false;
+            },
+            /**
+             * Starts the mainloop
+             * @function
+             * @instance
+             * @name run
+             */
+            run: function (force) {
+                if (!isRunning || force) {
+                    isRunning = true;
+                    mainLoop();
+                }
+            },
+            /**
+             * Returns the number of objects
+             * @function
+             * @instance
+             * @returns {Number} The number of objects
+             * @name count
+             */
+            count: function () {
+                return objects.length;
+            },
+            /**
+             * Stops calling update on every object. Note that draw is still
+             * being called. Objects with the property updateWhenPaused
+             * will still be updated.
+             * @function
+             * @instance
+             * @param {Number} level - Level of pause state, defaults to 1
+             * @name pause
+             */
+            pause: function (level) {
+                isPaused = level;
+                if (Utils.isUndefined(level)) {
+                    isPaused = 1;
+                }
+            },
+            /**
+             * Cancels the pause and resume updating objects. (Sets pause level to 0)
+             * @function
+             * @instance
+             * @name resume
+             */
+            resume: function () {
+                isPaused = 0;
+            },
+            /**
+             * Returns pause level. If an object is passed to the function
+             * it checks if that object should be paused or not
+             * @function
+             * @instance
+             * @param {Object} [object] - Object to check if it's paused
+             * @name isPaused
+             */
+            isPaused: function (obj) {
+                if (Utils.isDefined(obj)) {
+                    return obj.updateWhenPaused < isPaused;
+                }
+                return isPaused;
+            },
+            /**
+             * Forces objects to be drawn (Don't call this unless you need it)
+             * @function
+             * @instance
+             * @param {GameData} [data] - Data object (see Bento.getGameData)
+             * @name draw
+             */
+            draw: function (data) {
+                draw(data);
+            },
+            /**
+             * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
+             * Utils.SortMode.ALWAYS - sort on every update tick<br>
+             * Utils.SortMode.NEVER - don't sort at all<br>
+             * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
+             * @function
+             * @instance
+             * @param {Utils.SortMode} mode - Sorting mode
+             * @name setSortMode
+             */
+            setSortMode: function (mode) {
+                sortMode = mode;
+            },
+            /**
+             * Calls the update function. Be careful when using this in another
+             * update loop, as it will result in an endless loop.
+             * @function
+             * @instance
+             * @param {GameData} [data] - Data object (see Bento.getGameData)
+             * @name update
+             */
+            update: function (data) {
+                update(data);
+            },
+            /**
+             * Retrieves array of all objects.
+             * @function
+             * @instance
+             * @name getObjects
+             */
+            getObjects: function () {
+                return objects;
+            },
+            // useful for debugging, may be removed later so leaving this undocumented
+            getCurrentObject: function () {
+                return currentObject;
+            }
+        };
+
+        // swap sort method with default sorting method
+        if (settings.defaultSort) {
+            sort = sortDefault;
+        }
+
+        return module;
+    };
+});
+/**
+ * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
+ * save values and Bento.saveState.load() to retrieve them.
+ * <br>Exports: Object, can be accessed through Bento.saveState namespace.
+ * @module bento/managers/savestate
+ * @moduleName SaveStateManager
+ * @returns SaveState
+ */
+bento.define('bento/managers/savestate', [
+    'bento/utils'
+], function (
+    Utils
+) {
+    'use strict';
+    var uniqueID = document.URL,
+        storage,
+        // an object that acts like a localStorageObject
+        storageFallBack = {
+            data: {},
+            setItem: function (key, value) {
+                var k,
+                    count = 0,
+                    data = this.data;
+                data[key] = value;
+                // update length
+                for (k in data) {
+                    if (data.hasOwnProperty(k)) {
+                        ++count;
+                    }
+                }
+                this.length = count;
+            },
+            getItem: function (key) {
+                var item = storageFallBack.data[key];
+                return Utils.isDefined(item) ? item : null;
+            },
+            removeItem: function (key) {
+                delete storageFallBack.data[key];
+            },
+            clear: function () {
+                this.data = {};
+                this.length = 0;
+            },
+            length: 0
+        };
+
+    // initialize
+    try {
+        storage = window.localStorage;
+        // try saving once
+        if (window.localStorage) {
+            window.localStorage.setItem(uniqueID + 'save', '0');
+        } else {
+            throw 'No local storage available';
+        }
+    } catch (e) {
+        console.log('Warning: you have disabled cookies on your browser. You cannot save progress in your game.');
+        storage = storageFallBack;
+    }
+    return {
+        /**
+         * Boolean that indicates if keys should be saved
+         * @instance
+         * @name saveKeys
+         */
+        saveKeys: false,
+        /**
+         * Saves/serializes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number/Object/Array to be saved
+         * @name save
+         */
+        save: function (elementKey, element) {
+            var keys;
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
+            if (typeof elementKey !== 'string') {
+                elementKey = JSON.stringify(elementKey);
+            }
+            if (element === undefined) {
+                Utils.log("ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.");
+                element = null;
+            }
+            storage.setItem(uniqueID + elementKey, JSON.stringify(element));
+
+            // also store the keys
+            if (this.saveKeys) {
+                keys = this.load('_keys', []);
+                if (keys.indexOf(elementKey) > -1) {
+                    return;
+                }
+                keys.push(elementKey);
+                storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
+            }
+        },
+        /**
+         * Adds to a saved variable/number
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} value - Number to be added, if the value does not exists, it defaults to 0
+         * @name add
+         */
+        add: function (elementKey, element) {
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
+            var value = this.load(elementKey, 0);
+            value += element;
+            this.save(elementKey, value);
+        },
+        /**
+         * Loads/deserializes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @param {Object} defaultValue - The value returns if saved variable doesn't exists
+         * @returns {Object} Returns saved value, otherwise defaultValue
+         * @name load
+         */
+        load: function (elementKey, defaultValue) {
+            var element;
+
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
+
+            element = storage.getItem(uniqueID + elementKey);
+            if (element === null || element === undefined) {
+                return defaultValue;
+            }
+            try {
+                return JSON.parse(element);
+            } catch (e) {
+                Utils.log("ERROR: save file corrupted. " + e);
+                return defaultValue;
+            }
+        },
+        /**
+         * Deletes a variable
+         * @function
+         * @instance
+         * @param {String} key - Name of the variable
+         * @name remove
+         */
+        remove: function (elementKey) {
+            if (!elementKey) {
+                Utils.log("ERROR: savestate key is not defined.");
+                return;
+            }
+            storage.removeItem(uniqueID + elementKey);
+        },
+        /**
+         * Clears the savestate
+         * @function
+         * @instance
+         * @name clear
+         */
+        clear: function () {
+            storage.clear();
+        },
+        debug: function () {
+            console.log(localStorage);
+        },
+        /**
+         * Checks if localStorage has values
+         * @function
+         * @instance
+         * @name isEmpty
+         */
+        isEmpty: function () {
+            return storage.length === 0;
+        },
+        /**
+         * Returns a copy of the uniqueID.
+         * @function
+         * @instance
+         * @returns {String} uniqueID of current game
+         * @name getId
+         */
+        getId: function () {
+            return uniqueID.slice(0);
+        },
+        /**
+         * Sets an identifier that's prepended on every key.
+         * By default this is the game's URL, to prevend savefile clashing.
+         * @function
+         * @instance
+         * @param {String} name - ID name
+         * @name setId
+         */
+        setId: function (str) {
+            uniqueID = str;
+        },
+        /**
+         * Swaps the storage object. Allows you to use something else than localStorage. But the storage object
+         * must have similar methods as localStorage.
+         * @function
+         * @instance
+         * @param {Object} storageObject - an object that resembels localStorage
+         * @name setStorage
+         */
+        setStorage: function (storageObj) {
+            storage = storageObj;
+        },
+        /**
+         * Returns the current storage object
+         * @function
+         * @instance
+         * @name getStorage
+         */
+        getStorage: function () {
+            return storage;
+        }
+    };
+});
+/**
+ * Manager that controls screens. Screens are defined as separate modules. See {@link module:bento/screen}. To show
+ * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
+ * <br>Exports: Constructor, can be accessed through Bento.screens namespace.
+ * @module bento/managers/screen
+ * @moudleName ScreenManager
+ * @returns ScreenManager
+ */
+bento.define('bento/managers/screen', [
+    'bento/eventsystem',
+    'bento/utils'
+], function (EventSystem, Utils) {
+    'use strict';
+    return function () {
+        var screens = {},
+            currentScreen = null,
+            getScreen = function (name) {
+                return screens[name];
+            },
+            screenManager = {
+                /**
+                 * Adds a new screen to the cache
+                 * @function
+                 * @instance
+                 * @param {Screen} screen - Screen object
+                 * @name add
+                 */
+                add: function (screen) {
+                    if (!screen.name) {
+                        throw 'Add name property to screen';
+                    }
+                    screens[screen.name] = screen;
+                },
+                /**
+                 * Shows a screen. If the screen was not added previously, it
+                 * will be loaded asynchronously by a require call.
+                 * @function
+                 * @instance
+                 * @param {String} name - Name of the screen
+                 * @param {Object} data - Extra data to pass on to the screen
+                 * @param {Function} callback - Called when screen is shown
+                 * @name show
+                 */
+                show: function (name, data, callback) {
+                    if (currentScreen !== null) {
+                        screenManager.hide({
+                            next: name
+                        });
+                    }
+                    currentScreen = screens[name];
+                    if (currentScreen) {
+                        if (currentScreen.onShow) {
+                            currentScreen.onShow(data);
+                        }
+                        EventSystem.fire('screenShown', currentScreen);
+                        if (callback) {
+                            callback();
+                        }
+                    } else {
+                        // load asynchronously
+                        bento.require([name], function (screenObj) {
+                            if (!screenObj.name) {
+                                screenObj.name = name;
+                            }
+                            screenManager.add(screenObj);
+                            // try again
+                            screenManager.show(name, data, callback);
+                        });
+                    }
+                },
+                /**
+                 * Hides a screen. You may call this to remove all objects on screen, but
+                 * it's not needed to call this yourself if you want to show a new screen.
+                 * Screens.hide is internally called on the current screen when Screens.show
+                 * is called.
+                 * @function
+                 * @instance
+                 * @param {Object} data - Extra data to pass on to the screen
+                 * @name hide
+                 */
+                hide: function (data) {
+                    if (!currentScreen) {
+                        return;
+                    }
+                    if (currentScreen.onHide) {
+                        currentScreen.onHide(data);
+                    }
+                    EventSystem.fire('screenHidden', currentScreen);
+                    currentScreen = null;
+                },
+                /**
+                 * Return reference to the screen currently shown.
+                 * @function
+                 * @instance
+                 * @returns {Screen} The current screen
+                 * @name getCurrentScreen
+                 */
+                getCurrentScreen: function () {
+                    return currentScreen;
+                },
+                /**
+                 * Clears cache of screens
+                 * @function
+                 * @instance
+                 * @name reset
+                 */
+                reset: function () {
+                    screens = {};
+                }
+            };
+
+        return screenManager;
+
+    };
+});
+/**
  * A 2-dimensional array
  * <br>Exports: Constructor
  * @module bento/math/array2d
@@ -8880,8 +11812,8 @@ bento.define('bento/math/polygon', [
                 p2,
                 q1,
                 q2,
-                i,
-                j;
+                i, ii,
+                j, jj;
 
             // is other really a polygon?
             if (polygon.isRectangle) {
@@ -8917,8 +11849,8 @@ bento.define('bento/math/polygon', [
             }
 
             // precision check
-            for (i = 0; i < points.length; ++i) {
-                for (j = 0; j < other.length; ++j) {
+            for (i = 0, ii = points.length; i < ii; ++i) {
+                for (j = 0, jj = other.length; j < jj; ++j) {
                     p1 = points[i];
                     p2 = points[(i + 1) % points.length];
                     q1 = other[j];
@@ -8940,12 +11872,13 @@ bento.define('bento/math/polygon', [
                 has = false,
                 i = 0,
                 j = points.length - 1,
+                l,
                 bounds = this.getBoundingBox();
 
             if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
                 return false;
             }
-            for (i, j; i < points.length; j = i++) {
+            for (i, j, l = points.length; i < l; j = i++) {
                 if ((points[i].y > p.y) != (points[j].y > p.y) &&
                     p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
                     (points[j].y - points[i].y) + points[i].x) {
@@ -8960,9 +11893,9 @@ bento.define('bento/math/polygon', [
                 minY = points[0].y,
                 maxY = points[0].y,
                 n = 1,
-                q;
+                q, l;
 
-            for (n = 1; n < points.length; ++n) {
+            for (n = 1, l = points.length; n < l; ++n) {
                 q = points[n];
                 minX = Math.min(q.x, minX);
                 maxX = Math.max(q.x, maxX);
@@ -10084,3807 +13017,6 @@ bento.define('bento/math/vector2', [
     return Vector2;
 });
 /**
- * @license RequireJS domReady 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/requirejs/domReady for details
- */
-/*jslint*/
-/*global require: false, define: false, requirejs: false,
-  window: false, clearInterval: false, document: false,
-  self: false, setInterval: false */
-
-
-bento.define('bento/lib/domready', [], function () {
-    'use strict';
-
-    var isTop, testDiv, scrollIntervalId,
-        isBrowser = typeof window !== "undefined" && window.document,
-        isPageLoaded = !isBrowser,
-        doc = isBrowser ? document : null,
-        readyCalls = [];
-
-    function runCallbacks(callbacks) {
-        var i;
-        for (i = 0; i < callbacks.length; i += 1) {
-            callbacks[i](doc);
-        }
-    }
-
-    function callReady() {
-        var callbacks = readyCalls;
-
-        if (isPageLoaded) {
-            //Call the DOM ready callbacks
-            if (callbacks.length) {
-                readyCalls = [];
-                runCallbacks(callbacks);
-            }
-        }
-    }
-
-    /**
-     * Sets the page as loaded.
-     */
-    function pageLoaded() {
-        if (!isPageLoaded) {
-            isPageLoaded = true;
-            if (scrollIntervalId) {
-                clearInterval(scrollIntervalId);
-            }
-
-            callReady();
-        }
-    }
-
-    if (isBrowser) {
-        if (document.addEventListener) {
-            //Standards. Hooray! Assumption here that if standards based,
-            //it knows about DOMContentLoaded.
-            document.addEventListener("DOMContentLoaded", pageLoaded, false);
-            window.addEventListener("load", pageLoaded, false);
-        } else if (window.attachEvent) {
-            window.attachEvent("onload", pageLoaded);
-
-            testDiv = document.createElement('div');
-            try {
-                isTop = window.frameElement === null;
-            } catch (e) {}
-
-            //DOMContentLoaded approximation that uses a doScroll, as found by
-            //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
-            //but modified by other contributors, including jdalton
-            if (testDiv.doScroll && isTop && window.external) {
-                scrollIntervalId = setInterval(function () {
-                    try {
-                        testDiv.doScroll();
-                        pageLoaded();
-                    } catch (e) {}
-                }, 30);
-            }
-        }
-
-        //Check if document already complete, and if so, just trigger page load
-        //listeners. Latest webkit browsers also use "interactive", and
-        //will fire the onDOMContentLoaded before "interactive" but not after
-        //entering "interactive" or "complete". More details:
-        //http://dev.w3.org/html5/spec/the-end.html#the-end
-        //http://stackoverflow.com/questions/3665561/document-readystate-of-interactive-vs-ondomcontentloaded
-        //Hmm, this is more complicated on further use, see "firing too early"
-        //bug: https://github.com/requirejs/domReady/issues/1
-        //so removing the || document.readyState === "interactive" test.
-        //There is still a window.onload binding that should get fired if
-        //DOMContentLoaded is missed.
-        if (document.readyState === "complete") {
-            pageLoaded();
-        }
-    }
-
-    /** START OF PUBLIC API **/
-
-    /**
-     * Registers a callback for DOM ready. If DOM is already ready, the
-     * callback is called immediately.
-     * @param {Function} callback
-     */
-    function domReady(callback) {
-        if (isPageLoaded) {
-            callback(doc);
-        } else {
-            readyCalls.push(callback);
-        }
-        return domReady;
-    }
-
-    domReady.version = '2.0.1';
-
-    /**
-     * Loader Plugin API method
-     */
-    domReady.load = function (name, req, onLoad, config) {
-        if (config.isBuild) {
-            onLoad(null);
-        } else {
-            domReady(onLoad);
-        }
-    };
-
-    /** END OF PUBLIC API **/
-
-    return domReady;
-});
-
-/**
- * https://github.com/pieroxy/lz-string/
- * Modifications: wrapped in Bento define
- *
- * Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
- * This work is free. You can redistribute it and/or modify it
- * under the terms of the WTFPL, Version 2
- * For more information see LICENSE.txt or http://www.wtfpl.net/
- *
- * For more information, the home page:
- * http://pieroxy.net/blog/pages/lz-string/testing.html
- *
- * LZ-based compression algorithm, version 1.4.4
- *
- * @module lzstring
- * @moduleName LZString
- * @returns LZString
- */
-bento.define('lzstring', [], function () {
-    // private property
-    var f = String.fromCharCode;
-    var keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
-    var baseReverseDic = {};
-
-    function getBaseValue(alphabet, character) {
-        if (!baseReverseDic[alphabet]) {
-            baseReverseDic[alphabet] = {};
-            for (var i = 0; i < alphabet.length; i++) {
-                baseReverseDic[alphabet][alphabet.charAt(i)] = i;
-            }
-        }
-        return baseReverseDic[alphabet][character];
-    }
-
-    var LZString = {
-        compressToBase64: function (input) {
-            if (input == null) return "";
-            var res = LZString._compress(input, 6, function (a) {
-                return keyStrBase64.charAt(a);
-            });
-            switch (res.length % 4) { // To produce valid Base64
-                default: // When could this happen ?
-            case 0:
-                return res;
-            case 1:
-                return res + "===";
-            case 2:
-                return res + "==";
-            case 3:
-                return res + "=";
-            }
-        },
-
-        decompressFromBase64: function (input) {
-            if (input == null) return "";
-            if (input == "") return null;
-            return LZString._decompress(input.length, 32, function (index) {
-                return getBaseValue(keyStrBase64, input.charAt(index));
-            });
-        },
-
-        compressToUTF16: function (input) {
-            if (input == null) return "";
-            return LZString._compress(input, 15, function (a) {
-                return f(a + 32);
-            }) + " ";
-        },
-
-        decompressFromUTF16: function (compressed) {
-            if (compressed == null) return "";
-            if (compressed == "") return null;
-            return LZString._decompress(compressed.length, 16384, function (index) {
-                return compressed.charCodeAt(index) - 32;
-            });
-        },
-
-        //compress into uint8array (UCS-2 big endian format)
-        compressToUint8Array: function (uncompressed) {
-            var compressed = LZString.compress(uncompressed);
-            var buf = new Uint8Array(compressed.length * 2); // 2 bytes per character
-
-            for (var i = 0, TotalLen = compressed.length; i < TotalLen; i++) {
-                var current_value = compressed.charCodeAt(i);
-                buf[i * 2] = current_value >>> 8;
-                buf[i * 2 + 1] = current_value % 256;
-            }
-            return buf;
-        },
-
-        //decompress from uint8array (UCS-2 big endian format)
-        decompressFromUint8Array: function (compressed) {
-            if (compressed === null || compressed === undefined) {
-                return LZString.decompress(compressed);
-            } else {
-                var buf = new Array(compressed.length / 2); // 2 bytes per character
-                for (var i = 0, TotalLen = buf.length; i < TotalLen; i++) {
-                    buf[i] = compressed[i * 2] * 256 + compressed[i * 2 + 1];
-                }
-
-                var result = [];
-                buf.forEach(function (c) {
-                    result.push(f(c));
-                });
-                return LZString.decompress(result.join(''));
-
-            }
-
-        },
-
-
-        //compress into a string that is already URI encoded
-        compressToEncodedURIComponent: function (input) {
-            if (input == null) return "";
-            return LZString._compress(input, 6, function (a) {
-                return keyStrUriSafe.charAt(a);
-            });
-        },
-
-        //decompress from an output of compressToEncodedURIComponent
-        decompressFromEncodedURIComponent: function (input) {
-            if (input == null) return "";
-            if (input == "") return null;
-            input = input.replace(/ /g, "+");
-            return LZString._decompress(input.length, 32, function (index) {
-                return getBaseValue(keyStrUriSafe, input.charAt(index));
-            });
-        },
-
-        compress: function (uncompressed) {
-            return LZString._compress(uncompressed, 16, function (a) {
-                return f(a);
-            });
-        },
-        _compress: function (uncompressed, bitsPerChar, getCharFromInt) {
-            if (uncompressed == null) return "";
-            var i, value,
-                context_dictionary = {},
-                context_dictionaryToCreate = {},
-                context_c = "",
-                context_wc = "",
-                context_w = "",
-                context_enlargeIn = 2, // Compensate for the first entry which should not count
-                context_dictSize = 3,
-                context_numBits = 2,
-                context_data = [],
-                context_data_val = 0,
-                context_data_position = 0,
-                ii;
-
-            for (ii = 0; ii < uncompressed.length; ii += 1) {
-                context_c = uncompressed.charAt(ii);
-                if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
-                    context_dictionary[context_c] = context_dictSize++;
-                    context_dictionaryToCreate[context_c] = true;
-                }
-
-                context_wc = context_w + context_c;
-                if (Object.prototype.hasOwnProperty.call(context_dictionary, context_wc)) {
-                    context_w = context_wc;
-                } else {
-                    if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
-                        if (context_w.charCodeAt(0) < 256) {
-                            for (i = 0; i < context_numBits; i++) {
-                                context_data_val = (context_data_val << 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                            }
-                            value = context_w.charCodeAt(0);
-                            for (i = 0; i < 8; i++) {
-                                context_data_val = (context_data_val << 1) | (value & 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = value >> 1;
-                            }
-                        } else {
-                            value = 1;
-                            for (i = 0; i < context_numBits; i++) {
-                                context_data_val = (context_data_val << 1) | value;
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = 0;
-                            }
-                            value = context_w.charCodeAt(0);
-                            for (i = 0; i < 16; i++) {
-                                context_data_val = (context_data_val << 1) | (value & 1);
-                                if (context_data_position == bitsPerChar - 1) {
-                                    context_data_position = 0;
-                                    context_data.push(getCharFromInt(context_data_val));
-                                    context_data_val = 0;
-                                } else {
-                                    context_data_position++;
-                                }
-                                value = value >> 1;
-                            }
-                        }
-                        context_enlargeIn--;
-                        if (context_enlargeIn == 0) {
-                            context_enlargeIn = Math.pow(2, context_numBits);
-                            context_numBits++;
-                        }
-                        delete context_dictionaryToCreate[context_w];
-                    } else {
-                        value = context_dictionary[context_w];
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-
-
-                    }
-                    context_enlargeIn--;
-                    if (context_enlargeIn == 0) {
-                        context_enlargeIn = Math.pow(2, context_numBits);
-                        context_numBits++;
-                    }
-                    // Add wc to the dictionary.
-                    context_dictionary[context_wc] = context_dictSize++;
-                    context_w = String(context_c);
-                }
-            }
-
-            // Output the code for w.
-            if (context_w !== "") {
-                if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
-                    if (context_w.charCodeAt(0) < 256) {
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                        }
-                        value = context_w.charCodeAt(0);
-                        for (i = 0; i < 8; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-                    } else {
-                        value = 1;
-                        for (i = 0; i < context_numBits; i++) {
-                            context_data_val = (context_data_val << 1) | value;
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = 0;
-                        }
-                        value = context_w.charCodeAt(0);
-                        for (i = 0; i < 16; i++) {
-                            context_data_val = (context_data_val << 1) | (value & 1);
-                            if (context_data_position == bitsPerChar - 1) {
-                                context_data_position = 0;
-                                context_data.push(getCharFromInt(context_data_val));
-                                context_data_val = 0;
-                            } else {
-                                context_data_position++;
-                            }
-                            value = value >> 1;
-                        }
-                    }
-                    context_enlargeIn--;
-                    if (context_enlargeIn == 0) {
-                        context_enlargeIn = Math.pow(2, context_numBits);
-                        context_numBits++;
-                    }
-                    delete context_dictionaryToCreate[context_w];
-                } else {
-                    value = context_dictionary[context_w];
-                    for (i = 0; i < context_numBits; i++) {
-                        context_data_val = (context_data_val << 1) | (value & 1);
-                        if (context_data_position == bitsPerChar - 1) {
-                            context_data_position = 0;
-                            context_data.push(getCharFromInt(context_data_val));
-                            context_data_val = 0;
-                        } else {
-                            context_data_position++;
-                        }
-                        value = value >> 1;
-                    }
-
-
-                }
-                context_enlargeIn--;
-                if (context_enlargeIn == 0) {
-                    context_enlargeIn = Math.pow(2, context_numBits);
-                    context_numBits++;
-                }
-            }
-
-            // Mark the end of the stream
-            value = 2;
-            for (i = 0; i < context_numBits; i++) {
-                context_data_val = (context_data_val << 1) | (value & 1);
-                if (context_data_position == bitsPerChar - 1) {
-                    context_data_position = 0;
-                    context_data.push(getCharFromInt(context_data_val));
-                    context_data_val = 0;
-                } else {
-                    context_data_position++;
-                }
-                value = value >> 1;
-            }
-
-            // Flush the last char
-            while (true) {
-                context_data_val = (context_data_val << 1);
-                if (context_data_position == bitsPerChar - 1) {
-                    context_data.push(getCharFromInt(context_data_val));
-                    break;
-                } else context_data_position++;
-            }
-            return context_data.join('');
-        },
-
-        decompress: function (compressed) {
-            if (compressed == null) return "";
-            if (compressed == "") return null;
-            return LZString._decompress(compressed.length, 32768, function (index) {
-                return compressed.charCodeAt(index);
-            });
-        },
-
-        _decompress: function (length, resetValue, getNextValue) {
-            var dictionary = [],
-                next,
-                enlargeIn = 4,
-                dictSize = 4,
-                numBits = 3,
-                entry = "",
-                result = [],
-                i,
-                w,
-                bits, resb, maxpower, power,
-                c,
-                data = {
-                    val: getNextValue(0),
-                    position: resetValue,
-                    index: 1
-                };
-
-            for (i = 0; i < 3; i += 1) {
-                dictionary[i] = i;
-            }
-
-            bits = 0;
-            maxpower = Math.pow(2, 2);
-            power = 1;
-            while (power != maxpower) {
-                resb = data.val & data.position;
-                data.position >>= 1;
-                if (data.position == 0) {
-                    data.position = resetValue;
-                    data.val = getNextValue(data.index++);
-                }
-                bits |= (resb > 0 ? 1 : 0) * power;
-                power <<= 1;
-            }
-
-            switch (next = bits) {
-            case 0:
-                bits = 0;
-                maxpower = Math.pow(2, 8);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-                c = f(bits);
-                break;
-            case 1:
-                bits = 0;
-                maxpower = Math.pow(2, 16);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-                c = f(bits);
-                break;
-            case 2:
-                return "";
-            }
-            dictionary[3] = c;
-            w = c;
-            result.push(c);
-            while (true) {
-                if (data.index > length) {
-                    return "";
-                }
-
-                bits = 0;
-                maxpower = Math.pow(2, numBits);
-                power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position;
-                    data.position >>= 1;
-                    if (data.position == 0) {
-                        data.position = resetValue;
-                        data.val = getNextValue(data.index++);
-                    }
-                    bits |= (resb > 0 ? 1 : 0) * power;
-                    power <<= 1;
-                }
-
-                switch (c = bits) {
-                case 0:
-                    bits = 0;
-                    maxpower = Math.pow(2, 8);
-                    power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position;
-                        data.position >>= 1;
-                        if (data.position == 0) {
-                            data.position = resetValue;
-                            data.val = getNextValue(data.index++);
-                        }
-                        bits |= (resb > 0 ? 1 : 0) * power;
-                        power <<= 1;
-                    }
-
-                    dictionary[dictSize++] = f(bits);
-                    c = dictSize - 1;
-                    enlargeIn--;
-                    break;
-                case 1:
-                    bits = 0;
-                    maxpower = Math.pow(2, 16);
-                    power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position;
-                        data.position >>= 1;
-                        if (data.position == 0) {
-                            data.position = resetValue;
-                            data.val = getNextValue(data.index++);
-                        }
-                        bits |= (resb > 0 ? 1 : 0) * power;
-                        power <<= 1;
-                    }
-                    dictionary[dictSize++] = f(bits);
-                    c = dictSize - 1;
-                    enlargeIn--;
-                    break;
-                case 2:
-                    return result.join('');
-                }
-
-                if (enlargeIn == 0) {
-                    enlargeIn = Math.pow(2, numBits);
-                    numBits++;
-                }
-
-                if (dictionary[c]) {
-                    entry = dictionary[c];
-                } else {
-                    if (c === dictSize) {
-                        entry = w + w.charAt(0);
-                    } else {
-                        return null;
-                    }
-                }
-                result.push(entry);
-
-                // Add w+entry[0] to the dictionary.
-                dictionary[dictSize++] = w + entry.charAt(0);
-                enlargeIn--;
-
-                w = entry;
-
-                if (enlargeIn == 0) {
-                    enlargeIn = Math.pow(2, numBits);
-                    numBits++;
-                }
-
-            }
-        }
-    };
-    return LZString;
-});
-// http://www.makeitgo.ws/articles/animationframe/
-// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
-// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
-bento.define('bento/lib/requestanimationframe', [], function () {
-    'use strict';
-
-    var lastTime = 0,
-        vendors = ['ms', 'moz', 'webkit', 'o'];
-    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
-        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
-    }
-
-    if (!window.requestAnimationFrame)
-        window.requestAnimationFrame = function (callback, element) {
-            var currTime = new Date().getTime(),
-                timeToCall = Math.max(0, 16 - (currTime - lastTime)),
-                id = window.setTimeout(function () {
-                    callback(currTime + timeToCall);
-                }, timeToCall);
-            lastTime = currTime + timeToCall;
-            return id;
-        };
-
-    if (!window.cancelAnimationFrame)
-        window.cancelAnimationFrame = function (id) {
-            clearTimeout(id);
-        };
-    return window.requestAnimationFrame;
-});
-/**
- * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
- * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
- * assets to load, and where to find them.
- * <br>Exports: Constructor, can be accessed through Bento.assets namespace
- * @module bento/managers/asset
- * @moduleName AssetManager
- * @returns AssetManager
- */
-bento.define('bento/managers/asset', [
-    'bento/packedimage',
-    'bento/utils',
-    'audia',
-    'lzstring'
-], function (
-    PackedImage,
-    Utils,
-    Audia,
-    LZString
-) {
-    'use strict';
-    return function () {
-        var assetGroups = {};
-        var loadedGroups = {};
-        var path = '';
-        var assets = {
-            audio: {},
-            json: {},
-            images: {},
-            binary: {},
-            fonts: {},
-            spritesheets: {},
-            texturePacker: {},
-
-            // packed
-            'packed-images': {},
-            'packed-spritesheets': {},
-            'packed-json': {}
-        };
-        /**
-         * (Down)Load asset types
-         */
-        var loadAudio = function (name, source, callback) {
-            var i;
-            var failed = true;
-            var loadAudioFile = function (index, src) {
-                var audio = new Audia();
-                var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
-                if (!!canPlay || window.ejecta) {
-                    // success!
-                    if (!manager.skipAudioCallback) {
-                        audio.onload = function () {
-                            callback(null, name, audio);
-                        };
-                    } else {
-                        // callback immediately
-                        window.setTimeout(function () {
-                            callback(null, name, audio);
-                        }, 0);
-                    }
-                    audio.src = src;
-                    failed = false;
-                    return true;
-                }
-                return false;
-            };
-            if (!Utils.isArray(source)) {
-                // source = [path + 'audio/' + source];
-                source = [source];
-            }
-            // try every type
-            for (i = 0; i < source.length; ++i) {
-                if (loadAudioFile(i, path + 'audio/' + source[i])) {
-                    break;
-                }
-            }
-            if (failed) {
-                callback('This audio type is not supported:', name, source);
-            }
-        };
-        var loadJSON = function (name, source, callback, isCompressed) {
-            var xhr = new window.XMLHttpRequest();
-            if (xhr.overrideMimeType) {
-                xhr.overrideMimeType('application/json');
-            }
-
-            xhr.open('GET', source, true);
-            xhr.onerror = function () {
-                callback('Error: loading JSON ' + source);
-            };
-            xhr.ontimeout = function () {
-                callback('Timeout: loading JSON ' + source);
-            };
-            xhr.onreadystatechange = function () {
-                var jsonData;
-                var response;
-                if (xhr.readyState === 4) {
-                    if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
-                        try {
-                            response = xhr.responseText;
-                            // read header
-                            if (response[0] === 'L' && response[1] === 'Z' && response[2] === 'S') {
-                                isCompressed = true;
-                                // trim header
-                                response = response.substring(3);
-                            }
-
-                            if (isCompressed) {
-                                // decompress if needed
-                                jsonData = JSON.parse(LZString.decompressFromBase64(response));
-                            } else {
-                                jsonData = JSON.parse(response);
-                            }
-                        } catch (e) {
-                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source + ': ' + e);
-                            console.log('Trying to parse', response);
-                            jsonData = xhr.responseText;
-                        }
-                        callback(null, name, jsonData);
-                    } else {
-                        callback('Error: State ' + xhr.readyState + ' ' + source);
-                    }
-                }
-            };
-            xhr.send(null);
-        };
-        var loadJsonCompressed = function (name, source, callback) {
-            return loadJSON(name, source, callback, true);
-        };
-        var loadBinary = function (name, source, success, failure) {
-            var xhr = new window.XMLHttpRequest();
-            var arrayBuffer;
-            var byteArray;
-            var buffer;
-            var i = 0;
-
-            xhr.open('GET', source, true);
-            xhr.onerror = function () {
-                failure('ERROR: loading binary ' + source);
-            };
-            xhr.responseType = 'arraybuffer';
-            xhr.onload = function (e) {
-                var binary;
-                arrayBuffer = xhr.response;
-                if (arrayBuffer) {
-                    byteArray = new Uint8Array(arrayBuffer);
-                    buffer = [];
-                    for (i; i < byteArray.byteLength; ++i) {
-                        buffer[i] = String.fromCharCode(byteArray[i]);
-                    }
-                    // loadedAssets.binary[name] = buffer.join('');
-                    binary = buffer.join('');
-                    success(null, name, binary);
-                }
-            };
-            xhr.send();
-        };
-        var loadImage = function (name, source, callback) {
-            var img = new Image();
-
-            // cocoon lazy load, might be useful some day?
-            // img.cocoonLazyLoad = true;
-
-            img.src = source;
-            img.addEventListener('load', function () {
-                callback(null, name, img);
-            }, false);
-            img.addEventListener('error', function (evt) {
-                // TODO: Implement failure: should it retry to load the image?
-                Utils.log('ERROR: loading image ' + source);
-            }, false);
-        };
-        var loadTTF = function (name, source, callback) {
-            // for every font to load we measure the width on a canvas
-            var splitName = name;
-            var canvas = document.createElement('canvas');
-            var context = canvas.getContext('2d');
-            var width = 0;
-            var oldWidth;
-            var intervalId;
-            var checkCount = 0;
-            var measure = function () {
-                width = context.measureText('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,').width;
-                return width;
-            };
-            var loadFont = function () {
-                // append a style element with the font face
-                // this method works with Canvas+
-                var style = document.createElement('style');
-                style.setAttribute("type", "text/css");
-                style.innerHTML = "@font-face { font-family: '" + name +
-                    "'; src: url('" + source + "');}";
-
-                document.body.appendChild(style);
-
-                // try setting it
-                context.font = "normal 16px " + name;
-            };
-            // detect a loaded font by checking if the width changed
-            var isLoaded = function () {
-                return oldWidth !== measure();
-            };
-
-            // unlike other assets, the font name is not allowed to have slashes!
-            if (name.indexOf("/") >= 0) {
-                splitName = name.split("/");
-                // swap name with last word
-                name = splitName[splitName.length - 1];
-            }
-
-            loadFont();
-
-            // measure for the first time
-            oldWidth = measure();
-
-            // check every 100ms
-            intervalId = window.setInterval(function () {
-                if (isLoaded()) {
-                    // done!
-                    window.clearInterval(intervalId);
-                    if (callback) {
-                        callback(null, name, name);
-                    }
-                } else if (checkCount >= 10) {
-                    // give up after 1000ms
-                    // possible scenarios:
-                    // * a mistake was made, for example a typo in the path, and the font was never loaded
-                    // * the font was already loaded (can happen in reloading in Cocoon devapp)
-                    // either way we continue as if nothing happened, not loading the font shouldn't crash the game
-                    window.clearInterval(intervalId);
-                    console.log('Warning: font "' + name + '" timed out with loading.');
-                    if (callback) {
-                        callback(null, name, name);
-                    }
-                }
-                checkCount += 1;
-            }, 100);
-        };
-        var loadSpriteSheet = function (name, source, callback) {
-            var spriteSheet = {
-                image: null,
-                animation: null
-            };
-
-            var checkForCompletion = function () {
-                if (spriteSheet.image !== null && spriteSheet.animation !== null) {
-                    callback(null, name, spriteSheet);
-                }
-            };
-
-            loadJSON(name, source + '.json', function (err, name, json) {
-                if (err) {
-                    callback(err, name, null);
-                    return;
-                }
-                spriteSheet.animation = json;
-                checkForCompletion();
-            });
-
-            loadImage(name, source + '.png', function (err, name, img) {
-                if (err) {
-                    callback(err, name, null);
-                    return;
-                }
-                spriteSheet.image = PackedImage(img);
-                checkForCompletion();
-            });
-        };
-        var loadPackedImage = function (name, source, callback) {
-            // very similar to spritesheet: load an image and load a json
-            var packedImage = {
-                image: null,
-                data: null
-            };
-            var checkForCompletion = function () {
-                if (packedImage.image !== null && packedImage.data !== null) {
-                    callback(null, name, packedImage);
-                }
-            };
-
-            loadJSON(name, source + '.json', function (err, name, json) {
-                if (err) {
-                    callback(err, name, null);
-                    return;
-                }
-                packedImage.data = json;
-                checkForCompletion();
-            });
-            loadImage(name, source + '.png', function (err, name, img) {
-                if (err) {
-                    callback(err, name, null);
-                    return;
-                }
-                packedImage.image = img;
-                checkForCompletion();
-            });
-        };
-        var loadSpriteSheetPack = function (name, source, callback) {
-            var spriteSheet = {
-                image: null,
-                data: null
-            };
-
-            var checkForCompletion = function () {
-                if (spriteSheet.image !== null && spriteSheet.data !== null) {
-                    callback(null, name, spriteSheet);
-                }
-            };
-
-            loadJSON(name, source + '.json', function (err, name, json) {
-                if (err) {
-                    callback(err, name, null);
-                    return;
-                }
-                spriteSheet.data = json;
-                checkForCompletion();
-            });
-
-            loadImage(name, source + '.png', function (err, name, img) {
-                if (err) {
-                    callback(err, name, null);
-                    return;
-                }
-                spriteSheet.image = img;
-                checkForCompletion();
-            });
-        };
-        /**
-         * Loads asset groups (json files containing names and asset paths to load)
-         * If the assetGroup parameter is passed to Bento.setup, this function will be
-         * called automatically by Bento.
-         * This will not load the assets (merely the assetgroups). To load the assets,
-         * you must call Bento.assets.load()
-         * @function
-         * @instance
-         * @param {Object} jsonFiles - Name with json path
-         * @param {Function} onReady - Callback when ready
-         * @param {Function} onLoaded - Callback when json file is loaded
-         * @name loadAssetGroups
-         */
-        var loadAssetGroups = function (jsonFiles, onReady, onLoaded) {
-            var jsonName;
-            var keyCount = Utils.getKeyLength(jsonFiles);
-            var loaded = 0;
-            var callback = function (err, name, json) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assetGroups[name] = json;
-                loaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(loaded, keyCount, name, 'json');
-                }
-                if (keyCount === loaded && Utils.isDefined(onReady)) {
-                    onReady(null, 'assetGroup');
-                }
-            };
-            for (jsonName in jsonFiles) {
-                if (jsonFiles.hasOwnProperty(jsonName)) {
-                    loadJSON(jsonName, jsonFiles[jsonName], callback);
-                }
-            }
-        };
-        /**
-         * Loads assets from asset group.
-         * @function
-         * @instance
-         * @param {String} groupName - Name of asset group
-         * @param {Function} onReady - Callback when ready
-         * @param {Function} onLoaded - Callback when asset file is loaded
-         * @param {Bool} skipPackedImages - do not initialize texture packed images
-         * @name load
-         */
-        var load = function (groupName, onReady, onLoaded) {
-            var group = assetGroups[groupName];
-            var asset;
-            var assetsLoaded = 0;
-            var assetCount = 0;
-            var toLoad = [];
-            // assets to unpack
-            var toUnpack = {
-                'packed-images': {},
-                'packed-spritesheets': {},
-                'packed-json': {}
-            };
-            var packs = [];
-            var postLoad = function () {
-                var initPackedImagesLegacy = function () {
-                    // old way of packed images
-                    var frame, pack, i, image, json, name;
-                    while (packs.length) {
-                        pack = packs.pop();
-                        image = getImageElement(pack);
-                        json = getJson(pack);
-
-                        if (!image || !json) {
-                            // TODO: should have a cleaner method to check if packs are not loaded yet
-                            // return the pack until the image/json is loaded
-                            packs.push(pack);
-                            return;
-                        }
-
-                        // parse json
-                        for (i = 0; i < json.frames.length; ++i) {
-                            name = json.frames[i].filename;
-                            name = name.substring(0, name.length - 4);
-                            frame = json.frames[i].frame;
-                            assets.texturePacker[name] = new PackedImage(image, frame);
-                        }
-                    }
-                };
-                var initPackedImages = function () {
-                    // expand into images
-                    var packedImages = toUnpack['packed-images'];
-                    Utils.forEach(packedImages, function (packData, name) {
-                        var image = packData.image;
-                        var data = packData.data;
-                        Utils.forEach(data, function (textureData, i) {
-                            // turn into image data
-                            var assetName = textureData.assetName;
-                            var frame = {
-                                x: textureData.x,
-                                y: textureData.y,
-                                w: textureData.width,
-                                h: textureData.height,
-                            };
-                            assets.texturePacker[assetName] = new PackedImage(image, frame);
-                        });
-                    });
-                };
-                var unpackJson = function () {
-                    // unpack json into multiple jsons
-                    var key;
-                    var packedJson = toUnpack['packed-json'];
-                    Utils.forEach(packedJson, function (group) {
-                        Utils.forEach(group, function (json, key, l, breakLoop) {
-                            assets.json[key] = json;
-                        });
-                    });
-                };
-                var unpackSpriteSheets = function () {
-                    // expand into images
-                    var packedImages = toUnpack['packed-spritesheets'];
-                    Utils.forEach(packedImages, function (packData, name) {
-                        var image = packData.image;
-                        var data = packData.data;
-                        Utils.forEach(data, function (textureData, i) {
-                            // turn into image data
-                            var assetName = textureData.assetName;
-                            var frame = {
-                                x: textureData.x,
-                                y: textureData.y,
-                                w: textureData.width,
-                                h: textureData.height,
-                            };
-                            var spriteSheet = {
-                                image: new PackedImage(image, frame),
-                                animation: textureData.spriteSheet
-                            };
-                            assets.spritesheets[assetName] = spriteSheet;
-                        });
-                    });
-                };
-                // after everything has loaded, do some post processing
-                initPackedImagesLegacy();
-                initPackedImages();
-                unpackJson();
-                unpackSpriteSheets();
-                // mark as loaded
-                loadedGroups[groupName] = true;
-                // callback
-                if (Utils.isDefined(onReady)) {
-                    onReady(null, groupName);
-                }
-            };
-            var checkLoaded = function () {
-                if (assetCount === 0 || (assetCount > 0 && assetsLoaded === assetCount)) {
-                    postLoad();
-                }
-            };
-            var onLoadImage = function (err, name, image) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets.images[name] = image;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'image');
-                }
-                checkLoaded();
-            };
-            // DEPRECATED
-            var onLoadPack = function (err, name, json) {
-                // TODO: fix texturepacker loading
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets.json[name] = json;
-                packs.push(name);
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'pack');
-                }
-                checkLoaded();
-            };
-            var onLoadJson = function (err, name, json) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets.json[name] = json;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'json');
-                }
-                checkLoaded();
-            };
-            var onLoadTTF = function (err, name, ttf) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets.fonts[name] = ttf;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'ttf');
-                }
-                checkLoaded();
-            };
-            var onLoadAudio = function (err, name, audio) {
-                if (err) {
-                    Utils.log(err);
-                } else {
-                    assets.audio[name] = audio;
-                }
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'audio');
-                }
-                checkLoaded();
-            };
-            var onLoadSpriteSheet = function (err, name, spriteSheet) {
-                if (err) {
-                    Utils.log(err);
-                } else {
-                    assets.spritesheets[name] = spriteSheet;
-                }
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheet');
-                }
-                checkLoaded();
-            };
-            // packs
-            var onLoadImagePack = function (err, name, imagePack) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets['packed-images'][name] = imagePack;
-                toUnpack['packed-images'][name] = imagePack;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'imagePack');
-                }
-                checkLoaded();
-            };
-            var onLoadJsonPack = function (err, name, json) {
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-                assets['packed-json'][name] = json;
-                toUnpack['packed-json'][name] = json;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'jsonPack');
-                }
-                checkLoaded();
-            };
-            var onLoadSpriteSheetPack = function (err, name, spriteSheetPack) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets['packed-spritesheets'][name] = spriteSheetPack;
-                toUnpack['packed-spritesheets'][name] = spriteSheetPack;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheetPack');
-                }
-                checkLoaded();
-            };
-
-            var readyForLoading = function (fn, asset, path, callback) {
-                toLoad.push({
-                    fn: fn,
-                    asset: asset,
-                    path: path,
-                    callback: callback
-                });
-            };
-            var loadAllAssets = function () {
-                var i = 0;
-                var data;
-                for (i = 0; i < toLoad.length; ++i) {
-                    data = toLoad[i];
-                    data.fn(data.asset, data.path, data.callback);
-                }
-                checkLoaded();
-            };
-
-            if (!Utils.isDefined(group)) {
-                onReady('Could not find asset group ' + groupName);
-                return;
-            }
-            // set path
-            if (Utils.isDefined(group.path)) {
-                path = group.path;
-            }
-            // count the number of assets first
-            // get images
-            if (Utils.isDefined(group.images)) {
-                assetCount += Utils.getKeyLength(group.images);
-                for (asset in group.images) {
-                    if (!group.images.hasOwnProperty(asset)) {
-                        continue;
-                    }
-                    readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
-                }
-            }
-            // get packed images
-            if (Utils.isDefined(group.texturePacker)) {
-                assetCount += Utils.getKeyLength(group.texturePacker);
-                for (asset in group.texturePacker) {
-                    if (!group.texturePacker.hasOwnProperty(asset)) {
-                        continue;
-                    }
-                    readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
-                }
-            }
-            // get audio
-            if (Utils.isDefined(group.audio)) {
-                assetCount += Utils.getKeyLength(group.audio);
-                for (asset in group.audio) {
-                    if (!group.audio.hasOwnProperty(asset)) {
-                        continue;
-                    }
-                    readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
-                }
-            }
-            // get json
-            if (Utils.isDefined(group.json)) {
-                assetCount += Utils.getKeyLength(group.json);
-                for (asset in group.json) {
-                    if (!group.json.hasOwnProperty(asset)) {
-                        continue;
-                    }
-                    readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
-                }
-            }
-            // get fonts
-            if (Utils.isDefined(group.fonts)) {
-                assetCount += Utils.getKeyLength(group.fonts);
-                for (asset in group.fonts) {
-                    if (!group.fonts.hasOwnProperty(asset)) {
-                        continue;
-                    }
-                    readyForLoading(loadTTF, asset, path + 'fonts/' + group.fonts[asset], onLoadTTF);
-                }
-            }
-            // get spritesheets
-            if (Utils.isDefined(group.spritesheets)) {
-                assetCount += Utils.getKeyLength(group.spritesheets);
-                for (asset in group.spritesheets) {
-                    if (!group.spritesheets.hasOwnProperty(asset)) {
-                        continue;
-                    }
-                    readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
-                }
-            }
-
-            // packed assets
-            if (Utils.isDefined(group['packed-images'])) {
-                assetCount += Utils.getKeyLength(group['packed-images']);
-                Utils.forEach(group['packed-images'], function (assetPath, assetName) {
-                    readyForLoading(loadPackedImage, assetName, path + 'packed-images/' + assetPath, onLoadImagePack);
-                });
-            }
-            // get (compressed) packed json
-            if (Utils.isDefined(group['packed-json'])) {
-                assetCount += Utils.getKeyLength(group['packed-json']);
-                Utils.forEach(group['packed-json'], function (assetPath, assetName) {
-                    readyForLoading(loadJSON, assetName, path + 'packed-json/' + assetPath, onLoadJsonPack);
-                });
-            }
-            // get packed spritesheet
-            if (Utils.isDefined(group['packed-spritesheets'])) {
-                assetCount += Utils.getKeyLength(group['packed-spritesheets']);
-                Utils.forEach(group['packed-spritesheets'], function (assetPath, assetName) {
-                    readyForLoading(loadSpriteSheetPack, assetName, path + 'packed-spritesheets/' + assetPath, onLoadSpriteSheetPack);
-                });
-            }
-
-            // load all assets
-            loadAllAssets();
-
-            return assetCount;
-        };
-        /**
-         * Loads image from URL. The resulting asset can be accessed through Bento.assets.getImage().
-         * @function
-         * @instance
-         * @param {String} name - Name of asset
-         * @param {String} url - Url path (relative to your index.html)
-         * @param {Function} callback - Callback function
-         * @name loadImageFromUrl
-         */
-        var loadImageFromUrl = function (name, url, callback) {
-            var onLoadImage = function (err, name, image) {
-                if (err) {
-                    Utils.log(err);
-                    if (callback) {
-                        callback(err);
-                    }
-                    return;
-                }
-                assets.images[name] = image;
-                if (callback) {
-                    callback(null, image);
-                }
-            };
-            loadImage(name, url, onLoadImage);
-        };
-        /**
-         * Loads JSON from URL. The resulting asset can be accessed through Bento.assets.getJson().
-         * @function
-         * @instance
-         * @param {String} name - Name of asset
-         * @param {String} url - Url path (relative to your index.html)
-         * @param {Function} callback - Callback function
-         * @name loadJsonFromUrl
-         */
-        var loadJsonFromUrl = function (name, url, callback) {
-            var onLoadJson = function (err, name, json) {
-                if (err) {
-                    Utils.log(err);
-                    if (callback) {
-                        callback(err);
-                    }
-                    return;
-                }
-                assets.json[name] = json;
-                if (callback) {
-                    callback(null, json);
-                }
-            };
-            loadJSON(name, url, onLoadJson);
-        };
-        /**
-         * Loads audio from URL. The resulting asset can be accessed through Bento.assets.getAudio().
-         * @function
-         * @instance
-         * @param {String} name - Name of asset
-         * @param {String} url - Url path (relative to your index.html)
-         * @param {Function} callback - Callback function
-         * @name loadAudioFromUrl
-         */
-        var loadAudioFromUrl = function (name, url, callback) {
-            var onLoadAudio = function (err, name, audio) {
-                if (err) {
-                    Utils.log(err);
-                    if (callback) {
-                        callback(err);
-                    }
-                    return;
-                }
-                assets.audio[name] = audio;
-                if (callback) {
-                    callback(audio);
-                }
-            };
-            loadAudio(name, url, onLoadAudio);
-        };
-        /**
-         * Unloads assets
-         * @function
-         * @instance
-         * @param {String} groupName - Name of asset group
-         * @param {Boolean} dispose - Should use Canvas+ dispose
-         * @name unload
-         */
-        var unload = function (groupName, dispose) {
-            // find all assets in this group
-            var assetGroup = assetGroups[groupName];
-
-            if (!assetGroup) {
-                Utils.log('ERROR: asset group ' + groupName + ' does not exist');
-                return;
-            }
-            Utils.forEach(assetGroup, function (group, type) {
-                if (typeof group !== "object") {
-                    return;
-                }
-                Utils.forEach(group, function (assetPath, name) {
-                    // NOTE: from this point on there are a lot of manual checks etc.
-                    // would be nicer to make unify the logic...
-
-                    // find the corresponding asset from the assets object
-                    var assetTypeGroup = assets[type] || {};
-                    var asset = assetTypeGroup[name];
-                    var removePackedImage = function (packedImages) {
-                        // find what it unpacked to
-                        var image = packedImages.image;
-                        var data = packedImages.data;
-                        Utils.forEach(data, function (textureData, i) {
-                            // find out the asset name
-                            var assetName = textureData.assetName;
-                            var textureAsset = assets.texturePacker[assetName];
-                            // delete if this asset still exists
-                            if (textureAsset) {
-                                delete assets.texturePacker[assetName];
-                            }
-                        });
-                        // dispose if possible
-                        if (dispose && image.dispose) {
-                            image.dispose();
-                        }
-                        if (dispose && image.image && image.image.dispose) {
-                            image.image.dispose();
-                        }
-                    };
-                    var removePackedSpriteSheet = function (packedSpriteSheets) {
-                        // find what it unpacked to
-                        var image = packedSpriteSheets.image;
-                        var data = packedSpriteSheets.data;
-                        Utils.forEach(data, function (textureData, i) {
-                            // find out the asset name
-                            var assetName = textureData.assetName;
-                            var spriteSheet = assets.spritesheets[assetName];
-                            // delete if this asset still exists
-                            if (spriteSheet) {
-                                delete assets.spritesheets[assetName];
-                            }
-                        });
-                        // dispose if possible
-                        if (dispose && image.dispose) {
-                            image.dispose();
-                        }
-                        if (dispose && image.image && image.image.dispose) {
-                            image.image.dispose();
-                        }
-                    };
-                    var removePackedJson = function (packedJson) {
-                        // find what it unpacked to
-                        Utils.forEach(packedJson, function (json, key, l, breakLoop) {
-                            delete assets.json[key];
-                        });
-                    };
-
-                    if (asset) {
-                        // remove reference to it
-                        assetTypeGroup[name] = undefined;
-                        // delete could be bad for performance(?)
-                        delete assetTypeGroup[name];
-
-                        if (type === 'images') {
-                            // also remove corresponding texturepacker
-                            if (assets.texturePacker[name]) {
-                                assets.texturePacker[name] = undefined;
-                                delete assets.texturePacker[name];
-                            }
-                        } else if (type === 'packed-images') {
-                            removePackedImage(asset);
-                        } else if (type === 'packed-spritesheets') {
-                            removePackedSpriteSheet(asset);
-                        } else if (type === 'packed-json') {
-                            removePackedJson(asset);
-                        }
-
-                        // Canvas+ only: dispose if possible
-                        // https://blog.ludei.com/techniques-to-optimize-memory-use-in-ludeis-canvas-environment/
-                        if (dispose) {
-                            // image
-                            if (asset.dispose) {
-                                asset.dispose();
-                            }
-                            // spritesheet
-                            else if (asset.image && asset.image.dispose) {
-                                asset.image.dispose();
-                            } else if (asset.image && asset.image.image && asset.image.image.dispose) {
-                                asset.image.image.dispose();
-                            }
-                            // audia
-                            else if (asset._audioNode && asset._audioNode.dispose) {
-                                asset._audioNode.dispose();
-                            }
-                        }
-                    }
-                });
-            });
-            // mark as unloaded
-            loadedGroups[groupName] = false;
-        };
-        /**
-         * Returns a previously loaded image
-         * @function
-         * @instance
-         * @param {String} name - Name of image
-         * @returns {PackedImage} Image
-         * @name getImage
-         */
-        var getImage = function (name) {
-            // NOTE: getImage always returns a PackedImage
-            // if the loaded image has not been initialized as PackedImage yet,
-            // getImage will do that now and caches the PackedImage in assets.texturePacker
-            var image, packedImage = assets.texturePacker[name];
-            if (!packedImage) {
-                image = getImageElement(name);
-                if (!image) {
-                    Utils.log("ERROR: Image " + name + " could not be found");
-                    return null;
-                }
-                packedImage = PackedImage(image);
-                assets.texturePacker[name] = packedImage;
-            }
-            return packedImage;
-        };
-        /**
-         * Returns a previously loaded image element
-         * @function
-         * @instance
-         * @param {String} name - Name of image
-         * @returns {HTMLImage} Html Image element
-         * @name getImageElement
-         */
-        var getImageElement = function (name) {
-            var asset = assets.images[name];
-            if (!Utils.isDefined(asset)) {
-                Utils.log("ERROR: ImageElement " + name + " could not be found");
-            }
-            return asset;
-        };
-        /**
-         * Returns a previously loaded json object
-         * @function
-         * @instance
-         * @param {String} name - Name of json file
-         * @returns {Object} Json object
-         * @name getJson
-         */
-        var getJson = function (name) {
-            var asset = assets.json[name];
-            if (!Utils.isDefined(asset)) {
-                Utils.log("ERROR: JSON " + name + " could not be found");
-            }
-            return asset;
-        };
-        /**
-         * Returns a previously loaded audio element (currently by howler)
-         * @function
-         * @instance
-         * @param {String} name - Name of image
-         * @returns {Audia} Audia object
-         * @name getAudio
-         */
-        var getAudio = function (name) {
-            var asset = assets.audio[name];
-            if (!Utils.isDefined(asset)) {
-                Utils.log("ERROR: Audio " + name + " could not be found");
-            }
-            return asset;
-        };
-        /**
-         * Returns a previously loaded spriteSheet element
-         * @function
-         * @instance
-         * @param {String} name - Name of spriteSheet
-         * @returns {Object} spriteSheet object
-         * @name getSpriteSheet
-         */
-        var getSpriteSheet = function (name) {
-            var asset = assets.spritesheets[name];
-            if (!Utils.isDefined(asset)) {
-                Utils.log("ERROR: Sprite sheet " + name + " could not be found");
-            }
-            return asset;
-        };
-        /**
-         * Returns all assets
-         * @function
-         * @instance
-         * @param {String} name - Name of image
-         * @returns {Object} assets - Object with reference to all loaded assets
-         * @name getAssets
-         */
-        var getAssets = function () {
-            return assets;
-        };
-        /**
-         * Returns asset group
-         * @function
-         * @instance
-         * @returns {Object} assetGroups - reference to loaded JSON file
-         * @name getAssetGroups
-         */
-        var getAssetGroups = function () {
-            return assetGroups;
-        };
-        /**
-         * Reloads all previously loaded assets
-         * @function
-         * @instance
-         * @param {Function} callback - called when all assets are loaded
-         * @name reload
-         */
-        var reload = function (callback) {
-            var group;
-            var loaded = 0;
-            var groupsToLoad = [];
-            var loadGroups = function () {
-                var i;
-                for (i = 0; i < groupsToLoad.length; ++i) {
-                    load(groupsToLoad[i], end, function (current, total, name) {});
-                }
-            };
-            var end = function () {
-                loaded += 1;
-
-                if (loaded === groupsToLoad.length && callback) {
-                    callback();
-                }
-            };
-            // collect groups
-            for (group in assetGroups) {
-                if (!assetGroups.hasOwnProperty(group)) {
-                    continue;
-                }
-                if (!loadedGroups[group]) {
-                    // havent loaded this group yet
-                    continue;
-                }
-                groupsToLoad.push(group);
-            }
-
-            // load them
-            loadGroups();
-        };
-        /**
-         * Attempts to load ./assets.json and interpret it as assetgroups
-         * @function
-         * @instance
-         * @param {Function} onRead - Called with an error string or null if successful
-         * @name loadAssetsJson
-         */
-        var loadAssetsJson = function (onReady) {
-            loadJSON('assets.json', 'assets.json', function (error, name, assetsJson) {
-                var isLoading = false;
-                var groupsToLoad = {};
-                if (error) {
-                    onReady(error);
-                    return;
-                }
-                // check the contents of json
-                Utils.forEach(assetsJson, function (group, groupName, l, breakLoop) {
-                    if (Utils.isString(group)) {
-                        // assume assets.json consists of strings to load json files with
-                        isLoading = true;
-                        groupsToLoad[groupName] = group;
-                    } else {
-                        // the asset group is present
-                        assetGroups[groupName] = group;
-                    }
-                });
-
-                if (isLoading) {
-                    // load jsons
-                    loadAssetGroups(groupsToLoad, onReady);
-                } else {
-                    // done
-                    onReady(null, 'assetsJson');
-                }
-            });
-        };
-        /**
-         * Loads all assets
-         * @function
-         * @instance
-         * @param {Object} settings
-         * @param {Array} settings.exceptions - array of strings, which asset groups not to load
-         * @param {Function} settings.onComplete - called when all assets are loaded
-         * @param {Function} settings.onLoad - called on every asset loaded
-         * @name reload
-         */
-        var loadAllAssets = function (settings) {
-            var exceptions = settings.exceptions || [];
-            var onReady = settings.onReady || settings.onComplete || function (err, name) {};
-            var onLoaded = settings.onLoaded || settings.onLoad || function (count, total, name, type) {};
-            var group;
-            var groupName;
-            var groupCount = 0;
-            var assetCount = 0;
-            var groupsLoaded = 0;
-            var current = 0;
-            // check if all groups loaded
-            var end = function (err) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                groupsLoaded += 1;
-                if (groupsLoaded === groupCount && onReady) {
-                    onReady(null);
-                }
-            };
-            // called on every asset
-            var loadAsset = function (c, a, name, type) {
-                current += 1;
-                if (onLoaded) {
-                    onLoaded(current, assetCount, name, type);
-                }
-            };
-
-            // check every assetgroup and load its assets
-            for (groupName in assetGroups) {
-                if (!assetGroups.hasOwnProperty(groupName)) {
-                    continue;
-                }
-                if (exceptions.indexOf(groupName) >= 0) {
-                    continue;
-                }
-                group = assetGroups[groupName];
-                assetCount += load(groupName, end, loadAsset);
-                groupCount += 1;
-            }
-
-            // nothing to load
-            if (groupCount === 0 && onReady) {
-                onReady();
-            }
-        };
-        var manager = {
-            skipAudioCallback: false,
-            reload: reload,
-            loadAllAssets: loadAllAssets,
-            loadAssetGroups: loadAssetGroups,
-            loadAssetsJson: loadAssetsJson,
-            load: load,
-            loadJson: loadJSON,
-            loadImageFromUrl: loadImageFromUrl,
-            loadJsonFromUrl: loadJsonFromUrl,
-            loadAudioFromUrl: loadAudioFromUrl,
-            unload: unload,
-            getImage: getImage,
-            getImageElement: getImageElement,
-            getJson: getJson,
-            getAudio: getAudio,
-            getSpriteSheet: getSpriteSheet,
-            getAssets: getAssets,
-            getAssetGroups: getAssetGroups
-        };
-        return manager;
-    };
-});
-/**
- * Audio manager to play sounds and music. The audio uses WebAudio API when possible, though it's mostly based on HTML5 Audio for
- * CocoonJS compatibility. To make a distinction between sound effects and music, you must prefix the audio
- * asset names with sfx_ and bgm_ respectively.
- * <br>Exports: Constructor, can be accessed through Bento.audio namespace.
- * @module bento/managers/audio
- * @moduleName AudioManager
- * @returns AudioManager
- */
-bento.define('bento/managers/audio', [
-    'bento/utils'
-], function (Utils) {
-    return function (bento) {
-        var volume = 1,
-            mutedSound = false,
-            mutedMusic = false,
-            preventSounds = false,
-            isPlayingMusic = false,
-            howler,
-            musicLoop = false,
-            lastMusicPlayed = '',
-            currentMusicId = 0,
-            saveMuteSound,
-            saveMuteMusic,
-            assetManager = bento.assets,
-            canvasElement = bento.getCanvas(),
-            onVisibilityChanged = function (hidden) {
-                if (hidden) {
-                    // save audio preferences and mute
-                    saveMuteSound = mutedSound;
-                    saveMuteMusic = mutedMusic;
-                    obj.muteMusic(true);
-                    obj.muteSound(true);
-                } else {
-                    // reload audio preferences and replay music if necessary
-                    mutedSound = saveMuteSound;
-                    mutedMusic = saveMuteMusic;
-                    if (lastMusicPlayed) {
-                        obj.playMusic(lastMusicPlayed, musicLoop);
-                    }
-                }
-            },
-            obj = {
-                /**
-                 * Sets the volume (0 = minimum, 1 = maximum)
-                 * @name setVolume
-                 * @instance
-                 * @function
-                 * @param {Number} value - the volume
-                 * @param {String} name - name of the sound to change volume
-                 */
-                setVolume: function (value, name) {
-                    var audio = assetManager.getAudio(name);
-                    if (!audio) {
-                        return;
-                    }
-                    audio.volume = value;
-                },
-                /**
-                 * Gets the volume (0 = minimum, 1 = maximum)
-                 * @name getVolume
-                 * @instance
-                 * @function
-                 * @param {String} name - name of the sound
-                 */
-                getVolume: function (name) {
-                    var audio = assetManager.getAudio(name);
-                    if (!audio) {
-                        Utils.log('ERROR: Could not find audio file');
-                        return 0;
-                    }
-                    return audio.volume;
-                },
-                /**
-                 * Plays a sound effect
-                 * @name playSound
-                 * @instance
-                 * @function
-                 * @param {String} name - name of the audio asset
-                 * @param {Boolean} [loop] - should the audio loop (defaults to false)
-                 * @param {Function} [onEnd] - callback when the audio ends
-                 * @param {Boolean} [stopSound] - stops the sound if true
-                 */
-                playSound: function (name, loop, onEnd, stopSound) {
-                    var audio = assetManager.getAudio(name);
-                    var slashIndex = name.lastIndexOf('/');
-                    if (!audio) {
-                        Utils.log('ERROR: Could not find audio file');
-                        return;
-                    }
-
-                    if (name.substr(slashIndex + 1, 4) !== 'sfx_') {
-                        Utils.log("Warning: file names of sound effects should start with 'sfx_'");
-                    }
-
-                    if (!mutedSound && !preventSounds) {
-                        if (stopSound)
-                            obj.stopSound(name);
-                        if (Utils.isDefined(loop)) {
-                            audio.loop = loop;
-                        }
-                        if (Utils.isDefined(onEnd)) {
-                            audio.onended = onEnd;
-                        }
-                        audio.play();
-                    }
-                },
-                /**
-                 * Stops a specific sound effect
-                 * @name stopSound
-                 * @instance
-                 * @function
-                 */
-                stopSound: function (name) {
-                    var i, l, node;
-                    var audio = assetManager.getAudio(name);
-                    if (!audio) {
-                        Utils.log('ERROR: Could not find audio file');
-                        return;
-                    }
-                    audio.stop();
-                },
-                /**
-                 * Plays a music
-                 * @name playMusic
-                 * @instance
-                 * @function
-                 * @param {String} name - name of the audio asset
-                 * @param {Boolean} [loop] - should the audio loop (defaults to true)
-                 * @param {Function} [onEnd] - callback when the audio ends
-                 * @param {Boolean} [stopAllMusic] - stops all music if true
-                 */
-                playMusic: function (name, loop, onEnd, stopAllMusic) {
-                    var audio;
-                    var slashIndex = name.lastIndexOf('/');
-
-                    if (stopAllMusic) {
-                        obj.stopAllMusic();
-                    }
-
-                    if (name.substr(slashIndex + 1, 4) !== 'bgm_') {
-                        Utils.log("Warning: file names of music tracks should start with 'bgm_'");
-                    }
-
-                    lastMusicPlayed = name;
-                    if (Utils.isDefined(loop)) {
-                        musicLoop = loop;
-                    } else {
-                        musicLoop = true;
-                    }
-                    // set end event
-                    if (!mutedMusic && lastMusicPlayed !== '') {
-                        audio = assetManager.getAudio(name);
-                        if (!audio) {
-                            Utils.log('ERROR: Could not find audio file');
-                            return;
-                        }
-                        if (onEnd) {
-                            audio.onended = onEnd;
-                        }
-                        audio.loop = musicLoop;
-                        audio.play();
-                        isPlayingMusic = true;
-                    }
-                },
-                /**
-                 * Stops a specific music
-                 * @name stopMusic
-                 * @param {String} name - name of the audio asset
-                 * @instance
-                 * @function
-                 */
-                stopMusic: function (name) {
-                    var i, l, node;
-                    assetManager.getAudio(name).stop();
-                    isPlayingMusic = false;
-                },
-                /**
-                 * Mute or unmute all sound
-                 * @name muteSound
-                 * @instance
-                 * @function
-                 * @param {Boolean} mute - whether to mute or not
-                 */
-                muteSound: function (mute) {
-                    mutedSound = mute;
-                    if (mutedSound) {
-                        // we stop all sounds because setting volume is not supported on all devices
-                        this.stopAllSound();
-                    }
-                },
-                /**
-                 * Mute or unmute all music
-                 * @instance
-                 * @name muteMusic
-                 * @function
-                 * @param {Boolean} mute - whether to mute or not
-                 * @param {Boolean} continueMusic - whether the music continues
-                 */
-                muteMusic: function (mute, continueMusic) {
-                    var last = lastMusicPlayed;
-                    mutedMusic = mute;
-
-                    if (!Utils.isDefined(continueMusic)) {
-                        continueMusic = false;
-                    }
-                    if (mutedMusic) {
-                        obj.stopAllMusic();
-                        lastMusicPlayed = last;
-                    } else if (continueMusic && lastMusicPlayed !== '') {
-                        obj.playMusic(lastMusicPlayed, musicLoop);
-                    }
-                },
-                /**
-                 * Stop all sound effects currently playing
-                 * @instance
-                 * @name stopAllSound
-                 * @function
-                 */
-                stopAllSound: function () {
-                    var sound,
-                        sounds = assetManager.getAssets().audio;
-                    for (sound in sounds) {
-                        if (sounds.hasOwnProperty(sound) && sound.indexOf('sfx_') >= 0) {
-                            sounds[sound].stop();
-                        }
-                    }
-                },
-                /**
-                 * Stop all music currently playing
-                 * @instance
-                 * @name stopAllMusic
-                 * @function
-                 */
-                stopAllMusic: function () {
-                    var sound,
-                        sounds = assetManager.getAssets().audio;
-                    for (sound in sounds) {
-                        if (sounds.hasOwnProperty(sound) && sound.indexOf('bgm_') >= 0) {
-                            sounds[sound].stop(sound === lastMusicPlayed ? currentMusicId : void(0));
-                        }
-                    }
-                    lastMusicPlayed = '';
-                    isPlayingMusic = false;
-                },
-                /**
-                 * Prevents any sound from playing without interrupting current sounds
-                 * @instance
-                 * @name preventSounds
-                 * @function
-                 */
-                preventSounds: function (bool) {
-                    preventSounds = bool;
-                },
-                /**
-                 * Returns true if any music is playing
-                 * @instance
-                 * @name isPlayingMusic
-                 * @param {String} [name] - Check whether this particular music is playing
-                 * @function
-                 */
-                isPlayingMusic: function (name) {
-                    if (name) {
-                        return lastMusicPlayed === name;
-                    }
-                    return isPlayingMusic;
-                }
-            };
-        // https://developer.mozilla.org/en-US/docs/Web/Guide/User_experience/Using_the_Page_Visibility_API
-        if ('hidden' in document) {
-            document.addEventListener("visibilitychange", function () {
-                onVisibilityChanged(document.hidden);
-            }, false);
-        } else if ('mozHidden' in document) {
-            document.addEventListener("mozvisibilitychange", function () {
-                onVisibilityChanged(document.mozHidden);
-            }, false);
-        } else if ('webkitHidden' in document) {
-            document.addEventListener("webkitvisibilitychange", function () {
-                onVisibilityChanged(document.webkitHidden);
-            }, false);
-        } else if ('msHidden' in document) {
-            document.addEventListener("msvisibilitychange", function () {
-                onVisibilityChanged(document.msHidden);
-            }, false);
-        } else if ('onpagehide' in window) {
-            window.addEventListener('pagehide', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('pageshow', function () {
-                onVisibilityChanged(false);
-            }, false);
-        } else if ('onblur' in document) {
-            window.addEventListener('blur', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('focus', function () {
-                onVisibilityChanged(false);
-            }, false);
-        } else if ('onfocusout' in document) {
-            window.addEventListener('focusout', function () {
-                onVisibilityChanged(true);
-            }, false);
-            window.addEventListener('focusin', function () {
-                onVisibilityChanged(false);
-            }, false);
-        }
-        return obj;
-    };
-});
-/**
- * Manager that tracks mouse/touch and keyboard input. Useful for manual input managing.
- * <br>Exports: Constructor, can be accessed through Bento.input namespace.
- * @module bento/managers/input
- * @moduleName InputManager
- * @param {Object} gameData - gameData
- * @param {Vector2} gameData.canvasScale - Reference to the current canvas scale.
- * @param {HtmlCanvas} gameData.canvas - Reference to the canvas element.
- * @param {Rectangle} gameData.viewport - Reference to viewport.
- * @param {Object} settings - settings passed from Bento.setup
- * @param {Boolean} [settings.preventContextMenu] - Prevents right click menu
- * @param {Boolean} [settings.globalMouseUp] - Catch mouseup events outside canvas (only useful for desktop)
- * @returns InputManager
- */
-bento.define('bento/managers/input', [
-    'bento/utils',
-    'bento/math/vector2',
-    'bento/eventsystem'
-], function (Utils, Vector2, EventSystem) {
-    'use strict';
-    var startPositions = {};
-    return function (gameData, settings) {
-        var isPaused = false,
-            isListening = false,
-            canvas,
-            canvasScale,
-            viewport,
-            pointers = [],
-            keyStates = {},
-            offsetLeft = 0,
-            offsetTop = 0,
-            offsetLocal = new Vector2(0, 0),
-            gamepad,
-            gamepads,
-            gamepadButtonsPressed = [],
-            gamepadButtonStates = {},
-            remote,
-            remoteButtonsPressed = [],
-            remoteButtonStates = {},
-            pointerDown = function (evt) {
-                pointers.push({
-                    id: evt.id,
-                    position: evt.position,
-                    eventType: evt.eventType,
-                    localPosition: evt.localPosition,
-                    worldPosition: evt.worldPosition
-                });
-                EventSystem.fire('pointerDown', evt);
-            },
-            pointerMove = function (evt) {
-                EventSystem.fire('pointerMove', evt);
-                updatePointer(evt);
-            },
-            pointerUp = function (evt) {
-                EventSystem.fire('pointerUp', evt);
-                removePointer(evt);
-            },
-            touchStart = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
-                    addTouchPosition(evt, i, 'start');
-                    pointerDown(evt);
-                }
-            },
-            touchMove = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
-                    addTouchPosition(evt, i, 'move');
-                    pointerMove(evt);
-                }
-            },
-            touchEnd = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
-                    addTouchPosition(evt, i, 'end');
-                    pointerUp(evt);
-                }
-            },
-            mouseDown = function (evt) {
-                // evt.preventDefault();
-                addMousePosition(evt, 'start');
-                pointerDown(evt);
-            },
-            mouseMove = function (evt) {
-                // evt.preventDefault();
-                addMousePosition(evt, 'move');
-                pointerMove(evt);
-            },
-            mouseUp = function (evt) {
-                // evt.preventDefault();
-                addMousePosition(evt, 'end');
-                pointerUp(evt);
-            },
-            addTouchPosition = function (evt, n, type) {
-                var touch = evt.changedTouches[n];
-                var x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x;
-                var y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y;
-                var startPos = {};
-
-                evt.preventDefault();
-                evt.id = 0;
-                evt.eventType = 'touch';
-                touch.position = new Vector2(x, y);
-                touch.worldPosition = touch.position.clone();
-                touch.worldPosition.x += viewport.x;
-                touch.worldPosition.y += viewport.y;
-                touch.localPosition = touch.position.clone();
-                // add 'normal' position
-                evt.position = touch.position.clone();
-                evt.worldPosition = touch.worldPosition.clone();
-                evt.localPosition = touch.localPosition.clone();
-                // id
-                evt.id = touch.identifier + 1;
-                // diff position
-                if (type === 'start') {
-                    startPos.startPosition = touch.position.clone();
-                    startPos.startWorldPosition = touch.worldPosition.clone();
-                    startPos.startLocalPosition = touch.localPosition.clone();
-                    // save startPos
-                    startPositions[evt.id] = startPos;
-                }
-                if (type === 'end') {
-                    // load startPos
-                    startPos = startPositions[evt.id];
-                    if (startPos && startPos.startPosition) {
-                        touch.diffPosition = touch.position.substract(startPos.startPosition);
-                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
-                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
-                        evt.diffPosition = touch.diffPosition.clone();
-                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
-                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
-                        delete startPositions[evt.id];
-                    } else {
-                        Utils.log("ERROR: touch startPosition was not defined");
-                    }
-                }
-
-            },
-            addMousePosition = function (evt, type) {
-                var x = (evt.pageX - offsetLeft) / canvasScale.x + offsetLocal.x,
-                    y = (evt.pageY - offsetTop) / canvasScale.y + offsetLocal.y,
-                    startPos = {},
-                    n = -1;
-                evt.id = 0;
-                evt.eventType = 'mouse';
-                evt.position = new Vector2(x, y);
-                evt.worldPosition = evt.position.clone();
-                evt.worldPosition.x += viewport.x;
-                evt.worldPosition.y += viewport.y;
-                evt.localPosition = evt.position.clone();
-                // diff position
-                if (type === 'start') {
-                    startPos.startPosition = evt.position.clone();
-                    startPos.startWorldPosition = evt.worldPosition.clone();
-                    startPos.startLocalPosition = evt.localPosition.clone();
-                    // save startPos
-                    startPositions[n] = startPos;
-                }
-                if (type === 'end') {
-                    // load startPos
-                    startPos = startPositions[n];
-                    evt.diffPosition = evt.position.substract(startPos.startPosition);
-                    evt.diffWorldPosition = evt.worldPosition.substract(startPos.startWorldPosition);
-                    evt.diffLocalPosition = evt.localPosition.substract(startPos.startLocalPosition);
-                }
-                // give it an id that doesn't clash with touch id
-                evt.id = -1;
-            },
-            updatePointer = function (evt) {
-                var i = 0;
-                for (i = 0; i < pointers.length; ++i) {
-                    if (pointers[i].id === evt.id) {
-                        pointers[i].position = evt.position;
-                        pointers[i].worldPosition = evt.worldPosition;
-                        pointers[i].localPosition = evt.position;
-                        return;
-                    }
-                }
-            },
-            removePointer = function (evt) {
-                var i = 0;
-                for (i = 0; i < pointers.length; ++i) {
-                    if (pointers[i].id === evt.id) {
-                        pointers.splice(i, 1);
-                        return;
-                    }
-                }
-            },
-            initTouch = function () {
-                if (window.ejecta) {
-                    canvas.addEventListener('tvtouchstart', tvTouchStart);
-                    canvas.addEventListener('tvtouchmove', tvTouchMove);
-                    canvas.addEventListener('tvtouchend', tvTouchEnd);
-                }
-                canvas.addEventListener('touchstart', touchStart);
-                canvas.addEventListener('touchmove', touchMove);
-                canvas.addEventListener('touchend', touchEnd);
-                if (settings.globalMouseUp) {
-                    // TODO: add correction for position
-                    window.addEventListener('mouseup', mouseUp);
-                } else {
-                    canvas.addEventListener('mouseup', mouseUp);
-                }
-                canvas.addEventListener('mousedown', mouseDown);
-                canvas.addEventListener('mousemove', mouseMove);
-                isListening = true;
-
-                if (!Utils.isCocoonJs()) {
-                    canvas.addEventListener('touchstart', function (evt) {
-                        if (evt && evt.preventDefault) {
-                            evt.preventDefault();
-                        }
-                        if (evt && evt.stopPropagation) {
-                            evt.stopPropagation();
-                        }
-                        return false;
-                    });
-                    canvas.addEventListener('touchmove', function (evt) {
-                        if (evt && evt.preventDefault) {
-                            evt.preventDefault();
-                        }
-                        if (evt && evt.stopPropagation) {
-                            evt.stopPropagation();
-                        }
-                        return false;
-                    });
-                }
-
-                // touchcancel can be used when system interveness with the game
-                canvas.addEventListener('touchcancel', function (evt) {
-                    EventSystem.fire('touchcancel', evt);
-                });
-            },
-            initKeyboard = function () {
-                var element = gameData.canvas || window,
-                    refocus = function (evt) {
-                        if (element.focus) {
-                            element.focus();
-                        }
-                    };
-                // fix for iframes
-                element.tabIndex = 0;
-                if (element.focus) {
-                    element.focus();
-                }
-                element.addEventListener('keydown', keyDown, false);
-                element.addEventListener('keyup', keyUp, false);
-                // refocus
-                element.addEventListener('mousedown', refocus, false);
-
-            },
-            keyDown = function (evt) {
-                var i, names;
-                evt.preventDefault();
-                EventSystem.fire('keyDown', evt);
-                // get names
-                names = Utils.keyboardMapping[evt.keyCode];
-                // catch unknown keys
-                if (!names) {
-                    Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
-                    return;
-                }
-                for (i = 0; i < names.length; ++i) {
-                    keyStates[names[i]] = true;
-                    EventSystem.fire('buttonDown', names[i]);
-                    EventSystem.fire('buttonDown-' + names[i]);
-                }
-            },
-            keyUp = function (evt) {
-                var i, names;
-                evt.preventDefault();
-                EventSystem.fire('keyUp', evt);
-                // get names
-                names = Utils.keyboardMapping[evt.keyCode];
-                // catch unknown keys
-                if (!names) {
-                    Utils.log("ERROR: Key with keyCode " + evt.keyCode + " is undefined.");
-                    return;
-                }
-                for (i = 0; i < names.length; ++i) {
-                    keyStates[names[i]] = false;
-                    EventSystem.fire('buttonUp', names[i]);
-                }
-            },
-            destroy = function () {
-                // remove all event listeners
-            },
-            /**
-             * Changes the offsets after resizing or screen re-orientation.
-             */
-            updateCanvas = function () {
-                if (Utils.isCocoonJs()) {
-                    // assumes full screen
-                    canvasScale.x = window.innerWidth / viewport.width;
-                    canvasScale.y = window.innerHeight / viewport.height;
-                } else {
-                    // use offsetWidth and offsetHeight to determine visual size
-                    canvasScale.x = canvas.offsetWidth / viewport.width;
-                    canvasScale.y = canvas.offsetHeight / viewport.height;
-                    // get the topleft position
-                    offsetLeft = canvas.offsetLeft;
-                    offsetTop = canvas.offsetTop;
-                }
-            },
-            initMouseClicks = function () {
-                if (!canvas || !canvas.addEventListener) {
-                    return;
-                }
-                canvas.addEventListener('contextmenu', function (e) {
-                    EventSystem.fire('mouseDown-right');
-                    // prevent context menu
-                    if (settings.preventContextMenu) {
-                        e.preventDefault();
-                    }
-                }, false);
-                canvas.addEventListener('click', function (e) {
-                    if (e.which === 1) {
-                        EventSystem.fire('mouseDown-left');
-                        e.preventDefault();
-                    } else if (e.which === 2) {
-                        EventSystem.fire('mouseDown-middle');
-                        e.preventDefault();
-                    }
-                }, false);
-            },
-            /**
-             * Adds event listeners for connecting/disconnecting a gamepad
-             */
-            initGamepad = function () {
-                window.addEventListener('gamepadconnected', gamepadConnected);
-                window.addEventListener('gamepaddisconnected', gamepadDisconnected);
-            },
-            /**
-             * Fired when the browser detects that a gamepad has been connected or the first time a button/axis of the gamepad is used.
-             * Adds a pre-update loop check for gamepads and gamepad input
-             * @param {GamepadEvent} evt
-             */
-            gamepadConnected = function (evt) {
-                // check for button input before the regular update
-                EventSystem.on('preUpdate', checkGamepad);
-
-                console.log('Gamepad connected:', evt.gamepad);
-            },
-            /**
-             * Fired when the browser detects that a gamepad has been disconnected.
-             * Removes the reference to the gamepad
-             * @param {GamepadEvent} evt
-             */
-            gamepadDisconnected = function (evt) {
-                gamepad = undefined;
-
-                // stop checking for button input
-                EventSystem.off('preUpdate', checkGamepad);
-            },
-            /**
-             * Gets a list of all gamepads and checks if any buttons are pressed.
-             */
-            checkGamepad = function () {
-                var i = 0,
-                    len = 0;
-
-                // get gamepad every frame because Chrome doesn't store a reference to the gamepad's state
-                gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
-                for (i = 0, len = gamepads.length; i < len; ++i) {
-                    if (gamepads[i]) {
-                        gamepad = gamepads[i];
-                    }
-                }
-
-                if (!gamepad)
-                    return;
-
-                // uses an array to check against the state of the buttons from the previous frame
-                for (i = 0, len = gamepad.buttons.length; i < len; ++i) {
-                    if (gamepad.buttons[i].pressed !== gamepadButtonsPressed[i]) {
-                        if (gamepad.buttons[i].pressed) {
-                            gamepadButtonDown(i);
-                        } else {
-                            gamepadButtonUp(i);
-                        }
-                    }
-                }
-            },
-            gamepadButtonDown = function (id) {
-                var i = 0,
-                    names = Utils.gamepadMapping[id],
-                    len = 0;
-
-                // confusing name is used to keep the terminology similar to keyDown/keyUp
-                EventSystem.fire('gamepadKeyDown', id);
-                // save value in array
-                gamepadButtonsPressed[id] = true;
-
-                for (i = 0, len = names.length; i < len; ++i) {
-                    gamepadButtonStates[names[i]] = true;
-                    EventSystem.fire('gamepadButtonDown', names[i]);
-                    EventSystem.fire('gamepadButtonDown-' + names[i]);
-                }
-            },
-            gamepadButtonUp = function (id) {
-                var i = 0,
-                    names = Utils.gamepadMapping[id],
-                    len = 0;
-
-                // confusing name is used to keep the terminology similar to keyDown/keyUp
-                EventSystem.fire('gamepadKeyUp', id);
-                // save value in array
-                gamepadButtonsPressed[id] = false;
-
-                for (i = 0, len = names.length; i < len; ++i) {
-                    gamepadButtonStates[names[i]] = false;
-                    EventSystem.fire('gamepadButtonUp', names[i]);
-                }
-            },
-            /**
-             * Adds a check for input from the apple remote before every update. Only if on tvOS.
-             *
-             * Ejecta (at least in version 2.0) doesn't have event handlers for button input, so
-             * continually checking for input is the only way for now.
-             */
-            initRemote = function () {
-                var i = 0,
-                    tvOSGamepads;
-
-                if (window.ejecta) {
-                    // get all connected gamepads
-                    tvOSGamepads = navigator.getGamepads();
-                    // find apple remote gamepad
-                    for (i = 0; i < tvOSGamepads.length; ++i)
-                        if (tvOSGamepads[i] && tvOSGamepads[i].profile === 'microGamepad')
-                            remote = tvOSGamepads[i];
-
-                    for (i = 0; i < remote.buttons.length; ++i)
-                        remoteButtonsPressed.push(remote.buttons[i].pressed);
-
-                    // check for button input before the regular update
-                    EventSystem.on('preUpdate', checkRemote);
-                }
-            },
-            /**
-             * Checks if a remote button has been pressed. Runs before every frame, if added.
-             */
-            checkRemote = function () {
-                var i = 0,
-                    len = 0;
-
-                // uses an array to check against the state of the buttons from the previous frame
-                for (i = 0, len = remote.buttons.length; i < len; ++i) {
-                    if (remote.buttons[i].pressed !== remoteButtonsPressed[i]) {
-                        if (remote.buttons[i].pressed) {
-                            remoteButtonDown(i);
-                        } else {
-                            remoteButtonUp(i);
-                        }
-                    }
-                }
-            },
-            remoteButtonDown = function (id) {
-                var i = 0,
-                    names = Utils.remoteMapping[id];
-                // save value in array
-                remoteButtonsPressed[id] = true;
-
-                for (i = 0; i < names.length; ++i)
-                    remoteButtonStates[names[i]] = true;
-            },
-            remoteButtonUp = function (id) {
-                var i = 0,
-                    names = Utils.remoteMapping[id];
-                // save value in array
-                remoteButtonsPressed[id] = false;
-
-                for (i = 0; i < names.length; ++i)
-                    remoteButtonStates[names[i]] = false;
-            },
-            tvPointerDown = function (evt) {
-                pointers.push({
-                    id: evt.id,
-                    position: evt.position,
-                    eventType: evt.eventType,
-                    localPosition: evt.localPosition,
-                    worldPosition: evt.worldPosition
-                });
-                EventSystem.fire('tvPointerDown', evt);
-            },
-            tvPointerMove = function (evt) {
-                EventSystem.fire('tvPointerMove', evt);
-                updatePointer(evt);
-            },
-            tvPointerUp = function (evt) {
-                EventSystem.fire('tvPointerUp', evt);
-                removePointer(evt);
-            },
-            tvTouchStart = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
-                    addTvTouchPosition(evt, i, 'start');
-                    tvPointerDown(evt);
-                }
-            },
-            tvTouchMove = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
-                    addTvTouchPosition(evt, i, 'move');
-                    tvPointerMove(evt);
-                }
-            },
-            tvTouchEnd = function (evt) {
-                var id, i;
-                evt.preventDefault();
-                for (i = 0; i < evt.changedTouches.length; ++i) {
-                    addTvTouchPosition(evt, i, 'end');
-                    tvPointerUp(evt);
-                }
-            },
-            addTvTouchPosition = function (evt, n, type) {
-                var touch = evt.changedTouches[n],
-                    x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x,
-                    y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y,
-                    startPos = {};
-
-                evt.preventDefault();
-                evt.id = 0;
-                evt.eventType = 'tvtouch';
-                touch.position = new Vector2(x, y);
-                touch.worldPosition = touch.position.clone();
-                touch.worldPosition.x += viewport.x;
-                touch.worldPosition.y += viewport.y;
-                touch.localPosition = touch.position.clone();
-                // add 'normal' position
-                evt.position = touch.position.clone();
-                evt.worldPosition = touch.worldPosition.clone();
-                evt.localPosition = touch.localPosition.clone();
-                // id
-                evt.id = touch.identifier + 1;
-                // diff position
-                if (type === 'start') {
-                    startPos.startPosition = touch.position.clone();
-                    startPos.startWorldPosition = touch.worldPosition.clone();
-                    startPos.startLocalPosition = touch.localPosition.clone();
-                    // save startPos
-                    startPositions[evt.id] = startPos;
-                }
-                if (type === 'end') {
-                    // load startPos
-                    startPos = startPositions[evt.id];
-                    if (startPos && startPos.startPosition) {
-                        touch.diffPosition = touch.position.substract(startPos.startPosition);
-                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
-                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
-                        evt.diffPosition = touch.diffPosition.clone();
-                        evt.diffWorldPosition = touch.diffWorldPosition.clone();
-                        evt.diffLocalPosition = touch.diffLocalPosition.clone();
-                        delete startPositions[evt.id];
-                    } else {
-                        Utils.log("ERROR: touch startPosition was not defined");
-                    }
-                }
-            };
-
-        if (!gameData) {
-            throw 'Supply a gameData object';
-        }
-        // canvasScale is needed to take css scaling into account
-        canvasScale = gameData.canvasScale;
-        canvas = gameData.canvas;
-        viewport = gameData.viewport;
-
-        // TODO: it's a bit tricky with order of event listeners
-        if (canvas) {
-            window.addEventListener('resize', updateCanvas, false);
-            window.addEventListener('orientationchange', updateCanvas, false);
-            updateCanvas();
-        }
-
-        // touch device
-        initTouch();
-        // keyboard
-        initKeyboard();
-        // init clicks
-        initMouseClicks();
-        // apple remote (only on tvOS)
-        initRemote();
-        // start listening for gamepads
-        initGamepad();
-
-        return {
-            /**
-             * Returns all current pointers down
-             * @function
-             * @instance
-             * @returns {Array} pointers - Array with pointer positions
-             * @name getPointers
-             */
-            getPointers: function () {
-                return pointers;
-            },
-            /**
-             * Removes all current pointers down
-             * @function
-             * @instance
-             * @name resetPointers
-             */
-            resetPointers: function () {
-                pointers.length = 0;
-            },
-            /**
-             * Checks if a keyboard key is down
-             * @function
-             * @instance
-             * @param {String} name - name of the key
-             * @returns {Boolean} Returns true if the provided key is down.
-             * @name isKeyDown
-             */
-            isKeyDown: function (name) {
-                return keyStates[name] || false;
-            },
-            /**
-             * Checks if any keyboard key is pressed
-             * @function
-             * @instance
-             * @returns {Boolean} Returns true if any provided key is down.
-             * @name isAnyKeyDown
-             */
-            isAnyKeyDown: function () {
-                var state;
-
-                for (state in keyStates)
-                    if (keyStates[state])
-                        return true;
-
-                return false;
-            },
-            /**
-             * Is the gamepad connected?
-             * @function
-             * @instance
-             * @returns {Boolean} Returns true if gamepad is connected, false otherwise.
-             * @name isGamepadButtonDown
-             */
-            isGamepadConnected: function () {
-                if (gamepad)
-                    return true;
-                else
-                    return false;
-            },
-            /**
-             * Checks if a gamepad button is down
-             * @function
-             * @instance
-             * @param {String} name - name of the button
-             * @returns {Boolean} Returns true if the provided button is down.
-             * @name isGamepadButtonDown
-             */
-            isGamepadButtonDown: function (name) {
-                return gamepadButtonStates[name] || false;
-            },
-            /**
-             * Checks if any gamepad button is pressed
-             * @function
-             * @instance
-             * @returns {Boolean} Returns true if any button is down.
-             * @name isAnyGamepadButtonDown
-             */
-            isAnyGamepadButtonDown: function () {
-                var state;
-
-                for (state in gamepadButtonStates)
-                    if (gamepadButtonStates[state])
-                        return true;
-
-                return false;
-            },
-            /**
-             * Returns the current float values of the x and y axes of left thumbstick
-             * @function
-             * @instance
-             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
-             * @name getGamepadAxesLeft
-             */
-            getGamepadAxesLeft: function () {
-                return new Vector2(gamepad.axes[0], gamepad.axes[1]);
-            },
-            /**
-             * Returns the current float values of the x and y axes of right thumbstick
-             * @function
-             * @instance
-             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
-             * @name getGamepadAxesRight
-             */
-            getGamepadAxesRight: function () {
-                return new Vector2(gamepad.axes[2], gamepad.axes[3]);
-            },
-            /**
-             * Checks if a remote button is down
-             * @function
-             * @instance
-             * @param {String} name - name of the button
-             * @returns {Boolean} Returns true if the provided button is down.
-             * @name isRemoteButtonDown
-             */
-            isRemoteButtonDown: function (name) {
-                return remoteButtonStates[name] || false;
-            },
-            /**
-             * Defines if pressing 'menu' button will go back to Apple TV home screen
-             * @function
-             * @instance
-             * @param {Boolean} Set to false if you want to assign custom behaviour for the 'menu' button
-             * @name setRemoteExitOnMenuPress
-             */
-            setRemoteExitOnMenuPress: function (bool) {
-                remote.exitOnMenuPress = bool;
-            },
-            /**
-             * Returns the current float values of the x and y axes of the touch area
-             * @function
-             * @instance
-             * @returns {Vector2} Values range from (-1, -1) in the top left to (1, 1) in the bottom right.
-             * @name getRemoteAxes
-             */
-            getRemoteAxes: function () {
-                return new Vector2(remote.axes[0], remote.axes[1]);
-            },
-            /**
-             * Stop all pointer input
-             * @function
-             * @instance
-             * @name stop
-             */
-            stop: function () {
-                if (!isListening) {
-                    return;
-                }
-                if (window.ejecta) {
-                    canvas.removeEventListener('tvtouchstart', tvTouchStart);
-                    canvas.removeEventListener('tvtouchmove', tvTouchMove);
-                    canvas.removeEventListener('tvtouchend', tvTouchEnd);
-                }
-                canvas.removeEventListener('touchstart', touchStart);
-                canvas.removeEventListener('touchmove', touchMove);
-                canvas.removeEventListener('touchend', touchEnd);
-                canvas.removeEventListener('mousedown', mouseDown);
-                canvas.removeEventListener('mousemove', mouseMove);
-                if (settings.globalMouseUp) {
-                    window.removeEventListener('mouseup', mouseUp);
-                } else {
-                    canvas.removeEventListener('mouseup', mouseUp);
-                }
-
-                isListening = false;
-            },
-            /**
-             * Resumes all pointer input
-             * @function
-             * @instance
-             * @name resume
-             */
-            resume: function () {
-                if (isListening) {
-                    return;
-                }
-                if (window.ejecta) {
-                    canvas.addEventListener('tvtouchstart', tvTouchStart);
-                    canvas.addEventListener('tvtouchmove', tvTouchMove);
-                    canvas.addEventListener('tvtouchend', tvTouchEnd);
-                }
-                canvas.addEventListener('touchstart', touchStart);
-                canvas.addEventListener('touchmove', touchMove);
-                canvas.addEventListener('touchend', touchEnd);
-                canvas.addEventListener('mousedown', mouseDown);
-                canvas.addEventListener('mousemove', mouseMove);
-                if (settings.globalMouseUp) {
-                    window.addEventListener('mouseup', mouseUp);
-                } else {
-                    canvas.addEventListener('mouseup', mouseUp);
-                }
-
-                isListening = true;
-            },
-            /**
-             * Changes the offsets after resizing or screen re-orientation.
-             * @function
-             * @instance
-             * @name updateCanvas
-             */
-            updateCanvas: updateCanvas,
-            /**
-             * Adds an offset to all pointer input
-             * Note that this is in local space
-             * @function
-             * @instance
-             * @param {Vector2} offset - Offset as Vector2
-             * @name setOffset
-             */
-            setOffset: function (offset) {
-                offsetLocal = offset;
-            }
-        };
-    };
-});
-/**
- * Manager that controls mainloop and all objects. Attach entities to the object manager
- * to add them to the game. The object manager loops through every object's update and
- * draw functions. The settings object passed here is passed through Bento.setup().
- * <br>Exports: Constructor, can be accessed through Bento.objects namespace.
- * @module bento/managers/object
- * @moduleName ObjectManager
- * @param {Function} getGameData - Function that returns gameData object
- * @param {Object} settings - Settings object
- * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
- * @param {Object} settings.useDeltaT - Use delta time (note: untested)
- * @returns ObjectManager
- */
-bento.define('bento/managers/object', [
-    'bento/utils',
-    'bento/eventsystem'
-], function (Utils, EventSystem) {
-    'use strict';
-    return function (getGameData, settings) {
-        var objects = [];
-        var lastTime = new Date().getTime();
-        var cumulativeTime = 0;
-        var minimumFps = 30;
-        var lastFrameTime = new Date().getTime();
-        var quickAccess = {};
-        var isRunning = false;
-        var sortMode = settings.sortMode || 0;
-        var isPaused = 0;
-        var isStopped = false;
-        var fpsMeter;
-        var sortDefault = function () {
-            // default array sorting method (unstable)
-            objects.sort(function (a, b) {
-                return a.z - b.z;
-            });
-        };
-        var sortStable = function () {
-            // default method for sorting: stable sort
-            Utils.stableSort.inplace(objects, function (a, b) {
-                return a.z - b.z;
-            });
-        };
-        var sort = sortStable;
-        var cleanObjects = function () {
-            var i;
-            // loop objects array from end to start and remove null elements
-            for (i = objects.length - 1; i >= 0; --i) {
-                if (objects[i] === null) {
-                    objects.splice(i, 1);
-                }
-            }
-        };
-        var mainLoop = function (time) {
-            var object,
-                i,
-                currentTime = new Date().getTime(),
-                deltaT = currentTime - lastTime,
-                data = getGameData();
-
-            if (!isRunning) {
-                return;
-            }
-
-            lastTime = currentTime;
-            cumulativeTime += deltaT;
-            data = getGameData();
-            data.deltaT = deltaT;
-            if (settings.useDeltaT) {
-                cumulativeTime = 1000 / 60;
-            }
-            while (cumulativeTime >= 1000 / 60) {
-                cumulativeTime -= 1000 / 60;
-                if (cumulativeTime > 1000 / minimumFps) {
-                    // deplete cumulative time
-                    while (cumulativeTime >= 1000 / 60) {
-                        cumulativeTime -= 1000 / 60;
-                    }
-                }
-                if (settings.useDeltaT) {
-                    cumulativeTime = 0;
-                }
-                update(data);
-            }
-            cleanObjects();
-            if (sortMode === Utils.SortMode.ALWAYS) {
-                sort();
-            }
-            draw(data);
-
-            lastFrameTime = time;
-
-            window.requestAnimationFrame(mainLoop);
-        };
-        var currentObject; // the current object being processed in the main loop
-        var update = function (data) {
-            var object,
-                i;
-
-            data = data || getGameData();
-
-            EventSystem.fire('preUpdate', data);
-            for (i = 0; i < objects.length; ++i) {
-                object = objects[i];
-                if (!object) {
-                    continue;
-                }
-                currentObject = object;
-                if (object.update && (object.updateWhenPaused >= isPaused)) {
-                    object.update(data);
-                }
-                // update its rootIndex
-                if (object.rootIndex !== undefined) {
-                    object.rootIndex = i;
-                }
-            }
-            EventSystem.fire('postUpdate', data);
-        };
-        var draw = function (data) {
-            var object,
-                i;
-            data = data || getGameData();
-
-            EventSystem.fire('preDraw', data);
-            data.renderer.begin();
-            EventSystem.fire('preDrawLoop', data);
-            for (i = 0; i < objects.length; ++i) {
-                object = objects[i];
-                if (!object) {
-                    continue;
-                }
-                currentObject = object;
-                if (object.draw) {
-                    object.draw(data);
-                }
-            }
-            EventSystem.fire('postDrawLoop', data);
-            data.renderer.flush();
-            EventSystem.fire('postDraw', data);
-        };
-        var attach = function (object) {
-            var i,
-                family,
-                data = getGameData();
-
-            if (!object) {
-                Utils.log("ERROR: trying to attach " + object);
-                return;
-            }
-
-            if (object.isAdded || object.parent) {
-                Utils.log("ERROR: Entity " + object.name + " was already added.");
-                return;
-            }
-
-            object.z = object.z || 0;
-            object.updateWhenPaused = object.updateWhenPaused || 0;
-            objects.push(object);
-            object.isAdded = true;
-            if (object.init) {
-                object.init();
-            }
-            // add object to access pools
-            if (object.family) {
-                family = object.family;
-                for (i = 0; i < family.length; ++i) {
-                    addObjectToFamily(object, family[i]);
-                }
-            }
-
-            if (object.start) {
-                object.start(data);
-            }
-            if (object.attached) {
-                object.attached(data);
-            }
-            if (sortMode === Utils.SortMode.SORT_ON_ADD) {
-                sort();
-            }
-        };
-        var remove = function (object) {
-            var i,
-                index,
-                family,
-                data = getGameData();
-            if (!object) {
-                return;
-            }
-            // remove from access pools
-            if (object.family) {
-                family = object.family;
-                for (i = 0; i < family.length; ++i) {
-                    removeObjectFromFamily(object, family[i]);
-                }
-            }
-            // remove from object list
-            index = objects.indexOf(object);
-            if (index >= 0) {
-                objects[index] = null;
-                if (object.destroy) {
-                    object.destroy(data);
-                }
-                if (object.removed) {
-                    object.removed(data);
-                }
-                object.isAdded = false;
-            }
-        };
-        var addObjectToFamily = function (object, family) {
-            if (objects.indexOf(object) === -1) {
-                return;
-            }
-
-            if (!quickAccess[family]) {
-                quickAccess[family] = [];
-            }
-            if (quickAccess[family].indexOf(object) === -1) {
-                quickAccess[family].push(object);
-            }
-        };
-        var removeObjectFromFamily = function (object, family) {
-            var pool = quickAccess[family];
-
-            if (objects.indexOf(object) === -1) {
-                return;
-            }
-
-            if (pool) {
-                Utils.removeFromArray(pool, object);
-            }
-        };
-        var module = {
-            /**
-             * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
-             * has the functions update and draw, they will be called during the loop.
-             * @function
-             * @instance
-             * @param {Object} object - Any object, preferably an Entity
-             * @name attach
-             */
-            attach: attach,
-            add: attach,
-            /**
-             * Removes entity/object
-             * @function
-             * @instance
-             * @param {Object} object - Reference to the object to be removed
-             * @name remove
-             */
-            remove: remove,
-            /**
-             * Removes all entities/objects except ones that have the property "global"
-             * @function
-             * @instance
-             * @param {Boolean} removeGlobal - Also remove global objects
-             * @name removeAll
-             */
-            removeAll: function (removeGlobal) {
-                var i,
-                    object;
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (!object.global || removeGlobal) {
-                        remove(object);
-                    }
-                }
-                // re-add all global objects
-                cleanObjects();
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                }
-            },
-            /**
-             * Add or remove objects to a family
-             */
-            addObjectToFamily: addObjectToFamily,
-            removeObjectFromFamily: removeObjectFromFamily,
-            /**
-             * Returns the first object it can find with this name. Safer to use with a callback.
-             * The callback is called immediately if the object is found (it's not asynchronous).
-             * @function
-             * @instance
-             * @param {String} objectName - Name of the object
-             * @param {Function} [callback] - Called if the object is found
-             * @returns {Object} null if not found
-             * @name get
-             */
-            get: function (objectName, callback) {
-                // retrieves the first object it finds by its name
-                var i,
-                    object;
-
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (!object.name) {
-                        continue;
-                    }
-                    if (object.name === objectName) {
-                        if (callback) {
-                            callback(object);
-                        }
-                        return object;
-                    }
-                }
-                return null;
-            },
-            /**
-             * Returns an array of objects with a certain name
-             * @function
-             * @instance
-             * @param {String} objectName - Name of the object
-             * @param {Function} [callback] - Called with the object array
-             * @returns {Array} An array of objects, empty if no objects found
-             * @name getByName
-             */
-            getByName: function (objectName, callback) {
-                var i,
-                    object,
-                    array = [];
-
-                for (i = 0; i < objects.length; ++i) {
-                    object = objects[i];
-                    if (!object) {
-                        continue;
-                    }
-                    if (!object.name) {
-                        continue;
-                    }
-                    if (object.name === objectName) {
-                        array.push(object);
-                    }
-                }
-                if (callback && array.length) {
-                    callback(array);
-                }
-                return array;
-            },
-            /**
-             * Returns an array of objects by family name. Entities are added to pools
-             * of each family you indicate in the Entity.family array the moment you call
-             * Bento.objects.attach() and are automatically removed with Bento.objects.remove().
-             * This allows quick access of a group of similar entities. Families are cached so you
-             * may get a reference to the array of objects even if it's not filled yet.
-             * @function
-             * @instance
-             * @param {String} familyName - Name of the family
-             * @param {Function} [callback] - Called with the object array
-             * @returns {Array} An array of objects, empty if no objects found
-             * @name getByFamily
-             */
-            getByFamily: function (type, callback) {
-                var array = quickAccess[type];
-                if (!array) {
-                    // initialize it
-                    array = [];
-                    quickAccess[type] = array;
-                    // Utils.log('Warning: family called ' + type + ' does not exist', true);
-                }
-                if (callback && array.length) {
-                    callback(array);
-                }
-                return array;
-            },
-            /**
-             * Stops the mainloop on the next tick
-             * @function
-             * @instance
-             * @name stop
-             */
-            stop: function () {
-                isRunning = false;
-            },
-            /**
-             * Starts the mainloop
-             * @function
-             * @instance
-             * @name run
-             */
-            run: function (force) {
-                if (!isRunning || force) {
-                    isRunning = true;
-                    mainLoop();
-                }
-            },
-            /**
-             * Returns the number of objects
-             * @function
-             * @instance
-             * @returns {Number} The number of objects
-             * @name count
-             */
-            count: function () {
-                return objects.length;
-            },
-            /**
-             * Stops calling update on every object. Note that draw is still
-             * being called. Objects with the property updateWhenPaused
-             * will still be updated.
-             * @function
-             * @instance
-             * @param {Number} level - Level of pause state, defaults to 1
-             * @name pause
-             */
-            pause: function (level) {
-                isPaused = level;
-                if (Utils.isUndefined(level)) {
-                    isPaused = 1;
-                }
-            },
-            /**
-             * Cancels the pause and resume updating objects. (Sets pause level to 0)
-             * @function
-             * @instance
-             * @name resume
-             */
-            resume: function () {
-                isPaused = 0;
-            },
-            /**
-             * Returns pause level. If an object is passed to the function
-             * it checks if that object should be paused or not
-             * @function
-             * @instance
-             * @param {Object} [object] - Object to check if it's paused
-             * @name isPaused
-             */
-            isPaused: function (obj) {
-                if (Utils.isDefined(obj)) {
-                    return obj.updateWhenPaused < isPaused;
-                }
-                return isPaused;
-            },
-            /**
-             * Forces objects to be drawn (Don't call this unless you need it)
-             * @function
-             * @instance
-             * @param {GameData} [data] - Data object (see Bento.getGameData)
-             * @name draw
-             */
-            draw: function (data) {
-                draw(data);
-            },
-            /**
-             * Sets the sorting mode. Use the Utils.SortMode enum as input:<br>
-             * Utils.SortMode.ALWAYS - sort on every update tick<br>
-             * Utils.SortMode.NEVER - don't sort at all<br>
-             * Utils.SortMode.SORT_ON_ADD - sorts only when an object is attached<br>
-             * @function
-             * @instance
-             * @param {Utils.SortMode} mode - Sorting mode
-             * @name setSortMode
-             */
-            setSortMode: function (mode) {
-                sortMode = mode;
-            },
-            /**
-             * Calls the update function. Be careful when using this in another
-             * update loop, as it will result in an endless loop.
-             * @function
-             * @instance
-             * @param {GameData} [data] - Data object (see Bento.getGameData)
-             * @name update
-             */
-            update: function (data) {
-                update(data);
-            },
-            /**
-             * Retrieves array of all objects.
-             * @function
-             * @instance
-             * @name getObjects
-             */
-            getObjects: function () {
-                return objects;
-            },
-            // useful for debugging, may be removed later so leaving this undocumented
-            getCurrentObject: function () {
-                return currentObject;
-            }
-        };
-
-        // swap sort method with default sorting method
-        if (settings.defaultSort) {
-            sort = sortDefault;
-        }
-
-        return module;
-    };
-});
-/**
- * Manager that controls presistent variables. A wrapper for localStorage. Use Bento.saveState.save() to
- * save values and Bento.saveState.load() to retrieve them.
- * <br>Exports: Object, can be accessed through Bento.saveState namespace.
- * @module bento/managers/savestate
- * @moduleName SaveStateManager
- * @returns SaveState
- */
-bento.define('bento/managers/savestate', [
-    'bento/utils'
-], function (
-    Utils
-) {
-    'use strict';
-    var uniqueID = document.URL,
-        storage,
-        // an object that acts like a localStorageObject
-        storageFallBack = {
-            data: {},
-            setItem: function (key, value) {
-                var k,
-                    count = 0,
-                    data = this.data;
-                data[key] = value;
-                // update length
-                for (k in data) {
-                    if (data.hasOwnProperty(k)) {
-                        ++count;
-                    }
-                }
-                this.length = count;
-            },
-            getItem: function (key) {
-                var item = storageFallBack.data[key];
-                return Utils.isDefined(item) ? item : null;
-            },
-            removeItem: function (key) {
-                delete storageFallBack.data[key];
-            },
-            clear: function () {
-                this.data = {};
-                this.length = 0;
-            },
-            length: 0
-        };
-
-    // initialize
-    try {
-        storage = window.localStorage;
-        // try saving once
-        if (window.localStorage) {
-            window.localStorage.setItem(uniqueID + 'save', '0');
-        } else {
-            throw 'No local storage available';
-        }
-    } catch (e) {
-        console.log('Warning: you have disabled cookies on your browser. You cannot save progress in your game.');
-        storage = storageFallBack;
-    }
-    return {
-        /**
-         * Boolean that indicates if keys should be saved
-         * @instance
-         * @name saveKeys
-         */
-        saveKeys: false,
-        /**
-         * Saves/serializes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} value - Number/Object/Array to be saved
-         * @name save
-         */
-        save: function (elementKey, element) {
-            var keys;
-            if (!elementKey) {
-                Utils.log("ERROR: savestate key is not defined.");
-                return;
-            }
-            if (typeof elementKey !== 'string') {
-                elementKey = JSON.stringify(elementKey);
-            }
-            if (element === undefined) {
-                Utils.log("ERROR: Don't save a value as undefined, it can't be loaded back in. Use null instead.");
-                element = null;
-            }
-            storage.setItem(uniqueID + elementKey, JSON.stringify(element));
-
-            // also store the keys
-            if (this.saveKeys) {
-                keys = this.load('_keys', []);
-                if (keys.indexOf(elementKey) > -1) {
-                    return;
-                }
-                keys.push(elementKey);
-                storage.setItem(uniqueID + '_keys', JSON.stringify(keys));
-            }
-        },
-        /**
-         * Adds to a saved variable/number
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} value - Number to be added, if the value does not exists, it defaults to 0
-         * @name add
-         */
-        add: function (elementKey, element) {
-            if (!elementKey) {
-                Utils.log("ERROR: savestate key is not defined.");
-                return;
-            }
-            var value = this.load(elementKey, 0);
-            value += element;
-            this.save(elementKey, value);
-        },
-        /**
-         * Loads/deserializes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @param {Object} defaultValue - The value returns if saved variable doesn't exists
-         * @returns {Object} Returns saved value, otherwise defaultValue
-         * @name load
-         */
-        load: function (elementKey, defaultValue) {
-            var element;
-
-            if (!elementKey) {
-                Utils.log("ERROR: savestate key is not defined.");
-                return;
-            }
-
-            element = storage.getItem(uniqueID + elementKey);
-            if (element === null || element === undefined) {
-                return defaultValue;
-            }
-            try {
-                return JSON.parse(element);
-            } catch (e) {
-                Utils.log("ERROR: save file corrupted. " + e);
-                return defaultValue;
-            }
-        },
-        /**
-         * Deletes a variable
-         * @function
-         * @instance
-         * @param {String} key - Name of the variable
-         * @name remove
-         */
-        remove: function (elementKey) {
-            if (!elementKey) {
-                Utils.log("ERROR: savestate key is not defined.");
-                return;
-            }
-            storage.removeItem(uniqueID + elementKey);
-        },
-        /**
-         * Clears the savestate
-         * @function
-         * @instance
-         * @name clear
-         */
-        clear: function () {
-            storage.clear();
-        },
-        debug: function () {
-            console.log(localStorage);
-        },
-        /**
-         * Checks if localStorage has values
-         * @function
-         * @instance
-         * @name isEmpty
-         */
-        isEmpty: function () {
-            return storage.length === 0;
-        },
-        /**
-         * Returns a copy of the uniqueID.
-         * @function
-         * @instance
-         * @returns {String} uniqueID of current game
-         * @name getId
-         */
-        getId: function () {
-            return uniqueID.slice(0);
-        },
-        /**
-         * Sets an identifier that's prepended on every key.
-         * By default this is the game's URL, to prevend savefile clashing.
-         * @function
-         * @instance
-         * @param {String} name - ID name
-         * @name setId
-         */
-        setId: function (str) {
-            uniqueID = str;
-        },
-        /**
-         * Swaps the storage object. Allows you to use something else than localStorage. But the storage object
-         * must have similar methods as localStorage.
-         * @function
-         * @instance
-         * @param {Object} storageObject - an object that resembels localStorage
-         * @name setStorage
-         */
-        setStorage: function (storageObj) {
-            storage = storageObj;
-        },
-        /**
-         * Returns the current storage object
-         * @function
-         * @instance
-         * @name getStorage
-         */
-        getStorage: function () {
-            return storage;
-        }
-    };
-});
-/**
- * Manager that controls screens. Screens are defined as separate modules. See {@link module:bento/screen}. To show
- * your screen, simply call Bento.screens.show(). See {@link module:bento/managers/screen#show}.
- * <br>Exports: Constructor, can be accessed through Bento.screens namespace.
- * @module bento/managers/screen
- * @moudleName ScreenManager
- * @returns ScreenManager
- */
-bento.define('bento/managers/screen', [
-    'bento/eventsystem',
-    'bento/utils'
-], function (EventSystem, Utils) {
-    'use strict';
-    return function () {
-        var screens = {},
-            currentScreen = null,
-            getScreen = function (name) {
-                return screens[name];
-            },
-            screenManager = {
-                /**
-                 * Adds a new screen to the cache
-                 * @function
-                 * @instance
-                 * @param {Screen} screen - Screen object
-                 * @name add
-                 */
-                add: function (screen) {
-                    if (!screen.name) {
-                        throw 'Add name property to screen';
-                    }
-                    screens[screen.name] = screen;
-                },
-                /**
-                 * Shows a screen. If the screen was not added previously, it
-                 * will be loaded asynchronously by a require call.
-                 * @function
-                 * @instance
-                 * @param {String} name - Name of the screen
-                 * @param {Object} data - Extra data to pass on to the screen
-                 * @param {Function} callback - Called when screen is shown
-                 * @name show
-                 */
-                show: function (name, data, callback) {
-                    if (currentScreen !== null) {
-                        screenManager.hide({
-                            next: name
-                        });
-                    }
-                    currentScreen = screens[name];
-                    if (currentScreen) {
-                        if (currentScreen.onShow) {
-                            currentScreen.onShow(data);
-                        }
-                        EventSystem.fire('screenShown', currentScreen);
-                        if (callback) {
-                            callback();
-                        }
-                    } else {
-                        // load asynchronously
-                        bento.require([name], function (screenObj) {
-                            if (!screenObj.name) {
-                                screenObj.name = name;
-                            }
-                            screenManager.add(screenObj);
-                            // try again
-                            screenManager.show(name, data, callback);
-                        });
-                    }
-                },
-                /**
-                 * Hides a screen. You may call this to remove all objects on screen, but
-                 * it's not needed to call this yourself if you want to show a new screen.
-                 * Screens.hide is internally called on the current screen when Screens.show
-                 * is called.
-                 * @function
-                 * @instance
-                 * @param {Object} data - Extra data to pass on to the screen
-                 * @name hide
-                 */
-                hide: function (data) {
-                    if (!currentScreen) {
-                        return;
-                    }
-                    if (currentScreen.onHide) {
-                        currentScreen.onHide(data);
-                    }
-                    EventSystem.fire('screenHidden', currentScreen);
-                    currentScreen = null;
-                },
-                /**
-                 * Return reference to the screen currently shown.
-                 * @function
-                 * @instance
-                 * @returns {Screen} The current screen
-                 * @name getCurrentScreen
-                 */
-                getCurrentScreen: function () {
-                    return currentScreen;
-                },
-                /**
-                 * Clears cache of screens
-                 * @function
-                 * @instance
-                 * @name reset
-                 */
-                reset: function () {
-                    screens = {};
-                }
-            };
-
-        return screenManager;
-
-    };
-});
-/**
  * A helper module that returns a rectangle with the same aspect ratio as the screen size.
  * Assuming portrait mode, autoresize holds the width and then fills up the height
  * If the height goes over the max or minimum size, then the width gets adapted.
@@ -14625,7 +13757,7 @@ bento.define('bento/sortedeventsystem', [
         if (isLoopingEvents) {
             return;
         }
-        for (j = 0; j < removedEvents.length; ++j) {
+        for (j = 0, l = removedEvents.length; j < l; ++j) {
             eventName = removedEvents[j].eventName;
             if (removedEvents[j].reset === true) {
                 // reset the whole event listener
@@ -17370,7 +16502,7 @@ bento.define('bento/gui/counter', [
          */
         var updateDigits = function () {
             // add or remove digits
-            var i,
+            var i, l,
                 valueStr = value.toString(),
                 pos,
                 digit,
@@ -17394,7 +16526,7 @@ bento.define('bento/gui/counter', [
                 }
             }
             /* update animations */
-            for (i = 0; i < children.length; ++i) {
+            for (i = 0, l = children.length; i < l; ++i) {
                 digit = children[i];
                 digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
                 digit.getComponent('sprite', function (sprite) {
@@ -17405,13 +16537,13 @@ bento.define('bento/gui/counter', [
             /* alignment */
             if (alignment === 'right') {
                 // move all the children
-                for (i = 0; i < children.length; ++i) {
+                for (i = 0, l = children.length; i < l; ++i) {
                     digit = children[i];
                     pos = digit.position;
                     pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
                 }
             } else if (alignment === 'center') {
-                for (i = 0; i < children.length; ++i) {
+                for (i = 0, l = children.length; i < l; ++i) {
                     digit = children[i];
                     pos = digit.position;
                     pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
@@ -17492,8 +16624,8 @@ bento.define('bento/gui/counter', [
                 loopDigits(function (digitEntity) {$1});
              */
             loopDigits: function (callback) {
-                var i = 0;
-                for (i = 0; i < children.length; ++i) {
+                var i = 0, l;
+                for (i = 0, l = children.length; i < l; ++i) {
                     callback(children[i]);
                 }
             }
@@ -17821,8 +16953,8 @@ bento.define('bento/gui/text', [
          * Draw text to canvas
          */
         var updateCanvas = function () {
-            var i,
-                j,
+            var i, ii,
+                j, jj,
                 l,
                 x,
                 y,
@@ -17926,7 +17058,7 @@ bento.define('bento/gui/text', [
 
             // draw text
             setContext(ctx);
-            for (i = 0; i < strings.length; ++i) {
+            for (i = 0, ii = strings.length; i < ii; ++i) {
                 // gradient or solid color
                 if (Utils.isDefined(strings[i].gradient)) {
                     ctx.fillStyle = strings[i].gradient;
@@ -17969,7 +17101,7 @@ bento.define('bento/gui/text', [
 
                 // inner stroke
                 ctx.globalCompositeOperation = 'source-atop';
-                for (j = 0; j < lineWidth.length; ++j) {
+                for (j = 0, jj = lineWidth.length; j < jj; ++j) {
                     if (lineWidth[j] && innerStroke[j]) {
                         ctx.lineWidth = lineWidth[j] * 2;
                         ctx.strokeStyle = strokeStyle[j];
@@ -18028,6 +17160,7 @@ bento.define('bento/gui/text', [
                 singleString,
                 i,
                 j,
+                l,
                 calcGrd,
                 subString,
                 remainingString,
@@ -18038,7 +17171,7 @@ bento.define('bento/gui/text', [
             canvasWidth = 1;
             canvasHeight = 1;
             setContext(ctx);
-            for (i = 0; i < singleStrings.length; ++i) {
+            for (i = 0, l = singleStrings.length; i < l; ++i) {
                 spaceWidth = 0;
                 singleString = singleStrings[i];
                 stringWidth = ctx.measureText(singleString).width;
@@ -18051,8 +17184,8 @@ bento.define('bento/gui/text', [
                         subString = singleString.slice(0, singleString.length - j);
                         stringWidth = ctx.measureText(subString).width;
                         // no more letters left: assume 1 letter
-                        if (j === singleString.length) {
-                            j = singleString.length - 1;
+                        if (j === l) {
+                            j = l - 1;
                             break;
                         }
                     }
@@ -18063,8 +17196,8 @@ bento.define('bento/gui/text', [
                         j += subString.length - spacePos;
                     }
                     // split the string into 2
-                    remainingString = singleString.slice(singleString.length - j, singleString.length);
-                    singleString = singleString.slice(0, singleString.length - j);
+                    remainingString = singleString.slice(l - j, l);
+                    singleString = singleString.slice(0, l - j);
 
                     // remove first space in remainingString
                     if (remainingString.charAt(0) === ' ') {
@@ -18111,6 +17244,7 @@ bento.define('bento/gui/text', [
                 },
                 gradientValue,
                 i,
+                l,
                 top,
                 bottom;
 
@@ -18185,8 +17319,8 @@ bento.define('bento/gui/text', [
                 endGrd.x,
                 endGrd.y
             );
-            for (i = 0.0; i < gradientColors.length; ++i) {
-                gradientValue = i * (1 / (gradientColors.length - 1));
+            for (i = 0.0, l = gradientColors.length; i < l; ++i) {
+                gradientValue = i * (1 / (l - 1));
                 grd.addColorStop(gradientValue, gradientColors[i]);
             }
 

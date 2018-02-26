@@ -71,3 +71,6 @@
     window.require = undefined;
     window.define = undefined;
 }());
+if (!bento) {
+    var bento = window.bento;
+}
