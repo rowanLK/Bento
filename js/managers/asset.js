@@ -161,7 +161,6 @@ bento.define('bento/managers/asset', [
             // cocoon lazy load, might be useful some day?
             // img.cocoonLazyLoad = true;
 
-            img.src = source;
             img.addEventListener('load', function () {
                 callback(null, name, img);
             }, false);
@@ -169,6 +168,8 @@ bento.define('bento/managers/asset', [
                 // TODO: Implement failure: should it retry to load the image?
                 Utils.log('ERROR: loading image ' + source);
             }, false);
+
+            img.src = source;
         };
         var loadTTF = function (name, source, callback) {
             // for every font to load we measure the width on a canvas
