@@ -169,8 +169,11 @@ bento.define('bento', [
             clientWidth = innerWidth;
             clientHeight = innerWidth * canvasRatio;
         }
-        canvas.style.width = clientWidth + 'px';
-        canvas.style.height = clientHeight + 'px';
+        if (canvas.style) {
+            // browser specific
+            canvas.style.width = clientWidth + 'px';
+            canvas.style.height = clientHeight + 'px';
+        }
 
         canvasScale.x = clientWidth / viewport.width;
         canvasScale.y = clientHeight / viewport.height;
