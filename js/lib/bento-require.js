@@ -4,43 +4,76 @@
 (function () {
     'use strict';
     var modules = {},
+        defines = {},
         waiting = {},
-        searchCircular = function (name, parent) {
-            var i, l;
-            var module;
-            var moduleName;
-            var array;
-
-            // check for circular dependency
-            for (moduleName in waiting) {
-                if (!waiting.hasOwnProperty(moduleName)) {
-                    continue;
-                }
-                array = waiting[moduleName];
-                for (i = 0, l = array.length; i < l; ++i) {
-                    module = array[i];
-                    if (module.parentName === name && parent === moduleName) {
-                        throw 'Circular dependency for "' + name + '", found in "' + parent + '"';
-                    }
-                }
-            }
-
-        },
-        getModule = function (name, onSuccess, parent) {
-            if (modules[name]) {
+        getModule = function (name, history, onSuccess, parent) {
+            if (modules[name] !== void(0)) {
                 // module exists! return immediately
+                // note: a module may be null if a circular dependency exists
                 onSuccess(modules[name]);
                 return;
             }
-
-            searchCircular(name, parent);
-
             // does not exist yet, put on waiting list
             waiting[name] = waiting[name] || [];
             waiting[name].push({
                 parent: parent,
                 onSuccess: onSuccess
             });
+            // not loaded yet, but in defines
+            if (defines[name]) {
+                loadModule(name, defines[name].dep, defines[name].fn, history);
+            } else {
+                console.log("FATAL: module " + name + " was never declared before.");
+            }
+        },
+        loadModule = function (name, dep, fn, history) {
+            var i, l,
+                historyNode,
+                params = [],
+                loaded = 0,
+                ready,
+                end = function () {
+                    var params = [],
+                        myModule;
+
+                    // build param list and call function
+                    for (i = 0, l = dep.length; i < l; ++i) {
+                        getModule(dep[i], historyNode, function (module) {
+                            params.push(module);
+                        });
+                    }
+                    myModule = fn.apply(window, params);
+                    // add to modules list
+                    defineAndFlush(name, myModule);
+                };
+
+            // check for circular dependencies
+            if (history.indexOf(name) >= 0) {
+                // circular dependency!
+                console.log('Circular dependency by ' + name + ': ', JSON.stringify(history));
+
+                // continue by nulling the module
+                defineAndFlush(name, null);
+                return;
+            }
+            // none found
+            historyNode = history.concat([name]);
+
+            if (dep.length === 0) {
+                // load immediately
+                end();
+            }
+
+            // loop through dependencies and try to load it (the module may not be defined yet)
+            for (i = 0, l = dep.length; i < l; ++i) {
+                getModule(dep[i], historyNode, function (module) {
+                    loaded += 1;
+                    if (loaded === dep.length) {
+                        // all modules are loaded
+                        end();
+                    }
+                }, name);
+            }
         },
         defineAndFlush = function (name, module) {
             var i, l,
@@ -49,7 +82,10 @@
 
             // add to modules
             modules[name] = module;
-
+            // remove from define list
+            if (module !== null) {
+                delete defines[name];
+            }
             // flush waiting
             if (!callbacksWaiting) {
                 return;
@@ -69,7 +105,7 @@
 
                     // build param list and call function
                     for (i = 0, l = dep.length; i < l; ++i) {
-                        getModule(dep[i], function (module) {
+                        getModule(dep[i], [], function (module) {
                             params.push(module);
                         });
                     }
@@ -82,7 +118,7 @@
 
             // loop through dependencies and try to load it (the module may not be defined yet)
             for (i = 0, l = dep.length; i < l; ++i) {
-                getModule(dep[i], function (module) {
+                getModule(dep[i], [], function (module) {
                     loaded += 1;
                     if (loaded === l) {
                         // all modules are loaded
@@ -92,39 +128,11 @@
             }
         },
         define = function (name, dep, fn) {
-            var i, l,
-                params = [],
-                loaded = 0,
-                ready,
-                end = function () {
-                    var params = [],
-                        myModule;
-
-                    // build param list and call function
-                    for (i = 0, l = dep.length; i < l; ++i) {
-                        getModule(dep[i], function (module) {
-                            params.push(module);
-                        });
-                    }
-                    myModule = fn.apply(window, params);
-                    // add to modules list
-                    defineAndFlush(name, myModule);
-                };
-            if (dep.length === 0) {
-                // load immediately
-                end();
-            }
-
-            // loop through dependencies and try to load it (the module may not be defined yet)
-            for (i = 0, l = dep.length; i < l; ++i) {
-                getModule(dep[i], function (module) {
-                    loaded += 1;
-                    if (loaded === dep.length) {
-                        // all modules are loaded
-                        end();
-                    }
-                }, name);
-            }
+            // put it in the defines list
+            defines[name] = {
+                dep: dep,
+                fn: fn
+            };
         };
 
     // export
