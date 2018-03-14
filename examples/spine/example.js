@@ -30,7 +30,8 @@ bento.require([
         });
         var spineComponent = new Spine({
             spine: 'spineboy',
-            animation: 'idle'
+            animation: 'idle',
+            scale: 0.25
         });
         var spineBoy = new Entity({
             z: 0,

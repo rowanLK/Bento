@@ -88,6 +88,7 @@ bento.define('bento/components/spine', [
         var skeletonData;
         var skeleton, state, bounds;
         var entity;
+        var scale = settings.scale || 1;
         var component = {
             name: name,
             start: function (data) {
@@ -104,6 +105,10 @@ bento.define('bento/components/spine', [
                     skeletonRenderer.debugRendering = Spine.debugRendering;
                     skeletonRenderer.triangleRendering = Spine.triangleRendering;
                 }
+
+                if (!Utils.isNumber(scale)) {
+                    Utils.log('ERROR: scale must be a number');
+                }
             },
             destroy: function (data) {},
             update: function (data) {
@@ -111,10 +116,10 @@ bento.define('bento/components/spine', [
                 state.apply(skeleton);
             },
             draw: function (data) {
-                data.renderer.save();
+                // todo: investigate scaling
+                data.renderer.scale(scale, scale);
                 skeleton.updateWorldTransform();
                 skeletonRenderer.draw(skeleton);
-                data.renderer.restore();
             },
             attached: function (data) {
                 entity = data.entity;
