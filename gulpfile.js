@@ -13,7 +13,6 @@ gulp.task('default', ['build', 'updateVersion'], function () {});
 gulp.task('build', [], function () {
     // place code for your default task here
     return gulp.src([
-            'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
@@ -36,7 +35,7 @@ gulp.task('updateVersion', ['build'], function (callback) {
     var fs = require('fs');
     var path = require('path');
     var bentojs = path.join('.', 'build', 'bento.js');
-    
+
     // read package
     fs.readFile(bentojs, 'utf8', function (err, data) {
         if (err) {
@@ -57,7 +56,6 @@ gulp.task('updateVersion', ['build'], function (callback) {
 gulp.task('min', [], function () {
     // place code for your default task here
     return gulp.src([
-            'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
@@ -76,7 +74,6 @@ gulp.task('min', [], function () {
 gulp.task('amdless', [], function () {
     // place code for your default task here
     return gulp.src([
-            'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
