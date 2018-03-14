@@ -31,12 +31,14 @@ bento.define('bento/managers/asset', [
             fonts: {},
             spritesheets: {},
             texturePacker: {},
+            spine: {},
 
             // packed
             'packed-images': {},
             'packed-spritesheets': {},
             'packed-json': {}
         };
+        var spineAssetLoader;
         /**
          * (Down)Load asset types
          */
@@ -326,6 +328,72 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
         };
+        var loadSpine = function (name, source, callback) {
+            var path = (function () {
+                // remove the final part
+                var paths = source.split('/');
+                paths.splice(-1, 1);
+                return paths.join('/') + '/';
+            })();
+            var spine = {
+                image: null,
+                skeleton: null,
+                atlas: null,
+                path: path
+            };
+            var checkForCompletion = function () {
+                if (
+                    spine.image !== null &&
+                    spine.skeleton !== null &&
+                    spine.atlas !== null
+                ) {
+                    callback(null, name, spine);
+                }
+            };
+
+            // to load spine, you must include spine-canvas.js
+            if (!window.spine) {
+                console.error("ERROR: spine library not found!");
+                callback("Loading spine failed.");
+                return;
+            }
+            // note: we could in the future implement the asset loading with bento
+            // but for convenience sake we simply use the spine asset manager for now
+            if (!spineAssetLoader) {
+                spineAssetLoader = new window.spine.canvas.AssetManager();
+            }
+
+            spineAssetLoader.loadText(
+                source + ".json",
+                function (path, data) {
+                    spine.skeleton = data;
+                    checkForCompletion();
+                },
+                function (path, err) {
+                    callback(err, name, null);
+                }
+            );
+            spineAssetLoader.loadText(
+                source.replace("-pro", "").replace("-ess", "") + ".atlas",
+                function (path, data) {
+                    spine.atlas = data;
+                    checkForCompletion();
+                },
+                function (path, err) {
+                    callback(err, name, null);
+                }
+            );
+            spineAssetLoader.loadTexture(
+                source.replace("-pro", "").replace("-ess", "") + ".png",
+                function (path, image) {
+                    spine.image = new PackedImage(image);
+                    checkForCompletion();
+                },
+                function (path, err) {
+                    callback(err, name, null);
+                }
+            );
+        };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
          * If the assetGroup parameter is passed to Bento.setup, this function will be
@@ -555,6 +623,18 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            var onLoadSpine = function (err, name, spine) {
+                if (err) {
+                    Utils.log(err);
+                } else {
+                    assets.spine[name] = spine;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'spine');
+                }
+                checkLoaded();
+            };
             // packs
             var onLoadImagePack = function (err, name, imagePack) {
                 if (err) {
@@ -605,7 +685,8 @@ bento.define('bento/managers/asset', [
                 });
             };
             var loadAllAssets = function () {
-                var i = 0, l;
+                var i = 0,
+                    l;
                 var data;
                 for (i = 0, l = toLoad.length; i < l; ++i) {
                     data = toLoad[i];
@@ -683,6 +764,16 @@ bento.define('bento/managers/asset', [
                         continue;
                     }
                     readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
+                }
+            }
+            // get spine
+            if (Utils.isDefined(group.spine)) {
+                assetCount += Utils.getKeyLength(group.spine);
+                for (asset in group.spine) {
+                    if (!group.spine.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadSpine, asset, path + 'spine/' + group.spine[asset], onLoadSpine);
                 }
             }
 
@@ -891,7 +982,7 @@ bento.define('bento/managers/asset', [
                             if (asset.dispose) {
                                 asset.dispose();
                             }
-                            // spritesheet
+                            // spritesheet or spine
                             else if (asset.image && asset.image.dispose) {
                                 asset.image.dispose();
                             } else if (asset.image && asset.image.image && asset.image.image.dispose) {
@@ -991,6 +1082,24 @@ bento.define('bento/managers/asset', [
                 Utils.log("ERROR: Sprite sheet " + name + " could not be found");
             }
             return asset;
+        };
+        /**
+         * Returns a previously loaded Spine object
+         * @function
+         * @instance
+         * @param {String} name - Name of Spine object
+         * @returns {Object} Spine object
+         * @name getSpine
+         */
+        var getSpine = function (name) {
+            var asset = assets.spine[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Spine object " + name + " could not be found");
+            }
+            return asset;
+        };
+        var getSpineLoader = function (name) {
+            return spineAssetLoader;
         };
         /**
          * Returns all assets
@@ -1172,7 +1281,9 @@ bento.define('bento/managers/asset', [
             getAudio: getAudio,
             getSpriteSheet: getSpriteSheet,
             getAssets: getAssets,
-            getAssetGroups: getAssetGroups
+            getAssetGroups: getAssetGroups,
+            getSpine: getSpine,
+            getSpineLoader: getSpineLoader
         };
         return manager;
     };
