@@ -1,9 +1,17 @@
 /**
- * Component that draws a Spine animation. Requires spine-canvas.js
+ * Component that draws a Spine animation. A Spine asset must consist of a json, atlas and png with the same name. Developer must add
+ [spine-canvas.js]{@link https://raw.githubusercontent.com/EsotericSoftware/spine-runtimes/3.6/spine-ts/build/spine-canvas.js} manually.
  * Note: made with canvas2d renderer in mind.
  * <br>Exports: Constructor
  * @module bento/components/spine
  * @moduleName Spine
+* @snippet Spine.snippet
+Spine({
+    spine: '${1}',
+    animation: '${2:idle}',
+    scale: ${3:1},
+    triangleRendering: false
+})
  * @param {Object} settings - Settings
  * @param {String} settings.spine - Name of the spine asset
  * @param {String} settings.animation - Initial animation to play, defaults to 'default'
@@ -98,6 +106,7 @@ bento.define('bento/components/spine', [
         var onComplete = settings.onComplete;
         var onStart = settings.onStart;
         var onEnd = settings.onEnd;
+        // enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
         var useTriangleRendering = settings.triangleRendering || false;
         var skeletonRenderer;
         var skeletonData;
@@ -148,6 +157,14 @@ bento.define('bento/components/spine', [
             attached: function (data) {
                 entity = data.entity;
             },
+            /**
+             * Set animation
+             * @function
+             * @instance
+             * @param {String} name - Name of animation
+             * @param {Boolean} [loop] - Loop animation
+             * @name setAnimation
+             */
             setAnimation: function (name, loop) {
                 state.setAnimation(0, name, Utils.getDefault(loop, true));
             },
@@ -177,7 +194,6 @@ bento.define('bento/components/spine', [
         return component;
     };
 
-    // enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
     Spine.setDebugRendering = function (bool) {
         if (skeletonRenderer) {
             skeletonRenderer.debugRendering = bool;

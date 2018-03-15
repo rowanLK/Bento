@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>components/pixi/sprite.js - Documentation</title>
+    <title>components/eventlistener.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -29,7 +29,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">components/pixi/sprite.js</h1>
+    <h1 class="page-title">components/eventlistener.js</h1>
     
 
     
@@ -40,74 +40,89 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.
- * Useful if you want to use pixi features.
+ * Component that listens to an event fired by the EventSystem.
+ * Automatically stops listening if the entity is destroyed or if the component is removed
  * &lt;br>Exports: Constructor
- * @module bento/components/pixi/sprite
- * @moduleName PixiSprite
- * @returns Returns a component object to be attached to an entity.
+ * @module bento/components/eventlistener
+ * @moduleName EventListener
+ * @snippet EventListener.snippet
+EventListener({
+    name: '${1:eventListener}',
+    eventName: '${2:eventName}',
+    ignorePause: ${3:false},
+    onEvent: function (data) {
+        $4
+    }
+})
+ * @param {Object} settings - Settings
+ * @param {String} settings.name - Component name, defaults to 'eventListener'
+ * @param {String} settings.eventName - Event name to listen to
+ * @param {Boolean} settings.ignorePause - Listen to events even if entity is paused
+ * @param {Function} settings.onEvent - Event callback
  */
-bento.define('bento/components/pixi/sprite', [
+bento.define('bento/components/eventlistener', [
     'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/entity',
+    'bento/eventsystem',
     'bento/utils',
-    'bento/components/sprite'
-], function (Bento, Utils, Sprite) {
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween
+) {
     'use strict';
-    var PixiSprite = function (settings) {
-        if (!(this instanceof PixiSprite)) {
-            return new PixiSprite(settings);
+    var isPaused = function (entity) {
+        var rootPause = 0;
+        if (!Bento.objects || !entity) {
+            return false;
         }
-        Sprite.call(this, settings);
-        this.sprite = new window.PIXI.Sprite();
-    };
-    PixiSprite.prototype = Object.create(Sprite.prototype);
-    PixiSprite.prototype.constructor = PixiSprite;
-    PixiSprite.prototype.draw = function (data) {
-        var entity = data.entity;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
+        rootPause = entity.updateWhenPaused;
+        // find root parent
+        while (entity.parent) {
+            entity = entity.parent;
+            rootPause = entity.updateWhenPaused;
         }
-        this.updateFrame();
-        this.updateSprite(
-            this.spriteImage,
-            this.sourceX,
-            this.sourceY,
-            this.frameWidth,
-            this.frameHeight
-        );
 
-        // draw with pixi
-        data.renderer.translate(-Math.round(this.origin.x), -Math.round(this.origin.y));
-        data.renderer.drawPixi(this.sprite);
-        data.renderer.translate(Math.round(this.origin.x), Math.round(this.origin.y));
+        return rootPause &lt; Bento.objects.isPaused();
     };
-    PixiSprite.prototype.updateSprite = function (packedImage, sx, sy, sw, sh) {
-        var rectangle;
-        var sprite;
-        var texture;
-        var image;
-
-        if (!packedImage) {
-            return;
-        }
-        image = packedImage.image;
-        if (!image.texture) {
-            // initialize pixi baseTexture
-            image.texture = new window.PIXI.BaseTexture(image, window.PIXI.SCALE_MODES.NEAREST);
-        }
-        rectangle = new window.PIXI.Rectangle(sx, sy, sw, sh);
-        texture = new window.PIXI.Texture(image.texture, rectangle);
-        texture._updateUvs();
-
-        this.sprite.texture = texture;
+    return function (settings) {
+        var viewport = Bento.getViewport();
+        var componentName = settings.name || 'eventListener';
+        var eventName = settings.eventName;
+        var ignorePause = settings.ignorePause || false;
+        var onEvent = settings.callback || settings.onEvent || function () {};
+        var entity;
+        var component = {
+            name: componentName,
+            start: function (data) {
+                if (!eventName) {
+                    Utils.log('WARNING: eventName is not defined! Using component name as event name');
+                    eventName = componentName;
+                }
+                EventSystem.on(eventName, ignorePause ? onEvent : wrapperCallback);
+            },
+            destroy: function (data) {
+                EventSystem.off(eventName, ignorePause ? onEvent : wrapperCallback);
+            },
+            attached: function (data) {
+                entity = data.entity;
+            }
+        };
+        // this callback is used when event listener can pause
+        var wrapperCallback = function (data) {
+            if (!isPaused(entity)) {
+                onEvent(data);
+            }
+        };
+        return component;
     };
-
-    PixiSprite.prototype.toString = function () {
-        return '[object PixiSprite]';
-    };
-
-    return PixiSprite;
 });</code></pre>
         </article>
     </section>

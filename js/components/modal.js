@@ -1,5 +1,5 @@
 /**
- * Component for modal popups - pauses the game on start and resets on destroy
+ * Component for modal popups - pauses the game on start and resets on destroy.
  * The parent entity will not be paused. Pauselevels will stack when more entities with the
  * modal component are attached to the game.
  * <br>Exports: Constructor
@@ -12,8 +12,8 @@ Modal({
     pauseLevel: ${1:1}
 })
  * @param {Object} settings - Settings
- * @param {String} [settings.pauseLevel] - Target pause level, recommended to ignore this parameter and 
- * let the component set the automatic pause level automatically. 
+ * @param {String} [settings.pauseLevel] - Target pause level, recommended to ignore this parameter and
+ * let the component set the automatic pause level automatically.
  */
 bento.define('components/modal', [
     'bento',
@@ -56,7 +56,7 @@ bento.define('components/modal', [
 
                 component.pauseLevel = pauseLevel || (oldPauseLevel + 1);
                 Bento.objects.pause(component.pauseLevel);
-                
+
                 // entity ignores the pause
                 entity.updateWhenPaused = component.pauseLevel;
             },

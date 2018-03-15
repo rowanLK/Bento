@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bento/components/fill - Documentation</title>
+    <title>bento/components/spine - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -29,7 +29,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">bento/components/fill</h1>
+    <h1 class="page-title">bento/components/spine</h1>
     
 
     
@@ -51,7 +51,8 @@
     <div class="container-overview">
     
         
-            <div class="description">Component that fills a square.<br>Exports: Constructor</div>
+            <div class="description">Component that draws a Spine animation. A Spine asset must consist of a json, atlas and png with the same name. Developer must add
+ <a href="https://raw.githubusercontent.com/EsotericSoftware/spine-runtimes/3.6/spine-ts/build/spine-canvas.js">spine-canvas.js</a> manually.Note: made with canvas2d renderer in mind.<br>Exports: Constructor</div>
         
 
         
@@ -134,13 +135,13 @@
 
         <tr>
             
-                <td class="name"><code>color</code></td>
+                <td class="name"><code>spine</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Array</span>
+<span class="param-type">String</span>
 
 
             
@@ -150,20 +151,20 @@
 
             
 
-            <td class="description last">Color ([1, 1, 1, 1] is pure white). Alternatively use the Color module.</td>
+            <td class="description last">Name of the spine asset</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>dimension</code></td>
+                <td class="name"><code>animation</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Rectangle</span>
+<span class="param-type">String</span>
 
 
             
@@ -173,20 +174,20 @@
 
             
 
-            <td class="description last">Size to fill up (defaults to viewport size)</td>
+            <td class="description last">Initial animation to play, defaults to 'default'</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>origin</code></td>
+                <td class="name"><code>onEvent</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Rectangle</span>
+<span class="param-type">function</span>
 
 
             
@@ -196,20 +197,20 @@
 
             
 
-            <td class="description last">Origin point</td>
+            <td class="description last">Animation state callback</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>originRelative</code></td>
+                <td class="name"><code>onComplete</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Rectangle</span>
+<span class="param-type">function</span>
 
 
             
@@ -219,7 +220,53 @@
 
             
 
-            <td class="description last">Set origin with relative to the dimension</td>
+            <td class="description last">Animation state callback</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Animation state callback</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>onEnd</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Animation state callback</td>
         </tr>
 
     
@@ -267,7 +314,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="components_fill.js.html">components/fill.js</a>, <a href="components_fill.js.html#line1">line 1</a>
+        <a href="components_spine.js.html">components/spine.js</a>, <a href="components_spine.js.html#line1">line 1</a>
     </li></ul></dd>
     
 
@@ -319,6 +366,266 @@
 
     
 
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="getSpineData"><span class="type-signature"></span>getSpineData<span class="signature">()</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Exposes Spine skeleton data and animation state variables for manual manipulation
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_spine.js.html">components/spine.js</a>, <a href="components_spine.js.html#line171">line 171</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="setAnimation"><span class="type-signature"></span>setAnimation<span class="signature">(name, loop<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Set animation
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Name of animation</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>loop</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Loop animation</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_spine.js.html">components/spine.js</a>, <a href="components_spine.js.html#line160">line 160</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
     
 
     

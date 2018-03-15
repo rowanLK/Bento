@@ -96,7 +96,7 @@ bento.require([
         canvasId: 'canvas',
         canvasDimension: new Rectangle(0, 0, 640, 960),
         renderer: 'canvas2d',
-        smoothing: false,
+        smoothing: true,
         pixelSize: 1
     }, function () {
         console.log('ready');
