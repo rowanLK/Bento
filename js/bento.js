@@ -150,6 +150,12 @@ bento.define('bento', [
             gameData = Bento.getGameData();
             onComplete();
         });
+
+        // cocoon only: set antiAlias with smoothing parameter
+        if (Utils.isDefined(settings.smoothing) && Utils.isCocoonJs() && window.Cocoon && window.Cocoon.Utils) {
+            window.Cocoon.Utils.setAntialias(settings.smoothing);
+        }
+
     };
     /**
      * Bento's default behavior to resize to fit

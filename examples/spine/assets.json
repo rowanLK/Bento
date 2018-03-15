@@ -2,7 +2,8 @@
     "example": {
         "path": "assets/example/",
         "spine": {
-            "spineboy": "spineboy"
+            "spineboy": "spineboy",
+            "atlas2": "atlas2"
         }
     }
 }

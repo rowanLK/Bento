@@ -1,9 +1,16 @@
 /**
- * Component that draws a Spine animation
+ * Component that draws a Spine animation. Requires spine-canvas.js
+ * Note: made with canvas2d renderer in mind.
  * <br>Exports: Constructor
  * @module bento/components/spine
  * @moduleName Spine
  * @param {Object} settings - Settings
+ * @param {String} settings.spine - Name of the spine asset
+ * @param {String} settings.animation - Initial animation to play, defaults to 'default'
+ * @param {Function} settings.onEvent - Animation state callback
+ * @param {Function} settings.onComplete - Animation state callback
+ * @param {Function} settings.onStart - Animation state callback
+ * @param {Function} settings.onEnd - Animation state callback
  * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/spine', [
@@ -16,7 +23,7 @@ bento.define('bento/components/spine', [
     Vector2
 ) {
     'use strict';
-    var loadSkeletonData = function (name, initialAnimation, skin) {
+    var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
         if (skin === undefined) {
             skin = "default";
         }
@@ -46,16 +53,16 @@ bento.define('bento/components/spine', [
         var animationState = new window.spine.AnimationState(new window.spine.AnimationStateData(skeleton.data));
         animationState.setAnimation(0, initialAnimation, true);
         animationState.addListener({
-            event: function (trackIndex, event) {
+            event: listeners.onEvent || function (trackIndex, event) {
                 // console.log("Event on track " + trackIndex + ": " + JSON.stringify(event));
             },
-            complete: function (trackIndex, loopCount) {
+            complete: listeners.onComplete || function (trackIndex, loopCount) {
                 // console.log("Animation on track " + trackIndex + " completed, loop count: " + loopCount);
             },
-            start: function (trackIndex) {
+            start: listeners.onStart || function (trackIndex) {
                 // console.log("Animation on track " + trackIndex + " started");
             },
-            end: function (trackIndex) {
+            end: listeners.onEnd || function (trackIndex) {
                 // console.log("Animation on track " + trackIndex + " ended");
             }
         });
@@ -80,21 +87,35 @@ bento.define('bento/components/spine', [
         };
     };
     var skeletonRenderer;
+    var debugRendering = false;
+
     var Spine = function (settings) {
         var name = settings.name || 'spine';
         var spineName = settings.spineName || settings.spine;
         var currentAnimation = settings.animation || 'default';
+        // animation state listeners
+        var onEvent = settings.onEvent;
+        var onComplete = settings.onComplete;
+        var onStart = settings.onStart;
+        var onEnd = settings.onEnd;
+        var useTriangleRendering = settings.triangleRendering || false;
         var skeletonRenderer;
         var skeletonData;
         var skeleton, state, bounds;
         var entity;
+        // todo: investigate internal scaling
         var scale = settings.scale || 1;
         var component = {
             name: name,
             start: function (data) {
                 // load the skeleton data if that's not been done yet
                 if (!skeletonData) {
-                    skeletonData = loadSkeletonData(spineName, currentAnimation);
+                    skeletonData = loadSkeletonData(spineName, currentAnimation, {
+                        onEvent: onEvent,
+                        onComplete: onComplete,
+                        onStart: onStart,
+                        onEnd: onEnd
+                    });
                     skeleton = skeletonData.skeleton;
                     state = skeletonData.state;
                     bounds = skeletonData.bounds;
@@ -102,12 +123,13 @@ bento.define('bento/components/spine', [
                 // initialize skeleton renderer
                 if (!skeletonRenderer) {
                     skeletonRenderer = new window.spine.canvas.SkeletonRenderer(data.renderer.getContext());
-                    skeletonRenderer.debugRendering = Spine.debugRendering;
-                    skeletonRenderer.triangleRendering = Spine.triangleRendering;
+                    skeletonRenderer.debugRendering = debugRendering;
                 }
+                updateEntity();
 
                 if (!Utils.isNumber(scale)) {
                     Utils.log('ERROR: scale must be a number');
+                    scale = 1;
                 }
             },
             destroy: function (data) {},
@@ -119,18 +141,48 @@ bento.define('bento/components/spine', [
                 // todo: investigate scaling
                 data.renderer.scale(scale, scale);
                 skeleton.updateWorldTransform();
+                skeletonRenderer.triangleRendering = useTriangleRendering;
                 skeletonRenderer.draw(skeleton);
+                data.renderer.scale(1 / scale, 1 / scale);
             },
             attached: function (data) {
                 entity = data.entity;
+            },
+            setAnimation: function (name, loop) {
+                state.setAnimation(0, name, Utils.getDefault(loop, true));
+            },
+            /**
+             * Exposes Spine skeleton data and animation state variables for manual manipulation
+             * @function
+             * @instance
+             * @name getSpineData
+             */
+            getSpineData: function () {
+                return {
+                    skeletonData: skeleton,
+                    animationState: state
+                };
             }
+        };
+        var updateEntity = function () {
+            if (!entity) {
+                return;
+            }
+
+            entity.dimension.x = bounds.offset.x * scale;
+            entity.dimension.y = bounds.offset.y * scale;
+            entity.dimension.width = bounds.size.x * scale;
+            entity.dimension.height = bounds.size.y * scale;
         };
         return component;
     };
 
     // enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
-    Spine.debugRendering = false;
-    Spine.triangleRendering = false;
+    Spine.setDebugRendering = function (bool) {
+        if (skeletonRenderer) {
+            skeletonRenderer.debugRendering = bool;
+        }
+    };
 
     return Spine;
 });
