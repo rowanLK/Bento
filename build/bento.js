@@ -7341,7 +7341,11 @@ bento.define('bento/components/spine', [
                         onEvent: onEvent,
                         onComplete: onComplete,
                         onStart: onStart,
-                        onEnd: onEnd
+                        onEnd: function () {
+                            if (onEnd) {
+                                onEnd();
+                            }
+                        }
                     });
                     skeleton = skeletonData.skeleton;
                     state = skeletonData.state;
@@ -7380,11 +7384,30 @@ bento.define('bento/components/spine', [
              * @function
              * @instance
              * @param {String} name - Name of animation
+             * @param {Function} [callback] - Callback on complete, will overwrite onEnd if set
              * @param {Boolean} [loop] - Loop animation
              * @name setAnimation
              */
-            setAnimation: function (name, loop) {
+            setAnimation: function (name, callback, loop) {
+                if (currentAnimation === name) {
+                    // already playing
+                    return;
+                }
+                if (callback) {
+                    onEnd = callback;
+                }
+                currentAnimation = name;
                 state.setAnimation(0, name, Utils.getDefault(loop, true));
+            },
+            /**
+             * Get current animation name
+             * @function
+             * @instance
+             * @name getAnimation
+             * @returns {String} Returns name of current animation.
+             */
+            getAnimationName: function () {
+                return currentAnimation;
             },
             /**
              * Exposes Spine skeleton data and animation state variables for manual manipulation
