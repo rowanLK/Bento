@@ -254,6 +254,7 @@ bento.define('bento/tiled', [
         var entitiesSpawned = 0;
         var entitiesToSpawn = 0;
         var opacity = 1;
+        var currentLayer = 0;
         var tiledReader = new TiledReader({
             tiled: json,
             onInit: onInit,
@@ -302,6 +303,7 @@ bento.define('bento/tiled', [
             },
             onLayer: function (layer, index) {
                 var shouldMerge = false;
+                currentLayer = index;
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
                         // check per layer
@@ -319,7 +321,7 @@ bento.define('bento/tiled', [
                 }
                 opacity = layer.opacity;
                 if (onLayer) {
-                    onLayer.call(tiled, layer);
+                    onLayer.call(tiled, layer, index);
                 }
             },
             onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
@@ -333,6 +335,7 @@ bento.define('bento/tiled', [
 
                 // get source position
                 var source = getSourceTile(tileSet, tileIndex);
+                var layerIndex = currentLayer;
 
                 // retrieve the corresponding image asset
                 // there is a very high chance the url contains "images/" since the json files
@@ -358,15 +361,16 @@ bento.define('bento/tiled', [
                 );
 
                 if (onTile) {
-                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
+                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);
                 }
             },
             onObject: function (object, tileSet, tileIndex) {
                 if (onObject) {
-                    onObject.call(tiled, object, tileSet, tileIndex);
+                    onObject.call(tiled, object, tileSet, tileIndex, currentLayer);
                 }
                 if (settings.spawnEntities) {
-                    spawnEntity(object, tileSet, tileIndex);
+                    // note: we can pass currentLayer, as onLayer is synchronously called before onObject
+                    spawnEntity(object, tileSet, tileIndex, currentLayer);
                 }
             },
             onComplete: function () {
@@ -437,7 +441,7 @@ bento.define('bento/tiled', [
         };
         // attempt to spawn object by tileproperty "module"
         // this is mainly for backwards compatibility of the old Tiled module
-        var spawnEntity = function (object, tileSet, tileIndex) {
+        var spawnEntity = function (object, tileSet, tileIndex, layerIndex) {
             var tileproperties;
             var properties;
             var moduleName;
@@ -583,7 +587,7 @@ bento.define('bento/tiled', [
                     onSpawn.call(tiled, instance, object, {
                         tileSet: tileSet,
                         moduleName: moduleName
-                    });
+                    }, layerIndex);
                 }
 
                 if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
