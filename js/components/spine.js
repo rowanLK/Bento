@@ -111,6 +111,7 @@ bento.define('bento/components/spine', [
         var skeletonRenderer;
         var skeletonData;
         var skeleton, state, bounds;
+        var currentAnimationSpeed = 1;
         var entity;
         // todo: investigate internal scaling
         var scale = settings.scale || 1;
@@ -147,7 +148,7 @@ bento.define('bento/components/spine', [
             },
             destroy: function (data) {},
             update: function (data) {
-                state.update(data.deltaT / 1000);
+                state.update(data.deltaT / 1000 * data.speed * currentAnimationSpeed);
                 state.apply(skeleton);
             },
             draw: function (data) {
@@ -169,6 +170,12 @@ bento.define('bento/components/spine', [
              * @param {Function} [callback] - Callback on complete, will overwrite onEnd if set
              * @param {Boolean} [loop] - Loop animation
              * @name setAnimation
+             * @snippet #Spine.setAnimation|snippet
+                setAnimation('$1');
+             * @snippet #Spine.setAnimation|callback
+                setAnimation('$1', function () {
+                    $2
+                });
              */
             setAnimation: function (name, callback, loop) {
                 if (currentAnimation === name) {
@@ -178,7 +185,10 @@ bento.define('bento/components/spine', [
                 if (callback) {
                     onEnd = callback;
                 }
+                // update current animation
                 currentAnimation = name;
+                // reset speed
+                currentAnimationSpeed = 1;
                 state.setAnimation(0, name, Utils.getDefault(loop, true));
             },
             /**
@@ -186,16 +196,44 @@ bento.define('bento/components/spine', [
              * @function
              * @instance
              * @name getAnimation
+             * @snippet #Spine.getAnimation|String
+                getAnimation();
              * @returns {String} Returns name of current animation.
              */
             getAnimationName: function () {
                 return currentAnimation;
             },
             /**
+             * Get speed of the current animation, relative to Spine's speed
+             * @function
+             * @instance
+             * @returns {Number} Speed of the current animation
+             * @name getCurrentSpeed
+             * @snippet #Spine.getCurrentSpeed|Number
+                getCurrentSpeed();
+             */
+            getCurrentSpeed: function () {
+                return currentAnimationSpeed;
+            },
+            /**
+             * Set speed of the current animation.
+             * @function
+             * @instance
+             * @param {Number} speed - Speed at which the animation plays.
+             * @name setCurrentSpeed
+             * @snippet #Spine.setCurrentSpeed|snippet
+                setCurrentSpeed(${1:number});
+             */
+            setCurrentSpeed: function (value) {
+                currentAnimationSpeed = value;
+            },
+            /**
              * Exposes Spine skeleton data and animation state variables for manual manipulation
              * @function
              * @instance
              * @name getSpineData
+             * @snippet #Spine.getSpineData|snippet
+                getSpineData();
              */
             getSpineData: function () {
                 return {

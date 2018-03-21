@@ -7329,6 +7329,7 @@ bento.define('bento/components/spine', [
         var skeletonRenderer;
         var skeletonData;
         var skeleton, state, bounds;
+        var currentAnimationSpeed = 1;
         var entity;
         // todo: investigate internal scaling
         var scale = settings.scale || 1;
@@ -7365,7 +7366,7 @@ bento.define('bento/components/spine', [
             },
             destroy: function (data) {},
             update: function (data) {
-                state.update(data.deltaT / 1000);
+                state.update(data.deltaT / 1000 * data.speed * currentAnimationSpeed);
                 state.apply(skeleton);
             },
             draw: function (data) {
@@ -7387,6 +7388,12 @@ bento.define('bento/components/spine', [
              * @param {Function} [callback] - Callback on complete, will overwrite onEnd if set
              * @param {Boolean} [loop] - Loop animation
              * @name setAnimation
+             * @snippet #Spine.setAnimation|snippet
+                setAnimation('$1');
+             * @snippet #Spine.setAnimation|callback
+                setAnimation('$1', function () {
+                    $2
+                });
              */
             setAnimation: function (name, callback, loop) {
                 if (currentAnimation === name) {
@@ -7396,7 +7403,10 @@ bento.define('bento/components/spine', [
                 if (callback) {
                     onEnd = callback;
                 }
+                // update current animation
                 currentAnimation = name;
+                // reset speed
+                currentAnimationSpeed = 1;
                 state.setAnimation(0, name, Utils.getDefault(loop, true));
             },
             /**
@@ -7404,16 +7414,44 @@ bento.define('bento/components/spine', [
              * @function
              * @instance
              * @name getAnimation
+             * @snippet #Spine.getAnimation|String
+                getAnimation();
              * @returns {String} Returns name of current animation.
              */
             getAnimationName: function () {
                 return currentAnimation;
             },
             /**
+             * Get speed of the current animation, relative to Spine's speed
+             * @function
+             * @instance
+             * @returns {Number} Speed of the current animation
+             * @name getCurrentSpeed
+             * @snippet #Spine.getCurrentSpeed|Number
+                getCurrentSpeed();
+             */
+            getCurrentSpeed: function () {
+                return currentAnimationSpeed;
+            },
+            /**
+             * Set speed of the current animation.
+             * @function
+             * @instance
+             * @param {Number} speed - Speed at which the animation plays.
+             * @name setCurrentSpeed
+             * @snippet #Spine.setCurrentSpeed|snippet
+                setCurrentSpeed(${1:number});
+             */
+            setCurrentSpeed: function (value) {
+                currentAnimationSpeed = value;
+            },
+            /**
              * Exposes Spine skeleton data and animation state variables for manual manipulation
              * @function
              * @instance
              * @name getSpineData
+             * @snippet #Spine.getSpineData|snippet
+                getSpineData();
              */
             getSpineData: function () {
                 return {
@@ -14807,6 +14845,7 @@ bento.define('bento/tiled', [
         var entitiesSpawned = 0;
         var entitiesToSpawn = 0;
         var opacity = 1;
+        var currentLayer = 0;
         var tiledReader = new TiledReader({
             tiled: json,
             onInit: onInit,
@@ -14855,6 +14894,7 @@ bento.define('bento/tiled', [
             },
             onLayer: function (layer, index) {
                 var shouldMerge = false;
+                currentLayer = index;
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
                         // check per layer
@@ -14872,7 +14912,7 @@ bento.define('bento/tiled', [
                 }
                 opacity = layer.opacity;
                 if (onLayer) {
-                    onLayer.call(tiled, layer);
+                    onLayer.call(tiled, layer, index);
                 }
             },
             onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
@@ -14886,6 +14926,7 @@ bento.define('bento/tiled', [
 
                 // get source position
                 var source = getSourceTile(tileSet, tileIndex);
+                var layerIndex = currentLayer;
 
                 // retrieve the corresponding image asset
                 // there is a very high chance the url contains "images/" since the json files
@@ -14911,15 +14952,16 @@ bento.define('bento/tiled', [
                 );
 
                 if (onTile) {
-                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
+                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);
                 }
             },
             onObject: function (object, tileSet, tileIndex) {
                 if (onObject) {
-                    onObject.call(tiled, object, tileSet, tileIndex);
+                    onObject.call(tiled, object, tileSet, tileIndex, currentLayer);
                 }
                 if (settings.spawnEntities) {
-                    spawnEntity(object, tileSet, tileIndex);
+                    // note: we can pass currentLayer, as onLayer is synchronously called before onObject
+                    spawnEntity(object, tileSet, tileIndex, currentLayer);
                 }
             },
             onComplete: function () {
@@ -14990,7 +15032,7 @@ bento.define('bento/tiled', [
         };
         // attempt to spawn object by tileproperty "module"
         // this is mainly for backwards compatibility of the old Tiled module
-        var spawnEntity = function (object, tileSet, tileIndex) {
+        var spawnEntity = function (object, tileSet, tileIndex, layerIndex) {
             var tileproperties;
             var properties;
             var moduleName;
@@ -15136,7 +15178,7 @@ bento.define('bento/tiled', [
                     onSpawn.call(tiled, instance, object, {
                         tileSet: tileSet,
                         moduleName: moduleName
-                    });
+                    }, layerIndex);
                 }
 
                 if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
