@@ -17051,7 +17051,9 @@ bento.define('bento/gui/clickbutton', [
                         data: data
                     });
                 }
-                ClickButton.currentlyPressing = null;
+                if (ClickButton.currentlyPressing === entity) {
+                    ClickButton.currentlyPressing = null;
+                }
             },
             onClickMiss: function (data) {
                 if (settings.onClickMiss) {
