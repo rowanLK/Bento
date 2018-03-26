@@ -2154,7 +2154,7 @@ bento.define("audia", [
     }
 
     // Setup
-    var Audia;
+    var AudiaConstructor;
     var hasWebAudio = Boolean(audioContext);
 
     // Audia object creation
@@ -2166,16 +2166,11 @@ bento.define("audia", [
 
         return id;
     };
-
     // Math helper
     var clamp = function (value, min, max) {
         return Math.min(Math.max(Number(value), min), max);
     };
-
-    // Which approach are we taking?…
-
-    if (hasWebAudio) {
-
+    var setupWebAudio = function () {
         // Reimplement Audio using Web Audio API…
 
         // Load audio helper
@@ -2234,7 +2229,7 @@ bento.define("audia", [
         gainNode.connect(audioContext.destination);
 
         // Constructor
-        Audia = function (src) {
+        var Audia = function (src) {
             this.id = addAudiaObject(this);
 
             // Setup
@@ -2557,13 +2552,15 @@ bento.define("audia", [
                 this._onload = value;
             }
         });
-
-    } else {
+        addProperties(Audia);
+        return Audia;
+    };
+    var setupHtml5Audio = function () {
 
         // Create a thin wrapper around the Audio object…
 
         // Constructor
-        Audia = function (src) {
+        var Audia = function (src) {
             this.id = addAudiaObject(this);
             this._audioNode = new Audio();
 
@@ -2790,119 +2787,135 @@ bento.define("audia", [
                 this._audioNode.onload = value;
             }
         });
-    }
 
-    // Prevent errors?
-    Audia.preventErrors = true;
+        addProperties(Audia);
 
-    // Public helper
-    Object.defineProperty(Audia, "hasWebAudio", {
-        get: function () {
-            return hasWebAudio;
-        }
-    });
-
-    // Audio context
-    Object.defineProperty(Audia, "audioContext", {
-        get: function () {
-            return audioContext;
-        }
-    });
-
-    // Gain node
-    Object.defineProperty(Audia, "gainNode", {
-        get: function () {
-            return gainNode;
-        }
-    });
-
-    // Version
-    Object.defineProperty(Audia, "version", {
-        get: function () {
-            return "0.3.0";
-        }
-    });
-
-    // canPlayType helper
-    // Can be called with shortcuts, e.g. "mp3" instead of "audio/mp3"
-    var audioNode;
-    Audia.canPlayType = function (type) {
-        if (hasWebAudio && Utils.isApple()) {
-            // bug in iOS Safari: will not respect the mute if an audionode is instantiated
-            // manual type checking: ogg not supported
-            if (type.indexOf('ogg') >= 0) {
-                return false;
-            } else if (type.indexOf('mp3') >= 0) {
-                return true;
-            }
-            return true;
-        } else {
-            if (audioNode === undefined) {
-                audioNode = new Audio();
-            }
-            type = (type.match("/") === null ? "audio/" : "") + type;
-            return audioNode.canPlayType(type);
-        }
-
+        return Audia;
     };
+    var addProperties = function (Audia) {
+        // Prevent errors?
+        Audia.preventErrors = true;
 
-    // canPlayType
-    Audia.prototype.canPlayType = function (type) {
-        return Audia.canPlayType(type);
-    };
+        // Public helper
+        Object.defineProperty(Audia, "hasWebAudio", {
+            get: function () {
+                return hasWebAudio;
+            }
+        });
 
-    // Lastly, wrap all "on" properties up into the events
-    var eventNames = [
-        "abort",
-        "canplay",
-        "canplaythrough",
-        "durationchange",
-        "emptied",
-        //"ended",
-        "error",
-        "loadeddata",
-        "loadedmetadata",
-        "loadstart",
-        "pause",
-        "play",
-        "playing",
-        "progress",
-        "ratechange",
-        "seeked",
-        "seeking",
-        "stalled",
-        "suspend",
-        "timeupdate",
-        "volumechange"
-    ];
+        // Audio context
+        Object.defineProperty(Audia, "audioContext", {
+            get: function () {
+                return audioContext;
+            }
+        });
 
-    for (var i = 0, j = eventNames.length; i < j; ++i) {
-        (function (eventName) {
-            var fauxPrivateName = "_on" + eventName;
-            Audia.prototype[fauxPrivateName] = null;
-            Object.defineProperty(Audia.prototype, "on" + eventName, {
-                get: function () {
-                    return this[fauxPrivateName];
-                },
-                set: function (value) {
-                    // Remove the old listener
-                    if (this[fauxPrivateName]) {
-                        this.removeEventListener(eventName, this[fauxPrivateName], false);
-                    }
+        // Gain node
+        Object.defineProperty(Audia, "gainNode", {
+            get: function () {
+                return gainNode;
+            }
+        });
 
-                    // Only set functions
-                    if (typeof value == "function") {
-                        this[fauxPrivateName] = value;
-                        this.addEventListener(eventName, value, false);
-                    } else {
-                        this[fauxPrivateName] = null;
-                    }
+        // Version
+        Object.defineProperty(Audia, "version", {
+            get: function () {
+                return "0.3.0";
+            }
+        });
+
+        // canPlayType helper
+        // Can be called with shortcuts, e.g. "mp3" instead of "audio/mp3"
+        var audioNode;
+        Audia.canPlayType = function (type) {
+            if (hasWebAudio && Utils.isApple()) {
+                // bug in iOS Safari: will not respect the mute if an audionode is instantiated
+                // manual type checking: ogg not supported
+                if (type.indexOf('ogg') >= 0) {
+                    return false;
+                } else if (type.indexOf('mp3') >= 0) {
+                    return true;
                 }
-            });
-        })(eventNames[i]);
+                return true;
+            } else {
+                if (audioNode === undefined) {
+                    audioNode = new Audio();
+                }
+                type = (type.match("/") === null ? "audio/" : "") + type;
+                return audioNode.canPlayType(type);
+            }
+
+        };
+
+        // canPlayType
+        Audia.prototype.canPlayType = function (type) {
+            return Audia.canPlayType(type);
+        };
+
+        // Lastly, wrap all "on" properties up into the events
+        var eventNames = [
+            "abort",
+            "canplay",
+            "canplaythrough",
+            "durationchange",
+            "emptied",
+            //"ended",
+            "error",
+            "loadeddata",
+            "loadedmetadata",
+            "loadstart",
+            "pause",
+            "play",
+            "playing",
+            "progress",
+            "ratechange",
+            "seeked",
+            "seeking",
+            "stalled",
+            "suspend",
+            "timeupdate",
+            "volumechange"
+        ];
+
+        for (var i = 0, j = eventNames.length; i < j; ++i) {
+            (function (eventName) {
+                var fauxPrivateName = "_on" + eventName;
+                Audia.prototype[fauxPrivateName] = null;
+                Object.defineProperty(Audia.prototype, "on" + eventName, {
+                    get: function () {
+                        return this[fauxPrivateName];
+                    },
+                    set: function (value) {
+                        // Remove the old listener
+                        if (this[fauxPrivateName]) {
+                            this.removeEventListener(eventName, this[fauxPrivateName], false);
+                        }
+
+                        // Only set functions
+                        if (typeof value == "function") {
+                            this[fauxPrivateName] = value;
+                            this.addEventListener(eventName, value, false);
+                        } else {
+                            this[fauxPrivateName] = null;
+                        }
+                    }
+                });
+            })(eventNames[i]);
+        }
+
+        // get alternative constructors
+        Audia.getWebAudia = setupWebAudio;
+        Audia.getHtmlAudia = setupHtml5Audio;
+    };
+
+    // Which approach are we taking?…
+    if (hasWebAudio) {
+        AudiaConstructor = setupWebAudio();
+    } else {
+        AudiaConstructor = setupHtml5Audio();
     }
 
-    return Audia;
+    return AudiaConstructor;
 });
 
 /*
@@ -9976,7 +9989,10 @@ bento.define('bento/managers/asset', [
             getAssets: getAssets,
             getAssetGroups: getAssetGroups,
             getSpine: getSpine,
-            getSpineLoader: getSpineLoader
+            getSpineLoader: getSpineLoader,
+            forceHtml5Audio: function () {
+                Audia = Audia.getWebAudia();
+            }
         };
         return manager;
     };

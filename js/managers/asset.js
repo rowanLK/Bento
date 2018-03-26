@@ -1283,7 +1283,10 @@ bento.define('bento/managers/asset', [
             getAssets: getAssets,
             getAssetGroups: getAssetGroups,
             getSpine: getSpine,
-            getSpineLoader: getSpineLoader
+            getSpineLoader: getSpineLoader,
+            forceHtml5Audio: function () {
+                Audia = Audia.getHtmlAudia();
+            }
         };
         return manager;
     };
