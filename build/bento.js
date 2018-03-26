@@ -15177,7 +15177,8 @@ bento.define('bento/tiled', [
                 if (onSpawn) {
                     onSpawn.call(tiled, instance, object, {
                         tileSet: tileSet,
-                        moduleName: moduleName
+                        moduleName: moduleName,
+                        properties: properties
                     }, layerIndex);
                 }
 
