@@ -7259,7 +7259,8 @@ bento.define('bento/components/spine', [
         // Load the texture atlas using name.atlas and name.png from the AssetManager.
         // The function passed to TextureAtlas is used to resolve relative paths.
         var atlas = new window.spine.TextureAtlas(spineData.atlas, function (path) {
-            return Bento.assets.getSpineLoader().get(spineData.path + path);
+            var output = Bento.assets.getSpineLoader().get(spineData.path + path);
+            return output;
         });
 
         // Create a AtlasAttachmentLoader, which is specific to the WebGL backend.
@@ -7340,13 +7341,13 @@ bento.define('bento/components/spine', [
                 if (!skeletonData) {
                     skeletonData = loadSkeletonData(spineName, currentAnimation, {
                         onEvent: onEvent,
-                        onComplete: onComplete,
-                        onStart: onStart,
-                        onEnd: function () {
-                            if (onEnd) {
-                                onEnd();
+                        onComplete: function (trackIndex, loopCount) {
+                            if (onComplete) {
+                                onComplete(trackIndex, loopCount);
                             }
-                        }
+                        },
+                        onStart: onStart,
+                        onEnd: onEnd
                     });
                     skeleton = skeletonData.skeleton;
                     state = skeletonData.state;
@@ -7400,14 +7401,15 @@ bento.define('bento/components/spine', [
                     // already playing
                     return;
                 }
-                if (callback) {
-                    onEnd = callback;
-                }
                 // update current animation
                 currentAnimation = name;
                 // reset speed
                 currentAnimationSpeed = 1;
                 state.setAnimation(0, name, Utils.getDefault(loop, true));
+                // set callback, even if undefined
+                onComplete = callback;
+                // apply the skeleton to avoid visual delay
+                state.apply(skeleton);
             },
             /**
              * Get current animation name
