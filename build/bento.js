@@ -9991,7 +9991,7 @@ bento.define('bento/managers/asset', [
             getSpine: getSpine,
             getSpineLoader: getSpineLoader,
             forceHtml5Audio: function () {
-                Audia = Audia.getWebAudia();
+                Audia = Audia.getHtmlAudia();
             }
         };
         return manager;
@@ -16656,7 +16656,10 @@ bento.define('bento/gui/clickbutton', [
             }
         };
         if (settings.frameCountX * settings.frameCountY <= 2) {
-            delete defaultAnimations.inactive;
+            defaultAnimations.inactive.frames = [0];
+        }
+        if (settings.frameCountX * settings.frameCountY <= 1) {
+            defaultAnimations.down.frames = [0];
         }
         var animations = settings.animations || defaultAnimations;
         var nsSettings = settings.nineSliceSettings || null;
