@@ -32,10 +32,6 @@ bento.define('bento/components/spine', [
 ) {
     'use strict';
     var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
-        if (skin === undefined) {
-            skin = "default";
-        }
-
         var spineData = Bento.assets.getSpine(name);
 
         // Load the texture atlas using name.atlas and name.png from the AssetManager.
@@ -101,6 +97,7 @@ bento.define('bento/components/spine', [
     var Spine = function (settings) {
         var name = settings.name || 'spine';
         var spineName = settings.spineName || settings.spine;
+        var skin = settings.skin || 'default';
         var currentAnimation = settings.animation || 'default';
         // animation state listeners
         var onEvent = settings.onEvent;
@@ -109,7 +106,6 @@ bento.define('bento/components/spine', [
         var onEnd = settings.onEnd;
         // enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
         var useTriangleRendering = settings.triangleRendering || false;
-        var skeletonRenderer;
         var skeletonData;
         var skeleton, state, bounds;
         var currentAnimationSpeed = 1;
@@ -130,7 +126,7 @@ bento.define('bento/components/spine', [
                         },
                         onStart: onStart,
                         onEnd: onEnd
-                    });
+                    }, skin);
                     skeleton = skeletonData.skeleton;
                     state = skeletonData.state;
                     bounds = skeletonData.bounds;

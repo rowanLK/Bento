@@ -7263,10 +7263,6 @@ bento.define('bento/components/spine', [
 ) {
     'use strict';
     var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
-        if (skin === undefined) {
-            skin = "default";
-        }
-
         var spineData = Bento.assets.getSpine(name);
 
         // Load the texture atlas using name.atlas and name.png from the AssetManager.
@@ -7332,6 +7328,7 @@ bento.define('bento/components/spine', [
     var Spine = function (settings) {
         var name = settings.name || 'spine';
         var spineName = settings.spineName || settings.spine;
+        var skin = settings.skin || 'default';
         var currentAnimation = settings.animation || 'default';
         // animation state listeners
         var onEvent = settings.onEvent;
@@ -7340,7 +7337,6 @@ bento.define('bento/components/spine', [
         var onEnd = settings.onEnd;
         // enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
         var useTriangleRendering = settings.triangleRendering || false;
-        var skeletonRenderer;
         var skeletonData;
         var skeleton, state, bounds;
         var currentAnimationSpeed = 1;
@@ -7361,7 +7357,7 @@ bento.define('bento/components/spine', [
                         },
                         onStart: onStart,
                         onEnd: onEnd
-                    });
+                    }, skin);
                     skeleton = skeletonData.skeleton;
                     state = skeletonData.state;
                     bounds = skeletonData.bounds;
@@ -8745,6 +8741,7 @@ bento.define('bento/managers/asset', [
             'packed-json': {}
         };
         var spineAssetLoader;
+        var tempSpineImage;
         /**
          * (Down)Load asset types
          */
@@ -9042,19 +9039,91 @@ bento.define('bento/managers/asset', [
                 return paths.join('/') + '/';
             })();
             var spine = {
-                image: null,
                 skeleton: null,
                 atlas: null,
-                path: path
+                images: [], // {img: Image, path: ''}
+                imageCount: 0,
+                path: path,
+                pathJson: source + ".json", // need this when removing asset
+                pathAtlas: source.replace("-pro", "").replace("-ess", "") + ".atlas", // need this when removing asset
+                dispose: function () {
+                    var i, l;
+                    for (i = 0, l = spine.images.length; i < l; ++i) {
+                        spineAssetLoader.remove(spine.images[i].path);
+                    }
+                    spineAssetLoader.remove(spine.pathJson);
+                    spineAssetLoader.remove(spine.pathAtlas);
+                }
             };
             var checkForCompletion = function () {
                 if (
-                    spine.image !== null &&
+                    spine.imageCount === spine.images.length &&
                     spine.skeleton !== null &&
                     spine.atlas !== null
                 ) {
                     callback(null, name, spine);
                 }
+            };
+            var onLoadSpineJson = function (path, data) {
+                spine.skeleton = data;
+                checkForCompletion();
+
+                // next: load atlas
+                spineAssetLoader.loadText(
+                    source.replace("-pro", "").replace("-ess", "") + ".atlas",
+                    function (path, dataAtlas) {
+                        // it is in my belief that spine exports either the atlas or json wrong when skins are involved
+                        // the atlas path becomes an relative path to the root as opposed to relative to images/
+                        var skeletonJson = JSON.parse(data);
+                        var prefix = skeletonJson.skeleton.images;
+                        prefix = prefix.replace('./', '');
+                        while (dataAtlas.indexOf(prefix) >= 0) {
+                            dataAtlas = dataAtlas.replace(prefix, '');
+                        }
+                        onLoadSpineAtlas(path, dataAtlas);
+                    },
+                    function (path, err) {
+                        callback(err, name, null);
+                    }
+                );
+            };
+            var onLoadSpineAtlas = function (path, data) {
+                // parse the atlas just to check what images to load
+                var textureAtlas = new window.spine.TextureAtlas(data, function (path) {
+                    // return a fake texture
+                    if (!tempSpineImage) {
+                        tempSpineImage = new Image();
+                    }
+                    return new window.spine.FakeTexture(tempSpineImage);
+                });
+                var pages = textureAtlas.pages;
+                var i, l;
+
+                // update image count
+                spine.imageCount = pages.length;
+
+                // load all the images
+                // NOTE: we should definitely consider lazy loading here for skins, 
+                // we may not want to preload all the skins if they are not used at the same time!
+                for (i = 0, l = pages.length; i < l; ++i) {
+                    spineAssetLoader.loadTexture(
+                        spine.path + pages[i].name,
+                        onLoadSpineImage,
+                        function (path, err) {
+                            callback(err, name, null);
+                        }
+                    );
+                }
+
+                spine.atlas = data;
+                checkForCompletion();
+            };
+            var onLoadSpineImage = function (path, image) {
+                spine.images.push({
+                    img: image,
+                    path: path
+                });
+                checkForCompletion();
             };
 
             // to load spine, you must include spine-canvas.js
@@ -9070,31 +9139,8 @@ bento.define('bento/managers/asset', [
             }
 
             spineAssetLoader.loadText(
-                source + ".json",
-                function (path, data) {
-                    spine.skeleton = data;
-                    checkForCompletion();
-                },
-                function (path, err) {
-                    callback(err, name, null);
-                }
-            );
-            spineAssetLoader.loadText(
-                source.replace("-pro", "").replace("-ess", "") + ".atlas",
-                function (path, data) {
-                    spine.atlas = data;
-                    checkForCompletion();
-                },
-                function (path, err) {
-                    callback(err, name, null);
-                }
-            );
-            spineAssetLoader.loadTexture(
-                source.replace("-pro", "").replace("-ess", "") + ".png",
-                function (path, image) {
-                    spine.image = new PackedImage(image);
-                    checkForCompletion();
-                },
+                spine.pathJson,
+                onLoadSpineJson, // will load atlas here
                 function (path, err) {
                     callback(err, name, null);
                 }
@@ -9994,6 +10040,15 @@ bento.define('bento/managers/asset', [
                 Audia = Audia.getHtmlAudia();
             }
         };
+
+        // implement dispose for spine canvas texture(?)
+        /*if (window.spine && window.spine.canvas && window.spine.canvas.CanvasTexture) {
+            window.spine.canvas.CanvasTexture.prototype.dispose = function () {
+                if (this._image && this._image.dispose) {
+                    this._image.dispose();
+                }
+            };
+        }*/
         return manager;
     };
 });
@@ -10592,6 +10647,7 @@ bento.define('bento/managers/input', [
                 for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = false;
                     EventSystem.fire('buttonUp', names[i]);
+                    EventSystem.fire('buttonUp-' + names[i]);
                 }
             },
             destroy = function () {
@@ -14630,6 +14686,7 @@ bento.define('bento/sortedeventsystem', [
  * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
  * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
  * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
+ * @param {Boolean} [settings.cacheModules] - Cache spawned modules. Modules are retrieved with bento.require, caching them can speed up loading. Note that it also can clash with quick reloading unless the cache is cleared on reload. default: false
  * @returns Object
  * @snippet Tiled|constructor
 Tiled({
@@ -14697,6 +14754,10 @@ bento.define('bento/tiled', [
     TiledReader
 ) {
     'use strict';
+    // cached modules by require
+    var cachedModules = {
+        // name: argumentsArray
+    };
     // a collection of sprites/canvases that represent the drawn tiled layers
     var LayerSprites = function (canvasSize, mapSize) {
         // number of sprites horizontally
@@ -14852,6 +14913,7 @@ bento.define('bento/tiled', [
         var onSpawn = settings.onSpawn;
         var onSpawnComplete = settings.onSpawnComplete;
         var onLayerMergeCheck = settings.onLayerMergeCheck;
+        var cacheModules = settings.cacheModules || false;
         var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
@@ -15030,12 +15092,17 @@ bento.define('bento/tiled', [
                     onComplete.call(tiled);
                 }
 
-                // call onSpawnComplete anyway if there were no objects to spawn at all
-                if (settings.spawnEntities && entitiesToSpawn === 0 && onSpawnComplete) {
-                    onSpawnComplete.call(tiled);
-                }
+                // call onSpawnComplete anyway, maybe no objects were spawned or synchronously spawned
+                didLoopThrough = true;
+                checkSpawnComplete();
             }
         });
+        var didLoopThrough = false;
+        var checkSpawnComplete = function () {
+            if (didLoopThrough && entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
+                onSpawnComplete.call(tiled);
+            }
+        };
         // helper function to get the source in the image
         var getSourceTile = function (tileset, index) {
             var tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
@@ -15098,7 +15165,6 @@ bento.define('bento/tiled', [
                     }
                 }
             };
-
             var savePathsAndParameters = function () {
                 var prop = '';
                 var key = '';
@@ -15122,6 +15188,52 @@ bento.define('bento/tiled', [
                     require.paths.push(component.pathToComponent);
                     require.parameters.push(Utils.cloneJson(parameters));
                 }
+            };
+            var onRequire = function () {
+                var Constructor = arguments[0];
+                var instance = new Constructor(require.parameters[0]);
+                var dimension = instance.dimension;
+                var spriteOrigin = new Vector2(0, 0);
+                var ii = 1;
+                var iil = arguments.length;
+
+                instance.getComponent('sprite', function (sprite) {
+                    spriteOrigin = sprite.origin;
+                });
+
+                instance.position = new Vector2(
+                    offset.x + x + spriteOrigin.x,
+                    offset.y + y + (spriteOrigin.y - dimension.height)
+                );
+
+                // instantiate and attach all the specified components
+                for (; ii < iil; ++ii) {
+                    instance.attach(new arguments[ii](require.parameters[ii]));
+                }
+
+                // add to game
+                if (attachEntities) {
+                    Bento.objects.attach(instance);
+                }
+                entities.push(instance);
+
+                entitiesSpawned += 1;
+
+                if (onSpawn) {
+                    onSpawn.call(tiled, instance, object, {
+                        tileSet: tileSet,
+                        moduleName: moduleName,
+                        properties: properties
+                    }, layerIndex);
+                }
+
+                // cache module
+                if (cacheModules) {
+                    // caching the arguments as an actual array for safety
+                    cachedModules[moduleName] = Array.prototype.slice.call(arguments);
+                }
+
+                checkSpawnComplete();
             };
 
             if (!object.gid) {
@@ -15163,47 +15275,14 @@ bento.define('bento/tiled', [
             savePathsAndParameters();
 
             entitiesToSpawn += 1;
-            bento.require(require.paths, function () {
-                var instance = new arguments[0](require.parameters[0]);
-                var dimension = instance.dimension;
-                var spriteOrigin = new Vector2(0, 0);
-                var ii = 1;
-                var iil = arguments.length;
 
-                instance.getComponent('sprite', function (sprite) {
-                    spriteOrigin = sprite.origin;
-                });
-
-                instance.position = new Vector2(
-                    offset.x + x + spriteOrigin.x,
-                    offset.y + y + (spriteOrigin.y - dimension.height)
-                );
-
-                // instantiate and attach all the specified components
-                for (; ii < iil; ++ii) {
-                    instance.attach(new arguments[ii](require.parameters[ii]));
-                }
-
-                // add to game
-                if (attachEntities) {
-                    Bento.objects.attach(instance);
-                }
-                entities.push(instance);
-
-                entitiesSpawned += 1;
-
-                if (onSpawn) {
-                    onSpawn.call(tiled, instance, object, {
-                        tileSet: tileSet,
-                        moduleName: moduleName,
-                        properties: properties
-                    }, layerIndex);
-                }
-
-                if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
-                    onSpawnComplete.call(tiled);
-                }
-            });
+            if (cacheModules && cachedModules[moduleName]) {
+                // use the cached module
+                onRequire.call(this, cachedModules[moduleName]);
+            } else {
+                // use require
+                bento.require(require.paths, onRequire);
+            }
         };
         var tiled = {
             name: settings.name || 'tiled',
@@ -15249,6 +15328,15 @@ bento.define('bento/tiled', [
              * @name layerImages
              */
             layerImages: layerSprites,
+            /**
+             * Clear cached modules if cacheModules is tru (the cache is global, 
+             * developer need to call this manually to clear the memory)
+             * @instance
+             * @name clearCache
+             */
+            clearCache: function () {
+                cachedModules = {};
+            },
             // clean up
             destroy: function () {
                 layerSprites.dispose();

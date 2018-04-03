@@ -39,6 +39,7 @@ bento.define('bento/managers/asset', [
             'packed-json': {}
         };
         var spineAssetLoader;
+        var tempSpineImage;
         /**
          * (Down)Load asset types
          */
@@ -336,19 +337,91 @@ bento.define('bento/managers/asset', [
                 return paths.join('/') + '/';
             })();
             var spine = {
-                image: null,
                 skeleton: null,
                 atlas: null,
-                path: path
+                images: [], // {img: Image, path: ''}
+                imageCount: 0,
+                path: path,
+                pathJson: source + ".json", // need this when removing asset
+                pathAtlas: source.replace("-pro", "").replace("-ess", "") + ".atlas", // need this when removing asset
+                dispose: function () {
+                    var i, l;
+                    for (i = 0, l = spine.images.length; i < l; ++i) {
+                        spineAssetLoader.remove(spine.images[i].path);
+                    }
+                    spineAssetLoader.remove(spine.pathJson);
+                    spineAssetLoader.remove(spine.pathAtlas);
+                }
             };
             var checkForCompletion = function () {
                 if (
-                    spine.image !== null &&
+                    spine.imageCount === spine.images.length &&
                     spine.skeleton !== null &&
                     spine.atlas !== null
                 ) {
                     callback(null, name, spine);
                 }
+            };
+            var onLoadSpineJson = function (path, data) {
+                spine.skeleton = data;
+                checkForCompletion();
+
+                // next: load atlas
+                spineAssetLoader.loadText(
+                    source.replace("-pro", "").replace("-ess", "") + ".atlas",
+                    function (path, dataAtlas) {
+                        // it is in my belief that spine exports either the atlas or json wrong when skins are involved
+                        // the atlas path becomes an relative path to the root as opposed to relative to images/
+                        var skeletonJson = JSON.parse(data);
+                        var prefix = skeletonJson.skeleton.images;
+                        prefix = prefix.replace('./', '');
+                        while (dataAtlas.indexOf(prefix) >= 0) {
+                            dataAtlas = dataAtlas.replace(prefix, '');
+                        }
+                        onLoadSpineAtlas(path, dataAtlas);
+                    },
+                    function (path, err) {
+                        callback(err, name, null);
+                    }
+                );
+            };
+            var onLoadSpineAtlas = function (path, data) {
+                // parse the atlas just to check what images to load
+                var textureAtlas = new window.spine.TextureAtlas(data, function (path) {
+                    // return a fake texture
+                    if (!tempSpineImage) {
+                        tempSpineImage = new Image();
+                    }
+                    return new window.spine.FakeTexture(tempSpineImage);
+                });
+                var pages = textureAtlas.pages;
+                var i, l;
+
+                // update image count
+                spine.imageCount = pages.length;
+
+                // load all the images
+                // NOTE: we should definitely consider lazy loading here for skins, 
+                // we may not want to preload all the skins if they are not used at the same time!
+                for (i = 0, l = pages.length; i < l; ++i) {
+                    spineAssetLoader.loadTexture(
+                        spine.path + pages[i].name,
+                        onLoadSpineImage,
+                        function (path, err) {
+                            callback(err, name, null);
+                        }
+                    );
+                }
+
+                spine.atlas = data;
+                checkForCompletion();
+            };
+            var onLoadSpineImage = function (path, image) {
+                spine.images.push({
+                    img: image,
+                    path: path
+                });
+                checkForCompletion();
             };
 
             // to load spine, you must include spine-canvas.js
@@ -364,31 +437,8 @@ bento.define('bento/managers/asset', [
             }
 
             spineAssetLoader.loadText(
-                source + ".json",
-                function (path, data) {
-                    spine.skeleton = data;
-                    checkForCompletion();
-                },
-                function (path, err) {
-                    callback(err, name, null);
-                }
-            );
-            spineAssetLoader.loadText(
-                source.replace("-pro", "").replace("-ess", "") + ".atlas",
-                function (path, data) {
-                    spine.atlas = data;
-                    checkForCompletion();
-                },
-                function (path, err) {
-                    callback(err, name, null);
-                }
-            );
-            spineAssetLoader.loadTexture(
-                source.replace("-pro", "").replace("-ess", "") + ".png",
-                function (path, image) {
-                    spine.image = new PackedImage(image);
-                    checkForCompletion();
-                },
+                spine.pathJson,
+                onLoadSpineJson, // will load atlas here
                 function (path, err) {
                     callback(err, name, null);
                 }
@@ -1288,6 +1338,15 @@ bento.define('bento/managers/asset', [
                 Audia = Audia.getHtmlAudia();
             }
         };
+
+        // implement dispose for spine canvas texture(?)
+        /*if (window.spine && window.spine.canvas && window.spine.canvas.CanvasTexture) {
+            window.spine.canvas.CanvasTexture.prototype.dispose = function () {
+                if (this._image && this._image.dispose) {
+                    this._image.dispose();
+                }
+            };
+        }*/
         return manager;
     };
 });
