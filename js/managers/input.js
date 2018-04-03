@@ -283,6 +283,7 @@ bento.define('bento/managers/input', [
                 for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = false;
                     EventSystem.fire('buttonUp', names[i]);
+                    EventSystem.fire('buttonUp-' + names[i]);
                 }
             },
             destroy = function () {
