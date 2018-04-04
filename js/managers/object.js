@@ -25,6 +25,8 @@ bento.define('bento/managers/object', [
         var quickAccess = {};
         var isRunning = false;
         var sortMode = settings.sortMode || 0;
+        var useDeltaT = settings.useDeltaT || false;
+        var ms60fps = 1000 / 60;
         var isPaused = 0;
         var isStopped = false;
         var sortDefault = function () {
@@ -64,15 +66,19 @@ bento.define('bento/managers/object', [
             cumulativeTime += deltaT;
             data = getGameData();
             data.deltaT = deltaT;
-            if (settings.useDeltaT) {
-                cumulativeTime = 1000 / 60;
+            if (useDeltaT) {
+                cumulativeTime = ms60fps;
+            } else {
+                // fixed time will not report the real delta time, 
+                // assumes time goes by with 16.667 ms every frame
+                data.deltaT = ms60fps;
             }
-            while (cumulativeTime >= 1000 / 60) {
-                cumulativeTime -= 1000 / 60;
+            while (cumulativeTime >= ms60fps) {
+                cumulativeTime -= ms60fps;
                 if (cumulativeTime > 1000 / minimumFps) {
                     // deplete cumulative time
-                    while (cumulativeTime >= 1000 / 60) {
-                        cumulativeTime -= 1000 / 60;
+                    while (cumulativeTime >= ms60fps) {
+                        cumulativeTime -= ms60fps;
                     }
                 }
                 if (settings.useDeltaT) {

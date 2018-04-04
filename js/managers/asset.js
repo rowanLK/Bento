@@ -341,6 +341,7 @@ bento.define('bento/managers/asset', [
                 atlas: null,
                 images: [], // {img: Image, path: ''}
                 imageCount: 0, // only used to check if all images are loaded
+                skinImages: {}, // imageName -> skinName
                 path: path,
                 pathJson: source + ".json", // need this when removing asset
                 pathAtlas: source + ".atlas", // need this when removing asset
@@ -414,6 +415,11 @@ bento.define('bento/managers/asset', [
                 } else {
                     // in case of lazy loading: Bento asset manager will not manage the spine images!
                     spine.imageCount = 0;
+
+                    // we will now inspect the texture atlas and match skins with images
+                    // which allows us to lazy load images per skin
+                    // requirement: one image must match one skin! see this forum post http://esotericsoftware.com/forum/Separated-atlas-for-each-skin-9835?p=45504#p45504
+                    linkSkinWithImage(textureAtlas);
                 }
 
                 spine.atlas = data;
@@ -425,6 +431,42 @@ bento.define('bento/managers/asset', [
                     path: path
                 });
                 checkForCompletion();
+            };
+            var linkSkinWithImage = function (textureAtlas) {
+                // In order for the lazy loading to work, we need to know 
+                // what skin is related to which image. Spine will not do this out of the box
+                // so we will have to parse the skeleton json and atlas manually and make
+                // think link ourselves.
+                var skeletonJson = JSON.parse(spine.skeleton);
+                var skins = skeletonJson.skins;
+                var findRegion = function (name) {
+                    // searches region for a name and returns the page name
+                    var i, l;
+                    var region;
+                    var regions = textureAtlas.regions;
+                    for (i = 0, l = regions.length; i < l; ++i) {
+                        region = regions[i];
+                        if (region.name === name) {
+                            return region.page.name;
+                        }
+                    }
+                    return '';
+                };
+                Utils.forEach(skins, function (skinData, skinName) {
+                    Utils.forEach(skinData, function (slotData, slotName, l, breakLoop) {
+                        Utils.forEach(slotData, function (attachmentData, attachmentName) {
+                            var actualAttachmentName = attachmentData.name;
+                            // we link the name with a region in the atlas data
+                            var pageName = findRegion(actualAttachmentName);
+
+                            // once found, we break the slots loop
+                            if (pageName) {
+                                breakLoop();
+                                spine.skinImages[pageName] = skinName;
+                            }
+                        });
+                    });
+                });
             };
 
             // to load spine, you must include spine-canvas.js

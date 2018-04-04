@@ -7284,6 +7284,7 @@ bento.define('bento/components/spine', [
     var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
         var skeletonDataOut;
         var spineData = Bento.assets.getSpine(name);
+        var skinsPerImage = spineData.skinImages;
         var spineAssetLoader = Bento.assets.getSpineLoader();
         // returns the textures for an atlas
         var textureLoader = function (path) {
@@ -7292,8 +7293,13 @@ bento.define('bento/components/spine', [
                 // image may not be loaded (lazyloading spine), return a fake texture for now
                 output = getFakeTexture();
 
-                // load correct image asap
-                lazyLoad(path);
+                // do we need the image for this skin?
+                // Spine will otherwise attempt to load every image related to a TextureAtlas,
+                // we made the link between skins and images during the asset loading (see managers/asset.js)
+                if (skin === skinsPerImage[path]) {
+                    // load correct image asap
+                    lazyLoad(path);
+                }
             }
             return output;
         };
@@ -7308,7 +7314,7 @@ bento.define('bento/components/spine', [
                     skeletonDataOut.skeleton = newData.skeleton;
                     skeletonDataOut.state = newData.state;
                     skeletonDataOut.bounds = bounds.skeleton;
-                    // call
+                    // alert the spine component that skeleton data is updated
                     if (skeletonDataOut.onReload) {
                         skeletonDataOut.onReload();
                     }
@@ -7385,6 +7391,7 @@ bento.define('bento/components/spine', [
         var spineName = settings.spineName || settings.spine;
         var skin = settings.skin || 'default';
         var currentAnimation = settings.animation || 'default';
+        var isLooping = true;
         // animation state listeners
         var onEvent = settings.onEvent;
         var onComplete = settings.onComplete;
@@ -7423,7 +7430,8 @@ bento.define('bento/components/spine', [
                         skeleton = skeletonData.skeleton;
                         state = skeletonData.state;
                         bounds = skeletonData.bounds;
-                        // apply
+                        // apply previous state
+                        state.setAnimation(0, currentAnimation, isLooping);
                         state.apply(skeleton);
                     };
                 }
@@ -7479,7 +7487,9 @@ bento.define('bento/components/spine', [
                 currentAnimation = name;
                 // reset speed
                 currentAnimationSpeed = 1;
-                state.setAnimation(0, name, Utils.getDefault(loop, true));
+                isLooping = Utils.getDefault(loop, true);
+                // apply animation
+                state.setAnimation(0, name, isLooping);
                 // set callback, even if undefined
                 onComplete = callback;
                 // apply the skeleton to avoid visual delay
@@ -9123,6 +9133,7 @@ bento.define('bento/managers/asset', [
                 atlas: null,
                 images: [], // {img: Image, path: ''}
                 imageCount: 0, // only used to check if all images are loaded
+                skinImages: {}, // imageName -> skinName
                 path: path,
                 pathJson: source + ".json", // need this when removing asset
                 pathAtlas: source + ".atlas", // need this when removing asset
@@ -9196,6 +9207,11 @@ bento.define('bento/managers/asset', [
                 } else {
                     // in case of lazy loading: Bento asset manager will not manage the spine images!
                     spine.imageCount = 0;
+
+                    // we will now inspect the texture atlas and match skins with images
+                    // which allows us to lazy load images per skin
+                    // requirement: one image must match one skin! see this forum post http://esotericsoftware.com/forum/Separated-atlas-for-each-skin-9835?p=45504#p45504
+                    linkSkinWithImage(textureAtlas);
                 }
 
                 spine.atlas = data;
@@ -9207,6 +9223,42 @@ bento.define('bento/managers/asset', [
                     path: path
                 });
                 checkForCompletion();
+            };
+            var linkSkinWithImage = function (textureAtlas) {
+                // In order for the lazy loading to work, we need to know 
+                // what skin is related to which image. Spine will not do this out of the box
+                // so we will have to parse the skeleton json and atlas manually and make
+                // think link ourselves.
+                var skeletonJson = JSON.parse(spine.skeleton);
+                var skins = skeletonJson.skins;
+                var findRegion = function (name) {
+                    // searches region for a name and returns the page name
+                    var i, l;
+                    var region;
+                    var regions = textureAtlas.regions;
+                    for (i = 0, l = regions.length; i < l; ++i) {
+                        region = regions[i];
+                        if (region.name === name) {
+                            return region.page.name;
+                        }
+                    }
+                    return '';
+                };
+                Utils.forEach(skins, function (skinData, skinName) {
+                    Utils.forEach(skinData, function (slotData, slotName, l, breakLoop) {
+                        Utils.forEach(slotData, function (attachmentData, attachmentName) {
+                            var actualAttachmentName = attachmentData.name;
+                            // we link the name with a region in the atlas data
+                            var pageName = findRegion(actualAttachmentName);
+
+                            // once found, we break the slots loop
+                            if (pageName) {
+                                breakLoop();
+                                spine.skinImages[pageName] = skinName;
+                            }
+                        });
+                    });
+                });
             };
 
             // to load spine, you must include spine-canvas.js
@@ -11280,6 +11332,8 @@ bento.define('bento/managers/object', [
         var quickAccess = {};
         var isRunning = false;
         var sortMode = settings.sortMode || 0;
+        var useDeltaT = settings.useDeltaT || false;
+        var ms60fps = 1000 / 60;
         var isPaused = 0;
         var isStopped = false;
         var sortDefault = function () {
@@ -11319,15 +11373,19 @@ bento.define('bento/managers/object', [
             cumulativeTime += deltaT;
             data = getGameData();
             data.deltaT = deltaT;
-            if (settings.useDeltaT) {
-                cumulativeTime = 1000 / 60;
+            if (useDeltaT) {
+                cumulativeTime = ms60fps;
+            } else {
+                // fixed time will not report the real delta time, 
+                // assumes time goes by with 16.667 ms every frame
+                data.deltaT = ms60fps;
             }
-            while (cumulativeTime >= 1000 / 60) {
-                cumulativeTime -= 1000 / 60;
+            while (cumulativeTime >= ms60fps) {
+                cumulativeTime -= ms60fps;
                 if (cumulativeTime > 1000 / minimumFps) {
                     // deplete cumulative time
-                    while (cumulativeTime >= 1000 / 60) {
-                        cumulativeTime -= 1000 / 60;
+                    while (cumulativeTime >= ms60fps) {
+                        cumulativeTime -= ms60fps;
                     }
                 }
                 if (settings.useDeltaT) {

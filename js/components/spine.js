@@ -53,6 +53,7 @@ bento.define('bento/components/spine', [
     var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
         var skeletonDataOut;
         var spineData = Bento.assets.getSpine(name);
+        var skinsPerImage = spineData.skinImages;
         var spineAssetLoader = Bento.assets.getSpineLoader();
         // returns the textures for an atlas
         var textureLoader = function (path) {
@@ -61,8 +62,13 @@ bento.define('bento/components/spine', [
                 // image may not be loaded (lazyloading spine), return a fake texture for now
                 output = getFakeTexture();
 
-                // load correct image asap
-                lazyLoad(path);
+                // do we need the image for this skin?
+                // Spine will otherwise attempt to load every image related to a TextureAtlas,
+                // we made the link between skins and images during the asset loading (see managers/asset.js)
+                if (skin === skinsPerImage[path]) {
+                    // load correct image asap
+                    lazyLoad(path);
+                }
             }
             return output;
         };
@@ -77,7 +83,7 @@ bento.define('bento/components/spine', [
                     skeletonDataOut.skeleton = newData.skeleton;
                     skeletonDataOut.state = newData.state;
                     skeletonDataOut.bounds = bounds.skeleton;
-                    // call
+                    // alert the spine component that skeleton data is updated
                     if (skeletonDataOut.onReload) {
                         skeletonDataOut.onReload();
                     }
@@ -154,6 +160,7 @@ bento.define('bento/components/spine', [
         var spineName = settings.spineName || settings.spine;
         var skin = settings.skin || 'default';
         var currentAnimation = settings.animation || 'default';
+        var isLooping = true;
         // animation state listeners
         var onEvent = settings.onEvent;
         var onComplete = settings.onComplete;
@@ -192,7 +199,8 @@ bento.define('bento/components/spine', [
                         skeleton = skeletonData.skeleton;
                         state = skeletonData.state;
                         bounds = skeletonData.bounds;
-                        // apply
+                        // apply previous state
+                        state.setAnimation(0, currentAnimation, isLooping);
                         state.apply(skeleton);
                     };
                 }
@@ -248,7 +256,9 @@ bento.define('bento/components/spine', [
                 currentAnimation = name;
                 // reset speed
                 currentAnimationSpeed = 1;
-                state.setAnimation(0, name, Utils.getDefault(loop, true));
+                isLooping = Utils.getDefault(loop, true);
+                // apply animation
+                state.setAnimation(0, name, isLooping);
                 // set callback, even if undefined
                 onComplete = callback;
                 // apply the skeleton to avoid visual delay
