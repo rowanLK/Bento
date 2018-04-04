@@ -218,7 +218,7 @@ bento.define('bento/entity', [
          * @default 0
          * @name rotation
          * @snippet #Entity.rotation|Number
-            scale
+            rotation
          */
         this.rotation = 0;
         /**
