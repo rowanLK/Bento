@@ -9249,7 +9249,14 @@ bento.define('bento/managers/asset', [
                         Utils.forEach(slotData, function (attachmentData, attachmentName) {
                             var actualAttachmentName = attachmentData.name;
                             // we link the name with a region in the atlas data
-                            var pageName = findRegion(actualAttachmentName);
+                            var pageName;
+
+                            if (!actualAttachmentName) {
+                                // attachment name does not exist, just assign to the first page??
+                                pageName = textureAtlas.pages[0].name;
+                            } else {
+                                pageName = findRegion(actualAttachmentName);
+                            }
 
                             // once found, we break the slots loop
                             if (pageName) {
