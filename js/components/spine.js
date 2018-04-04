@@ -2,6 +2,9 @@
  * Component that draws a Spine animation. A Spine asset must consist of a json, atlas and png with the same name. Developer must add
  [spine-canvas.js]{@link https://raw.githubusercontent.com/EsotericSoftware/spine-runtimes/3.6/spine-ts/build/spine-canvas.js} manually.
  * Note: made with canvas2d renderer in mind.
+ * Note about skins: Lazy loading can be turned on with Bento.assets.lazyLoadSpine = true before the assets are loaded. This is useful if the spine
+ * animations contains many skins and you want to prevent all of the skins to be preloaded. The asset manager will no longer manage the spine images.
+ * Instead can call Spine.cleanLazyLoadedImages() to remove all images.
  * <br>Exports: Constructor
  * @module bento/components/spine
  * @moduleName Spine
@@ -31,15 +34,65 @@ bento.define('bento/components/spine', [
     Vector2
 ) {
     'use strict';
+    /**
+     * Fake texture in case of lazy loading
+     */
+    var fakeTexture;
+    var getFakeTexture = function () {
+        var image;
+        if (!fakeTexture) {
+            image = new Image();
+            fakeTexture = new window.spine.FakeTexture(image);
+        }
+        return fakeTexture;
+    };
+    var lazyLoadedImages = {};
+    /**
+     * Get/load the asset for the spine sprite
+     */
     var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
+        var skeletonDataOut;
         var spineData = Bento.assets.getSpine(name);
+        var spineAssetLoader = Bento.assets.getSpineLoader();
+        // returns the textures for an atlas
+        var textureLoader = function (path) {
+            var output = spineAssetLoader.get(spineData.path + path);
+            if (!output) {
+                // image may not be loaded (lazyloading spine), return a fake texture for now
+                output = getFakeTexture();
 
+                // load correct image asap
+                lazyLoad(path);
+            }
+            return output;
+        };
+        var lazyLoad = function (path) {
+            // load the real texture now
+            spineAssetLoader.loadTexture(
+                spineData.path + path,
+                function (p, img) {
+                    // reload everything
+                    var newData = loadSkeletonData(name, initialAnimation, listeners, skin);
+                    // pass back to original data
+                    skeletonDataOut.skeleton = newData.skeleton;
+                    skeletonDataOut.state = newData.state;
+                    skeletonDataOut.bounds = bounds.skeleton;
+                    // call
+                    if (skeletonDataOut.onReload) {
+                        skeletonDataOut.onReload();
+                    }
+
+                    // save path
+                    lazyLoadedImages[p] = img;
+                },
+                function () {
+                    // error
+                }
+            );
+        };
         // Load the texture atlas using name.atlas and name.png from the AssetManager.
         // The function passed to TextureAtlas is used to resolve relative paths.
-        var atlas = new window.spine.TextureAtlas(spineData.atlas, function (path) {
-            var output = Bento.assets.getSpineLoader().get(spineData.path + path);
-            return output;
-        });
+        var atlas = new window.spine.TextureAtlas(spineData.atlas, textureLoader);
 
         // Create a AtlasAttachmentLoader, which is specific to the WebGL backend.
         var atlasLoader = new window.spine.AtlasAttachmentLoader(atlas);
@@ -73,11 +126,13 @@ bento.define('bento/components/spine', [
         });
 
         // Pack everything up and return to caller.
-        return {
+        skeletonDataOut = {
             skeleton: skeleton,
             state: animationState,
-            bounds: bounds
+            bounds: bounds,
+            onReload: null
         };
+        return skeletonDataOut;
     };
     var calculateBounds = function (skeleton) {
         var data = skeleton.data;
@@ -130,6 +185,16 @@ bento.define('bento/components/spine', [
                     skeleton = skeletonData.skeleton;
                     state = skeletonData.state;
                     bounds = skeletonData.bounds;
+
+                    // anticipate lazy load
+                    skeletonData.onReload = function () {
+                        // rebind data
+                        skeleton = skeletonData.skeleton;
+                        state = skeletonData.state;
+                        bounds = skeletonData.bounds;
+                        // apply
+                        state.apply(skeleton);
+                    };
                 }
                 // initialize skeleton renderer
                 if (!skeletonRenderer) {
@@ -257,6 +322,21 @@ bento.define('bento/components/spine', [
         if (skeletonRenderer) {
             skeletonRenderer.debugRendering = bool;
         }
+    };
+
+    Spine.cleanLazyLoadedImages = function () {
+        // clearing up memory
+        // don't call this during update loops! 
+        // no spine components should be alive when this is called, because all references will be invalid
+        var spineAssetLoader = Bento.assets.getSpineLoader();
+        Utils.forEach(lazyLoadedImages, function (image, imagePath, l, breakLoop) {
+            spineAssetLoader.remove(imagePath);
+
+            if (image.dispose) {
+                // alternatively we could not call dispose and let the garbage collector do its work
+                image.dispose();
+            }
+        });
     };
 
     return Spine;

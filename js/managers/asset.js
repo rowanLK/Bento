@@ -340,10 +340,10 @@ bento.define('bento/managers/asset', [
                 skeleton: null,
                 atlas: null,
                 images: [], // {img: Image, path: ''}
-                imageCount: 0,
+                imageCount: 0, // only used to check if all images are loaded
                 path: path,
                 pathJson: source + ".json", // need this when removing asset
-                pathAtlas: source.replace("-pro", "").replace("-ess", "") + ".atlas", // need this when removing asset
+                pathAtlas: source + ".atlas", // need this when removing asset
                 dispose: function () {
                     var i, l;
                     for (i = 0, l = spine.images.length; i < l; ++i) {
@@ -401,16 +401,19 @@ bento.define('bento/managers/asset', [
                 spine.imageCount = pages.length;
 
                 // load all the images
-                // NOTE: we should definitely consider lazy loading here for skins, 
-                // we may not want to preload all the skins if they are not used at the same time!
-                for (i = 0, l = pages.length; i < l; ++i) {
-                    spineAssetLoader.loadTexture(
-                        spine.path + pages[i].name,
-                        onLoadSpineImage,
-                        function (path, err) {
-                            callback(err, name, null);
-                        }
-                    );
+                if (!manager.lazyLoadSpine) {
+                    for (i = 0, l = pages.length; i < l; ++i) {
+                        spineAssetLoader.loadTexture(
+                            spine.path + pages[i].name,
+                            onLoadSpineImage,
+                            function (path, err) {
+                                callback(err, name, null);
+                            }
+                        );
+                    }
+                } else {
+                    // in case of lazy loading: Bento asset manager will not manage the spine images!
+                    spine.imageCount = 0;
                 }
 
                 spine.atlas = data;
@@ -1314,6 +1317,7 @@ bento.define('bento/managers/asset', [
             }
         };
         var manager = {
+            lazyLoadSpine: false,
             skipAudioCallback: false,
             reload: reload,
             loadAllAssets: loadAllAssets,
