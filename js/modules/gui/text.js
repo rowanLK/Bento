@@ -315,6 +315,13 @@ bento.define('bento/gui/text', [
          * Draw text to canvas
          */
         var updateCanvas = function () {
+            if (!canvas) {
+                // re-initialize canvas
+                canvas = document.createElement('canvas');
+                ctx = canvas.getContext('2d');
+                packedImage.image = canvas;
+            }
+
             var i, ii,
                 j, jj,
                 l,
@@ -733,18 +740,15 @@ bento.define('bento/gui/text', [
             },
             start: function () {
                 // re-init canvas
-                // if (!canvas) {
-                //     canvas = document.createElement('canvas');
-                //     ctx = canvas.getContext('2d');
-                //     packedImage.image = canvas;
-                //     updateCanvas();
-                // }
+                if (!canvas) {
+                    updateCanvas();
+                }
             },
             destroy: function () {
-                // if (canvas.dispose) {
-                //     canvas.dispose();
-                //     canvas = null;
-                // }
+                if (Text.disposeCanvas && canvas.dispose) {
+                    canvas.dispose();
+                    canvas = null;
+                }
             }
         };
         var sprite = new Sprite({
@@ -859,6 +863,8 @@ bento.define('bento/gui/text', [
 
     // static value drawDebug
     Text.drawDebug = false;
+    // clean up internal canvas
+    Text.disposeCanvas = false;
 
     return Text;
 });
