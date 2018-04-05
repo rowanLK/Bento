@@ -340,13 +340,18 @@ bento.define('bento/components/spine', [
         // no spine components should be alive when this is called, because all references will be invalid
         var spineAssetLoader = Bento.assets.getSpineLoader();
         Utils.forEach(lazyLoadedImages, function (image, imagePath, l, breakLoop) {
-            spineAssetLoader.remove(imagePath);
+            try {
+                spineAssetLoader.remove(imagePath);
+            } catch (e) {
+                Utils.log(e);
+            }
 
             if (image.dispose) {
                 // alternatively we could not call dispose and let the garbage collector do its work
                 image.dispose();
             }
         });
+        lazyLoadedImages = [];
     };
 
     return Spine;
