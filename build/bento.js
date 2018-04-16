@@ -17995,9 +17995,7 @@ bento.define('bento/gui/text', [
             var singleStrings = ('' + text).split('\n'),
                 stringWidth,
                 singleString,
-                i,
-                j,
-                l,
+                i, j, l, ll,
                 calcGrd,
                 subString,
                 remainingString,
@@ -18011,6 +18009,7 @@ bento.define('bento/gui/text', [
             for (i = 0, l = singleStrings.length; i < l; ++i) {
                 spaceWidth = 0;
                 singleString = singleStrings[i];
+                ll = singleString.length;
                 stringWidth = ctx.measureText(singleString).width;
                 // do we need to generate extra linebreaks?
                 if (linebreaks && !isEmpty(maxWidth) && stringWidth > maxWidth) {
@@ -18021,8 +18020,8 @@ bento.define('bento/gui/text', [
                         subString = singleString.slice(0, singleString.length - j);
                         stringWidth = ctx.measureText(subString).width;
                         // no more letters left: assume 1 letter
-                        if (j === l) {
-                            j = l - 1;
+                        if (j === ll) {
+                            j = ll - 1;
                             break;
                         }
                     }
@@ -18033,8 +18032,8 @@ bento.define('bento/gui/text', [
                         j += subString.length - spacePos;
                     }
                     // split the string into 2
-                    remainingString = singleString.slice(l - j, l);
-                    singleString = singleString.slice(0, l - j);
+                    remainingString = singleString.slice(ll - j, ll);
+                    singleString = singleString.slice(0, ll - j);
 
                     // remove first space in remainingString
                     if (remainingString.charAt(0) === ' ') {
