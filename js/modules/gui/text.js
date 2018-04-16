@@ -527,7 +527,7 @@ bento.define('bento/gui/text', [
             var singleStrings = ('' + text).split('\n'),
                 stringWidth,
                 singleString,
-                i, j, l, ll,
+                i, j, l,
                 calcGrd,
                 subString,
                 remainingString,
@@ -538,10 +538,10 @@ bento.define('bento/gui/text', [
             canvasWidth = 1;
             canvasHeight = 1;
             setContext(ctx);
-            for (i = 0, l = singleStrings.length; i < l; ++i) {
+            for (i = 0; i < singleStrings.length; ++i) {
                 spaceWidth = 0;
                 singleString = singleStrings[i];
-                ll = singleString.length;
+                l = singleString.length;
                 stringWidth = ctx.measureText(singleString).width;
                 // do we need to generate extra linebreaks?
                 if (linebreaks && !isEmpty(maxWidth) && stringWidth > maxWidth) {
@@ -552,8 +552,8 @@ bento.define('bento/gui/text', [
                         subString = singleString.slice(0, singleString.length - j);
                         stringWidth = ctx.measureText(subString).width;
                         // no more letters left: assume 1 letter
-                        if (j === ll) {
-                            j = ll - 1;
+                        if (j === l) {
+                            j = l - 1;
                             break;
                         }
                     }
@@ -564,8 +564,8 @@ bento.define('bento/gui/text', [
                         j += subString.length - spacePos;
                     }
                     // split the string into 2
-                    remainingString = singleString.slice(ll - j, ll);
-                    singleString = singleString.slice(0, ll - j);
+                    remainingString = singleString.slice(l - j, l);
+                    singleString = singleString.slice(0, l - j);
 
                     // remove first space in remainingString
                     if (remainingString.charAt(0) === ' ') {
