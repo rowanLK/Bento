@@ -3672,7 +3672,7 @@ bento.define('bento/entity', [
          * @default 0
          * @name rotation
          * @snippet #Entity.rotation|Number
-            scale
+            rotation
          */
         this.rotation = 0;
         /**
@@ -4527,6 +4527,7 @@ toComparablePosition(${1:worldPosition});
 
     return Entity;
 });
+
 /**
  * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn
  off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
