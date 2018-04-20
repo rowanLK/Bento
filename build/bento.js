@@ -17083,6 +17083,20 @@ bento.define('bento/gui/clickbutton', [
                 settings.onClick.apply(entity);
             },
             /**
+             * Performs the callback as if the button was clicked, 
+             * takes active state into account 
+             * @function
+             * @instance
+             * @name mimicClick
+             * @snippet #ClickButton.mimicClick|snippet
+                doCallback();
+             */
+            mimicClick: function () {
+                if (active) {
+                    settings.onClick.apply(entity);
+                }
+            },
+            /**
              * Check if the button is active
              * @function
              * @instance
@@ -18531,9 +18545,6 @@ bento.define('bento/gui/togglebutton', [
                 }
                 sprite.setAnimation(toggled ? 'down' : 'up');
             },
-            mimicClick: function () {
-                entity.getComponent('clickable').callbacks.onHoldEnd();
-            },
             /**
              * Activates or deactives the button. Deactivated buttons cannot be pressed.
              * @function
@@ -18552,7 +18563,7 @@ bento.define('bento/gui/togglebutton', [
                 }
             },
             /**
-             * Performs the callback as if the button was clicked
+             * Performs the onClick callback, ignores active state
              * @function
              * @instance
              * @name doCallback
@@ -18562,6 +18573,21 @@ bento.define('bento/gui/togglebutton', [
             doCallback: function () {
                 settings.onToggle.apply(entity);
             },
+            /**
+             * Performs the callback as if the button was clicked, 
+             * takes active state into account 
+             * @function
+             * @instance
+             * @name mimicClick
+             * @snippet #ToggleButton.mimicClick|snippet
+                doCallback();
+             */
+            mimicClick: function () {
+                if (active) {
+                    settings.onToggle.apply(entity);
+                }
+            },
+
             /**
              * Check if the button is active
              * @function

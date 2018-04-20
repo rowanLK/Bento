@@ -254,6 +254,20 @@ bento.define('bento/gui/clickbutton', [
                 settings.onClick.apply(entity);
             },
             /**
+             * Performs the callback as if the button was clicked, 
+             * takes active state into account 
+             * @function
+             * @instance
+             * @name mimicClick
+             * @snippet #ClickButton.mimicClick|snippet
+                doCallback();
+             */
+            mimicClick: function () {
+                if (active) {
+                    settings.onClick.apply(entity);
+                }
+            },
+            /**
              * Check if the button is active
              * @function
              * @instance
