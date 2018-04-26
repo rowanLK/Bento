@@ -11,6 +11,7 @@
 * Fixed overlapping ClickButtons intercepting a click even though one of them is inactive
 * Added *active* property to ClickButtons. It was quite confusing that a ClickButton could use a *visible* property but it's active state was using a *setActive* method.
 * Clickbutton is allowed again to have *frameCountX: 1* and *frameCountY: 1* again. In that case, the up, down and inactive sprite frames all use frame 0.
+* The Entity.collidesWith *withComponent* parameter is removed.
 * Static **Text.disposeCanvas** member to dispose the internal canvas on destroy (dispose is a cocoon feature)
 * Tiled has an additional *cacheModules* setting, which will cache RequireJS and will be able to synchronously call modules if they were loaded before. Use the *clearCache* method to delete the cache.
 * Tiled's *onSpawn* includes a *properties* key.

@@ -673,7 +673,6 @@ moveComponentTo(${1:component}, ${2:index});
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Entity} settings.rectangle - Or if you want to check collision with a shape directly instead of entity
-     * @param {String} settings.withComponent - Swap entity's boundingBox with this component's boundingBox
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
@@ -685,8 +684,6 @@ collidesWith({
     name: '', // or when colliding with a single entity
     family: '', // or when colliding with a family
     rectangle: rect, // or when colliding with a rectangle
-
-    withComponent: '', // name of component that has a boundingBox property 
     offset: vec2, // offset the collision check on original entity's position
     firstOnly: true, // onCollide stops after having found single collision 
     onCollide: function (other) {
@@ -708,7 +705,6 @@ collidesWith({
         var callback;
         var firstOnly = true;
         var collisions = null;
-        var withComponent = settings.withComponent;
         var component;
 
         if (settings.isEntity) {
@@ -763,22 +759,7 @@ collidesWith({
                 if (obj.id === this.id) {
                     continue;
                 }
-                if (!withComponent) {
-                    otherBox = obj.getBoundingBox();
-                } else {
-                    // get component
-                    component = obj.getComponent(withComponent);
-                    if (!component) {
-                        Utils.log('ERROR: component ' + withComponent + ' does not exist');
-                        return;
-                    }
-                    if (!component.boundingBox) {
-                        Utils.log('ERROR: component ' + withComponent + ' does not have a boundingBox');
-                        return;
-                    }
-                    // correct bounding box with position and scale
-                    otherBox = correctBoundingBox(obj, component.boundingBox);
-                }
+                otherBox = obj.getBoundingBox();
             } else if (obj.isRectangle) {
                 otherBox = obj;
             }
