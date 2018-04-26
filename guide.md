@@ -34,7 +34,8 @@ Download the [Bento Empty Project template](https://github.com/LuckyKat/Bento-Em
 To start the game, any browser will do. However, do keep in mind that every browser, [except Opera and Firefox](https://productforums.google.com/forum/#!msg/chrome/v177zA6LCKU/uQ8QZFD3pfcJ), will require a web server to be run locally on your computer. 
 
 Recommended for programming is Sublime Text 3. You can use any editor you like, but there is a Sublime Text 3 [plugin](https://github.com/LuckyKat/bento-amd-tool) available which makes development much easier! 
-Tip: other recommended plugins available on ST3's Package Control are JSHint, SublimeLinter-JSHint, Fold JavaScript and Javascript Beautify.
+
+Tip: other recommended plugins available on ST3's Package Control are *JSHint*, *SublimeLinter-JSHint*, *Fold JavaScript Functions* and *Javascript Beautify*.
 
 You will also need to install Node.js in order to utilize the development scripts. After which you will have the Node Package Manager to your disposal. Open Terminal (Mac) or cmd (Windows) and run the command `npm install -g gulp`. Also run the `npm install` command in your project directory.
 
