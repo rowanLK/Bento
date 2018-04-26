@@ -3,7 +3,7 @@
     "version": "1.1.0",
     "author": {
         "name": "Lucky Kat Studios",
-        "email" : "hernanzh@lucky-kat.com",
+        "email": "hernanzh@lucky-kat.com",
         "url": "http://lucky-kat.com"
     },
     "devDependencies": {
@@ -14,8 +14,8 @@
         "gulp-jshint": "1.11.2",
         "gulp-rename": "1.2.2",
         "gulp-uglify": "1.5.1",
-        "requirejs": "2.1.9",
         "jsdoc": "3.4.0",
-        "minami": "git://github.com/LuckyKat/minami.git"
+        "minami": "git://github.com/LuckyKat/minami.git",
+        "requirejs": "2.1.9"
     }
 }

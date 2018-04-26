@@ -2,8 +2,11 @@ div.description {
     margin-top: 0px;
     /*margin-left: 32px;*/
 }
-div.param-desc {
+.name+.description {
     margin-left: 32px;
+}
+div.param-desc {
+    margin-left: 64px;
 }
 h5 + table.params {
     margin-left: 32px;
@@ -16,7 +19,8 @@ dl.details {
     line-height: 16px;
 }
 dl.param-type {
-    margin-left: 32px;
+    font-style: italic;
+    margin-left: 64px;
     margin-top: 0px;
     margin-bottom: 0px;
     padding-bottom: 0px;
