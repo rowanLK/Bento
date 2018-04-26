@@ -783,6 +783,7 @@ Utils.extend(${1:baseObject}, ${2:extendedObject}, false, function (prop) {
          * @function
          * @instance
          * @name pickRandomFrom
+         * @param {Array} array
          * @snippet Utils.pickRandomFrom|snippet
         Utils.pickRandomFrom(${1:array})
          */
