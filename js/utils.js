@@ -456,8 +456,8 @@ bento.define('bento/utils', [], function () {
          * @param {Array/Object} array - Array or Object literal to loop through
          * @param {IteratorCallback} callback - Callback function
          * @name forEach
-         * @snippet Utils.forEach
-        Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
+         * @snippet Utils.forEach|snippet
+Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
     ${3:// code here}
 });
          */
@@ -684,9 +684,9 @@ bento.define('bento/utils', [], function () {
          * @instance
          * @name extend
          * @snippet Utils.extend|Object
-        Utils.extend(${1:Object}, ${2:Object2})
+        Utils.extend(${1:baseObject}, ${2:extendedObject})
          * @snippet Utils.extend|conflict
-Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
+Utils.extend(${1:baseObject}, ${2:extendedObject}, false, function (prop) {
     ${4://code here}
 });
          * @param {Object} object1 - original object
@@ -702,7 +702,7 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name getKeyLength
          * @snippet Utils.getKeyLength|Number
-        Utils.getKeyLength(${1})
+        Utils.getKeyLength(${1:object})
          * @param {Object} object - object literal
          * @return {Number} Number of keys
          */
@@ -773,10 +773,21 @@ Utils.extend(${1:Object}, ${2:Object2}, false, function (prop) {
          * @instance
          * @name pickRandom
          * @snippet Utils.pickRandom|Object
-        Utils.pickRandom(${1}, ${2}, ${3:...})
+        Utils.pickRandom(${1:item1}, ${2:item2}, ${3:...})
          */
         pickRandom: function () {
             return arguments[this.getRandom(arguments.length)];
+        },
+        /**
+         * Picks one of the items in an Array
+         * @function
+         * @instance
+         * @name pickRandomFrom
+         * @snippet Utils.pickRandomFrom|snippet
+        Utils.pickRandomFrom(${1:array})
+         */
+        pickRandomFrom: function (array) {
+            return array[this.getRandom(array.length)];
         },
         /**
          * Clamps a numerical value between a minimum and maximum value
