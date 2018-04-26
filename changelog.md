@@ -5,6 +5,8 @@
 * New component: **Modal** pauses everything except the parent entity, great for popups and UI
 * New component: **EventListener** Instead of using EventSystem.on and EventSystem.off, this component binds a listeners automatically, with its lifetime of the parent entity. It can also pause the listener if the entity itself is paused.  
 * New component: **Spine** Note: Implemented for Canvas2D only. It's function are sort of similar to Sprite.
+* New GUI module: **ScrollingList** A list of items that can be scrolled using touch input.
+* New GUI module: **CenteredList** A list of items that that are spaced equally.
 * Fixed getWorldPosition and toWorldPosition (notable when one of the parent entities was scaled or rotated)
 * Fixed overlapping ClickButtons intercepting a click even though one of them is inactive
 * Added *active* property to ClickButtons. It was quite confusing that a ClickButton could use a *visible* property but it's active state was using a *setActive* method.
