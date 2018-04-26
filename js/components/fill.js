@@ -78,6 +78,9 @@ bento.define('bento/components/fill', [
     };
     /**
      * Set origin relative to size
+     * @instance
+     * @function
+     * @name setOriginRelative
      * @param {Vector2} originRelative - Vector2 with the origin relative to its dimension
      * @snippet #Fill.setOriginRelative()|snippet
         setOriginRelative(${1:new Vector2(0, 0)})

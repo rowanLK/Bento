@@ -23,6 +23,8 @@ ClickButton({
     position: new Vector2(${7:0}, ${8:0}),
     updateWhenPaused: ${9:0},
     float: ${10:false},
+    onButtonDown: function () {},
+    onButtonUp: function () {},
     onClick: function () {
         $11
     }
@@ -321,7 +323,12 @@ bento.define('bento/gui/clickbutton', [
             }
         });
 
-        // active property
+        /**
+         * Active property
+         * @instance
+         * @function
+         * @name active
+         */
         Object.defineProperty(entity, 'active', {
             get: function () {
                 return active;
