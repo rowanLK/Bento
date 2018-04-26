@@ -225,7 +225,7 @@ var sprite = new Sprite({
 
 An example of an image with multiple frames and multiple animations:
 
-![image](examples/screens/assets/images/bunnygirlsmall)
+![image](examples/screens/assets/images/bunnygirlsmall.png)
 
 ```javascript
 var sprite = new Sprite({
