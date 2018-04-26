@@ -33,17 +33,17 @@ Download the [Bento Empty Project template](https://github.com/LuckyKat/Bento-Em
 
 To start the game, any browser will do. However, do keep in mind that every browser, [except Opera and Firefox](https://productforums.google.com/forum/#!msg/chrome/v177zA6LCKU/uQ8QZFD3pfcJ), will require a web server to be run locally on your computer. 
 
-Recommended for programming is Sublime Text 3. You can use any editor you like, but we have [snippets](https://gist.github.com/HernanZh/d12d81cd2de72c735171e866f5236632) available which makes development much easier! 
-Tip: also install [JSHint](https://github.com/uipoet/sublime-jshint)
+Recommended for programming is Sublime Text 3. You can use any editor you like, but there is a Sublime Text 3 [plugin](https://github.com/LuckyKat/bento-amd-tool) available which makes development much easier! 
+Tip: other recommended plugins available on ST3's Package Control are JSHint, SublimeLinter-JSHint, Fold JavaScript and Javascript Beautify.
 
-You will also need to install Node.js in order to utilize the development scripts.
+You will also need to install Node.js in order to utilize the development scripts. After which you will have the Node Package Manager to your disposal. Open Terminal (Mac) or cmd (Windows) and run the command `npm install -g gulp`. Also run the `npm install` command in your project directory.
 
 
 ## 2. JavaScript knowledge
 
-Bento uses ES5 version of JavaScript. Why ES5? Primarily to stay compatible with [cocoon.io](http://cocoon.io/).
+Bento uses ES5 version of JavaScript. Why ES5? Primarily to stay compatible with [cocoon.io](http://cocoon.io/). Other native engines will benefit from this as well.
 
-Since module importing is introduced in ES6/ES2015, Bento uses RequireJS for modular programming. For a quick tutorial on RequireJS: [link](https://www.sitepoint.com/understanding-requirejs-for-effective-javascript-module-loading/)
+Since module importing is only introduced in ES6/ES2015, Bento uses RequireJS for modular programming. For a quick tutorial on RequireJS: [link](https://www.sitepoint.com/understanding-requirejs-for-effective-javascript-module-loading/)
 
 Having a strong understanding of JavaScript is recommended. Trouble understanding JavaScript? A small guide about JavaScript for games is written [here](http://www.lucky-kat.com/javascript).
 
@@ -225,11 +225,12 @@ var sprite = new Sprite({
 
 An example of an image with multiple frames and multiple animations:
 
-![image](http://2.1m.yt/20k7CI4.png)
+![image](examples/screens/assets/images/bunnygirlsmall)
 
 ```javascript
 var sprite = new Sprite({
     imageName: 'players/bunny',
+    originRelative: new Vector2(0.5, 1),
     frameCountX: 4,
     frameCountY: 4,
     animations: {
@@ -270,7 +271,7 @@ To switch animation, one must switch spritesheets by using ``sprite.setSpriteShe
 
 **Tools to generate spritesheets are currently in development**
 
-(TODO: link to gif2sprite tool)
+Use this tool to generate spritesheets from gifs: [Gif2Sprite](https://bitbucket.org/luckykat/gif2sprite)
 
 ### 5.2 Collisions
 
@@ -310,5 +311,7 @@ var component = {
 var eventData = {}; // optional
 EventSystem.fire('myCustomEvent', eventData);
 ```
+
+There is also a component called [EventListener](https://luckykat.github.io/Bento/module-bento_components_eventlistener.html) available.
 
 (TODO: list all of Bento's fired event)
