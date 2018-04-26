@@ -5040,7 +5040,7 @@ bento.define('bento/transform', [
         /**
          * transform the position vector with each component
          */
-        for (i = parents.length - 1; i >= 0; --i) {
+        for (i = 0; i < parents.length; ++i) {
             parent = parents[i];
 
             // construct a scaling matrix and apply to position vector
