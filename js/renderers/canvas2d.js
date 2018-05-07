@@ -126,7 +126,7 @@ bento.define('bento/renderers/canvas2d', [
                     newCanvas.width = width;
                     newCanvas.height = height;
 
-                    newContext = canvas.getContext('2d');
+                    newContext = newCanvas.getContext('2d');
 
                     return {
                         canvas: newCanvas,
