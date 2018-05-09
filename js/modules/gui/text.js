@@ -682,7 +682,7 @@ bento.define('bento/gui/text', [
             endGrd.x += maxLineWidth / 2;
             endGrd.y += maxLineWidth / 2;
 
-            grd = ctx.createLinearGradient(
+            grd = {};/*ctx.createLinearGradient(
                 startGrd.x,
                 startGrd.y,
                 endGrd.x,
@@ -691,7 +691,7 @@ bento.define('bento/gui/text', [
             for (i = 0.0, l = gradientColors.length; i < l; ++i) {
                 gradientValue = i * (1 / (l - 1));
                 grd.addColorStop(gradientValue, gradientColors[i]);
-            }
+            }*/
 
             return grd;
         };

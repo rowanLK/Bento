@@ -294,7 +294,8 @@ bento.define('bento/tween', [
         var ignoreGameSpeed = settings.ignoreGameSpeed;
         var stay = settings.stay;
         var autoResumeTimer = -1;
-        var tween = new Entity(settings).extend({
+        var tween = new Entity(settings);
+        var tweenBehavior = {
             id: settings.id,
             start: function (data) {
                 if (onCreate) {
@@ -304,7 +305,7 @@ bento.define('bento/tween', [
             update: function (data) {
                 //if an autoresume timer is running, decrease it and resume when it is done
                 if (--autoResumeTimer === 0) {
-                    tween.resume();
+                    tweenBehavior.resume();
                 }
                 if (!running) {
                     return;
@@ -428,13 +429,15 @@ bento.define('bento/tween', [
              */
             resume: function () {
                 if (!added) {
-                    return tween.begin();
+                    return tweenBehavior.begin();
                 } else {
                     running = true;
                     return tween;
                 }
             }
-        });
+        };
+
+        tween.attach(tweenBehavior);
 
         // convert decay and growth to alpha
         if (Utils.isDefined(settings.decay)) {
@@ -454,14 +457,14 @@ bento.define('bento/tween', [
         //     Utils.log("WARNING: settings.ease is undefined.");
         // }
 
-        // Assuming that when a tween is created when the game is paused, 
+        // Assuming that when a tween is created when the game is paused,
         // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
             tween.updateWhenPaused = Bento.objects.isPaused();
         }
 
         // tween automatically starts
-        tween.begin();
+        tweenBehavior.begin();
 
         return tween;
     };
