@@ -15,7 +15,7 @@ Modal({
  * @param {String} [settings.pauseLevel] - Target pause level, recommended to ignore this parameter and
  * let the component set the automatic pause level automatically.
  */
-bento.define('components/modal', [
+bento.define('bento/components/modal', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
