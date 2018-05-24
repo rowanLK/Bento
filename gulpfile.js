@@ -91,16 +91,10 @@ gulp.task('switch', [], function () {
     // place code for your default task here
     return gulp.src([
             'js/lib/bento-require.js',
-            //'lib/switch-main.js',
             'js/main.js',
-            'lib/switch-bento.js',
-            'lib/switch-entity.js',
-            'lib/switch-transform.js',
-            'lib/switch-object.js',
-            'lib/switch-rectangle.js',
-            'lib/switch-vector2.js',
             'js/lib/audia.js',
             'js/lib/lz-string.js',
+            'native/*.js',
             'js/**/*.js',
             '!js/bento.js',
             '!js/transform.js',
@@ -108,20 +102,6 @@ gulp.task('switch', [], function () {
             '!js/managers/object.js',
             '!js/math/rectangle.js',
             '!js/math/vector2.js'
-            // 'js/utils.js',
-            // 'js/eventsystem.js',
-            // 'js/packedimage.js',
-            // 'js/managers/asset.js',
-            // 'js/managers/screen.js',
-            // 'js/components/eventlistener.js',
-            // 'js/components/fill.js',
-            // 'js/components/modal.js',
-            // 'js/components/sprite.js',
-            // 'js/modules/color.js',
-            // 'js/modules/screen.js',
-            // 'js/modules/tiled.js',
-            // 'js/modules/tiledreader.js',
-            // 'js/modules/tween.js'
         ])
         .pipe(concat('bento-switch.js'))
         .pipe(gulp.dest('build'));

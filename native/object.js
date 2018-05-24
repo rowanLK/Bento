@@ -1,16 +1,3 @@
-/**
- * Manager that controls mainloop and all objects. Attach entities to the object manager
- * to add them to the game. The object manager loops through every object's update and
- * draw functions. The settings object passed here is passed through Bento.setup().
- * <br>Exports: Constructor, can be accessed through objectManager namespace.
- * @module bento/managers/object
- * @moduleName ObjectManager
- * @param {Function} getGameData - Function that returns gameData object
- * @param {Object} settings - Settings object
- * @param {Object} settings.defaultSort - Use javascript default sorting with Array.sort (not recommended)
- * @param {Object} settings.useDeltaT - Use delta time (note: untested)
- * @returns ObjectManager
- */
 // define cpp components and classes
 bento.define('bento/managers/object', [], function () {
     'use strict';
