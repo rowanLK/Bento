@@ -167,7 +167,8 @@ bento.define('bento/entity', [
             position
          */
         this.position = new Vector2(0, 0);
-        /**
+        /*
+         * UNLISTED
          * Families of the entity. Note: edit this before the entity is attached.
          * @instance
          * @default []
@@ -175,7 +176,8 @@ bento.define('bento/entity', [
          * @name family
          */
         this.family = [];
-        /**
+        /*
+         * UNLISTED
          * Components of the entity
          * @instance
          * @default []
