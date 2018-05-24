@@ -778,6 +778,18 @@ Utils.extend(${1:baseObject}, ${2:extendedObject}, false, function (prop) {
         pickRandom: function () {
             return arguments[this.getRandom(arguments.length)];
         },
+        //http://javascript.about.com/od/problemsolving/a/modulobug.htm
+        /**
+         * Modulo that will return in a positive remainder
+         * @function
+         * @instance
+         * @name modulo
+         * @snippet Utils.modulo|Number
+        Utils.modulo(${1:var1}, ${2:var2})
+         */
+        modulo: function (b, n) {
+            return ((b % n) + n) % n;
+        },
         /**
          * Picks one of the items in an Array
          * @function
