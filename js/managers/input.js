@@ -126,9 +126,9 @@ bento.define('bento/managers/input', [
                     // load startPos
                     startPos = startPositions[evt.id];
                     if (startPos && startPos.startPosition) {
-                        touch.diffPosition = touch.position.substract(startPos.startPosition);
-                        touch.diffWorldPosition = touch.worldPosition.substract(startPos.startWorldPosition);
-                        touch.diffLocalPosition = touch.localPosition.substract(startPos.startLocalPosition);
+                        touch.diffPosition = touch.position.subtract(startPos.startPosition);
+                        touch.diffWorldPosition = touch.worldPosition.subtract(startPos.startWorldPosition);
+                        touch.diffLocalPosition = touch.localPosition.subtract(startPos.startLocalPosition);
                         evt.diffPosition = touch.diffPosition.clone();
                         evt.diffWorldPosition = touch.diffWorldPosition.clone();
                         evt.diffLocalPosition = touch.diffLocalPosition.clone();
