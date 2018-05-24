@@ -1,6 +1,8 @@
 /**
  * Allows you to fire custom events. Catch these events by using EventSystem.on(). Don't forget to turn
  off listeners with EventSystem.off or you will end up with memory leaks and/or unexpected behaviors.
+ * Edge case: EventSystem.off will not clear an event if it's called during an event loop. It will take the
+ * next opportunity to clear the event.
  * <br>Exports: Object
  * @module bento/eventsystem
  * @moduleName EventSystem
