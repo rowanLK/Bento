@@ -25,7 +25,14 @@ Bento.audio
  *
  * @snippet Bento.assets.getJson|Object
 Bento.assets.getJson('${1}');
- *
+ * @snippet Bento.assets.hasAsset|Boolean
+Bento.assets.hasAsset('${1}', '${2:images}')
+ * @snippet Bento.assets.load|Load asset group
+Bento.assets.load('${1:groupName}', function (error, groupName) {
+    // asset group loaded callback
+}, function (loaded, total, assetName) {
+    // single asset loaded callback
+})
  * @snippet Bento.objects.attach|snippet
 Bento.objects.attach(${1:entity});
  * @snippet Bento.objects.remove|snippet
@@ -92,7 +99,6 @@ bento.define('bento', [
 ) {
     'use strict';
     var canvas;
-    var context;
     var renderer;
     var bentoSettings;
     var canvasRatio = 0;
@@ -108,9 +114,6 @@ bento.define('bento', [
     var setupCanvas = function (settings) {
         var parent;
         var pixelSize = settings.pixelSize || 1;
-        var pixelRatio = window.devicePixelRatio || 1;
-        var windowWidth = window.innerWidth * pixelRatio;
-        var windowHeight = window.innerHeight * pixelRatio;
 
         canvas = settings.canvasElement || document.getElementById(settings.canvasId);
 
@@ -337,6 +340,8 @@ bento.define('bento', [
          * @instance
          * @returns Rectangle
          * @name getViewport
+         * @snippet Bento.getViewport|Rectangle
+            Bento.getViewport();
          */
         getViewport: function () {
             return viewport;
@@ -413,6 +418,8 @@ bento.define('bento', [
          * @returns {Number} data.deltaT - Time passed since last tick
          * @returns {Number} data.throttle - Game speed (1 is normal)
          * @name getGameData
+         * @snippet Bento.getGameData|GameData
+            Bento.getGameData();
          */
         getGameData: function () {
             return {
@@ -432,6 +439,8 @@ bento.define('bento', [
          * @instance
          * @returns Number
          * @name getGameSpeed
+         * @snippet Bento.getGameSpeed|Number
+            Bento.getGameSpeed();
          */
         getGameSpeed: function () {
             return throttle;
@@ -443,6 +452,8 @@ bento.define('bento', [
          * @param {Number} speed - Game speed
          * @returns Number
          * @name setGameSpeed
+         * @snippet Bento.setGameSpeed|snippet
+            Bento.setGameSpeed({$1:1});
          */
         setGameSpeed: function (value) {
             throttle = value;

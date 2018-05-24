@@ -1365,6 +1365,45 @@ bento.define('bento/managers/asset', [
                 onReady();
             }
         };
+        /**
+         * Check if asset is loaded
+         * @function
+         * @instance
+         * @param {String} name - name of asset
+         * @param {String} [type] - type of asset (images, json, fonts, spritesheets etc). If omitted, all types will be searched
+         * @return Boolean
+         * @name hasAsset
+         */
+        var hasAsset = function (name, type) {
+            var didFind = false;
+            // fail when type doesnt exist
+            if (type) {
+                if (!assets[type]) {
+                    // typo? (image vs images)
+                    if (!assets[type + 's']) {
+                        console.error('Asset type ' + type + " doesn't exist.");
+                        return false;
+                    } else {
+                        console.log('WARNING: type should be ' + type + 's, not ' + type);
+                        type = type + 's';
+                    }
+                }
+                // check if asset exist
+                if (assets[type][name]) {
+                    return true;
+                }
+            } else {
+                // check all types
+                Utils.forEach(assets, function (assetTypeGroup, assetType, l, breakLoop) {
+                    if (assetTypeGroup[name]) {
+                        didFind = true;
+                        breakLoop();
+                    }
+                });
+            }
+
+            return didFind;
+        };
         var manager = {
             lazyLoadSpine: false,
             skipAudioCallback: false,
@@ -1385,6 +1424,7 @@ bento.define('bento/managers/asset', [
             getSpriteSheet: getSpriteSheet,
             getAssets: getAssets,
             getAssetGroups: getAssetGroups,
+            hasAsset: hasAsset,
             getSpine: getSpine,
             getSpineLoader: getSpineLoader,
             forceHtml5Audio: function () {
