@@ -18,6 +18,7 @@
 * Tiled's *onLayer* and *onSpawn* callback include a layer index parameter. 
 * Added **buttonUp-\<key\>** events, fired by the input manager. There were *buttonDown-\<key\>* events before, but no equivalent buttonUp events.
 * Tiled and Bento.assets can load synchronously. (Needed for native version of Bento)
+* Tween no longer overwrites the entity functions, instead the tween is a behavior attached to the entity.
 * Added **Bento.assets.forceHtml5Audio**, call this before the assets are loaded.
 * The AMD-less version of Bento now loads modules on demand (instead of doing that all beforehand). This behavior is more similar to RequireJS and is able to catch circular dependencies.
 * Unlisted Entity.family and Entity.components as members of Entity. It is now considered bad practice to interact with these arrays. (May need to add new functions, for example to get the sizes of these arrays etc.)

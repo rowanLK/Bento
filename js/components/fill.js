@@ -44,6 +44,9 @@ bento.define('bento/components/fill', [
             color
          */
         this.color = settings.color || [0, 0, 0, 1];
+        while (this.color.length < 4) {
+            this.color.push(1);
+        }
         /**
          * Dimension/size of the rectangle to fill
          * @instance
