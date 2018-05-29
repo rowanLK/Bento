@@ -43,12 +43,14 @@ bento.define('bento/managers/asset', [
         /**
          * (Down)Load asset types
          */
-        var loadAudio = function (name, source, callback) {
+        var loadAudio = function (name, sources, callback) {
             var i, l;
             var failed = true;
+            var lastSrc;
             var loadAudioFile = function (index, src) {
                 var audio = new Audia();
-                var canPlay = audio.canPlayType('audio/' + source[index].slice(-3));
+                // get type by checking extension name
+                var canPlay = audio.canPlayType('audio/' + src.slice(-3));
                 if (!!canPlay || window.ejecta) {
                     // success!
                     if (!manager.skipAudioCallback) {
@@ -61,24 +63,30 @@ bento.define('bento/managers/asset', [
                             callback(null, name, audio);
                         }, 0);
                     }
+                    if (src.indexOf('http') === 0) {
+                        audio.crossOrigin = 'Anonymous';
+                    }
                     audio.src = src;
                     failed = false;
                     return true;
                 }
+                if (!canPlay) {
+                    lastSrc = src;
+                }
                 return false;
             };
-            if (!Utils.isArray(source)) {
-                // source = [path + 'audio/' + source];
-                source = [source];
+            if (!Utils.isArray(sources)) {
+                sources = [sources];
             }
             // try every type
-            for (i = 0, l = source.length; i < l; ++i) {
-                if (loadAudioFile(i, path + 'audio/' + source[i])) {
+            for (i = 0, l = sources.length; i < l; ++i) {
+                if (loadAudioFile(i, sources[i])) {
+                    // we only care about one of the audio types working
                     break;
                 }
             }
             if (failed) {
-                callback('This audio type is not supported:', name, source);
+                callback('This audio type is not supported:', name, lastSrc);
             }
         };
         var loadJSON = function (name, source, callback, isCompressed) {
@@ -171,6 +179,10 @@ bento.define('bento/managers/asset', [
                 // TODO: Implement failure: should it retry to load the image?
                 Utils.log('ERROR: loading image ' + source);
             }, false);
+
+            if (source.indexOf('http') === 0) {
+                img.crossOrigin = "Anonymous";
+            }
 
             img.src = source;
         };
@@ -831,12 +843,19 @@ bento.define('bento/managers/asset', [
             // get audio
             if (Utils.isDefined(group.audio)) {
                 assetCount += Utils.getKeyLength(group.audio);
-                for (asset in group.audio) {
-                    if (!group.audio.hasOwnProperty(asset)) {
-                        continue;
+                Utils.forEach(group.audio, function (asset, key, l, breakLoop) {
+                    // concat path on array
+                    var src = [];
+                    // asset can be a single string or array of strings
+                    if (!Utils.isArray(asset)) {
+                        asset = [asset];
                     }
-                    readyForLoading(loadAudio, asset, group.audio[asset], onLoadAudio);
-                }
+                    Utils.forEach(asset, function (audioSrc) {
+                        src.push(path + 'audio/' + audioSrc);
+                    });
+
+                    readyForLoading(loadAudio, key, src, onLoadAudio);
+                });
             }
             // get json
             if (Utils.isDefined(group.json)) {
