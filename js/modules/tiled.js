@@ -21,6 +21,7 @@
  * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
  * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
  * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
+ * @param {Boolean} [settings.cacheModules] - Cache spawned modules. Modules are retrieved with bento.require, caching them can speed up loading. Note that it also can clash with quick reloading unless the cache is cleared on reload. default: false
  * @returns Object
  * @snippet Tiled|constructor
 Tiled({
@@ -88,6 +89,10 @@ bento.define('bento/tiled', [
     TiledReader
 ) {
     'use strict';
+    // cached modules by require
+    var cachedModules = {
+        // name: argumentsArray
+    };
     // a collection of sprites/canvases that represent the drawn tiled layers
     var LayerSprites = function (canvasSize, mapSize) {
         // number of sprites horizontally
@@ -243,6 +248,7 @@ bento.define('bento/tiled', [
         var onSpawn = settings.onSpawn;
         var onSpawnComplete = settings.onSpawnComplete;
         var onLayerMergeCheck = settings.onLayerMergeCheck;
+        var cacheModules = settings.cacheModules || false;
         var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
@@ -254,6 +260,7 @@ bento.define('bento/tiled', [
         var entitiesSpawned = 0;
         var entitiesToSpawn = 0;
         var opacity = 1;
+        var currentLayer = 0;
         var tiledReader = new TiledReader({
             tiled: json,
             onInit: onInit,
@@ -302,6 +309,7 @@ bento.define('bento/tiled', [
             },
             onLayer: function (layer, index) {
                 var shouldMerge = false;
+                currentLayer = index;
                 if (layer.type === "tilelayer") {
                     if (!mergeLayers) {
                         // check per layer
@@ -319,7 +327,7 @@ bento.define('bento/tiled', [
                 }
                 opacity = layer.opacity;
                 if (onLayer) {
-                    onLayer.call(tiled, layer);
+                    onLayer.call(tiled, layer, index);
                 }
             },
             onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
@@ -333,6 +341,7 @@ bento.define('bento/tiled', [
 
                 // get source position
                 var source = getSourceTile(tileSet, tileIndex);
+                var layerIndex = currentLayer;
 
                 // retrieve the corresponding image asset
                 // there is a very high chance the url contains "images/" since the json files
@@ -358,15 +367,16 @@ bento.define('bento/tiled', [
                 );
 
                 if (onTile) {
-                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD);
+                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);
                 }
             },
             onObject: function (object, tileSet, tileIndex) {
                 if (onObject) {
-                    onObject.call(tiled, object, tileSet, tileIndex);
+                    onObject.call(tiled, object, tileSet, tileIndex, currentLayer);
                 }
                 if (settings.spawnEntities) {
-                    spawnEntity(object, tileSet, tileIndex);
+                    // note: we can pass currentLayer, as onLayer is synchronously called before onObject
+                    spawnEntity(object, tileSet, tileIndex, currentLayer);
                 }
             },
             onComplete: function () {
@@ -417,12 +427,17 @@ bento.define('bento/tiled', [
                     onComplete.call(tiled);
                 }
 
-                // call onSpawnComplete anyway if there were no objects to spawn at all
-                if (settings.spawnEntities && entitiesToSpawn === 0 && onSpawnComplete) {
-                    onSpawnComplete.call(tiled);
-                }
+                // call onSpawnComplete anyway, maybe no objects were spawned or synchronously spawned
+                didLoopThrough = true;
+                checkSpawnComplete();
             }
         });
+        var didLoopThrough = false;
+        var checkSpawnComplete = function () {
+            if (didLoopThrough && entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
+                onSpawnComplete.call(tiled);
+            }
+        };
         // helper function to get the source in the image
         var getSourceTile = function (tileset, index) {
             var tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
@@ -437,7 +452,7 @@ bento.define('bento/tiled', [
         };
         // attempt to spawn object by tileproperty "module"
         // this is mainly for backwards compatibility of the old Tiled module
-        var spawnEntity = function (object, tileSet, tileIndex) {
+        var spawnEntity = function (object, tileSet, tileIndex, layerIndex) {
             var tileproperties;
             var properties;
             var moduleName;
@@ -485,7 +500,6 @@ bento.define('bento/tiled', [
                     }
                 }
             };
-
             var savePathsAndParameters = function () {
                 var prop = '';
                 var key = '';
@@ -509,6 +523,52 @@ bento.define('bento/tiled', [
                     require.paths.push(component.pathToComponent);
                     require.parameters.push(Utils.cloneJson(parameters));
                 }
+            };
+            var onRequire = function () {
+                var Constructor = arguments[0];
+                var instance = new Constructor(require.parameters[0]);
+                var dimension = instance.dimension;
+                var spriteOrigin = new Vector2(0, 0);
+                var ii = 1;
+                var iil = arguments.length;
+
+                instance.getComponent('sprite', function (sprite) {
+                    spriteOrigin = sprite.origin;
+                });
+
+                instance.position = new Vector2(
+                    offset.x + x + spriteOrigin.x,
+                    offset.y + y + (spriteOrigin.y - dimension.height)
+                );
+
+                // instantiate and attach all the specified components
+                for (; ii < iil; ++ii) {
+                    instance.attach(new arguments[ii](require.parameters[ii]));
+                }
+
+                // add to game
+                if (attachEntities) {
+                    Bento.objects.attach(instance);
+                }
+                entities.push(instance);
+
+                entitiesSpawned += 1;
+
+                if (onSpawn) {
+                    onSpawn.call(tiled, instance, object, {
+                        tileSet: tileSet,
+                        moduleName: moduleName,
+                        properties: properties
+                    }, layerIndex);
+                }
+
+                // cache module
+                if (cacheModules) {
+                    // caching the arguments as an actual array for safety
+                    cachedModules[moduleName] = Array.prototype.slice.call(arguments);
+                }
+
+                checkSpawnComplete();
             };
 
             if (!object.gid) {
@@ -550,46 +610,14 @@ bento.define('bento/tiled', [
             savePathsAndParameters();
 
             entitiesToSpawn += 1;
-            bento.require(require.paths, function () {
-                var instance = new arguments[0](require.parameters[0]);
-                var dimension = instance.dimension;
-                var spriteOrigin = new Vector2(0, 0);
-                var ii = 1;
-                var iil = arguments.length;
 
-                instance.getComponent('sprite', function (sprite) {
-                    spriteOrigin = sprite.origin;
-                });
-
-                instance.position = new Vector2(
-                    offset.x + x + spriteOrigin.x,
-                    offset.y + y + (spriteOrigin.y - dimension.height)
-                );
-
-                // instantiate and attach all the specified components
-                for (; ii < iil; ++ii) {
-                    instance.attach(new arguments[ii](require.parameters[ii]));
-                }
-
-                // add to game
-                if (attachEntities) {
-                    Bento.objects.attach(instance);
-                }
-                entities.push(instance);
-
-                entitiesSpawned += 1;
-
-                if (onSpawn) {
-                    onSpawn.call(tiled, instance, object, {
-                        tileSet: tileSet,
-                        moduleName: moduleName
-                    });
-                }
-
-                if (entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
-                    onSpawnComplete.call(tiled);
-                }
-            });
+            if (cacheModules && cachedModules[moduleName]) {
+                // use the cached module
+                onRequire.call(this, cachedModules[moduleName]);
+            } else {
+                // use require
+                bento.require(require.paths, onRequire);
+            }
         };
         var tiled = {
             name: settings.name || 'tiled',
@@ -635,6 +663,15 @@ bento.define('bento/tiled', [
              * @name layerImages
              */
             layerImages: layerSprites,
+            /**
+             * Clear cached modules if cacheModules is tru (the cache is global, 
+             * developer need to call this manually to clear the memory)
+             * @instance
+             * @name clearCache
+             */
+            clearCache: function () {
+                cachedModules = {};
+            },
             // clean up
             destroy: function () {
                 layerSprites.dispose();

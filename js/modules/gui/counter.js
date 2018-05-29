@@ -179,7 +179,7 @@ bento.define('bento/gui/counter', [
          */
         var updateDigits = function () {
             // add or remove digits
-            var i,
+            var i, l,
                 valueStr = value.toString(),
                 pos,
                 digit,
@@ -203,7 +203,7 @@ bento.define('bento/gui/counter', [
                 }
             }
             /* update animations */
-            for (i = 0; i < children.length; ++i) {
+            for (i = 0, l = children.length; i < l; ++i) {
                 digit = children[i];
                 digit.position = new Vector2((digitWidth + spacing.x) * i, 0);
                 digit.getComponent('sprite', function (sprite) {
@@ -214,13 +214,13 @@ bento.define('bento/gui/counter', [
             /* alignment */
             if (alignment === 'right') {
                 // move all the children
-                for (i = 0; i < children.length; ++i) {
+                for (i = 0, l = children.length; i < l; ++i) {
                     digit = children[i];
                     pos = digit.position;
                     pos.substractFrom(new Vector2((digitWidth + spacing.x) * digits - spacing.x, 0));
                 }
             } else if (alignment === 'center') {
-                for (i = 0; i < children.length; ++i) {
+                for (i = 0, l = children.length; i < l; ++i) {
                     digit = children[i];
                     pos = digit.position;
                     pos.addTo(new Vector2(((digitWidth + spacing.x) * digits - spacing.x) / -2, 0));
@@ -301,8 +301,8 @@ bento.define('bento/gui/counter', [
                 loopDigits(function (digitEntity) {$1});
              */
             loopDigits: function (callback) {
-                var i = 0;
-                for (i = 0; i < children.length; ++i) {
+                var i = 0, l;
+                for (i = 0, l = children.length; i < l; ++i) {
                     callback(children[i]);
                 }
             }

@@ -23,6 +23,8 @@ ClickButton({
     position: new Vector2(${7:0}, ${8:0}),
     updateWhenPaused: ${9:0},
     float: ${10:false},
+    onButtonDown: function () {},
+    onButtonUp: function () {},
     onClick: function () {
         $11
     }
@@ -70,7 +72,10 @@ bento.define('bento/gui/clickbutton', [
             }
         };
         if (settings.frameCountX * settings.frameCountY <= 2) {
-            delete defaultAnimations.inactive;
+            defaultAnimations.inactive.frames = [0];
+        }
+        if (settings.frameCountX * settings.frameCountY <= 1) {
+            defaultAnimations.down.frames = [0];
         }
         var animations = settings.animations || defaultAnimations;
         var nsSettings = settings.nineSliceSettings || null;
@@ -251,6 +256,20 @@ bento.define('bento/gui/clickbutton', [
                 settings.onClick.apply(entity);
             },
             /**
+             * Performs the callback as if the button was clicked, 
+             * takes active state into account 
+             * @function
+             * @instance
+             * @name mimicClick
+             * @snippet #ClickButton.mimicClick|snippet
+                doCallback();
+             */
+            mimicClick: function () {
+                if (active) {
+                    settings.onClick.apply(entity);
+                }
+            },
+            /**
              * Check if the button is active
              * @function
              * @instance
@@ -304,7 +323,12 @@ bento.define('bento/gui/clickbutton', [
             }
         });
 
-        // active property
+        /**
+         * Active property
+         * @instance
+         * @function
+         * @name active
+         */
         Object.defineProperty(entity, 'active', {
             get: function () {
                 return active;

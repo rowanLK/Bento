@@ -10,6 +10,7 @@
  * @param {Number} settings.to - End value
  * @param {Number} settings.in - Time frame
  * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
+ * @param {Boolean} settings.wait - Do not immediately begin tween (default false)
  * @param {Number} [settings.decay] - For use in exponential and elastic tweens: decay factor (negative growth)
  * @param {Number} [settings.growth] - For use in exponential and elastic tweens: growth factor
  * @param {Number} [settings.oscillations] - For use in sin, cos and elastic tweens: number of oscillations
@@ -275,8 +276,7 @@ bento.define('bento/tween', [
             ignoreGameSpeed: Boolean (optional)
         }*/
         var time = 0;
-        var added = false;
-        var running = true;
+        var running = !settings.wait;
         var onUpdate = settings.onUpdate || settings.do;
         var onComplete = settings.onComplete;
         var onCreate = settings.onCreate;
@@ -294,17 +294,18 @@ bento.define('bento/tween', [
         var ignoreGameSpeed = settings.ignoreGameSpeed;
         var stay = settings.stay;
         var autoResumeTimer = -1;
-        var tween = new Entity(settings).extend({
-            id: settings.id,
+        var tween = new Entity(settings);
+        var tweenBehavior = {
+            name: 'tweenBehavior',
             start: function (data) {
                 if (onCreate) {
-                    onCreate.apply(this);
+                    onCreate.apply(tween);
                 }
             },
             update: function (data) {
                 //if an autoresume timer is running, decrease it and resume when it is done
                 if (--autoResumeTimer === 0) {
-                    tween.resume();
+                    tweenBehavior.resume();
                 }
                 if (!running) {
                     return;
@@ -317,7 +318,7 @@ bento.define('bento/tween', [
                     }
                     // run onUpdate before start
                     if (applyOnDelay && onUpdate) {
-                        onUpdate.apply(this, [interpolate(
+                        onUpdate.apply(tween, [interpolate(
                             ease,
                             startVal,
                             endVal,
@@ -337,12 +338,12 @@ bento.define('bento/tween', [
                 if (!hasStarted) {
                     hasStarted = true;
                     if (onStart) {
-                        onStart.apply(this);
+                        onStart.apply(tween);
                     }
                 }
                 // run update
                 if (onUpdate) {
-                    onUpdate.apply(this, [interpolate(
+                    onUpdate.apply(tween, [interpolate(
                         ease,
                         startVal,
                         endVal,
@@ -355,7 +356,7 @@ bento.define('bento/tween', [
                 if (time >= deltaT && !stay) {
                     if (time > deltaT && onUpdate) {
                         //the tween didn't end neatly, so run onUpdate once more with a t of 1
-                        onUpdate.apply(this, [interpolate(
+                        onUpdate.apply(tween, [interpolate(
                             ease,
                             startVal,
                             endVal,
@@ -365,10 +366,9 @@ bento.define('bento/tween', [
                         ), time]);
                     }
                     if (onComplete) {
-                        onComplete.apply(this);
+                        onComplete.apply(tween);
                     }
                     Bento.objects.remove(tween);
-                    added = false;
                 }
             },
             /**
@@ -382,9 +382,8 @@ bento.define('bento/tween', [
              */
             begin: function () {
                 time = 0;
-                if (!added) {
-                    Bento.objects.add(tween);
-                    added = true;
+                if (!tween.isAdded) {
+                    Bento.objects.attach(tween);
                 }
                 running = true;
                 return tween;
@@ -427,14 +426,27 @@ bento.define('bento/tween', [
              * @name resume
              */
             resume: function () {
-                if (!added) {
-                    return tween.begin();
+                if (!tween.isAdded) {
+                    return tweenBehavior.begin();
                 } else {
                     running = true;
                     return tween;
                 }
             }
+        };
+
+        tween.attach(tweenBehavior);
+
+        // extend functionality
+        tween.extend({
+            begin: tweenBehavior.begin,
+            stop: tweenBehavior.stop,
+            pause: tweenBehavior.pause,
+            resume: tweenBehavior.resume,
         });
+        if (settings.id) {
+            tween.id = settings.id;
+        }
 
         // convert decay and growth to alpha
         if (Utils.isDefined(settings.decay)) {
@@ -454,14 +466,16 @@ bento.define('bento/tween', [
         //     Utils.log("WARNING: settings.ease is undefined.");
         // }
 
-        // Assuming that when a tween is created when the game is paused, 
+        // Assuming that when a tween is created when the game is paused,
         // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
             tween.updateWhenPaused = Bento.objects.isPaused();
         }
 
         // tween automatically starts
-        tween.begin();
+        if (running) {
+            tweenBehavior.begin();
+        }
 
         return tween;
     };

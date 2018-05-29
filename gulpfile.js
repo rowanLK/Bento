@@ -13,7 +13,6 @@ gulp.task('default', ['build', 'updateVersion'], function () {});
 gulp.task('build', [], function () {
     // place code for your default task here
     return gulp.src([
-            'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
@@ -36,7 +35,7 @@ gulp.task('updateVersion', ['build'], function (callback) {
     var fs = require('fs');
     var path = require('path');
     var bentojs = path.join('.', 'build', 'bento.js');
-    
+
     // read package
     fs.readFile(bentojs, 'utf8', function (err, data) {
         if (err) {
@@ -57,7 +56,6 @@ gulp.task('updateVersion', ['build'], function (callback) {
 gulp.task('min', [], function () {
     // place code for your default task here
     return gulp.src([
-            'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
@@ -76,7 +74,6 @@ gulp.task('min', [], function () {
 gulp.task('amdless', [], function () {
     // place code for your default task here
     return gulp.src([
-            'js/lib/fpsmeter.js',
             'js/**/main.js',
             'js/lib/lzstring.js',
             'js/lib/audia.js',
@@ -87,6 +84,26 @@ gulp.task('amdless', [], function () {
         .pipe(addsrc.prepend('js/lib/bento-require.js'))
         // output bento.js
         .pipe(concat('bento-amdless.js'))
+        .pipe(gulp.dest('build'));
+});
+
+gulp.task('switch', [], function () {
+    // place code for your default task here
+    return gulp.src([
+            'js/lib/bento-require.js',
+            'js/main.js',
+            'js/lib/audia.js',
+            'js/lib/lz-string.js',
+            'native/*.js',
+            'js/**/*.js',
+            '!js/bento.js',
+            '!js/transform.js',
+            '!js/entity.js',
+            '!js/managers/object.js',
+            '!js/math/rectangle.js',
+            '!js/math/vector2.js'
+        ])
+        .pipe(concat('bento-switch.js'))
         .pipe(gulp.dest('build'));
 });
 

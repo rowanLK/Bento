@@ -74,7 +74,7 @@ bento.define('bento/entity', [
         if (!(this instanceof Entity)) {
             return new Entity(settings);
         }
-        var i;
+        var i, l;
         /**
          * Unique id
          * @instance
@@ -167,7 +167,8 @@ bento.define('bento/entity', [
             position
          */
         this.position = new Vector2(0, 0);
-        /**
+        /*
+         * UNLISTED
          * Families of the entity. Note: edit this before the entity is attached.
          * @instance
          * @default []
@@ -175,7 +176,8 @@ bento.define('bento/entity', [
          * @name family
          */
         this.family = [];
-        /**
+        /*
+         * UNLISTED
          * Components of the entity
          * @instance
          * @default []
@@ -286,7 +288,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.family)) {
                     settings.family = [settings.family];
                 }
-                for (i = 0; i < settings.family.length; ++i) {
+                for (i = 0, l = settings.family.length; i < l; ++i) {
                     this.family.push(settings.family[i]);
                 }
             }
@@ -310,7 +312,7 @@ bento.define('bento/entity', [
                 if (!Utils.isArray(settings.components)) {
                     settings.components = [settings.components];
                 }
-                for (i = 0; i < settings.components.length; ++i) {
+                for (i = 0, l = settings.components.length; i < l; ++i) {
                     this.attach(settings.components[i]);
                 }
             }
@@ -641,7 +643,7 @@ moveComponentTo(${1:component}, ${2:index});
      * @param {String} family - the family that this entity should be removed from
      */
     Entity.prototype.removeFromFamily = function (f) {
-        var idx = this.family.indexOf(f)
+        var idx = this.family.indexOf(f);
         if (idx === -1) {
             return;
         }
@@ -673,7 +675,6 @@ moveComponentTo(${1:component}, ${2:index});
      * @param {String} settings.name - Or the other entity's name (use family for better performance)
      * @param {String} settings.family - Or the name of the family to collide with
      * @param {Entity} settings.rectangle - Or if you want to check collision with a shape directly instead of entity
-     * @param {String} settings.withComponent - Swap entity's boundingBox with this component's boundingBox
      * @param {Vector2} [settings.offset] - A position offset
      * @param {CollisionCallback} [settings.onCollide] - Called when entities are colliding
      * @param {Boolean} [settings.firstOnly] - For detecting only first collision or more, default true
@@ -685,8 +686,6 @@ collidesWith({
     name: '', // or when colliding with a single entity
     family: '', // or when colliding with a family
     rectangle: rect, // or when colliding with a rectangle
-
-    withComponent: '', // name of component that has a boundingBox property 
     offset: vec2, // offset the collision check on original entity's position
     firstOnly: true, // onCollide stops after having found single collision 
     onCollide: function (other) {
@@ -701,14 +700,13 @@ collidesWith({
         var intersect = false;
         var box;
         var otherBox;
-        var i;
+        var i, l;
         var obj;
         var array = [];
         var offset = new Vector2(0, 0);
         var callback;
         var firstOnly = true;
         var collisions = null;
-        var withComponent = settings.withComponent;
         var component;
 
         if (settings.isEntity) {
@@ -755,7 +753,7 @@ collidesWith({
             return null;
         }
         box = this.getBoundingBox().offset(offset);
-        for (i = 0; i < array.length; ++i) {
+        for (i = 0, l = array.length; i < l; ++i) {
             obj = array[i];
 
             if (obj.isEntity) {
@@ -763,22 +761,7 @@ collidesWith({
                 if (obj.id === this.id) {
                     continue;
                 }
-                if (!withComponent) {
-                    otherBox = obj.getBoundingBox();
-                } else {
-                    // get component
-                    component = obj.getComponent(withComponent);
-                    if (!component) {
-                        Utils.log('ERROR: component ' + withComponent + ' does not exist');
-                        return;
-                    }
-                    if (!component.boundingBox) {
-                        Utils.log('ERROR: component ' + withComponent + ' does not have a boundingBox');
-                        return;
-                    }
-                    // correct bounding box with position and scale
-                    otherBox = correctBoundingBox(obj, component.boundingBox);
-                }
+                otherBox = obj.getBoundingBox();
             } else if (obj.isRectangle) {
                 otherBox = obj;
             }
@@ -813,7 +796,7 @@ collidesWith({
      * @returns {Entity} Returns the entity it collides with, null if none found
      */
     Entity.prototype.collidesWithGroup = function (settings, deprecated_offset, deprecated_callback) {
-        var i, obj, box;
+        var i, l, obj, box;
         var array, offset, callback;
 
         // old method with parameters
@@ -835,7 +818,7 @@ collidesWith({
             return null;
         }
         box = this.getBoundingBox().offset(offset);
-        for (i = 0; i < array.length; ++i) {
+        for (i = 0, l = array.length; i < l; ++i) {
             obj = array[i];
             if (obj.id && obj.id === this.id) {
                 continue;

@@ -1,0 +1,9 @@
+{
+    "example": {
+        "path": "assets/example/",
+        "spine": {
+            "spineboy": "spineboy",
+            "atlas2": "atlas2"
+        }
+    }
+}

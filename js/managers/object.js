@@ -25,9 +25,10 @@ bento.define('bento/managers/object', [
         var quickAccess = {};
         var isRunning = false;
         var sortMode = settings.sortMode || 0;
+        var useDeltaT = settings.useDeltaT || false;
+        var ms60fps = 1000 / 60;
         var isPaused = 0;
         var isStopped = false;
-        var fpsMeter;
         var sortDefault = function () {
             // default array sorting method (unstable)
             objects.sort(function (a, b) {
@@ -65,15 +66,19 @@ bento.define('bento/managers/object', [
             cumulativeTime += deltaT;
             data = getGameData();
             data.deltaT = deltaT;
-            if (settings.useDeltaT) {
-                cumulativeTime = 1000 / 60;
+            if (useDeltaT) {
+                cumulativeTime = ms60fps;
+            } else {
+                // fixed time will not report the real delta time, 
+                // assumes time goes by with 16.667 ms every frame
+                data.deltaT = ms60fps;
             }
-            while (cumulativeTime >= 1000 / 60) {
-                cumulativeTime -= 1000 / 60;
+            while (cumulativeTime >= ms60fps) {
+                cumulativeTime -= ms60fps;
                 if (cumulativeTime > 1000 / minimumFps) {
                     // deplete cumulative time
-                    while (cumulativeTime >= 1000 / 60) {
-                        cumulativeTime -= 1000 / 60;
+                    while (cumulativeTime >= ms60fps) {
+                        cumulativeTime -= ms60fps;
                     }
                 }
                 if (settings.useDeltaT) {
@@ -94,12 +99,12 @@ bento.define('bento/managers/object', [
         var currentObject; // the current object being processed in the main loop
         var update = function (data) {
             var object,
-                i;
+                i, l;
 
             data = data || getGameData();
 
             EventSystem.fire('preUpdate', data);
-            for (i = 0; i < objects.length; ++i) {
+            for (i = 0, l = objects.length; i < l; ++i) {
                 object = objects[i];
                 if (!object) {
                     continue;
@@ -117,13 +122,13 @@ bento.define('bento/managers/object', [
         };
         var draw = function (data) {
             var object,
-                i;
+                i, l;
             data = data || getGameData();
 
             EventSystem.fire('preDraw', data);
             data.renderer.begin();
             EventSystem.fire('preDrawLoop', data);
-            for (i = 0; i < objects.length; ++i) {
+            for (i = 0, l = objects.length; i < l; ++i) {
                 object = objects[i];
                 if (!object) {
                     continue;
@@ -138,7 +143,7 @@ bento.define('bento/managers/object', [
             EventSystem.fire('postDraw', data);
         };
         var attach = function (object) {
-            var i,
+            var i, l,
                 family,
                 data = getGameData();
 
@@ -162,7 +167,7 @@ bento.define('bento/managers/object', [
             // add object to access pools
             if (object.family) {
                 family = object.family;
-                for (i = 0; i < family.length; ++i) {
+                for (i = 0, l = family.length; i < l; ++i) {
                     addObjectToFamily(object, family[i]);
                 }
             }
@@ -178,7 +183,7 @@ bento.define('bento/managers/object', [
             }
         };
         var remove = function (object) {
-            var i,
+            var i, l,
                 index,
                 family,
                 data = getGameData();
@@ -188,7 +193,7 @@ bento.define('bento/managers/object', [
             // remove from access pools
             if (object.family) {
                 family = object.family;
-                for (i = 0; i < family.length; ++i) {
+                for (i = 0, l = family.length; i < l; ++i) {
                     removeObjectFromFamily(object, family[i]);
                 }
             }
@@ -255,9 +260,9 @@ bento.define('bento/managers/object', [
              * @name removeAll
              */
             removeAll: function (removeGlobal) {
-                var i,
+                var i, l,
                     object;
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;
@@ -268,7 +273,7 @@ bento.define('bento/managers/object', [
                 }
                 // re-add all global objects
                 cleanObjects();
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                 }
             },
@@ -289,10 +294,10 @@ bento.define('bento/managers/object', [
              */
             get: function (objectName, callback) {
                 // retrieves the first object it finds by its name
-                var i,
+                var i, l,
                     object;
 
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;
@@ -319,11 +324,11 @@ bento.define('bento/managers/object', [
              * @name getByName
              */
             getByName: function (objectName, callback) {
-                var i,
+                var i, l,
                     object,
                     array = [];
 
-                for (i = 0; i < objects.length; ++i) {
+                for (i = 0, l = objects.length; i < l; ++i) {
                     object = objects[i];
                     if (!object) {
                         continue;

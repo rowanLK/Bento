@@ -26,7 +26,7 @@ bento.define('lzstring', [], function () {
     function getBaseValue(alphabet, character) {
         if (!baseReverseDic[alphabet]) {
             baseReverseDic[alphabet] = {};
-            for (var i = 0; i < alphabet.length; i++) {
+            for (var i = 0, l = alphabet.length; i < l; i++) {
                 baseReverseDic[alphabet][alphabet.charAt(i)] = i;
             }
         }
@@ -146,9 +146,9 @@ bento.define('lzstring', [], function () {
                 context_data = [],
                 context_data_val = 0,
                 context_data_position = 0,
-                ii;
+                ii, l;
 
-            for (ii = 0; ii < uncompressed.length; ii += 1) {
+            for (ii = 0, l = uncompressed.length; ii < l; ii += 1) {
                 context_c = uncompressed.charAt(ii);
                 if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
                     context_dictionary[context_c] = context_dictSize++;

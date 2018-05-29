@@ -31,17 +31,20 @@ bento.define('bento/managers/asset', [
             fonts: {},
             spritesheets: {},
             texturePacker: {},
+            spine: {},
 
             // packed
             'packed-images': {},
             'packed-spritesheets': {},
             'packed-json': {}
         };
+        var spineAssetLoader;
+        var tempSpineImage;
         /**
          * (Down)Load asset types
          */
         var loadAudio = function (name, source, callback) {
-            var i;
+            var i, l;
             var failed = true;
             var loadAudioFile = function (index, src) {
                 var audio = new Audia();
@@ -69,7 +72,7 @@ bento.define('bento/managers/asset', [
                 source = [source];
             }
             // try every type
-            for (i = 0; i < source.length; ++i) {
+            for (i = 0, l = source.length; i < l; ++i) {
                 if (loadAudioFile(i, path + 'audio/' + source[i])) {
                     break;
                 }
@@ -161,7 +164,6 @@ bento.define('bento/managers/asset', [
             // cocoon lazy load, might be useful some day?
             // img.cocoonLazyLoad = true;
 
-            img.src = source;
             img.addEventListener('load', function () {
                 callback(null, name, img);
             }, false);
@@ -169,6 +171,8 @@ bento.define('bento/managers/asset', [
                 // TODO: Implement failure: should it retry to load the image?
                 Utils.log('ERROR: loading image ' + source);
             }, false);
+
+            img.src = source;
         };
         var loadTTF = function (name, source, callback) {
             // for every font to load we measure the width on a canvas
@@ -325,6 +329,173 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
         };
+        var loadSpine = function (name, source, callback) {
+            var path = (function () {
+                // remove the final part
+                var paths = source.split('/');
+                paths.splice(-1, 1);
+                return paths.join('/') + '/';
+            })();
+            var spine = {
+                skeleton: null,
+                atlas: null,
+                images: [], // {img: Image, path: ''}
+                imageCount: 0, // only used to check if all images are loaded
+                skinImages: {}, // imageName -> skinName
+                path: path,
+                pathJson: source + ".json", // need this when removing asset
+                pathAtlas: source + ".atlas", // need this when removing asset
+                dispose: function () {
+                    var i, l;
+                    for (i = 0, l = spine.images.length; i < l; ++i) {
+                        spineAssetLoader.remove(spine.images[i].path);
+                    }
+                    spineAssetLoader.remove(spine.pathJson);
+                    spineAssetLoader.remove(spine.pathAtlas);
+                }
+            };
+            var checkForCompletion = function () {
+                if (
+                    spine.imageCount === spine.images.length &&
+                    spine.skeleton !== null &&
+                    spine.atlas !== null
+                ) {
+                    callback(null, name, spine);
+                }
+            };
+            var onLoadSpineJson = function (path, data) {
+                spine.skeleton = data;
+                checkForCompletion();
+
+                // next: load atlas
+                spineAssetLoader.loadText(
+                    source.replace("-pro", "").replace("-ess", "") + ".atlas",
+                    function (path, dataAtlas) {
+                        // it is in my belief that spine exports either the atlas or json wrong when skins are involved
+                        // the atlas path becomes an relative path to the root as opposed to relative to images/
+                        var skeletonJson = JSON.parse(data);
+                        var prefix = skeletonJson.skeleton.images;
+                        prefix = prefix.replace('./', '');
+                        while (dataAtlas.indexOf(prefix) >= 0) {
+                            dataAtlas = dataAtlas.replace(prefix, '');
+                        }
+                        onLoadSpineAtlas(path, dataAtlas);
+                    },
+                    function (path, err) {
+                        callback(err, name, null);
+                    }
+                );
+            };
+            var onLoadSpineAtlas = function (path, data) {
+                // parse the atlas just to check what images to load
+                var textureAtlas = new window.spine.TextureAtlas(data, function (path) {
+                    // return a fake texture
+                    if (!tempSpineImage) {
+                        tempSpineImage = new Image();
+                    }
+                    return new window.spine.FakeTexture(tempSpineImage);
+                });
+                var pages = textureAtlas.pages;
+                var i, l;
+
+                // update image count
+                spine.imageCount = pages.length;
+
+                // load all the images
+                if (!manager.lazyLoadSpine) {
+                    for (i = 0, l = pages.length; i < l; ++i) {
+                        spineAssetLoader.loadTexture(
+                            spine.path + pages[i].name,
+                            onLoadSpineImage,
+                            function (path, err) {
+                                callback(err, name, null);
+                            }
+                        );
+                    }
+                } else {
+                    // in case of lazy loading: Bento asset manager will not manage the spine images!
+                    spine.imageCount = 0;
+
+                    // we will now inspect the texture atlas and match skins with images
+                    // which allows us to lazy load images per skin
+                    // requirement: one image must match one skin! see this forum post http://esotericsoftware.com/forum/Separated-atlas-for-each-skin-9835?p=45504#p45504
+                    linkSkinWithImage(textureAtlas);
+                }
+
+                spine.atlas = data;
+                checkForCompletion();
+            };
+            var onLoadSpineImage = function (path, image) {
+                spine.images.push({
+                    img: image,
+                    path: path
+                });
+                checkForCompletion();
+            };
+            var linkSkinWithImage = function (textureAtlas) {
+                // In order for the lazy loading to work, we need to know 
+                // what skin is related to which image. Spine will not do this out of the box
+                // so we will have to parse the skeleton json and atlas manually and make
+                // think link ourselves.
+                var skeletonJson = JSON.parse(spine.skeleton);
+                var skins = skeletonJson.skins;
+                var findRegion = function (name) {
+                    // searches region for a name and returns the page name
+                    var i, l;
+                    var region;
+                    var regions = textureAtlas.regions;
+                    for (i = 0, l = regions.length; i < l; ++i) {
+                        region = regions[i];
+                        if (region.name === name) {
+                            return region.page.name;
+                        }
+                    }
+                    return '';
+                };
+                Utils.forEach(skins, function (skinData, skinName) {
+                    Utils.forEach(skinData, function (slotData, slotName, l, breakLoop) {
+                        Utils.forEach(slotData, function (attachmentData, attachmentName) {
+                            var actualAttachmentName = attachmentData.name;
+                            // we link the name with a region in the atlas data
+                            var pageName;
+
+                            if (!actualAttachmentName) {
+                                // attachment name does not exist, just assign to the first page??
+                                pageName = textureAtlas.pages[0].name;
+                            } else {
+                                pageName = findRegion(actualAttachmentName);
+                            }
+
+                            // once found, we break the slots loop
+                            if (pageName) {
+                                breakLoop();
+                                spine.skinImages[pageName] = skinName;
+                            }
+                        });
+                    });
+                });
+            };
+
+            // to load spine, you must include spine-canvas.js
+            if (!window.spine) {
+                console.error("ERROR: spine library not found!");
+                callback("Loading spine failed.");
+                return;
+            }
+            // note: we could in the future implement the asset loading with bento
+            // but for convenience sake we simply use the spine asset manager for now
+            if (!spineAssetLoader) {
+                spineAssetLoader = new window.spine.canvas.AssetManager();
+            }
+
+            spineAssetLoader.loadText(
+                spine.pathJson,
+                onLoadSpineJson, // will load atlas here
+                function (path, err) {
+                    callback(err, name, null);
+                }
+            );
+        };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
          * If the assetGroup parameter is passed to Bento.setup, this function will be
@@ -388,7 +559,7 @@ bento.define('bento/managers/asset', [
             var postLoad = function () {
                 var initPackedImagesLegacy = function () {
                     // old way of packed images
-                    var frame, pack, i, image, json, name;
+                    var frame, pack, i, l, image, json, name;
                     while (packs.length) {
                         pack = packs.pop();
                         image = getImageElement(pack);
@@ -402,7 +573,7 @@ bento.define('bento/managers/asset', [
                         }
 
                         // parse json
-                        for (i = 0; i < json.frames.length; ++i) {
+                        for (i = 0, l = json.frames.length; i < l; ++i) {
                             name = json.frames[i].filename;
                             name = name.substring(0, name.length - 4);
                             frame = json.frames[i].frame;
@@ -554,6 +725,18 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
+            var onLoadSpine = function (err, name, spine) {
+                if (err) {
+                    Utils.log(err);
+                } else {
+                    assets.spine[name] = spine;
+                }
+                assetsLoaded += 1;
+                if (Utils.isDefined(onLoaded)) {
+                    onLoaded(assetsLoaded, assetCount, name, 'spine');
+                }
+                checkLoaded();
+            };
             // packs
             var onLoadImagePack = function (err, name, imagePack) {
                 if (err) {
@@ -604,13 +787,16 @@ bento.define('bento/managers/asset', [
                 });
             };
             var loadAllAssets = function () {
-                var i = 0;
+                var i = 0,
+                    l;
                 var data;
-                for (i = 0; i < toLoad.length; ++i) {
+                for (i = 0, l = toLoad.length; i < l; ++i) {
                     data = toLoad[i];
                     data.fn(data.asset, data.path, data.callback);
                 }
-                checkLoaded();
+                if (toLoad.length === 0) {
+                    checkLoaded();
+                }
             };
 
             if (!Utils.isDefined(group)) {
@@ -680,6 +866,16 @@ bento.define('bento/managers/asset', [
                         continue;
                     }
                     readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
+                }
+            }
+            // get spine
+            if (Utils.isDefined(group.spine)) {
+                assetCount += Utils.getKeyLength(group.spine);
+                for (asset in group.spine) {
+                    if (!group.spine.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadSpine, asset, path + 'spine/' + group.spine[asset], onLoadSpine);
                 }
             }
 
@@ -888,7 +1084,7 @@ bento.define('bento/managers/asset', [
                             if (asset.dispose) {
                                 asset.dispose();
                             }
-                            // spritesheet
+                            // spritesheet or spine
                             else if (asset.image && asset.image.dispose) {
                                 asset.image.dispose();
                             } else if (asset.image && asset.image.image && asset.image.image.dispose) {
@@ -990,6 +1186,24 @@ bento.define('bento/managers/asset', [
             return asset;
         };
         /**
+         * Returns a previously loaded Spine object
+         * @function
+         * @instance
+         * @param {String} name - Name of Spine object
+         * @returns {Object} Spine object
+         * @name getSpine
+         */
+        var getSpine = function (name) {
+            var asset = assets.spine[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Spine object " + name + " could not be found");
+            }
+            return asset;
+        };
+        var getSpineLoader = function (name) {
+            return spineAssetLoader;
+        };
+        /**
          * Returns all assets
          * @function
          * @instance
@@ -1022,8 +1236,8 @@ bento.define('bento/managers/asset', [
             var loaded = 0;
             var groupsToLoad = [];
             var loadGroups = function () {
-                var i;
-                for (i = 0; i < groupsToLoad.length; ++i) {
+                var i, l;
+                for (i = 0, l = groupsToLoad.length; i < l; ++i) {
                     load(groupsToLoad[i], end, function (current, total, name) {});
                 }
             };
@@ -1123,6 +1337,16 @@ bento.define('bento/managers/asset', [
                     onLoaded(current, assetCount, name, type);
                 }
             };
+            // count groups before any loading
+            for (groupName in assetGroups) {
+                if (!assetGroups.hasOwnProperty(groupName)) {
+                    continue;
+                }
+                if (exceptions.indexOf(groupName) >= 0) {
+                    continue;
+                }
+                groupCount += 1;
+            }
 
             // check every assetgroup and load its assets
             for (groupName in assetGroups) {
@@ -1134,7 +1358,6 @@ bento.define('bento/managers/asset', [
                 }
                 group = assetGroups[groupName];
                 assetCount += load(groupName, end, loadAsset);
-                groupCount += 1;
             }
 
             // nothing to load
@@ -1142,7 +1365,47 @@ bento.define('bento/managers/asset', [
                 onReady();
             }
         };
+        /**
+         * Check if asset is loaded
+         * @function
+         * @instance
+         * @param {String} name - name of asset
+         * @param {String} [type] - type of asset (images, json, fonts, spritesheets etc). If omitted, all types will be searched
+         * @return Boolean
+         * @name hasAsset
+         */
+        var hasAsset = function (name, type) {
+            var didFind = false;
+            // fail when type doesnt exist
+            if (type) {
+                if (!assets[type]) {
+                    // typo? (image vs images)
+                    if (!assets[type + 's']) {
+                        console.error('Asset type ' + type + " doesn't exist.");
+                        return false;
+                    } else {
+                        console.log('WARNING: type should be ' + type + 's, not ' + type);
+                        type = type + 's';
+                    }
+                }
+                // check if asset exist
+                if (assets[type][name]) {
+                    return true;
+                }
+            } else {
+                // check all types
+                Utils.forEach(assets, function (assetTypeGroup, assetType, l, breakLoop) {
+                    if (assetTypeGroup[name]) {
+                        didFind = true;
+                        breakLoop();
+                    }
+                });
+            }
+
+            return didFind;
+        };
         var manager = {
+            lazyLoadSpine: false,
             skipAudioCallback: false,
             reload: reload,
             loadAllAssets: loadAllAssets,
@@ -1160,8 +1423,23 @@ bento.define('bento/managers/asset', [
             getAudio: getAudio,
             getSpriteSheet: getSpriteSheet,
             getAssets: getAssets,
-            getAssetGroups: getAssetGroups
+            getAssetGroups: getAssetGroups,
+            hasAsset: hasAsset,
+            getSpine: getSpine,
+            getSpineLoader: getSpineLoader,
+            forceHtml5Audio: function () {
+                Audia = Audia.getHtmlAudia();
+            }
         };
+
+        // implement dispose for spine canvas texture(?)
+        /*if (window.spine && window.spine.canvas && window.spine.canvas.CanvasTexture) {
+            window.spine.canvas.CanvasTexture.prototype.dispose = function () {
+                if (this._image && this._image.dispose) {
+                    this._image.dispose();
+                }
+            };
+        }*/
         return manager;
     };
 });

@@ -71,3 +71,7 @@
     window.require = undefined;
     window.define = undefined;
 }());
+if (!bento) {
+    // if bento still isn't defined at this point, then window isn't the global object
+    var bento = window.bento;
+}

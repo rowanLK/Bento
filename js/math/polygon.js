@@ -72,8 +72,8 @@ bento.define('bento/math/polygon', [
                 p2,
                 q1,
                 q2,
-                i,
-                j;
+                i, ii,
+                j, jj;
 
             // is other really a polygon?
             if (polygon.isRectangle) {
@@ -109,8 +109,8 @@ bento.define('bento/math/polygon', [
             }
 
             // precision check
-            for (i = 0; i < points.length; ++i) {
-                for (j = 0; j < other.length; ++j) {
+            for (i = 0, ii = points.length; i < ii; ++i) {
+                for (j = 0, jj = other.length; j < jj; ++j) {
                     p1 = points[i];
                     p2 = points[(i + 1) % points.length];
                     q1 = other[j];
@@ -132,12 +132,13 @@ bento.define('bento/math/polygon', [
                 has = false,
                 i = 0,
                 j = points.length - 1,
+                l,
                 bounds = this.getBoundingBox();
 
             if (p.x < bounds.x || p.x > bounds.x + bounds.width || p.y < bounds.y || p.y > bounds.y + bounds.height) {
                 return false;
             }
-            for (i, j; i < points.length; j = i++) {
+            for (i, j, l = points.length; i < l; j = i++) {
                 if ((points[i].y > p.y) != (points[j].y > p.y) &&
                     p.x < (points[j].x - points[i].x) * (p.y - points[i].y) /
                     (points[j].y - points[i].y) + points[i].x) {
@@ -152,9 +153,9 @@ bento.define('bento/math/polygon', [
                 minY = points[0].y,
                 maxY = points[0].y,
                 n = 1,
-                q;
+                q, l;
 
-            for (n = 1; n < points.length; ++n) {
+            for (n = 1, l = points.length; n < l; ++n) {
                 q = points[n];
                 minX = Math.min(q.x, minX);
                 maxX = Math.max(q.x, maxX);

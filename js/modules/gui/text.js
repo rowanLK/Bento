@@ -315,8 +315,15 @@ bento.define('bento/gui/text', [
          * Draw text to canvas
          */
         var updateCanvas = function () {
-            var i,
-                j,
+            if (!canvas) {
+                // re-initialize canvas
+                canvas = document.createElement('canvas');
+                ctx = canvas.getContext('2d');
+                packedImage.image = canvas;
+            }
+
+            var i, ii,
+                j, jj,
                 l,
                 x,
                 y,
@@ -420,7 +427,7 @@ bento.define('bento/gui/text', [
 
             // draw text
             setContext(ctx);
-            for (i = 0; i < strings.length; ++i) {
+            for (i = 0, ii = strings.length; i < ii; ++i) {
                 // gradient or solid color
                 if (Utils.isDefined(strings[i].gradient)) {
                     ctx.fillStyle = strings[i].gradient;
@@ -463,7 +470,7 @@ bento.define('bento/gui/text', [
 
                 // inner stroke
                 ctx.globalCompositeOperation = 'source-atop';
-                for (j = 0; j < lineWidth.length; ++j) {
+                for (j = 0, jj = lineWidth.length; j < jj; ++j) {
                     if (lineWidth[j] && innerStroke[j]) {
                         ctx.lineWidth = lineWidth[j] * 2;
                         ctx.strokeStyle = strokeStyle[j];
@@ -520,8 +527,7 @@ bento.define('bento/gui/text', [
             var singleStrings = ('' + text).split('\n'),
                 stringWidth,
                 singleString,
-                i,
-                j,
+                i, j, l,
                 calcGrd,
                 subString,
                 remainingString,
@@ -535,6 +541,7 @@ bento.define('bento/gui/text', [
             for (i = 0; i < singleStrings.length; ++i) {
                 spaceWidth = 0;
                 singleString = singleStrings[i];
+                l = singleString.length;
                 stringWidth = ctx.measureText(singleString).width;
                 // do we need to generate extra linebreaks?
                 if (linebreaks && !isEmpty(maxWidth) && stringWidth > maxWidth) {
@@ -545,8 +552,8 @@ bento.define('bento/gui/text', [
                         subString = singleString.slice(0, singleString.length - j);
                         stringWidth = ctx.measureText(subString).width;
                         // no more letters left: assume 1 letter
-                        if (j === singleString.length) {
-                            j = singleString.length - 1;
+                        if (j === l) {
+                            j = l - 1;
                             break;
                         }
                     }
@@ -557,8 +564,8 @@ bento.define('bento/gui/text', [
                         j += subString.length - spacePos;
                     }
                     // split the string into 2
-                    remainingString = singleString.slice(singleString.length - j, singleString.length);
-                    singleString = singleString.slice(0, singleString.length - j);
+                    remainingString = singleString.slice(l - j, l);
+                    singleString = singleString.slice(0, l - j);
 
                     // remove first space in remainingString
                     if (remainingString.charAt(0) === ' ') {
@@ -605,6 +612,7 @@ bento.define('bento/gui/text', [
                 },
                 gradientValue,
                 i,
+                l,
                 top,
                 bottom;
 
@@ -679,8 +687,8 @@ bento.define('bento/gui/text', [
                 endGrd.x,
                 endGrd.y
             );
-            for (i = 0.0; i < gradientColors.length; ++i) {
-                gradientValue = i * (1 / (gradientColors.length - 1));
+            for (i = 0.0, l = gradientColors.length; i < l; ++i) {
+                gradientValue = i * (1 / (l - 1));
                 grd.addColorStop(gradientValue, gradientColors[i]);
             }
 
@@ -731,18 +739,15 @@ bento.define('bento/gui/text', [
             },
             start: function () {
                 // re-init canvas
-                // if (!canvas) {
-                //     canvas = document.createElement('canvas');
-                //     ctx = canvas.getContext('2d');
-                //     packedImage.image = canvas;
-                //     updateCanvas();
-                // }
+                if (!canvas) {
+                    updateCanvas();
+                }
             },
             destroy: function () {
-                // if (canvas.dispose) {
-                //     canvas.dispose();
-                //     canvas = null;
-                // }
+                if (Text.disposeCanvas && canvas.dispose) {
+                    canvas.dispose();
+                    canvas = null;
+                }
             }
         };
         var sprite = new Sprite({
@@ -857,6 +862,8 @@ bento.define('bento/gui/text', [
 
     // static value drawDebug
     Text.drawDebug = false;
+    // clean up internal canvas
+    Text.disposeCanvas = false;
 
     return Text;
 });
