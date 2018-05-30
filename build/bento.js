@@ -11518,12 +11518,12 @@ bento.define('bento/managers/object', [
         var currentObject; // the current object being processed in the main loop
         var update = function (data) {
             var object,
-                i, l;
+                i;
 
             data = data || getGameData();
 
             EventSystem.fire('preUpdate', data);
-            for (i = 0, l = objects.length; i < l; ++i) {
+            for (i = 0; i < objects.length; ++i) {
                 object = objects[i];
                 if (!object) {
                     continue;
@@ -11690,11 +11690,7 @@ bento.define('bento/managers/object', [
                         remove(object);
                     }
                 }
-                // re-add all global objects
                 cleanObjects();
-                for (i = 0, l = objects.length; i < l; ++i) {
-                    object = objects[i];
-                }
             },
             /**
              * Add or remove objects to a family
@@ -16500,7 +16496,7 @@ bento.define('bento/renderers/canvas2d', [
                     newCanvas.width = width;
                     newCanvas.height = height;
 
-                    newContext = canvas.getContext('2d');
+                    newContext = newCanvas.getContext('2d');
 
                     return {
                         canvas: newCanvas,
