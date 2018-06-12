@@ -103,7 +103,7 @@ bento.define('bento', [
     var bentoSettings;
     var canvasRatio = 0;
     var windowRatio;
-    var throttle = 1;
+    var gameSpeed = 1;
     var canvasScale = {
         x: 1,
         y: 1
@@ -393,7 +393,8 @@ bento.define('bento', [
             bento.refresh();
 
             // reset game speed
-            throttle = 1;
+            Bento.objects.throttle = 1;
+            gameSpeed = 1;
 
             // reload current screen
             Bento.screens.show(screenName || currentScreen.name, undefined,
@@ -422,6 +423,7 @@ bento.define('bento', [
             Bento.getGameData();
          */
         getGameData: function () {
+            var throttle = Bento.objects ? Bento.objects.throttle : 1;
             return {
                 canvas: canvas,
                 renderer: renderer,
@@ -430,7 +432,7 @@ bento.define('bento', [
                 entity: null,
                 event: null,
                 deltaT: 0,
-                speed: throttle
+                speed: throttle * gameSpeed
             };
         },
         /**
@@ -443,7 +445,7 @@ bento.define('bento', [
             Bento.getGameSpeed();
          */
         getGameSpeed: function () {
-            return throttle;
+            return gameSpeed;
         },
         /**
          * Sets the current game speed. Defaults to 1.
@@ -456,7 +458,7 @@ bento.define('bento', [
             Bento.setGameSpeed({$1:1});
          */
         setGameSpeed: function (value) {
-            throttle = value;
+            gameSpeed = value;
         },
         /**
          * Is game in dev mode?
