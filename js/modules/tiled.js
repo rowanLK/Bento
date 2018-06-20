@@ -343,10 +343,8 @@ bento.define('bento/tiled', [
                     onLayer.call(tiled, layer, index);
                 }
             },
-            onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
-                if (!drawTiles) {
-                    return;
-                }
+            // we pass null if there is nothing to draw in order to skip the tile loop entirely
+            onTile: layerSprites.drawn || !drawTiles ? null : function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
                 // get destination position
                 var x = tileX * tileWidth;
                 var y = tileY * tileHeight;
@@ -362,24 +360,22 @@ bento.define('bento/tiled', [
                 var imageUrl = tileSet.image;
                 var assetName;
                 var imageAsset;
-                if (!layerSprites.drawn) {
-                    
-                    assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
-                    assetName = assetName.replace('.png', '');
-                    imageAsset = Bento.assets.getImage(assetName);
 
-                    // draw on the layer
-                    layerSprites.drawTile(
-                        currentSpriteLayer,
-                        destination,
-                        source,
-                        imageAsset,
-                        flipX,
-                        flipY,
-                        flipD,
-                        opacity
-                    );
-                }
+                assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
+                assetName = assetName.replace('.png', '');
+                imageAsset = Bento.assets.getImage(assetName);
+
+                // draw on the layer
+                layerSprites.drawTile(
+                    currentSpriteLayer,
+                    destination,
+                    source,
+                    imageAsset,
+                    flipX,
+                    flipY,
+                    flipD,
+                    opacity
+                );
 
                 if (onTile) {
                     onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);

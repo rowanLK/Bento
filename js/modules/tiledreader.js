@@ -188,7 +188,7 @@ bento.define('bento/tiledreader', [], function () {
                 if (onLayer) {
                     onLayer(layer, k);
                 }
-                if (type === 'tilelayer') {
+                if (type === 'tilelayer' && onTile) {
                     // skip layer if invisible???
                     if (!layer.visible) {
                         continue;
@@ -205,8 +205,7 @@ bento.define('bento/tiledreader', [], function () {
                             tileCallback(layerData, i, j);
                         }
                     }
-
-                } else if (type === 'objectgroup') {
+                } else if (type === 'objectgroup' && onObject) {
                     objects = layer.objects || [];
                     il = objects.length;
                     for (i = 0; i < il; ++i) {
