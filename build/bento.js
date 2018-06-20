@@ -15027,6 +15027,9 @@ bento.define('bento/tiled', [
     var cachedModules = {
         // name: argumentsArray
     };
+    var cachedLayerSprites = {
+        // name: LayerSprites
+    };
     // a collection of sprites/canvases that represent the drawn tiled layers
     var LayerSprites = function (canvasSize, mapSize) {
         // number of sprites horizontally
@@ -15079,6 +15082,7 @@ bento.define('bento/tiled', [
             spritesCountY: spritesCountY,
             canvasSize: canvasSize,
             layers: layers,
+            drawn: false, // used to check if cached
             getSpritesFromLayer: function (layerId) {
                 return layers[layerId];
             },
@@ -15163,6 +15167,14 @@ bento.define('bento/tiled', [
             }
         };
     };
+    var getCachedLayerSprites = function (name, maxCanvasSize, mapSize) {
+        var cache = cachedLayerSprites[name];
+        if (cache) {
+            return cache;
+        } else {
+            return new LayerSprites(maxCanvasSize, mapSize);
+        }
+    };
 
     var Tiled = function (settings) {
         var assetName = settings.assetName;
@@ -15183,12 +15195,13 @@ bento.define('bento/tiled', [
         var onSpawnComplete = settings.onSpawnComplete;
         var onLayerMergeCheck = settings.onLayerMergeCheck;
         var cacheModules = settings.cacheModules || false;
+        var cacheCanvas = settings.cacheCanvas || false;
         var attachEntities = Utils.getDefault(settings.attachEntities, true);
         var offset = settings.offset || new Vector2(0, 0);
         var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
         var mapSize = new Vector2(width * tileWidth, height * tileHeight);
         var currentSpriteLayer = -1;
-        var layerSprites = new LayerSprites(maxCanvasSize, mapSize);
+        var layerSprites = getCachedLayerSprites(assetName, maxCanvasSize, mapSize);
         var entities = [];
         var backgrounds = [];
         var entitiesSpawned = 0;
@@ -15264,10 +15277,8 @@ bento.define('bento/tiled', [
                     onLayer.call(tiled, layer, index);
                 }
             },
-            onTile: function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
-                if (!drawTiles) {
-                    return;
-                }
+            // we pass null if there is nothing to draw in order to skip the tile loop entirely
+            onTile: layerSprites.drawn || !drawTiles ? null : function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
                 // get destination position
                 var x = tileX * tileWidth;
                 var y = tileY * tileHeight;
@@ -15283,12 +15294,12 @@ bento.define('bento/tiled', [
                 var imageUrl = tileSet.image;
                 var assetName;
                 var imageAsset;
+
                 assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
                 assetName = assetName.replace('.png', '');
                 imageAsset = Bento.assets.getImage(assetName);
 
                 // draw on the layer
-                // TODO: cache the drawn layers? Would load faster if a player returns to a screen, on the other hand it could lead to memory hogging
                 layerSprites.drawTile(
                     currentSpriteLayer,
                     destination,
@@ -15355,6 +15366,12 @@ bento.define('bento/tiled', [
                     if (layer) {
                         makeEntity();
                     }
+                }
+
+                // cache layers
+                if (cacheCanvas) {
+                    layerSprites.drawn = true;
+                    cachedLayerSprites[assetName] = layerSprites;
                 }
 
                 if (onComplete) {
@@ -15598,17 +15615,31 @@ bento.define('bento/tiled', [
              */
             layerImages: layerSprites,
             /**
-             * Clear cached modules if cacheModules is tru (the cache is global, 
+             * Clear cached modules if cacheModules is true (the cache is global, 
              * developer need to call this manually to clear the memory)
              * @instance
-             * @name clearCache
+             * @name clearModuleCache
              */
-            clearCache: function () {
+            clearModuleCache: function () {
                 cachedModules = {};
+            },
+            /**
+             * Clear cached modules if cacheModules is true (the cache is global, 
+             * developer need to call this manually to clear the memory)
+             * @instance
+             * @name clearCanvasCache
+             */
+            clearCanvasCache: function () {
+                Utils.forEach(cachedLayerSprites, function (cachedLayerSprite) {
+                    cachedLayerSprite.dispose();
+                });
+                cachedLayerSprites = {};
             },
             // clean up
             destroy: function () {
-                layerSprites.dispose();
+                if (cacheCanvas) {
+                    layerSprites.dispose();
+                }
             }
         };
 
@@ -15809,7 +15840,7 @@ bento.define('bento/tiledreader', [], function () {
                 if (onLayer) {
                     onLayer(layer, k);
                 }
-                if (type === 'tilelayer') {
+                if (type === 'tilelayer' && onTile) {
                     // skip layer if invisible???
                     if (!layer.visible) {
                         continue;
@@ -15826,8 +15857,7 @@ bento.define('bento/tiledreader', [], function () {
                             tileCallback(layerData, i, j);
                         }
                     }
-
-                } else if (type === 'objectgroup') {
+                } else if (type === 'objectgroup' && onObject) {
                     objects = layer.objects || [];
                     il = objects.length;
                     for (i = 0; i < il; ++i) {
