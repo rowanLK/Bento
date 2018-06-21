@@ -852,7 +852,20 @@ bento.define('bento/gui/text', [
                 updateCanvas();
 
                 return fontSize / sharpness;
+            },
+            /**
+             * Retrieve the font size that was used to render the text
+             * @function
+             * @instance
+             * @name getEffectiveFontSize
+             * @returns Number
+             * @snippet #Text.getEffectiveFontSize|Number
+                getEffectiveFontSize();
+             */
+            getEffectiveFontSize: function () {
+                return fontSize / sharpness;
             }
+
         });
 
         applySettings(settings);
