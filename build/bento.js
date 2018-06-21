@@ -15095,6 +15095,7 @@ bento.define('bento/tiled', [
                 var doFlipX = false;
                 var doFlipY = false;
                 var rotation = 0;
+                var tx = 0, ty = 0, sx = 0, sy = 0;
                 // canvas offset
                 var offset = new Vector2(
                     canvasSize.x * (index % spritesCountX),
@@ -15123,14 +15124,20 @@ bento.define('bento/tiled', [
                     }
                 }
 
-                context.save();
+                // context.save();
                 // move to destination
-                context.translate(destination.x - offset.x, destination.y - offset.y);
+                tx += destination.x - offset.x;
+                ty += destination.y - offset.y;
                 // offset origin for rotation
-                context.translate(source.width / 2, source.height / 2);
-                // apply rotation
+                tx += source.width / 2;
+                ty += source.height / 2;
+                // scale
+                sx = doFlipX ? -1 : 1;
+                sy = doFlipY ? -1 : 1;
+                // apply transforms
+                context.translate(tx, ty);
                 context.rotate(rotation);
-                context.scale(doFlipX ? -1 : 1, doFlipY ? -1 : 1);
+                context.scale(sx, sy);
                 // offset origin
                 context.translate(-source.width / 2, -source.height / 2);
                 // opacity
@@ -15150,8 +15157,14 @@ bento.define('bento/tiled', [
                     destination.width,
                     destination.height
                 );
+                // restore transforms
                 context.globalAlpha = 1;
-                context.restore();
+                context.translate(source.width / 2, source.height / 2);
+                context.scale(1 / sx, 1 / sy);
+                context.rotate(-rotation);
+                context.translate(-tx, -ty);
+                
+                // context.restore();
             },
             dispose: function () {
                 // Cocoon: dispose canvasses
