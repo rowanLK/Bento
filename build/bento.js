@@ -4417,7 +4417,10 @@ toComparablePosition(${1:worldPosition});
         }
         data = data || Bento.getGameData();
 
-        this.transform.draw(data);
+        if (!this.transform.draw(data)) {
+            // transform failed, no need to draw at all
+            return;
+        }
 
         // call components
         for (i = 0, l = components.length; i < l; ++i) {
@@ -4953,19 +4956,22 @@ bento.define('bento/transform', [
         var sx = entity.scale.x;
         var sy = entity.scale.y;
 
+        // check validity of transforms, in some cases we won't need to draw anymore
+        // such as 0 scale or 0 alpha
+        if (!alpha || !sx || !sy) {
+            return false;
+        }
+
         // translate
         if (Transform.subPixel) {
-            // renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
             tx += entity.position.x + this.x;
             ty += entity.position.y + this.y;
         } else {
-            // renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
             tx += Math.round(entity.position.x + this.x);
             ty += entity.position.y + this.y;
         }
         // scroll (only applies to parent objects)
         if (!entity.parent && !entity.float) {
-            // renderer.translate(-viewport.x, -viewport.y);
             tx += -viewport.x;
             ty += -viewport.y;
         }
@@ -4986,6 +4992,8 @@ bento.define('bento/transform', [
         this.sx = sx;
         this.sy = sy;
         this.r = rotation;
+
+        return true;
     };
 
     Transform.prototype.postDraw = function (data) {
@@ -15587,7 +15595,7 @@ bento.define('bento/tiled', [
 
             if (cacheModules && cachedModules[moduleName]) {
                 // use the cached module
-                onRequire.call(this, cachedModules[moduleName]);
+                onRequire.apply(this, cachedModules[moduleName]);
             } else {
                 // use require
                 bento.require(require.paths, onRequire);

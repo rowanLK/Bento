@@ -47,6 +47,12 @@ bento.define('bento/transform', [
         var sx = entity.scale.x;
         var sy = entity.scale.y;
 
+        // check validity of transforms, 0 scale can not be reversed
+        // Note: will also skip on 0 alpha, not sure if developer still expects draw functions to run if alpha 0
+        if (!sx || !sy || !alpha) {
+            return false;
+        }
+
         // translate
         if (Transform.subPixel) {
             tx += entity.position.x + this.x;
@@ -77,6 +83,8 @@ bento.define('bento/transform', [
         this.sx = sx;
         this.sy = sy;
         this.r = rotation;
+
+        return true;
     };
 
     Transform.prototype.postDraw = function (data) {

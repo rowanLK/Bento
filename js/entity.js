@@ -952,7 +952,10 @@ toComparablePosition(${1:worldPosition});
         }
         data = data || Bento.getGameData();
 
-        this.transform.draw(data);
+        if (!this.transform.draw(data)) {
+            // transform invalid, no need to draw at all
+            return;
+        }
 
         // call components
         for (i = 0, l = components.length; i < l; ++i) {
