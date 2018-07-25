@@ -643,7 +643,7 @@ bento.define('bento/tiled', [
 
             if (cacheModules && cachedModules[moduleName]) {
                 // use the cached module
-                onRequire.call(this, cachedModules[moduleName]);
+                onRequire.apply(this, cachedModules[moduleName]);
             } else {
                 // use require
                 bento.require(require.paths, onRequire);

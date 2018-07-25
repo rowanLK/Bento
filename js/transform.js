@@ -49,17 +49,14 @@ bento.define('bento/transform', [
 
         // translate
         if (Transform.subPixel) {
-            // renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
             tx += entity.position.x + this.x;
             ty += entity.position.y + this.y;
         } else {
-            // renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
             tx += Math.round(entity.position.x + this.x);
             ty += entity.position.y + this.y;
         }
         // scroll (only applies to parent objects)
         if (!entity.parent && !entity.float) {
-            // renderer.translate(-viewport.x, -viewport.y);
             tx += -viewport.x;
             ty += -viewport.y;
         }
