@@ -53,6 +53,8 @@ bento.define('bento/transform', [
             return false;
         }
 
+        renderer.save();
+
         // translate
         if (Transform.subPixel) {
             tx += entity.position.x + this.x;
@@ -98,6 +100,8 @@ bento.define('bento/transform', [
             renderer.rotate(-this.r);
         }
         renderer.translate(-this.tx, -this.ty);
+
+        renderer.restore();
     };
 
     Transform.prototype.getWorldPosition = function () {
