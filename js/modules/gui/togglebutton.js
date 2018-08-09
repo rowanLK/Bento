@@ -229,11 +229,11 @@ bento.define('bento/gui/togglebutton', [
              * @instance
              * @name mimicClick
              * @snippet #ToggleButton.mimicClick|snippet
-                doCallback();
+                mimicClick();
              */
             mimicClick: function () {
                 if (active) {
-                    settings.onToggle.apply(entity);
+                    entity.toggle(!toggled, true);
                 }
             },
 
