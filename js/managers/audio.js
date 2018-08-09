@@ -25,6 +25,9 @@ bento.define('bento/managers/audio', [
             assetManager = bento.assets,
             canvasElement = bento.getCanvas(),
             onVisibilityChanged = function (hidden) {
+                if (obj.ignorePageVisibility) {
+                    return;
+                }
                 if (hidden) {
                     // save audio preferences and mute
                     saveMuteSound = mutedSound;
@@ -41,6 +44,7 @@ bento.define('bento/managers/audio', [
                 }
             },
             obj = {
+                ignorePageVisibility: false,
                 /**
                  * Sets the volume (0 = minimum, 1 = maximum)
                  * @name setVolume
