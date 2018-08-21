@@ -108,6 +108,7 @@ bento.define('bento', [
         x: 1,
         y: 1
     };
+    var smoothing = true;
     var dev = false;
     var gameData = {};
     var viewport = new Rectangle(0, 0, 640, 480);
@@ -133,7 +134,7 @@ bento.define('bento', [
         canvasRatio = viewport.height / viewport.width;
     };
     var setupRenderer = function (settings, onComplete) {
-        var rendererName;
+        var rendererName = settings.renderer;
         settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
 
         // canvas2d and pixi are reserved names
@@ -154,11 +155,9 @@ bento.define('bento', [
             onComplete();
         });
 
-        // cocoon only: set antiAlias with smoothing parameter
-        if (Utils.isDefined(settings.smoothing) && Utils.isCocoonJs() && window.Cocoon && window.Cocoon.Utils) {
-            window.Cocoon.Utils.setAntialias(settings.smoothing);
-        }
-
+        // set anti aliasing after renderer is created
+        smoothing = settings.smoothing;
+        Bento.setAntiAlias(smoothing);
     };
     /**
      * Bento's default behavior to resize to fit
@@ -467,6 +466,64 @@ bento.define('bento', [
          */
         isDev: function () {
             return dev;
+        },
+        /**
+         * Set anti alias. On Web platforms with 2d canvas, this settings applies to the main canvas.
+         * On Cocoon, this setting applies to any texture that is loaded next.
+         * @function
+         * @instance
+         * @param {Boolean} [antiAliasing] - Set anti aliasing
+         * @name setAntiAlias
+         * @snippet Bento.setAntiAlias|CanvasElement
+        Bento.setAntiAlias(${1:true})
+         */
+        setAntiAlias: function (antiAlias) {
+            var context;
+            if (!Utils.isDefined(antiAlias)) {
+                // undefined as parameter is ignored
+                return;
+            }
+            smoothing = antiAlias;
+            // cocoon only: set antiAlias with smoothing parameter
+            if (Utils.isCocoonJs() && window.Cocoon && window.Cocoon.Utils) {
+                window.Cocoon.Utils.setAntialias(antiAlias);
+            } else if (renderer) {
+                // alternatively set on 2d canvas
+                context = renderer.getContext();
+                if (context && context.canvas) {
+                    context.imageSmoothingEnabled = antiAlias;
+                    context.webkitImageSmoothingEnabled = antiAlias;
+                    context.mozImageSmoothingEnabled = antiAlias;
+                    context.msImageSmoothingEnabled = antiAlias;
+                }
+            }
+        },
+        /**
+         * Wrapper for document.createElement('canvas')
+         * @function
+         * @instance
+         * @param {Boolean} [antiAliasing] - Sets antialiasing (applies to the canvas texture in Cocoon)
+         * @name createCanvas
+         * @snippet Bento.createCanvas|CanvasElement
+        Bento.createCanvas()
+         */
+        createCanvas: function (antiAlias) {
+            var newCanvas;
+            var cachedSmoothing = smoothing;
+
+            // apply antialias setting
+            if (Utils.isDefined(antiAlias)) {
+                Bento.setAntiAlias(antiAlias);
+            }
+            // create the canvas
+            newCanvas = document.createElement('canvas');
+
+            // revert antialias setting
+            if (Utils.isDefined(antiAlias)) {
+                Bento.setAntiAlias(cachedSmoothing);
+            }
+
+            return newCanvas;
         },
         /**
          * Asset manager

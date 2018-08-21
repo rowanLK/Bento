@@ -162,20 +162,6 @@ bento.define('bento/renderers/canvas2d', [
                 return colorStr;
             };
 
-        if (!settings.smoothing) {
-            if (context.imageSmoothingEnabled) {
-                context.imageSmoothingEnabled = false;
-            }
-            if (context.webkitImageSmoothingEnabled) {
-                context.webkitImageSmoothingEnabled = false;
-            }
-            if (context.mozImageSmoothingEnabled) {
-                context.mozImageSmoothingEnabled = false;
-            }
-            if (context.msImageSmoothingEnabled) {
-                context.msImageSmoothingEnabled = false;
-            }
-        }
         return renderer;
     };
 });

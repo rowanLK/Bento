@@ -17,6 +17,7 @@
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
  * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
+ * @param {Bool} [settings.smoothing] - Set anti aliasing on text (Cocoon only)
  * @param {Boolean} [settings.shadow] - Draws a shadow under the text
  * @param {Vector2} [settings.shadowOffset] - Offset of shadow
  * @param {String} [settings.shadowColor] - Color of the shadow (CSS color specification)
@@ -40,7 +41,8 @@ Text({
     lineWidth: ${11:0}, // set to add an outline
     strokeStyle: '${12:#000000}',
     innerStroke: ${13:false},
-    pixelStroke: ${14:false}, // workaround for Cocoon bug
+    pixelStroke: ${14:true}, // workaround for Cocoon bug
+    smoothing: ${14:true}, // Cocoon only
     maxWidth: ${15:undefined},
     maxHeight: ${16:undefined},
     linebreaks: ${17:true},
@@ -128,15 +130,16 @@ bento.define('bento/gui/text', [
         var margin = new Vector2(8, 8);
         var ySpacing = 0;
         var overlaySprite = null;
-        var canvas = document.createElement('canvas');
-        var ctx = canvas.getContext('2d');
+        var canvas;
+        var ctx;
+        var packedImage;
         var canvasWidth = 1;
         var canvasHeight = 1;
         var compositeOperation = 'source-over';
-        var packedImage = new PackedImage(canvas);
         var sharpness = 4; // extra scaling to counter blurriness in chrome
         var invSharpness = 1 / sharpness;
         var fontSizeCache = {};
+        var antiAliasing; // do not set a default value here
         var drawDebug = settings.drawDebug || false;
         var shadow = false;
         var shadowOffset = new Vector2(0, 0);
@@ -311,17 +314,26 @@ bento.define('bento/gui/text', [
                 entity.setText(text);
             }
         };
+        var createCanvas = function () {
+            if (!canvas) {
+
+                if (settings.fontSettings) {
+                    if (Utils.isDefined(settings.fontSettings.smoothing)) {
+                        antiAliasing = settings.fontSettings.smoothing;
+                    }
+                } else if (Utils.isDefined(settings.smoothing)) {
+                    antiAliasing = settings.smoothing || settings.antiAliasing;
+                } 
+
+                // (re-)initialize canvas
+                canvas = Bento.createCanvas(antiAliasing);
+                ctx = canvas.getContext('2d');
+            }
+        };
         /*
          * Draw text to canvas
          */
         var updateCanvas = function () {
-            if (!canvas) {
-                // re-initialize canvas
-                canvas = document.createElement('canvas');
-                ctx = canvas.getContext('2d');
-                packedImage.image = canvas;
-            }
-
             var i, ii,
                 j, jj,
                 l,
@@ -369,8 +381,10 @@ bento.define('bento/gui/text', [
                     // draw it again on normal canvas
                     ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, shadowOffset.x, shadowOffset.y, tempCanvas.width, tempCanvas.height);
                 };
+            createCanvas();
 
             // resize canvas based on text size
+            Bento.setAntiAlias(antiAliasing);
             canvas.width = canvasWidth + maxLineWidth + shadowOffsetMax + margin.x * 2;
             canvas.height = canvasHeight + maxLineWidth + shadowOffsetMax + margin.y * 2;
             // clear
@@ -694,6 +708,7 @@ bento.define('bento/gui/text', [
 
             return grd;
         };
+        var didInit = false;
         var debugDrawComponent = {
             name: 'debugDrawComponent',
             draw: function (data) {
@@ -740,13 +755,22 @@ bento.define('bento/gui/text', [
             start: function () {
                 // re-init canvas
                 if (!canvas) {
-                    updateCanvas();
+                    if (!didInit && !Text.generateOnConstructor) {
+                        // first time initialization with text
+                        createCanvas();
+                        didInit = true;
+                        applySettings(settings);
+                    } else {
+                        // just reinit the canvas
+                        updateCanvas();
+                    }
                 }
             },
             destroy: function () {
                 if (Text.disposeCanvas && canvas.dispose) {
                     canvas.dispose();
                     canvas = null;
+                    packedImage = null;
                 }
             }
         };
@@ -868,15 +892,22 @@ bento.define('bento/gui/text', [
 
         });
 
-        applySettings(settings);
+        if (Text.generateOnConstructor) {
+            createCanvas();
+            applySettings(settings);
+        }
 
         return entity;
     };
 
     // static value drawDebug
     Text.drawDebug = false;
-    // clean up internal canvas
+
+    // clean up internal canvas immediately on destroy
     Text.disposeCanvas = false;
+
+    // legacy setting
+    Text.generateOnConstructor = false;
 
     return Text;
 });
