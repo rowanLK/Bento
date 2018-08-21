@@ -156,7 +156,7 @@ bento.define('bento', [
         });
 
         // set anti aliasing after renderer is created
-        smoothing = settings.smoothing;
+        smoothing = settings.antiAlias;
         Bento.setAntiAlias(smoothing);
     };
     /**
@@ -497,6 +497,17 @@ bento.define('bento', [
                     context.msImageSmoothingEnabled = antiAlias;
                 }
             }
+        },
+        /**
+         * Get current anti aliasing setting
+         * @function
+         * @instance
+         * @name getAntiAlias
+         * @snippet Bento.getAntiAlias|Boolean
+        Bento.getAntiAlias()
+         */
+        getAntiAlias: function () {
+            return smoothing;
         },
         /**
          * Wrapper for document.createElement('canvas')

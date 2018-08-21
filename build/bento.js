@@ -3057,6 +3057,7 @@ bento.define('bento', [
         x: 1,
         y: 1
     };
+    var smoothing = true;
     var dev = false;
     var gameData = {};
     var viewport = new Rectangle(0, 0, 640, 480);
@@ -3082,7 +3083,7 @@ bento.define('bento', [
         canvasRatio = viewport.height / viewport.width;
     };
     var setupRenderer = function (settings, onComplete) {
-        var rendererName;
+        var rendererName = settings.renderer;
         settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
 
         // canvas2d and pixi are reserved names
@@ -3103,11 +3104,9 @@ bento.define('bento', [
             onComplete();
         });
 
-        // cocoon only: set antiAlias with smoothing parameter
-        if (Utils.isDefined(settings.smoothing) && Utils.isCocoonJs() && window.Cocoon && window.Cocoon.Utils) {
-            window.Cocoon.Utils.setAntialias(settings.smoothing);
-        }
-
+        // set anti aliasing after renderer is created
+        smoothing = settings.antiAlias;
+        Bento.setAntiAlias(smoothing);
     };
     /**
      * Bento's default behavior to resize to fit
@@ -3418,6 +3417,75 @@ bento.define('bento', [
             return dev;
         },
         /**
+         * Set anti alias. On Web platforms with 2d canvas, this settings applies to the main canvas.
+         * On Cocoon, this setting applies to any texture that is loaded next.
+         * @function
+         * @instance
+         * @param {Boolean} [antiAliasing] - Set anti aliasing
+         * @name setAntiAlias
+         * @snippet Bento.setAntiAlias|CanvasElement
+        Bento.setAntiAlias(${1:true})
+         */
+        setAntiAlias: function (antiAlias) {
+            var context;
+            if (!Utils.isDefined(antiAlias)) {
+                // undefined as parameter is ignored
+                return;
+            }
+            smoothing = antiAlias;
+            // cocoon only: set antiAlias with smoothing parameter
+            if (Utils.isCocoonJs() && window.Cocoon && window.Cocoon.Utils) {
+                window.Cocoon.Utils.setAntialias(antiAlias);
+            } else if (renderer) {
+                // alternatively set on 2d canvas
+                context = renderer.getContext();
+                if (context && context.canvas) {
+                    context.imageSmoothingEnabled = antiAlias;
+                    context.webkitImageSmoothingEnabled = antiAlias;
+                    context.mozImageSmoothingEnabled = antiAlias;
+                    context.msImageSmoothingEnabled = antiAlias;
+                }
+            }
+        },
+        /**
+         * Get current anti aliasing setting
+         * @function
+         * @instance
+         * @name getAntiAlias
+         * @snippet Bento.getAntiAlias|Boolean
+        Bento.getAntiAlias()
+         */
+        getAntiAlias: function () {
+            return smoothing;
+        },
+        /**
+         * Wrapper for document.createElement('canvas')
+         * @function
+         * @instance
+         * @param {Boolean} [antiAliasing] - Sets antialiasing (applies to the canvas texture in Cocoon)
+         * @name createCanvas
+         * @snippet Bento.createCanvas|CanvasElement
+        Bento.createCanvas()
+         */
+        createCanvas: function (antiAlias) {
+            var newCanvas;
+            var cachedSmoothing = smoothing;
+
+            // apply antialias setting
+            if (Utils.isDefined(antiAlias)) {
+                Bento.setAntiAlias(antiAlias);
+            }
+            // create the canvas
+            newCanvas = document.createElement('canvas');
+
+            // revert antialias setting
+            if (Utils.isDefined(antiAlias)) {
+                Bento.setAntiAlias(cachedSmoothing);
+            }
+
+            return newCanvas;
+        },
+        /**
          * Asset manager
          * @see module:bento/managers/asset
          * @instance
@@ -3541,55 +3609,45 @@ bento.define('bento/entity', [
         }
         var i, l;
         /**
-         * Unique id
+         * Name of the entity
          * @instance
-         * @name id
-         * @snippet #Entity.id|Number
-            id
+         * @default ''
+         * @name name
+         * @snippet #Entity.name|String
+            name
+         * @snippet #Entity.isAdded|read-only
+            isAdded
          */
-        this.id = id++;
+        this.name = '';
         /**
-         * z-index of an object
+         * Position of the entity
          * @instance
-         * @default 0
-         * @name z
-         * @snippet #Entity.z|Number
-            z
+         * @default Vector2(0, 0)
+         * @name position
+         * @snippet #Entity.position|Vector2
+            position
          */
-        this.z = 0;
-        /**
-         * Index position of its parent (if any)
+        this.position = new Vector2(0, 0);
+        /*
+         * UNLISTED developer should never edit this array directly
+         * Families of the entity. Note: edit this before the entity is attached.
          * @instance
-         * @default -1
-         * @name rootIndex
+         * @default []
+         * @see module:bento/managers/object#getByFamily
+         * @name family
          */
-        this.rootIndex = -1;
-        /**
-         * Timer value, incremented every update step (dependent on game speed)
+        this.family = [];
+        /*
+         * UNLISTED developer should never edit this array directly
+         * Components of the entity
          * @instance
-         * @default 0
-         * @name timer
-         * @snippet #Entity.timer|Number
-            timer
+         * @default []
+         * @name components
+         * @snippet #Entity.components|Array
+            components
          */
-        this.timer = 0;
-        /**
-         * Ticker value, incremented every update step (independent of game speed)
-         * @instance
-         * @default 0
-         * @name ticker
-         * @snippet #Entity.ticker|Number
-            ticker
-         */
-        this.ticker = 0;
-        /**
-         * Indicates if an object should not be destroyed when a Screen ends
-         * @instance
-         * @default false
-         * @name global
-         * @snippet #Entity.global|Boolean
-            global
-         */
+        this.components = [];
+
         this.global = false;
         /**
          * Indicates if an object should move with the scrolling of the screen
@@ -3611,46 +3669,7 @@ bento.define('bento/entity', [
             updateWhenPaused
          */
         this.updateWhenPaused = 0;
-        /**
-         * Name of the entity
-         * @instance
-         * @default ''
-         * @name name
-         * @snippet #Entity.name|String
-            name
-         * @snippet #Entity.isAdded|read-only
-            isAdded
-         */
-        this.name = '';
         this.isAdded = false;
-        /**
-         * Position of the entity
-         * @instance
-         * @default Vector2(0, 0)
-         * @name position
-         * @snippet #Entity.position|Vector2
-            position
-         */
-        this.position = new Vector2(0, 0);
-        /*
-         * UNLISTED
-         * Families of the entity. Note: edit this before the entity is attached.
-         * @instance
-         * @default []
-         * @see module:bento/managers/object#getByFamily
-         * @name family
-         */
-        this.family = [];
-        /*
-         * UNLISTED
-         * Components of the entity
-         * @instance
-         * @default []
-         * @name components
-         * @snippet #Entity.components|Array
-            components
-         */
-        this.components = [];
         /**
          * Dimension of the entity
          * @instance
@@ -3706,6 +3725,56 @@ bento.define('bento/entity', [
             visible
          */
         this.visible = true;
+        /**
+         * Unique id
+         * @instance
+         * @name id
+         * @snippet #Entity.id|Number
+            id
+         */
+        this.id = id++;
+        /**
+         * z-index of an object
+         * @instance
+         * @default 0
+         * @name z
+         * @snippet #Entity.z|Number
+            z
+         */
+        this.z = 0;
+        /**
+         * Index position of its parent (if any)
+         * @instance
+         * @default -1
+         * @name rootIndex
+         */
+        this.rootIndex = -1;
+        /**
+         * Timer value, incremented every update step (dependent on game speed)
+         * @instance
+         * @default 0
+         * @name timer
+         * @snippet #Entity.timer|Number
+            timer
+         */
+        this.timer = 0;
+        /**
+         * Ticker value, incremented every update step (independent of game speed)
+         * @instance
+         * @default 0
+         * @name ticker
+         * @snippet #Entity.ticker|Number
+            ticker
+         */
+        this.ticker = 0;
+        /**
+         * Indicates if an object should not be destroyed when a Screen ends
+         * @instance
+         * @default false
+         * @name global
+         * @snippet #Entity.global|Boolean
+            global
+         */
         /**
          * Transform module
          * @instance
@@ -4418,7 +4487,7 @@ toComparablePosition(${1:worldPosition});
         data = data || Bento.getGameData();
 
         if (!this.transform.draw(data)) {
-            // transform failed, no need to draw at all
+            // transform invalid, no need to draw at all
             return;
         }
 
@@ -4956,11 +5025,13 @@ bento.define('bento/transform', [
         var sx = entity.scale.x;
         var sy = entity.scale.y;
 
-        // check validity of transforms, in some cases we won't need to draw anymore
-        // such as 0 scale or 0 alpha
-        if (!alpha || !sx || !sy) {
+        // check validity of transforms, 0 scale can not be reversed
+        // Note: will also skip on 0 alpha, not sure if developer still expects draw functions to run if alpha 0
+        if (!sx || !sy || !alpha) {
             return false;
         }
+
+        renderer.save();
 
         // translate
         if (Transform.subPixel) {
@@ -5007,6 +5078,8 @@ bento.define('bento/transform', [
             renderer.rotate(-this.r);
         }
         renderer.translate(-this.tx, -this.ty);
+
+        renderer.restore();
     };
 
     Transform.prototype.getWorldPosition = function () {
@@ -10364,6 +10437,9 @@ bento.define('bento/managers/audio', [
             assetManager = bento.assets,
             canvasElement = bento.getCanvas(),
             onVisibilityChanged = function (hidden) {
+                if (obj.ignorePageVisibility) {
+                    return;
+                }
                 if (hidden) {
                     // save audio preferences and mute
                     saveMuteSound = mutedSound;
@@ -10380,6 +10456,7 @@ bento.define('bento/managers/audio', [
                 }
             },
             obj = {
+                ignorePageVisibility: false,
                 /**
                  * Sets the volume (0 = minimum, 1 = maximum)
                  * @name setVolume
@@ -14063,7 +14140,7 @@ bento.define('bento/canvas', [
     var canvasPool = new ObjectPool({
         poolSize: 1,
         constructor: function () {
-            var canvas = document.createElement('canvas');
+            var canvas = Bento.createCanvas();
 
             return canvas;
         },
@@ -15068,7 +15145,7 @@ bento.define('bento/tiled', [
             var context;
 
             for (i = 0; i < spritesCountX * spritesCountY; ++i) {
-                canvas = document.createElement('canvas');
+                canvas = Bento.createCanvas();
                 canvas.width = canvasSize.x;
                 canvas.height = canvasSize.y;
                 context = canvas.getContext('2d');
@@ -16612,20 +16689,6 @@ bento.define('bento/renderers/canvas2d', [
                 return colorStr;
             };
 
-        if (!settings.smoothing) {
-            if (context.imageSmoothingEnabled) {
-                context.imageSmoothingEnabled = false;
-            }
-            if (context.webkitImageSmoothingEnabled) {
-                context.webkitImageSmoothingEnabled = false;
-            }
-            if (context.mozImageSmoothingEnabled) {
-                context.mozImageSmoothingEnabled = false;
-            }
-            if (context.msImageSmoothingEnabled) {
-                context.msImageSmoothingEnabled = false;
-            }
-        }
         return renderer;
     };
 });
@@ -17465,11 +17528,13 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name mimicClick
              * @snippet #ClickButton.mimicClick|snippet
-                doCallback();
+                mimicClick();
              */
             mimicClick: function () {
                 if (active) {
-                    settings.onClick.apply(entity);
+                    wasHoldingThis = true;
+                    clickable.callbacks.onHoldEnd({});
+                    // settings.onClick.apply(entity);
                 }
             },
             /**
@@ -18463,6 +18528,7 @@ iterate(function (item, i, l, breakLoop) {
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
  * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
+ * @param {Bool} [settings.antiAlias] - Set anti aliasing on text (Cocoon only)
  * @param {Boolean} [settings.shadow] - Draws a shadow under the text
  * @param {Vector2} [settings.shadowOffset] - Offset of shadow
  * @param {String} [settings.shadowColor] - Color of the shadow (CSS color specification)
@@ -18486,7 +18552,8 @@ Text({
     lineWidth: ${11:0}, // set to add an outline
     strokeStyle: '${12:#000000}',
     innerStroke: ${13:false},
-    pixelStroke: ${14:false}, // workaround for Cocoon bug
+    pixelStroke: ${14:true}, // workaround for Cocoon bug
+    antiAlias: ${14:true}, // Cocoon only
     maxWidth: ${15:undefined},
     maxHeight: ${16:undefined},
     linebreaks: ${17:true},
@@ -18574,15 +18641,16 @@ bento.define('bento/gui/text', [
         var margin = new Vector2(8, 8);
         var ySpacing = 0;
         var overlaySprite = null;
-        var canvas = document.createElement('canvas');
-        var ctx = canvas.getContext('2d');
+        var canvas;
+        var ctx;
+        var packedImage;
         var canvasWidth = 1;
         var canvasHeight = 1;
         var compositeOperation = 'source-over';
-        var packedImage = new PackedImage(canvas);
         var sharpness = 4; // extra scaling to counter blurriness in chrome
         var invSharpness = 1 / sharpness;
         var fontSizeCache = {};
+        var antiAliasing; // do not set a default value here
         var drawDebug = settings.drawDebug || false;
         var shadow = false;
         var shadowOffset = new Vector2(0, 0);
@@ -18757,17 +18825,26 @@ bento.define('bento/gui/text', [
                 entity.setText(text);
             }
         };
+        var createCanvas = function () {
+            if (!canvas) {
+
+                if (settings.fontSettings) {
+                    if (Utils.isDefined(settings.fontSettings.antiAlias)) {
+                        antiAliasing = settings.fontSettings.antiAlias;
+                    }
+                } else if (Utils.isDefined(settings.antiAlias)) {
+                    antiAliasing = settings.antiAlias;
+                }
+
+                // (re-)initialize canvas
+                canvas = Bento.createCanvas(antiAliasing);
+                ctx = canvas.getContext('2d');
+            }
+        };
         /*
          * Draw text to canvas
          */
         var updateCanvas = function () {
-            if (!canvas) {
-                // re-initialize canvas
-                canvas = document.createElement('canvas');
-                ctx = canvas.getContext('2d');
-                packedImage.image = canvas;
-            }
-
             var i, ii,
                 j, jj,
                 l,
@@ -18781,9 +18858,19 @@ bento.define('bento/gui/text', [
                 doPixelStroke = function () {
                     var tempCanvas = document.createElement('canvas');
                     var tempCtx = tempCanvas.getContext('2d');
+                    var cache = Bento.getAntiAlias();
 
+                    // set anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(antiAliasing);
+                    }
                     tempCanvas.width = canvas.width;
                     tempCanvas.height = canvas.height;
+
+                    // revert anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(cache);
+                    }
 
                     // copy fillText operation with
                     setContext(tempCtx);
@@ -18803,9 +18890,20 @@ bento.define('bento/gui/text', [
                 doShadow = function () {
                     var tempCanvas = document.createElement('canvas');
                     var tempCtx = tempCanvas.getContext('2d');
+                    var cache = Bento.getAntiAlias();
+
+                    // set anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(antiAliasing);
+                    }
 
                     tempCanvas.width = canvas.width;
                     tempCanvas.height = canvas.height;
+
+                    // revert anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(cache);
+                    }
 
                     // copy fillText operation with
                     setContext(tempCtx);
@@ -18815,10 +18913,23 @@ bento.define('bento/gui/text', [
                     // draw it again on normal canvas
                     ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, shadowOffset.x, shadowOffset.y, tempCanvas.width, tempCanvas.height);
                 };
+            createCanvas();
+
+            var cacheAntiAlias = Bento.getAntiAlias();
+            // set anti alias (setting width and height will generate a new texture)
+            if (Utils.isDefined(antiAliasing)) {
+                Bento.setAntiAlias(antiAliasing);
+            }
 
             // resize canvas based on text size
             canvas.width = canvasWidth + maxLineWidth + shadowOffsetMax + margin.x * 2;
             canvas.height = canvasHeight + maxLineWidth + shadowOffsetMax + margin.y * 2;
+
+            // revert anti alias
+            if (Utils.isDefined(antiAliasing)) {
+                Bento.setAntiAlias(cacheAntiAlias);
+            }
+
             // clear
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // update baseobject
@@ -19140,6 +19251,7 @@ bento.define('bento/gui/text', [
 
             return grd;
         };
+        var didInit = false;
         var debugDrawComponent = {
             name: 'debugDrawComponent',
             draw: function (data) {
@@ -19186,13 +19298,22 @@ bento.define('bento/gui/text', [
             start: function () {
                 // re-init canvas
                 if (!canvas) {
-                    updateCanvas();
+                    if (!didInit && !Text.generateOnConstructor) {
+                        // first time initialization with text
+                        createCanvas();
+                        didInit = true;
+                        applySettings(settings);
+                    } else {
+                        // just reinit the canvas
+                        updateCanvas();
+                    }
                 }
             },
             destroy: function () {
                 if (Text.disposeCanvas && canvas.dispose) {
                     canvas.dispose();
                     canvas = null;
+                    packedImage = null;
                 }
             }
         };
@@ -19314,15 +19435,22 @@ bento.define('bento/gui/text', [
 
         });
 
-        applySettings(settings);
+        if (Text.generateOnConstructor) {
+            createCanvas();
+            applySettings(settings);
+        }
 
         return entity;
     };
 
     // static value drawDebug
     Text.drawDebug = false;
-    // clean up internal canvas
+
+    // clean up internal canvas immediately on destroy
     Text.disposeCanvas = false;
+
+    // legacy setting
+    Text.generateOnConstructor = false;
 
     return Text;
 });
@@ -19557,11 +19685,11 @@ bento.define('bento/gui/togglebutton', [
              * @instance
              * @name mimicClick
              * @snippet #ToggleButton.mimicClick|snippet
-                doCallback();
+                mimicClick();
              */
             mimicClick: function () {
                 if (active) {
-                    settings.onToggle.apply(entity);
+                    entity.toggle(!toggled, true);
                 }
             },
 

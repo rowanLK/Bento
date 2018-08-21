@@ -17,7 +17,7 @@
  * @param {String/Array} [settings.strokeStyle] - CSS stroke style
  * @param {Bool/Array} [settings.innerStroke] - Whether the particular stroke should be inside the text
  * @param {Bool} [settings.pixelStroke] - Cocoon.io's canvas+ has a bug with text strokes. This is a workaround that draws a stroke by drawing the text multiple times.
- * @param {Bool} [settings.smoothing] - Set anti aliasing on text (Cocoon only)
+ * @param {Bool} [settings.antiAlias] - Set anti aliasing on text (Cocoon only)
  * @param {Boolean} [settings.shadow] - Draws a shadow under the text
  * @param {Vector2} [settings.shadowOffset] - Offset of shadow
  * @param {String} [settings.shadowColor] - Color of the shadow (CSS color specification)
@@ -42,7 +42,7 @@ Text({
     strokeStyle: '${12:#000000}',
     innerStroke: ${13:false},
     pixelStroke: ${14:true}, // workaround for Cocoon bug
-    smoothing: ${14:true}, // Cocoon only
+    antiAlias: ${14:true}, // Cocoon only
     maxWidth: ${15:undefined},
     maxHeight: ${16:undefined},
     linebreaks: ${17:true},
@@ -318,12 +318,12 @@ bento.define('bento/gui/text', [
             if (!canvas) {
 
                 if (settings.fontSettings) {
-                    if (Utils.isDefined(settings.fontSettings.smoothing)) {
-                        antiAliasing = settings.fontSettings.smoothing;
+                    if (Utils.isDefined(settings.fontSettings.antiAlias)) {
+                        antiAliasing = settings.fontSettings.antiAlias;
                     }
-                } else if (Utils.isDefined(settings.smoothing)) {
-                    antiAliasing = settings.smoothing || settings.antiAliasing;
-                } 
+                } else if (Utils.isDefined(settings.antiAlias)) {
+                    antiAliasing = settings.antiAlias;
+                }
 
                 // (re-)initialize canvas
                 canvas = Bento.createCanvas(antiAliasing);
@@ -347,9 +347,19 @@ bento.define('bento/gui/text', [
                 doPixelStroke = function () {
                     var tempCanvas = document.createElement('canvas');
                     var tempCtx = tempCanvas.getContext('2d');
+                    var cache = Bento.getAntiAlias();
 
+                    // set anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(antiAliasing);
+                    }
                     tempCanvas.width = canvas.width;
                     tempCanvas.height = canvas.height;
+
+                    // revert anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(cache);
+                    }
 
                     // copy fillText operation with
                     setContext(tempCtx);
@@ -369,9 +379,20 @@ bento.define('bento/gui/text', [
                 doShadow = function () {
                     var tempCanvas = document.createElement('canvas');
                     var tempCtx = tempCanvas.getContext('2d');
+                    var cache = Bento.getAntiAlias();
+
+                    // set anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(antiAliasing);
+                    }
 
                     tempCanvas.width = canvas.width;
                     tempCanvas.height = canvas.height;
+
+                    // revert anti alias
+                    if (Utils.isDefined(antiAliasing)) {
+                        Bento.setAntiAlias(cache);
+                    }
 
                     // copy fillText operation with
                     setContext(tempCtx);
@@ -383,10 +404,21 @@ bento.define('bento/gui/text', [
                 };
             createCanvas();
 
+            var cacheAntiAlias = Bento.getAntiAlias();
+            // set anti alias (setting width and height will generate a new texture)
+            if (Utils.isDefined(antiAliasing)) {
+                Bento.setAntiAlias(antiAliasing);
+            }
+
             // resize canvas based on text size
-            Bento.setAntiAlias(antiAliasing);
             canvas.width = canvasWidth + maxLineWidth + shadowOffsetMax + margin.x * 2;
             canvas.height = canvasHeight + maxLineWidth + shadowOffsetMax + margin.y * 2;
+
+            // revert anti alias
+            if (Utils.isDefined(antiAliasing)) {
+                Bento.setAntiAlias(cacheAntiAlias);
+            }
+
             // clear
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // update baseobject
