@@ -547,6 +547,9 @@ bento.define('bento/gui/text', [
          * Restore context and previous font settings
          */
         var restoreContext = function (context) {
+            if (!context) {
+                return;
+            }
             context.textAlign = 'left';
             context.textBaseline = 'bottom';
             context.lineWidth = 0;
@@ -559,6 +562,9 @@ bento.define('bento/gui/text', [
          * Save context and set font settings for drawing
          */
         var setContext = function (context) {
+            if (!context) {
+                return;
+            }
             context.save();
             context.textAlign = align;
             context.textBaseline = 'bottom';
@@ -580,6 +586,15 @@ bento.define('bento/gui/text', [
                 spacePos,
                 extraSpace = false;
 
+            if (!canvas) {
+                if (!didInit && !Text.generateOnConstructor) {
+                    // first time initialization with text
+                    createCanvas();
+                    didInit = true;
+                    applySettings(settings);
+                }
+            }
+            
             strings = [];
             canvasWidth = 1;
             canvasHeight = 1;
