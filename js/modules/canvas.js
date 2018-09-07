@@ -54,7 +54,7 @@ bento.define('bento/canvas', [
     var canvasPool = new ObjectPool({
         poolSize: 1,
         constructor: function () {
-            var canvas = document.createElement('canvas');
+            var canvas = Bento.createCanvas();
 
             return canvas;
         },

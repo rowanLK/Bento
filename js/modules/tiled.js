@@ -116,7 +116,7 @@ bento.define('bento/tiled', [
             var context;
 
             for (i = 0; i < spritesCountX * spritesCountY; ++i) {
-                canvas = document.createElement('canvas');
+                canvas = Bento.createCanvas();
                 canvas.width = canvasSize.x;
                 canvas.height = canvasSize.y;
                 context = canvas.getContext('2d');
@@ -643,7 +643,7 @@ bento.define('bento/tiled', [
 
             if (cacheModules && cachedModules[moduleName]) {
                 // use the cached module
-                onRequire.call(this, cachedModules[moduleName]);
+                onRequire.apply(this, cachedModules[moduleName]);
             } else {
                 // use require
                 bento.require(require.paths, onRequire);

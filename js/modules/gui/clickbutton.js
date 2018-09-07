@@ -262,11 +262,13 @@ bento.define('bento/gui/clickbutton', [
              * @instance
              * @name mimicClick
              * @snippet #ClickButton.mimicClick|snippet
-                doCallback();
+                mimicClick();
              */
             mimicClick: function () {
                 if (active) {
-                    settings.onClick.apply(entity);
+                    wasHoldingThis = true;
+                    clickable.callbacks.onHoldEnd({});
+                    // settings.onClick.apply(entity);
                 }
             },
             /**

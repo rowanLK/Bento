@@ -76,55 +76,45 @@ bento.define('bento/entity', [
         }
         var i, l;
         /**
-         * Unique id
+         * Name of the entity
          * @instance
-         * @name id
-         * @snippet #Entity.id|Number
-            id
+         * @default ''
+         * @name name
+         * @snippet #Entity.name|String
+            name
+         * @snippet #Entity.isAdded|read-only
+            isAdded
          */
-        this.id = id++;
+        this.name = '';
         /**
-         * z-index of an object
+         * Position of the entity
          * @instance
-         * @default 0
-         * @name z
-         * @snippet #Entity.z|Number
-            z
+         * @default Vector2(0, 0)
+         * @name position
+         * @snippet #Entity.position|Vector2
+            position
          */
-        this.z = 0;
-        /**
-         * Index position of its parent (if any)
+        this.position = new Vector2(0, 0);
+        /*
+         * UNLISTED developer should never edit this array directly
+         * Families of the entity. Note: edit this before the entity is attached.
          * @instance
-         * @default -1
-         * @name rootIndex
+         * @default []
+         * @see module:bento/managers/object#getByFamily
+         * @name family
          */
-        this.rootIndex = -1;
-        /**
-         * Timer value, incremented every update step (dependent on game speed)
+        this.family = [];
+        /*
+         * UNLISTED developer should never edit this array directly
+         * Components of the entity
          * @instance
-         * @default 0
-         * @name timer
-         * @snippet #Entity.timer|Number
-            timer
+         * @default []
+         * @name components
+         * @snippet #Entity.components|Array
+            components
          */
-        this.timer = 0;
-        /**
-         * Ticker value, incremented every update step (independent of game speed)
-         * @instance
-         * @default 0
-         * @name ticker
-         * @snippet #Entity.ticker|Number
-            ticker
-         */
-        this.ticker = 0;
-        /**
-         * Indicates if an object should not be destroyed when a Screen ends
-         * @instance
-         * @default false
-         * @name global
-         * @snippet #Entity.global|Boolean
-            global
-         */
+        this.components = [];
+
         this.global = false;
         /**
          * Indicates if an object should move with the scrolling of the screen
@@ -146,46 +136,7 @@ bento.define('bento/entity', [
             updateWhenPaused
          */
         this.updateWhenPaused = 0;
-        /**
-         * Name of the entity
-         * @instance
-         * @default ''
-         * @name name
-         * @snippet #Entity.name|String
-            name
-         * @snippet #Entity.isAdded|read-only
-            isAdded
-         */
-        this.name = '';
         this.isAdded = false;
-        /**
-         * Position of the entity
-         * @instance
-         * @default Vector2(0, 0)
-         * @name position
-         * @snippet #Entity.position|Vector2
-            position
-         */
-        this.position = new Vector2(0, 0);
-        /*
-         * UNLISTED
-         * Families of the entity. Note: edit this before the entity is attached.
-         * @instance
-         * @default []
-         * @see module:bento/managers/object#getByFamily
-         * @name family
-         */
-        this.family = [];
-        /*
-         * UNLISTED
-         * Components of the entity
-         * @instance
-         * @default []
-         * @name components
-         * @snippet #Entity.components|Array
-            components
-         */
-        this.components = [];
         /**
          * Dimension of the entity
          * @instance
@@ -241,6 +192,56 @@ bento.define('bento/entity', [
             visible
          */
         this.visible = true;
+        /**
+         * Unique id
+         * @instance
+         * @name id
+         * @snippet #Entity.id|Number
+            id
+         */
+        this.id = id++;
+        /**
+         * z-index of an object
+         * @instance
+         * @default 0
+         * @name z
+         * @snippet #Entity.z|Number
+            z
+         */
+        this.z = 0;
+        /**
+         * Index position of its parent (if any)
+         * @instance
+         * @default -1
+         * @name rootIndex
+         */
+        this.rootIndex = -1;
+        /**
+         * Timer value, incremented every update step (dependent on game speed)
+         * @instance
+         * @default 0
+         * @name timer
+         * @snippet #Entity.timer|Number
+            timer
+         */
+        this.timer = 0;
+        /**
+         * Ticker value, incremented every update step (independent of game speed)
+         * @instance
+         * @default 0
+         * @name ticker
+         * @snippet #Entity.ticker|Number
+            ticker
+         */
+        this.ticker = 0;
+        /**
+         * Indicates if an object should not be destroyed when a Screen ends
+         * @instance
+         * @default false
+         * @name global
+         * @snippet #Entity.global|Boolean
+            global
+         */
         /**
          * Transform module
          * @instance
@@ -952,7 +953,10 @@ toComparablePosition(${1:worldPosition});
         }
         data = data || Bento.getGameData();
 
-        this.transform.draw(data);
+        if (!this.transform.draw(data)) {
+            // transform invalid, no need to draw at all
+            return;
+        }
 
         // call components
         for (i = 0, l = components.length; i < l; ++i) {

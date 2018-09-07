@@ -22,10 +22,12 @@ bento.define('bento/transform', [
         this.entity = entity;
 
         // cache values
-        this.sin = 0;
-        this.cos = 1;
-        this.rotationCache = 0;
-        this.oldAlpha = 1;
+        this.oldAlpha = 1;        
+        this.tx = 0;
+        this.ty = 0; 
+        this.sx = 1; 
+        this.sy = 1;
+        this.r = 0;
 
         // additional transforms
         this.x = 0;
@@ -38,50 +40,67 @@ bento.define('bento/transform', [
         var matrix = this.matrix;
         var alpha = entity.alpha;
         var rotation = entity.rotation;
-        var sin = this.sin;
-        var cos = this.cos;
         var renderer = data.renderer;
         var viewport = data.viewport;
+        var tx = 0;
+        var ty = 0;
+        var sx = entity.scale.x;
+        var sy = entity.scale.y;
 
-        // cache sin and cos
-        if (rotation !== this.rotationCache) {
-            this.rotationCache = rotation;
-            this.sin = Math.sin(rotation);
-            this.cos = Math.cos(rotation);
-            sin = this.sin;
-            cos = this.cos;
+        // check validity of transforms, 0 scale can not be reversed
+        // Note: will also skip on 0 alpha, not sure if developer still expects draw functions to run if alpha 0
+        if (!sx || !sy || !alpha) {
+            return false;
         }
 
-        // save
         renderer.save();
 
         // translate
         if (Transform.subPixel) {
-            renderer.translate(entity.position.x + this.x, entity.position.y + this.y);
+            tx += entity.position.x + this.x;
+            ty += entity.position.y + this.y;
         } else {
-            renderer.translate(Math.round(entity.position.x + this.x), Math.round(entity.position.y + this.y));
+            tx += Math.round(entity.position.x + this.x);
+            ty += entity.position.y + this.y;
         }
         // scroll (only applies to parent objects)
         if (!entity.parent && !entity.float) {
-            renderer.translate(-viewport.x, -viewport.y);
+            tx += -viewport.x;
+            ty += -viewport.y;
         }
 
+        // transform
+        renderer.translate(tx, ty);
         if (entity.rotation % twoPi) {
             // rotated?
-            renderer.rotate(rotation, sin, cos);
+            renderer.rotate(rotation);
         }
-        // scale
-        renderer.scale(entity.scale.x, entity.scale.y);
-        // alpha
+        renderer.scale(sx, sy);
         this.oldAlpha = data.renderer.getOpacity();
         renderer.setOpacity(this.oldAlpha * alpha);
+
+        // cache transforms
+        this.tx = tx;
+        this.ty = ty;
+        this.sx = sx;
+        this.sy = sy;
+        this.r = rotation;
+
+        return true;
     };
 
     Transform.prototype.postDraw = function (data) {
         var renderer = data.renderer;
 
-        // restore
+        // restore transforms
         renderer.setOpacity(this.oldAlpha);
+        renderer.scale(1 / this.sx, 1 / this.sy);
+        if (this.r % twoPi) {
+            // rotated?
+            renderer.rotate(-this.r);
+        }
+        renderer.translate(-this.tx, -this.ty);
+
         renderer.restore();
     };
 
