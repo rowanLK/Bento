@@ -1410,6 +1410,11 @@ bento.define('bento/managers/asset', [
                 // check if asset exist
                 if (assets[type][name]) {
                     return true;
+                } else {
+                    if (type === 'images') {
+                        // images is a special case regarding packed textures
+                        return hasAsset(name, 'texturePacker');
+                    }
                 }
             } else {
                 // check all types
