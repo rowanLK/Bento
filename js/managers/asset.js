@@ -52,7 +52,7 @@ bento.define('bento/managers/asset', [
                 // get type by checking extension name
                 var canPlay = audio.canPlayType('audio/' + src.slice(-3));
 
-                if (src.indexOf('data:')) {
+                if (src.indexOf('data:') === 0) {
                     // base64 data of audio
                     canPlay = true;
                 }
@@ -92,7 +92,7 @@ bento.define('bento/managers/asset', [
                 }
             }
             if (failed) {
-                callback('This audio type is not supported:', name, lastSrc);
+                callback('This audio type is not supported:' + name + lastSrc);
             }
         };
         var loadJSON = function (name, source, callback, isCompressed) {
@@ -365,8 +365,19 @@ bento.define('bento/managers/asset', [
                     callback(null, name, spriteSheet);
                 }
             };
+            var sourceJson;
+            var sourcePng;
 
-            loadJSON(name, source + '.json', function (err, name, json) {
+            // source can be an object with 2 base64 strings
+            if (source.json) {
+                sourceJson = source.json;
+                sourcePng = source.png;
+            } else {
+                sourceJson = source + '.json';
+                sourcePng = source + '.png';
+            }
+
+            loadJSON(name, sourceJson, function (err, name, json) {
                 if (err) {
                     callback(err, name, null);
                     return;
@@ -375,7 +386,7 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
 
-            loadImage(name, source + '.png', function (err, name, img) {
+            loadImage(name, sourcePng, function (err, name, img) {
                 if (err) {
                     callback(err, name, null);
                     return;
