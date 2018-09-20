@@ -1368,6 +1368,15 @@ bento.define('bento/managers/asset', [
                 }
             });
         };
+        // undocumented feature: assets.json may be inlined as window.assetJson
+        var loadInlineAssetsJson = function () {
+            if (window.assetsJson) {
+                Utils.forEach(window.assetsJson, function (group, groupName) {
+                    // the asset group is present
+                    assetGroups[groupName] = group;
+                });
+            }
+        };
         /**
          * Loads all assets
          * @function
@@ -1485,6 +1494,7 @@ bento.define('bento/managers/asset', [
             loadAllAssets: loadAllAssets,
             loadAssetGroups: loadAssetGroups,
             loadAssetsJson: loadAssetsJson,
+            loadInlineAssetsJson: loadInlineAssetsJson,
             load: load,
             loadJson: loadJSON,
             loadImageFromUrl: loadImageFromUrl,

@@ -3232,6 +3232,10 @@ bento.define('bento', [
 
                     if (settings.assetGroups) {
                         Bento.assets.loadAssetGroups(settings.assetGroups, runGame);
+                    } else if (window.assetsJson) {
+                        // if there is an inline assets.json, load that
+                        Bento.assets.loadInlineAssetsJson();
+                        runGame();
                     } else {
                         // try loadings assets.json from the root folder
                         Bento.assets.loadAssetsJson(function (error) {
@@ -8999,6 +9003,12 @@ bento.define('bento/managers/asset', [
                 var audio = new Audia();
                 // get type by checking extension name
                 var canPlay = audio.canPlayType('audio/' + src.slice(-3));
+
+                if (src.indexOf('data:')) {
+                    // base64 data of audio
+                    canPlay = true;
+                }
+
                 if (!!canPlay || window.ejecta) {
                     // success!
                     if (!manager.skipAudioCallback) {
@@ -9038,7 +9048,42 @@ bento.define('bento/managers/asset', [
             }
         };
         var loadJSON = function (name, source, callback, isCompressed) {
-            var xhr = new window.XMLHttpRequest();
+            var xhr;
+            var parseJson = function (jsonText) {
+                var jsonData;
+                try {
+                    // read header
+                    if (jsonText[0] === 'L' && jsonText[1] === 'Z' && jsonText[2] === 'S') {
+                        isCompressed = true;
+                        // trim header
+                        jsonText = jsonText.substring(3);
+                    }
+
+                    if (isCompressed) {
+                        // decompress if needed
+                        jsonData = JSON.parse(LZString.decompressFromBase64(jsonText));
+                    } else {
+                        jsonData = JSON.parse(jsonText);
+                    }
+                } catch (e) {
+                    console.log('WARNING: Could not parse JSON ' + name + ' at ' + source + ': ' + e);
+                    console.log('Trying to parse', jsonText);
+                    jsonData = jsonText;
+                }
+                callback(null, name, jsonData);
+            };
+
+            // source is a base64 string -> parse immediately instead of doing the xhr request
+            if (source.indexOf('data:application/json;base64,') === 0) {
+                if (window.decodeB64) {
+                    parseJson(window.decodeB64(source.replace('data:application/json;base64,', '')));
+                } else {
+                    parseJson(window.atob(source.replace('data:application/json;base64,', '')));
+                }
+                return;
+            }
+
+            xhr = new window.XMLHttpRequest();
             if (xhr.overrideMimeType) {
                 xhr.overrideMimeType('application/json');
             }
@@ -9051,31 +9096,11 @@ bento.define('bento/managers/asset', [
                 callback('Timeout: loading JSON ' + source);
             };
             xhr.onreadystatechange = function () {
-                var jsonData;
                 var response;
                 if (xhr.readyState === 4) {
                     if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
-                        try {
-                            response = xhr.responseText;
-                            // read header
-                            if (response[0] === 'L' && response[1] === 'Z' && response[2] === 'S') {
-                                isCompressed = true;
-                                // trim header
-                                response = response.substring(3);
-                            }
-
-                            if (isCompressed) {
-                                // decompress if needed
-                                jsonData = JSON.parse(LZString.decompressFromBase64(response));
-                            } else {
-                                jsonData = JSON.parse(response);
-                            }
-                        } catch (e) {
-                            console.log('WARNING: Could not parse JSON ' + name + ' at ' + source + ': ' + e);
-                            console.log('Trying to parse', response);
-                            jsonData = xhr.responseText;
-                        }
-                        callback(null, name, jsonData);
+                        response = xhr.responseText;
+                        parseJson(response);
                     } else {
                         callback('Error: State ' + xhr.readyState + ' ' + source);
                     }
@@ -9211,8 +9236,19 @@ bento.define('bento/managers/asset', [
                     callback(null, name, spriteSheet);
                 }
             };
+            var sourceJson;
+            var sourcePng;
 
-            loadJSON(name, source + '.json', function (err, name, json) {
+            // source can be an object with 2 base64 strings
+            if (source.json) {
+                sourceJson = source.json;
+                sourcePng = source.png;
+            } else {
+                sourceJson = source + '.json';
+                sourcePng = source + '.png';
+            }
+
+            loadJSON(name, sourceJson, function (err, name, json) {
                 if (err) {
                     callback(err, name, null);
                     return;
@@ -9221,7 +9257,7 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
 
-            loadImage(name, source + '.png', function (err, name, img) {
+            loadImage(name, sourcePng, function (err, name, img) {
                 if (err) {
                     callback(err, name, null);
                     return;
@@ -9241,8 +9277,19 @@ bento.define('bento/managers/asset', [
                     callback(null, name, packedImage);
                 }
             };
+            var sourceJson;
+            var sourcePng;
 
-            loadJSON(name, source + '.json', function (err, name, json) {
+            // source can be an object with 2 base64 strings
+            if (source.json) {
+                sourceJson = source.json;
+                sourcePng = source.png;
+            } else {
+                sourceJson = source + '.json';
+                sourcePng = source + '.png';
+            }
+
+            loadJSON(name, sourceJson, function (err, name, json) {
                 if (err) {
                     callback(err, name, null);
                     return;
@@ -9250,7 +9297,7 @@ bento.define('bento/managers/asset', [
                 packedImage.data = json;
                 checkForCompletion();
             });
-            loadImage(name, source + '.png', function (err, name, img) {
+            loadImage(name, sourcePng, function (err, name, img) {
                 if (err) {
                     callback(err, name, null);
                     return;
@@ -9775,7 +9822,7 @@ bento.define('bento/managers/asset', [
                     if (!group.images.hasOwnProperty(asset)) {
                         continue;
                     }
-                    readyForLoading(loadImage, asset, path + 'images/' + group.images[asset], onLoadImage);
+                    readyForLoading(loadImage, asset, path === 'base64' ? group.images[asset] : path + 'images/' + group.images[asset], onLoadImage);
                 }
             }
             // get packed images
@@ -9785,7 +9832,7 @@ bento.define('bento/managers/asset', [
                     if (!group.texturePacker.hasOwnProperty(asset)) {
                         continue;
                     }
-                    readyForLoading(loadJSON, asset, path + 'json/' + group.texturePacker[asset], onLoadPack);
+                    readyForLoading(loadJSON, asset, path === 'base64' ? group.texturePacker[asset] : path + 'json/' + group.texturePacker[asset], onLoadPack);
                 }
             }
             // get audio
@@ -9799,7 +9846,7 @@ bento.define('bento/managers/asset', [
                         asset = [asset];
                     }
                     Utils.forEach(asset, function (audioSrc) {
-                        src.push(path + 'audio/' + audioSrc);
+                        src.push(path === 'base64' ? audioSrc : path + 'audio/' + audioSrc);
                     });
 
                     readyForLoading(loadAudio, key, src, onLoadAudio);
@@ -9812,7 +9859,7 @@ bento.define('bento/managers/asset', [
                     if (!group.json.hasOwnProperty(asset)) {
                         continue;
                     }
-                    readyForLoading(loadJSON, asset, path + 'json/' + group.json[asset], onLoadJson);
+                    readyForLoading(loadJSON, asset, path === 'base64' ? group.json[asset] : path + 'json/' + group.json[asset], onLoadJson);
                 }
             }
             // get fonts
@@ -9822,7 +9869,7 @@ bento.define('bento/managers/asset', [
                     if (!group.fonts.hasOwnProperty(asset)) {
                         continue;
                     }
-                    readyForLoading(loadTTF, asset, path + 'fonts/' + group.fonts[asset], onLoadTTF);
+                    readyForLoading(loadTTF, asset, path === 'base64' ? group.fonts[asset] : path + 'fonts/' + group.fonts[asset], onLoadTTF);
                 }
             }
             // get spritesheets
@@ -9832,7 +9879,7 @@ bento.define('bento/managers/asset', [
                     if (!group.spritesheets.hasOwnProperty(asset)) {
                         continue;
                     }
-                    readyForLoading(loadSpriteSheet, asset, path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
+                    readyForLoading(loadSpriteSheet, asset, path === 'base64' ? group.spritesheets[asset] : path + 'spritesheets/' + group.spritesheets[asset], onLoadSpriteSheet);
                 }
             }
             // get spine
@@ -9850,21 +9897,21 @@ bento.define('bento/managers/asset', [
             if (Utils.isDefined(group['packed-images'])) {
                 assetCount += Utils.getKeyLength(group['packed-images']);
                 Utils.forEach(group['packed-images'], function (assetPath, assetName) {
-                    readyForLoading(loadPackedImage, assetName, path + 'packed-images/' + assetPath, onLoadImagePack);
+                    readyForLoading(loadPackedImage, assetName, path === 'base64' ? assetPath : path + 'packed-images/' + assetPath, onLoadImagePack);
                 });
             }
             // get (compressed) packed json
             if (Utils.isDefined(group['packed-json'])) {
                 assetCount += Utils.getKeyLength(group['packed-json']);
                 Utils.forEach(group['packed-json'], function (assetPath, assetName) {
-                    readyForLoading(loadJSON, assetName, path + 'packed-json/' + assetPath, onLoadJsonPack);
+                    readyForLoading(loadJSON, assetName, path === 'base64' ? assetPath : path + 'packed-json/' + assetPath, onLoadJsonPack);
                 });
             }
             // get packed spritesheet
             if (Utils.isDefined(group['packed-spritesheets'])) {
                 assetCount += Utils.getKeyLength(group['packed-spritesheets']);
                 Utils.forEach(group['packed-spritesheets'], function (assetPath, assetName) {
-                    readyForLoading(loadSpriteSheetPack, assetName, path + 'packed-spritesheets/' + assetPath, onLoadSpriteSheetPack);
+                    readyForLoading(loadSpriteSheetPack, assetName, path === 'base64' ? assetPath : path + 'packed-spritesheets/' + assetPath, onLoadSpriteSheetPack);
                 });
             }
 
@@ -9896,6 +9943,13 @@ bento.define('bento/managers/asset', [
                     callback(null, image);
                 }
             };
+            if (assets.images[name]) {
+                // already exists
+                if (callback) {
+                    callback(null, assets.images[name]);
+                }
+                return;
+            }
             loadImage(name, url, onLoadImage);
         };
         /**
@@ -10266,6 +10320,15 @@ bento.define('bento/managers/asset', [
                 }
             });
         };
+        // undocumented feature: assets.json may be inlined as window.assetJson
+        var loadInlineAssetsJson = function () {
+            if (window.assetsJson) {
+                Utils.forEach(window.assetsJson, function (group, groupName) {
+                    // the asset group is present
+                    assetGroups[groupName] = group;
+                });
+            }
+        };
         /**
          * Loads all assets
          * @function
@@ -10358,6 +10421,11 @@ bento.define('bento/managers/asset', [
                 // check if asset exist
                 if (assets[type][name]) {
                     return true;
+                } else {
+                    if (type === 'images') {
+                        // images is a special case regarding packed textures
+                        return hasAsset(name, 'texturePacker');
+                    }
                 }
             } else {
                 // check all types
@@ -10378,6 +10446,7 @@ bento.define('bento/managers/asset', [
             loadAllAssets: loadAllAssets,
             loadAssetGroups: loadAssetGroups,
             loadAssetsJson: loadAssetsJson,
+            loadInlineAssetsJson: loadInlineAssetsJson,
             load: load,
             loadJson: loadJSON,
             loadImageFromUrl: loadImageFromUrl,
@@ -19058,6 +19127,9 @@ bento.define('bento/gui/text', [
          * Restore context and previous font settings
          */
         var restoreContext = function (context) {
+            if (!context) {
+                return;
+            }
             context.textAlign = 'left';
             context.textBaseline = 'bottom';
             context.lineWidth = 0;
@@ -19070,6 +19142,9 @@ bento.define('bento/gui/text', [
          * Save context and set font settings for drawing
          */
         var setContext = function (context) {
+            if (!context) {
+                return;
+            }
             context.save();
             context.textAlign = align;
             context.textBaseline = 'bottom';
@@ -19091,6 +19166,15 @@ bento.define('bento/gui/text', [
                 spacePos,
                 extraSpace = false;
 
+            if (!canvas) {
+                if (!didInit && !Text.generateOnConstructor) {
+                    // first time initialization with text
+                    createCanvas();
+                    didInit = true;
+                    applySettings(settings);
+                }
+            }
+            
             strings = [];
             canvasWidth = 1;
             canvasHeight = 1;

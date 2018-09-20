@@ -151,13 +151,14 @@ bento.define('bento', [
         new Renderer(rendererName, canvas, settings, function (rend) {
             console.log('Init ' + rend.name + ' as renderer');
             renderer = rend;
+            
+            // set anti aliasing after renderer is created
+            smoothing = settings.antiAlias;
+            Bento.setAntiAlias(smoothing);
+
             gameData = Bento.getGameData();
             onComplete();
         });
-
-        // set anti aliasing after renderer is created
-        smoothing = settings.antiAlias;
-        Bento.setAntiAlias(smoothing);
     };
     /**
      * Bento's default behavior to resize to fit
@@ -283,6 +284,10 @@ bento.define('bento', [
 
                     if (settings.assetGroups) {
                         Bento.assets.loadAssetGroups(settings.assetGroups, runGame);
+                    } else if (window.assetsJson) {
+                        // if there is an inline assets.json, load that
+                        Bento.assets.loadInlineAssetsJson();
+                        runGame();
                     } else {
                         // try loadings assets.json from the root folder
                         Bento.assets.loadAssetsJson(function (error) {
