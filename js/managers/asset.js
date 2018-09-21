@@ -129,6 +129,9 @@ bento.define('bento/managers/asset', [
                     parseJson(window.atob(source.replace('data:application/json;base64,', '')));
                 }
                 return;
+            } else if (source.indexOf('LZS') === 0) {
+                parseJson(source);
+                return;
             }
 
             xhr = new window.XMLHttpRequest();
@@ -1382,6 +1385,10 @@ bento.define('bento/managers/asset', [
         // undocumented feature: assets.json may be inlined as window.assetJson
         var loadInlineAssetsJson = function () {
             if (window.assetsJson) {
+                if (Utils.isString(window.assetsJson) && window.assetsJson.indexOf('LZS') === 0) {
+                    // decompress first
+                    window.assetsJson = JSON.parse(LZString.decompressFromBase64(window.assetsJson));
+                }
                 Utils.forEach(window.assetsJson, function (group, groupName) {
                     // the asset group is present
                     assetGroups[groupName] = group;

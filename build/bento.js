@@ -3100,22 +3100,24 @@ bento.define('bento', [
         new Renderer(rendererName, canvas, settings, function (rend) {
             console.log('Init ' + rend.name + ' as renderer');
             renderer = rend;
+
+            // set anti aliasing after renderer is created
+            smoothing = settings.antiAlias;
+            Bento.setAntiAlias(smoothing);
+
             gameData = Bento.getGameData();
             onComplete();
         });
-
-        // set anti aliasing after renderer is created
-        smoothing = settings.antiAlias;
-        Bento.setAntiAlias(smoothing);
     };
     /**
      * Bento's default behavior to resize to fit
      */
     var onResize = function () {
-        var clientWidth,
-            clientHeight,
-            innerWidth = window.innerWidth,
-            innerHeight = window.innerHeight;
+        var clientWidth;
+        var clientHeight;
+        var screenSize = Utils.getScreenSize();
+        var innerWidth = screenSize.width;
+        var innerHeight = screenSize.height;
 
         windowRatio = innerHeight / innerWidth;
         // resize to fit screen
@@ -5793,6 +5795,30 @@ Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
         getRandomRangeFloat: function (min, max) {
             var diff = max - min;
             return min + Math.random() * diff;
+        },
+        /**
+         * Get the inner size of the screen (MRAID compatible).
+         * In case of the browsers, the screensize is the innerwidth and innerheight
+         * @function
+         * @instance
+         * @returns Object
+         * @name getScreenSize
+         * @snippet Utils.getScreenSize|Object
+        Utils.getScreenSize()
+         */
+        getScreenSize: function () {
+            var screenSize = {
+                width: 0,
+                height: 0
+            };
+            if (window.mraid) {
+                screenSize.width = window.mraid.getMaxSize().width;
+                screenSize.height = window.mraid.getMaxSize().height;
+            } else {
+                screenSize.width = window.innerWidth;
+                screenSize.height = window.innerHeight;
+            }
+            return screenSize;
         },
         /**
          * Turns degrees into radians
@@ -9004,7 +9030,7 @@ bento.define('bento/managers/asset', [
                 // get type by checking extension name
                 var canPlay = audio.canPlayType('audio/' + src.slice(-3));
 
-                if (src.indexOf('data:')) {
+                if (src.indexOf('data:') === 0) {
                     // base64 data of audio
                     canPlay = true;
                 }
@@ -9044,7 +9070,7 @@ bento.define('bento/managers/asset', [
                 }
             }
             if (failed) {
-                callback('This audio type is not supported:', name, lastSrc);
+                callback('This audio type is not supported:' + name + lastSrc);
             }
         };
         var loadJSON = function (name, source, callback, isCompressed) {
@@ -9080,6 +9106,9 @@ bento.define('bento/managers/asset', [
                 } else {
                     parseJson(window.atob(source.replace('data:application/json;base64,', '')));
                 }
+                return;
+            } else if (source.indexOf('LZS') === 0) {
+                parseJson(source);
                 return;
             }
 
@@ -9317,8 +9346,19 @@ bento.define('bento/managers/asset', [
                     callback(null, name, spriteSheet);
                 }
             };
+            var sourceJson;
+            var sourcePng;
 
-            loadJSON(name, source + '.json', function (err, name, json) {
+            // source can be an object with 2 base64 strings
+            if (source.json) {
+                sourceJson = source.json;
+                sourcePng = source.png;
+            } else {
+                sourceJson = source + '.json';
+                sourcePng = source + '.png';
+            }
+
+            loadJSON(name, sourceJson, function (err, name, json) {
                 if (err) {
                     callback(err, name, null);
                     return;
@@ -9327,7 +9367,7 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
 
-            loadImage(name, source + '.png', function (err, name, img) {
+            loadImage(name, sourcePng, function (err, name, img) {
                 if (err) {
                     callback(err, name, null);
                     return;
@@ -10323,6 +10363,10 @@ bento.define('bento/managers/asset', [
         // undocumented feature: assets.json may be inlined as window.assetJson
         var loadInlineAssetsJson = function () {
             if (window.assetsJson) {
+                if (Utils.isString(window.assetsJson) && window.assetsJson.indexOf('LZS') === 0) {
+                    // decompress first
+                    window.assetsJson = JSON.parse(LZString.decompressFromBase64(window.assetsJson));
+                }
                 Utils.forEach(window.assetsJson, function (group, groupName) {
                     // the asset group is present
                     assetGroups[groupName] = group;
@@ -11088,10 +11132,11 @@ bento.define('bento/managers/input', [
              * Changes the offsets after resizing or screen re-orientation.
              */
             updateCanvas = function () {
+                var screenSize = Utils.getScreenSize();
                 if (Utils.isCocoonJs()) {
                     // assumes full screen
-                    canvasScale.x = window.innerWidth / viewport.width;
-                    canvasScale.y = window.innerHeight / viewport.height;
+                    canvasScale.x = screenSize.width / viewport.width;
+                    canvasScale.y = screenSize.height / viewport.height;
                 } else {
                     // use offsetWidth and offsetHeight to determine visual size
                     canvasScale.x = canvas.offsetWidth / viewport.width;
@@ -14100,8 +14145,9 @@ bento.define('bento/autoresize', [
 ], function (Utils) {
     return function (canvasDimension, minSize, maxSize, isLandscape) {
         var originalDimension = canvasDimension.clone(),
-            innerWidth = window.innerWidth,
-            innerHeight = window.innerHeight,
+            screenSize = Utils.getScreenSize(),
+            innerWidth = screenSize.width,
+            innerHeight = screenSize.height,
             devicePixelRatio = window.devicePixelRatio,
             deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
             deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,
@@ -17052,7 +17098,7 @@ bento.define('bento/renderers/pixi', [
             matrix = new TransformMatrix();
             // additional scale
             if (Utils.isCocoonJs()) {
-                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
+                cocoonScale = Utils.getScreenSize().width * window.devicePixelRatio / canvas.width;
                 canvas.width *= cocoonScale;
                 canvas.height *= cocoonScale;
             }

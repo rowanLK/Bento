@@ -16,8 +16,9 @@ bento.define('bento/autoresize', [
 ], function (Utils) {
     return function (canvasDimension, minSize, maxSize, isLandscape) {
         var originalDimension = canvasDimension.clone(),
-            innerWidth = window.innerWidth,
-            innerHeight = window.innerHeight,
+            screenSize = Utils.getScreenSize(),
+            innerWidth = screenSize.width,
+            innerHeight = screenSize.height,
             devicePixelRatio = window.devicePixelRatio,
             deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
             deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,

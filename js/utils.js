@@ -559,6 +559,30 @@ Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
             return min + Math.random() * diff;
         },
         /**
+         * Get the inner size of the screen (MRAID compatible).
+         * In case of the browsers, the screensize is the innerwidth and innerheight
+         * @function
+         * @instance
+         * @returns Object
+         * @name getScreenSize
+         * @snippet Utils.getScreenSize|Object
+        Utils.getScreenSize()
+         */
+        getScreenSize: function () {
+            var screenSize = {
+                width: 0,
+                height: 0
+            };
+            if (window.mraid) {
+                screenSize.width = window.mraid.getMaxSize().width;
+                screenSize.height = window.mraid.getMaxSize().height;
+            } else {
+                screenSize.width = window.innerWidth;
+                screenSize.height = window.innerHeight;
+            }
+            return screenSize;
+        },
+        /**
          * Turns degrees into radians
          * @function
          * @instance

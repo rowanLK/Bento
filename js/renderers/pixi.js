@@ -289,7 +289,7 @@ bento.define('bento/renderers/pixi', [
             matrix = new TransformMatrix();
             // additional scale
             if (Utils.isCocoonJs()) {
-                cocoonScale = window.innerWidth * window.devicePixelRatio / canvas.width;
+                cocoonScale = Utils.getScreenSize().width * window.devicePixelRatio / canvas.width;
                 canvas.width *= cocoonScale;
                 canvas.height *= cocoonScale;
             }
