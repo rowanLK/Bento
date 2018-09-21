@@ -151,7 +151,7 @@ bento.define('bento', [
         new Renderer(rendererName, canvas, settings, function (rend) {
             console.log('Init ' + rend.name + ' as renderer');
             renderer = rend;
-            
+
             // set anti aliasing after renderer is created
             smoothing = settings.antiAlias;
             Bento.setAntiAlias(smoothing);
@@ -164,10 +164,11 @@ bento.define('bento', [
      * Bento's default behavior to resize to fit
      */
     var onResize = function () {
-        var clientWidth,
-            clientHeight,
-            innerWidth = window.innerWidth,
-            innerHeight = window.innerHeight;
+        var clientWidth;
+        var clientHeight;
+        var screenSize = Utils.getScreenSize();
+        var innerWidth = screenSize.width;
+        var innerHeight = screenSize.height;
 
         windowRatio = innerHeight / innerWidth;
         // resize to fit screen
