@@ -293,10 +293,11 @@ bento.define('bento/managers/input', [
              * Changes the offsets after resizing or screen re-orientation.
              */
             updateCanvas = function () {
+                var screenSize = Utils.getScreenSize();
                 if (Utils.isCocoonJs()) {
                     // assumes full screen
-                    canvasScale.x = window.innerWidth / viewport.width;
-                    canvasScale.y = window.innerHeight / viewport.height;
+                    canvasScale.x = screenSize.width / viewport.width;
+                    canvasScale.y = screenSize.height / viewport.height;
                 } else {
                     // use offsetWidth and offsetHeight to determine visual size
                     canvasScale.x = canvas.offsetWidth / viewport.width;
