@@ -1385,7 +1385,7 @@ bento.define('bento/managers/asset', [
         // undocumented feature: assets.json may be inlined as window.assetJson
         var loadInlineAssetsJson = function () {
             if (window.assetsJson) {
-                if (Utils.isString(window.assetsJson) && window.assetsJson.indexOf('LZS') === 0) {
+                if (Utils.isString(window.assetsJson)) {
                     // decompress first
                     window.assetsJson = JSON.parse(LZString.decompressFromBase64(window.assetsJson));
                 }
