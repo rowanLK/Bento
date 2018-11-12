@@ -458,7 +458,7 @@ bento.define('bento', [
          * @returns Number
          * @name setGameSpeed
          * @snippet Bento.setGameSpeed|snippet
-            Bento.setGameSpeed({$1:1});
+            Bento.setGameSpeed(${1:1});
          */
         setGameSpeed: function (value) {
             throttle = value;
