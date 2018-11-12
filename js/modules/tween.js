@@ -294,6 +294,9 @@ bento.define('bento/tween', [
         var ignoreGameSpeed = settings.ignoreGameSpeed;
         var stay = settings.stay;
         var autoResumeTimer = -1;
+        var interpolate;
+        var fn;
+        var useVectors;
         var tween = new Entity(settings);
         var tweenBehavior = {
             name: 'tweenBehavior',
@@ -319,7 +322,6 @@ bento.define('bento/tween', [
                     // run onUpdate before start
                     if (applyOnDelay && onUpdate) {
                         onUpdate.apply(tween, [interpolate(
-                            ease,
                             startVal,
                             endVal,
                             0,
@@ -344,7 +346,6 @@ bento.define('bento/tween', [
                 // run update
                 if (onUpdate) {
                     onUpdate.apply(tween, [interpolate(
-                        ease,
                         startVal,
                         endVal,
                         time / deltaT,
@@ -357,7 +358,6 @@ bento.define('bento/tween', [
                     if (time > deltaT && onUpdate) {
                         //the tween didn't end neatly, so run onUpdate once more with a t of 1
                         onUpdate.apply(tween, [interpolate(
-                            ease,
                             startVal,
                             endVal,
                             1,
@@ -436,6 +436,40 @@ bento.define('bento/tween', [
         };
 
         tween.attach(tweenBehavior);
+
+        // generate the correct interpolation function
+        fn = interpolations[ease];
+        if (startVal.isVector2 && endVal.isVector2) {
+            // as vectors
+            if (fn) {
+                interpolate = function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(s.x, e.x, t, alpha, beta),
+                        fn(s.y, e.y, t, alpha, beta)
+                    );
+                };
+            } else {
+                fn = robbertPenner[ease];
+                interpolate = function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(t, s.x, e.x - s.x, 1),
+                        fn(t, s.y, e.y - s.y, 1)
+                    );
+                };
+            }
+        } else {
+            // number output
+            if (fn) {
+                interpolate = function (s, e, t, alpha, beta) {
+                    return fn(s, e, t, alpha, beta);
+                };
+            } else {
+                fn = robbertPenner[ease];
+                interpolate = function (s, e, t, alpha, beta) {
+                    return fn(t, s, e - s, 1);
+                };
+            }
+        }
 
         // extend functionality
         tween.extend({
