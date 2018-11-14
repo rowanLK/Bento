@@ -260,7 +260,10 @@ bento.define('bento/tween', [
         }
     };
 
-    var Tween = function (settings) {
+    /**
+     * Tween Behavior
+     */
+    var TweenBehavior = function (settings) {
         /* settings = {
             from: Number
             to: Number
@@ -297,8 +300,8 @@ bento.define('bento/tween', [
         var interpolate;
         var fn;
         var useVectors;
-        var tween = new Entity(settings);
-        var tweenBehavior = {
+        var tween;
+        var tweenBehavior = new Object({
             name: 'tweenBehavior',
             start: function (data) {
                 if (onCreate) {
@@ -368,7 +371,11 @@ bento.define('bento/tween', [
                     if (onComplete) {
                         onComplete.apply(tween);
                     }
-                    Bento.objects.remove(tween);
+
+                    if (tween.removeSelf) {
+                        // remove self 
+                        tween.removeSelf();
+                    }
                 }
             },
             /**
@@ -432,10 +439,17 @@ bento.define('bento/tween', [
                     running = true;
                     return tween;
                 }
+            },
+            /**
+             * Removes the tweenbehavior from the tween manager or parent entity
+             */
+            removeSelf: function () {
+                // TODO
             }
-        };
+        });
 
-        tween.attach(tweenBehavior);
+        // by default, `this` refers to the tweenbehavior, otherwise it's the parent entity
+        tween = tweenBehavior;
 
         // generate the correct interpolation function
         fn = interpolations[ease];
@@ -471,16 +485,7 @@ bento.define('bento/tween', [
             }
         }
 
-        // extend functionality
-        tween.extend({
-            begin: tweenBehavior.begin,
-            stop: tweenBehavior.stop,
-            pause: tweenBehavior.pause,
-            resume: tweenBehavior.resume,
-        });
-        if (settings.id) {
-            tween.id = settings.id;
-        }
+
 
         // convert decay and growth to alpha
         if (Utils.isDefined(settings.decay)) {
@@ -509,6 +514,29 @@ bento.define('bento/tween', [
         // tween automatically starts
         if (running) {
             tweenBehavior.begin();
+        }
+
+        return tween;
+    };
+
+    /**
+     * Main module (entity)
+     */
+    var Tween = function (settings) {
+        var tween = new Entity(settings);
+        var tweenBehavior = new TweenBehavior(settings);
+
+        tween.attach(tweenBehavior);
+
+        // extend functionality
+        tween.extend({
+            begin: tweenBehavior.begin,
+            stop: tweenBehavior.stop,
+            pause: tweenBehavior.pause,
+            resume: tweenBehavior.resume,
+        });
+        if (settings.id) {
+            tween.id = settings.id;
         }
 
         return tween;
@@ -554,6 +582,10 @@ bento.define('bento/tween', [
     Tween.EASEINBOUNCE = 'easeInBounce';
     Tween.EASEOUTBOUNCE = 'easeOutBounce';
     Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
+
+    // expose interpolations
+    Tween.interpolations = interpolations;
+    Tween.interpolationsRP = robbertPenner;
 
     return Tween;
 });
