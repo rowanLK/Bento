@@ -5002,7 +5002,8 @@ bento.define('bento/transform', [
         if (!(this instanceof Transform)) {
             return new Transform(entity);
         }
-        this.matrix = new Matrix();
+        this.worldTransform = new Matrix();
+        this.localTransform = new Matrix();
         this.entity = entity;
 
         // cache values
@@ -5021,7 +5022,9 @@ bento.define('bento/transform', [
 
     Transform.prototype.draw = function (data) {
         var entity = this.entity;
-        var matrix = this.matrix;
+        var currentTransform;
+        var worldTransform = this.worldTransform;
+        var localTransform = this.localTransform;
         var alpha = entity.alpha;
         var rotation = entity.rotation;
         var renderer = data.renderer;
@@ -5037,7 +5040,7 @@ bento.define('bento/transform', [
             return false;
         }
 
-        renderer.save();
+        localTransform.reset();
 
         // translate
         if (Transform.subPixel) {
@@ -5045,7 +5048,7 @@ bento.define('bento/transform', [
             ty += entity.position.y + this.y;
         } else {
             tx += Math.round(entity.position.x + this.x);
-            ty += entity.position.y + this.y;
+            ty += Math.round(entity.position.y + this.y);
         }
         // scroll (only applies to parent objects)
         if (!entity.parent && !entity.float) {
@@ -5054,21 +5057,29 @@ bento.define('bento/transform', [
         }
 
         // transform
-        renderer.translate(tx, ty);
+        localTransform.scale(sx, sy);
         if (entity.rotation % twoPi) {
             // rotated?
-            renderer.rotate(rotation);
+            localTransform.rotate(rotation);
         }
-        renderer.scale(sx, sy);
+        localTransform.translate(tx, ty);
         this.oldAlpha = data.renderer.getOpacity();
-        renderer.setOpacity(this.oldAlpha * alpha);
 
-        // cache transforms
-        this.tx = tx;
-        this.ty = ty;
-        this.sx = sx;
-        this.sy = sy;
-        this.r = rotation;
+        // apply transform
+        currentTransform = renderer.getTransform();
+        currentTransform.cloneInto(worldTransform);
+        worldTransform.appendWith(localTransform);
+
+        renderer.save();
+        renderer.setTransform(
+            worldTransform.a,
+            worldTransform.b,
+            worldTransform.c,
+            worldTransform.d,
+            worldTransform.tx,
+            worldTransform.ty
+        );
+        renderer.setOpacity(this.oldAlpha * alpha);
 
         return true;
     };
@@ -5076,15 +5087,7 @@ bento.define('bento/transform', [
     Transform.prototype.postDraw = function (data) {
         var renderer = data.renderer;
 
-        // restore transforms
-        renderer.setOpacity(this.oldAlpha);
-        renderer.scale(1 / this.sx, 1 / this.sy);
-        if (this.r % twoPi) {
-            // rotated?
-            renderer.rotate(-this.r);
-        }
-        renderer.translate(-this.tx, -this.ty);
-
+        // restore renderer
         renderer.restore();
     };
 
@@ -10363,7 +10366,7 @@ bento.define('bento/managers/asset', [
         // undocumented feature: assets.json may be inlined as window.assetJson
         var loadInlineAssetsJson = function () {
             if (window.assetsJson) {
-                if (Utils.isString(window.assetsJson) && window.assetsJson.indexOf('LZS') === 0) {
+                if (Utils.isString(window.assetsJson)) {
                     // decompress first
                     window.assetsJson = JSON.parse(LZString.decompressFromBase64(window.assetsJson));
                 }
@@ -13653,6 +13656,24 @@ bento.define('bento/math/transformmatrix', [
     };
 
     /**
+     * Clones matrix into another
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} self
+     * @instance
+     * @name cloneInto
+     */
+    Matrix.prototype.cloneInto = function (other) {
+        other.a = this.a;
+        other.b = this.b;
+        other.c = this.c;
+        other.d = this.d;
+        other.tx = this.tx;
+        other.ty = this.ty;
+        return this;
+    };
+
+    /**
      * Resets matrix to identity matrix
      * @function
      * @returns {Matrix} Self
@@ -16646,163 +16667,189 @@ bento.define('bento/tween', [
  * @moduleName Canvas2DRenderer
  */
 bento.define('bento/renderers/canvas2d', [
-    'bento/utils'
-], function (Utils) {
+    'bento/utils',
+    'bento/math/transformmatrix'
+], function (
+    Utils,
+    TransformMatrix
+) {
     return function (canvas, settings) {
-        var context = canvas.getContext('2d'),
-            original = context,
-            pixelSize = settings.pixelSize || 1,
-            renderer = {
-                name: 'canvas2d',
-                save: function () {
-                    context.save();
-                },
-                restore: function () {
-                    context.restore();
-                },
-                setTransform: function (a, b, c, d, tx, ty) {
-                    context.setTransform(a, b, c, d, tx, ty);
-                },
-                translate: function (x, y) {
-                    context.translate(x, y);
-                },
-                scale: function (x, y) {
-                    context.scale(x, y);
-                },
-                rotate: function (angle) {
-                    context.rotate(angle);
-                },
-                fillRect: function (colorArray, x, y, w, h) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.fillRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                fillCircle: function (colorArray, x, y, radius) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.fillStyle = colorStr;
-                    context.beginPath();
-                    context.arc(x, y, radius, 0, Math.PI * 2);
-                    context.fill();
-                    context.closePath();
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                strokeRect: function (colorArray, x, y, w, h, lineWidth) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.lineWidth = lineWidth || 0;
-                    context.strokeStyle = colorStr;
-                    context.strokeRect(x, y, w, h);
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-
-                    sAngle = sAngle || 0;
-                    eAngle = eAngle || 0;
-
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    context.strokeStyle = colorStr;
-                    context.lineWidth = lineWidth || 0;
-                    context.beginPath();
-                    context.arc(x, y, radius, sAngle, eAngle, false);
-                    context.stroke();
-                    context.closePath();
-                },
-                drawLine: function (colorArray, ax, ay, bx, by, width) {
-                    var colorStr = getColor(colorArray),
-                        oldOpacity = context.globalAlpha;
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha *= colorArray[3];
-                    }
-                    if (!Utils.isDefined(width)) {
-                        width = 1;
-                    }
-
-                    context.strokeStyle = colorStr;
-                    context.lineWidth = width;
-
-                    context.beginPath();
-                    context.moveTo(ax, ay);
-                    context.lineTo(bx, by);
-                    context.stroke();
-                    context.closePath();
-
-                    if (colorArray[3] !== 1) {
-                        context.globalAlpha = oldOpacity;
-                    }
-                },
-                drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
-                    context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
-                },
-                getOpacity: function () {
-                    return context.globalAlpha;
-                },
-                setOpacity: function (value) {
-                    context.globalAlpha = value;
-                },
-                createSurface: function (width, height) {
-                    var newCanvas = document.createElement('canvas'),
-                        newContext;
-
-                    newCanvas.width = width;
-                    newCanvas.height = height;
-
-                    newContext = newCanvas.getContext('2d');
-
-                    return {
-                        canvas: newCanvas,
-                        context: newContext
-                    };
-                },
-                setContext: function (ctx) {
-                    context = ctx;
-                },
-                restoreContext: function () {
-                    context = original;
-                },
-                getContext: function () {
-                    return context;
-                },
-                begin: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.save();
-                        context.scale(pixelSize, pixelSize);
-                    }
-                },
-                flush: function () {
-                    if (context === original && pixelSize !== 1) {
-                        context.restore();
-                    }
+        var context = canvas.getContext('2d');
+        var original = context;
+        var pixelSize = settings.pixelSize || 1;
+        var matrix = new TransformMatrix();
+        var matrices = [];
+        var renderer = {
+            name: 'canvas2d',
+            save: function () {
+                matrices.push(matrix.clone());
+            },
+            restore: function () {
+                matrix = matrices.pop();
+            },
+            setTransform: function (a, b, c, d, tx, ty) {
+                matrix.a = a;
+                matrix.b = b;
+                matrix.c = c;
+                matrix.d = d;
+                matrix.tx = tx;
+                matrix.ty = ty;
+                // immediately apply to current transform
+                applyTransform();
+            },
+            getTransform: function () {
+                return matrix;
+            },
+            translate: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.translate(x, y));
+                applyTransform();
+            },
+            scale: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.scale(x, y));
+                applyTransform();
+            },
+            rotate: function (angle) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.rotate(angle));
+                applyTransform();
+            },
+            fillRect: function (colorArray, x, y, w, h) {
+                var colorStr = getColor(colorArray),
+                    oldOpacity = context.globalAlpha;
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha *= colorArray[3];
+                }
+                context.fillStyle = colorStr;
+                context.fillRect(x, y, w, h);
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha = oldOpacity;
                 }
             },
-            getColor = function (colorArray) {
-                var colorStr = '#';
-                colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
-                colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
-                return colorStr;
-            };
+            fillCircle: function (colorArray, x, y, radius) {
+                var colorStr = getColor(colorArray),
+                    oldOpacity = context.globalAlpha;
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha *= colorArray[3];
+                }
+                context.fillStyle = colorStr;
+                context.beginPath();
+                context.arc(x, y, radius, 0, Math.PI * 2);
+                context.fill();
+                context.closePath();
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha = oldOpacity;
+                }
+            },
+            strokeRect: function (colorArray, x, y, w, h, lineWidth) {
+                var colorStr = getColor(colorArray),
+                    oldOpacity = context.globalAlpha;
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha *= colorArray[3];
+                }
+                context.lineWidth = lineWidth || 0;
+                context.strokeStyle = colorStr;
+                context.strokeRect(x, y, w, h);
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha = oldOpacity;
+                }
+            },
+            strokeCircle: function (colorArray, x, y, radius, sAngle, eAngle, lineWidth) {
+                var colorStr = getColor(colorArray),
+                    oldOpacity = context.globalAlpha;
+
+                sAngle = sAngle || 0;
+                eAngle = eAngle || 0;
+
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha *= colorArray[3];
+                }
+                context.strokeStyle = colorStr;
+                context.lineWidth = lineWidth || 0;
+                context.beginPath();
+                context.arc(x, y, radius, sAngle, eAngle, false);
+                context.stroke();
+                context.closePath();
+            },
+            drawLine: function (colorArray, ax, ay, bx, by, width) {
+                var colorStr = getColor(colorArray),
+                    oldOpacity = context.globalAlpha;
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha *= colorArray[3];
+                }
+                if (!Utils.isDefined(width)) {
+                    width = 1;
+                }
+
+                context.strokeStyle = colorStr;
+                context.lineWidth = width;
+
+                context.beginPath();
+                context.moveTo(ax, ay);
+                context.lineTo(bx, by);
+                context.stroke();
+                context.closePath();
+
+                if (colorArray[3] !== 1) {
+                    context.globalAlpha = oldOpacity;
+                }
+            },
+            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                context.drawImage(packedImage.image, packedImage.x + sx, packedImage.y + sy, sw, sh, x, y, w, h);
+            },
+            getOpacity: function () {
+                return context.globalAlpha;
+            },
+            setOpacity: function (value) {
+                context.globalAlpha = value;
+            },
+            createSurface: function (width, height) {
+                var newCanvas = document.createElement('canvas'),
+                    newContext;
+
+                newCanvas.width = width;
+                newCanvas.height = height;
+
+                newContext = newCanvas.getContext('2d');
+
+                return {
+                    canvas: newCanvas,
+                    context: newContext
+                };
+            },
+            setContext: function (ctx) {
+                context = ctx;
+            },
+            restoreContext: function () {
+                context = original;
+            },
+            getContext: function () {
+                return context;
+            },
+            begin: function () {
+                if (context === original && pixelSize !== 1) {
+                    renderer.save();
+                    renderer.scale(pixelSize, pixelSize);
+                }
+            },
+            flush: function () {
+                if (context === original && pixelSize !== 1) {
+                    renderer.restore();
+                }
+            }
+        };
+        var getColor = function (colorArray) {
+            var colorStr = '#';
+            colorStr += ('00' + Math.floor(colorArray[0] * 255).toString(16)).slice(-2);
+            colorStr += ('00' + Math.floor(colorArray[1] * 255).toString(16)).slice(-2);
+            colorStr += ('00' + Math.floor(colorArray[2] * 255).toString(16)).slice(-2);
+            return colorStr;
+        };
+        var applyTransform = function () {
+            // apply transform matrix to context
+            context.setTransform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty);
+        };
 
         return renderer;
     };
@@ -16909,6 +16956,9 @@ bento.define('bento/renderers/pixi', [
                 matrix.d = d;
                 matrix.tx = tx;
                 matrix.ty = ty;
+            },
+            getTransform: function () {
+                return matrix;
             },
             translate: function (x, y) {
                 var transform = new TransformMatrix();

@@ -101,6 +101,9 @@ bento.define('bento/renderers/pixi', [
                 matrix.tx = tx;
                 matrix.ty = ty;
             },
+            getTransform: function () {
+                return matrix;
+            },
             translate: function (x, y) {
                 var transform = new TransformMatrix();
                 matrix.multiplyWith(transform.translate(x, y));

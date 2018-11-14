@@ -18,7 +18,8 @@ bento.define('bento/transform', [
         if (!(this instanceof Transform)) {
             return new Transform(entity);
         }
-        this.matrix = new Matrix();
+        this.worldTransform = new Matrix();
+        this.localTransform = new Matrix();
         this.entity = entity;
 
         // cache values
@@ -37,7 +38,9 @@ bento.define('bento/transform', [
 
     Transform.prototype.draw = function (data) {
         var entity = this.entity;
-        var matrix = this.matrix;
+        var currentTransform;
+        var worldTransform = this.worldTransform;
+        var localTransform = this.localTransform;
         var alpha = entity.alpha;
         var rotation = entity.rotation;
         var renderer = data.renderer;
@@ -53,7 +56,7 @@ bento.define('bento/transform', [
             return false;
         }
 
-        renderer.save();
+        localTransform.reset();
 
         // translate
         if (Transform.subPixel) {
@@ -61,7 +64,7 @@ bento.define('bento/transform', [
             ty += entity.position.y + this.y;
         } else {
             tx += Math.round(entity.position.x + this.x);
-            ty += entity.position.y + this.y;
+            ty += Math.round(entity.position.y + this.y);
         }
         // scroll (only applies to parent objects)
         if (!entity.parent && !entity.float) {
@@ -70,21 +73,29 @@ bento.define('bento/transform', [
         }
 
         // transform
-        renderer.translate(tx, ty);
+        localTransform.scale(sx, sy);
         if (entity.rotation % twoPi) {
             // rotated?
-            renderer.rotate(rotation);
+            localTransform.rotate(rotation);
         }
-        renderer.scale(sx, sy);
+        localTransform.translate(tx, ty);
         this.oldAlpha = data.renderer.getOpacity();
-        renderer.setOpacity(this.oldAlpha * alpha);
 
-        // cache transforms
-        this.tx = tx;
-        this.ty = ty;
-        this.sx = sx;
-        this.sy = sy;
-        this.r = rotation;
+        // apply transform
+        currentTransform = renderer.getTransform();
+        currentTransform.cloneInto(worldTransform);
+        worldTransform.appendWith(localTransform);
+
+        renderer.save();
+        renderer.setTransform(
+            worldTransform.a,
+            worldTransform.b,
+            worldTransform.c,
+            worldTransform.d,
+            worldTransform.tx,
+            worldTransform.ty
+        );
+        renderer.setOpacity(this.oldAlpha * alpha);
 
         return true;
     };
@@ -92,15 +103,7 @@ bento.define('bento/transform', [
     Transform.prototype.postDraw = function (data) {
         var renderer = data.renderer;
 
-        // restore transforms
-        renderer.setOpacity(this.oldAlpha);
-        renderer.scale(1 / this.sx, 1 / this.sy);
-        if (this.r % twoPi) {
-            // rotated?
-            renderer.rotate(-this.r);
-        }
-        renderer.translate(-this.tx, -this.ty);
-
+        // restore renderer
         renderer.restore();
     };
 

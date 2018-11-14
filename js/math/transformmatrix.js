@@ -183,6 +183,24 @@ bento.define('bento/math/transformmatrix', [
     };
 
     /**
+     * Clones matrix into another
+     * @function
+     * @param {Matrix} matrix - Matrix to multiply with
+     * @returns {Matrix} self
+     * @instance
+     * @name cloneInto
+     */
+    Matrix.prototype.cloneInto = function (other) {
+        other.a = this.a;
+        other.b = this.b;
+        other.c = this.c;
+        other.d = this.d;
+        other.tx = this.tx;
+        other.ty = this.ty;
+        return this;
+    };
+
+    /**
      * Resets matrix to identity matrix
      * @function
      * @returns {Matrix} Self

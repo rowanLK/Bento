@@ -34,6 +34,9 @@ bento.define('bento/renderers/canvas2d', [
                 // immediately apply to current transform
                 applyTransform();
             },
+            getTransform: function () {
+                return matrix;
+            },
             translate: function (x, y) {
                 var transform = new TransformMatrix();
                 matrix.multiplyWith(transform.translate(x, y));
