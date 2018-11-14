@@ -105,6 +105,14 @@ bento.require([
                 if (Bento.input.isKeyDown('up')) {
                     viewport.y -= 1;
                 }
+
+                if (Bento.input.isKeyDown('left')) {
+                    viewport.x += 1;
+                }
+
+                if (Bento.input.isKeyDown('right')) {
+                    viewport.x -= 1;
+                }
             }
         });
         button2 = makeButton();
@@ -125,11 +133,11 @@ bento.require([
         Bento.objects.add(button1);
 
         // floating button test 
-        // button4 = makeButton();
-        // button4.name = 'button4';
-        // button4.position = new Vector2(32, 32);
-        // button4.float = true;
-        // Bento.objects.add(button4);
+        button4 = makeButton();
+        button4.name = 'button4';
+        button4.position = new Vector2(32, 32);
+        button4.float = true;
+        Bento.objects.add(button4);
 
         // button3.attach(cursor);
 
@@ -141,7 +149,8 @@ bento.require([
             'assets': 'assets/assets.json'
         },
         renderer: 'canvas2d',
-        pixelSize: 3
+        antiAlias: false,
+        pixelSize: 1
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', onShow, function (current, total) {

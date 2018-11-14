@@ -123,6 +123,7 @@ bento.require([
     Bento.setup({
         canvasId: 'canvas',
         canvasDimension: new Rectangle(0, 0, 160, 240),
+        antiAlias: false,
         pixelSize: 3, // notice how scaling and rotations are smooth due to the pixelSize
         onComplete: function () {
             // load all assets and start game afterwards

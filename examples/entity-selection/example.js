@@ -163,6 +163,7 @@ bento.require([
     // setup game
     Bento.setup({
         canvasId: "canvas",
+        antiAlias: false,
         pixelSize: 4,
         canvasDimension: new Rectangle(0, 0, 160, 240),
         onComplete: loadAssets
