@@ -300,12 +300,11 @@ bento.define('bento/tween', [
         var interpolate;
         var fn;
         var useVectors;
-        var tween;
-        var tweenBehavior = new Object({
+        var tweenBehavior = {
             name: 'tweenBehavior',
             start: function (data) {
                 if (onCreate) {
-                    onCreate.apply(tween);
+                    onCreate.apply(this);
                 }
             },
             update: function (data) {
@@ -324,7 +323,7 @@ bento.define('bento/tween', [
                     }
                     // run onUpdate before start
                     if (applyOnDelay && onUpdate) {
-                        onUpdate.apply(tween, [interpolate(
+                        onUpdate.apply(this, [interpolate(
                             startVal,
                             endVal,
                             0,
@@ -343,12 +342,12 @@ bento.define('bento/tween', [
                 if (!hasStarted) {
                     hasStarted = true;
                     if (onStart) {
-                        onStart.apply(tween);
+                        onStart.apply(this);
                     }
                 }
                 // run update
                 if (onUpdate) {
-                    onUpdate.apply(tween, [interpolate(
+                    onUpdate.apply(this, [interpolate(
                         startVal,
                         endVal,
                         time / deltaT,
@@ -360,7 +359,7 @@ bento.define('bento/tween', [
                 if (time >= deltaT && !stay) {
                     if (time > deltaT && onUpdate) {
                         //the tween didn't end neatly, so run onUpdate once more with a t of 1
-                        onUpdate.apply(tween, [interpolate(
+                        onUpdate.apply(this, [interpolate(
                             startVal,
                             endVal,
                             1,
@@ -369,13 +368,10 @@ bento.define('bento/tween', [
                         ), time]);
                     }
                     if (onComplete) {
-                        onComplete.apply(tween);
+                        onComplete.apply(this);
                     }
 
-                    if (tween.removeSelf) {
-                        // remove self 
-                        tween.removeSelf();
-                    }
+                    Bento.objects.remove(tweenBehavior);
                 }
             },
             /**
@@ -389,11 +385,7 @@ bento.define('bento/tween', [
              */
             begin: function () {
                 time = 0;
-                if (!tween.isAdded) {
-                    Bento.objects.attach(tween);
-                }
                 running = true;
-                return tween;
             },
             /**
              * Stops the tween (note that the entity isn't removed).
@@ -407,7 +399,6 @@ bento.define('bento/tween', [
             stop: function () {
                 time = 0;
                 running = false;
-                return tween;
             },
             /**
              * Pauses the tween. The tween will resume itself after a certain duration if provided.
@@ -423,7 +414,6 @@ bento.define('bento/tween', [
                 if (duration) {
                     autoResumeTimer = duration;
                 }
-                return tween;
             },
             /**
              * Resumes the tween.
@@ -433,23 +423,15 @@ bento.define('bento/tween', [
              * @name resume
              */
             resume: function () {
-                if (!tween.isAdded) {
-                    return tweenBehavior.begin();
-                } else {
-                    running = true;
-                    return tween;
-                }
+                return tweenBehavior.begin();
             },
             /**
-             * Removes the tweenbehavior from the tween manager or parent entity
+             * Removes the tweenbehavior
              */
             removeSelf: function () {
-                // TODO
+                Bento.objects.remove(tweenBehavior);
             }
-        });
-
-        // by default, `this` refers to the tweenbehavior, otherwise it's the parent entity
-        tween = tweenBehavior;
+        };
 
         // generate the correct interpolation function
         fn = interpolations[ease];
@@ -508,7 +490,7 @@ bento.define('bento/tween', [
         // Assuming that when a tween is created when the game is paused,
         // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
-            tween.updateWhenPaused = Bento.objects.isPaused();
+            tweenBehavior.updateWhenPaused = Bento.objects.isPaused();
         }
 
         // tween automatically starts
@@ -516,31 +498,20 @@ bento.define('bento/tween', [
             tweenBehavior.begin();
         }
 
-        return tween;
+        return tweenBehavior;
     };
 
     /**
      * Main module (entity)
      */
     var Tween = function (settings) {
-        var tween = new Entity(settings);
         var tweenBehavior = new TweenBehavior(settings);
-
-        tween.attach(tweenBehavior);
-
-        // extend functionality
-        tween.extend({
-            begin: tweenBehavior.begin,
-            stop: tweenBehavior.stop,
-            pause: tweenBehavior.pause,
-            resume: tweenBehavior.resume,
-        });
-        if (settings.id) {
-            tween.id = settings.id;
-        }
-
-        return tween;
+        Bento.objects.attach(tweenBehavior);
+        return tweenBehavior;
     };
+
+    //Behaviour constructor
+    Tween.TweenBehavior = TweenBehavior;
 
     // enums
     Tween.LINEAR = 'linear';
