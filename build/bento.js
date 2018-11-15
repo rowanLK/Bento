@@ -4227,10 +4227,10 @@ collidesWith({
     family: '', // or when colliding with a family
     rectangle: rect, // or when colliding with a rectangle
     offset: vec2, // offset the collision check on original entity's position
-    firstOnly: true, // onCollide stops after having found single collision 
+    firstOnly: true, // onCollide stops after having found single collision
     onCollide: function (other) {
         // other is the other entity that is collided with
-        // onCollide is not called if no collision occurred 
+        // onCollide is not called if no collision occurred
     }
 });
      * @returns {Entity/Array} The collided entity/entities, otherwise null
@@ -5004,7 +5004,7 @@ bento.define('bento/transform', [
         this.entity = entity;
 
         // cache values
-        this.oldAlpha = 1;        
+        this.oldAlpha = 1;
 
         // additional transforms
         this.x = 0;
@@ -6360,7 +6360,7 @@ Clickable({
  * @returns Returns a component object to be attached to an entity.
  */
 /**
- * Callback when input changed. The event data is an object that is passed by a source (usually the browser). 
+ * Callback when input changed. The event data is an object that is passed by a source (usually the browser).
  * The input manager injects some extra info useful for the game.
  *
  * @callback InputCallback
@@ -7738,7 +7738,7 @@ bento.define('bento/components/spine', [
 
     Spine.cleanLazyLoadedImages = function () {
         // clearing up memory
-        // don't call this during update loops! 
+        // don't call this during update loops!
         // no spine components should be alive when this is called, because all references will be invalid
         var spineAssetLoader = Bento.assets.getSpineLoader();
         Utils.forEach(lazyLoadedImages, function (image, imagePath, l, breakLoop) {
@@ -9470,7 +9470,7 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             };
             var linkSkinWithImage = function (textureAtlas) {
-                // In order for the lazy loading to work, we need to know 
+                // In order for the lazy loading to work, we need to know
                 // what skin is related to which image. Spine will not do this out of the box
                 // so we will have to parse the skeleton json and atlas manually and make
                 // think link ourselves.
@@ -11724,7 +11724,7 @@ bento.define('bento/managers/object', [
             if (useDeltaT) {
                 cumulativeTime = ms60fps;
             } else {
-                // fixed time will not report the real delta time, 
+                // fixed time will not report the real delta time,
                 // assumes time goes by with 16.667 ms every frame
                 data.deltaT = ms60fps;
             }
@@ -15414,7 +15414,7 @@ bento.define('bento/tiled', [
                 context.scale(1 / sx, 1 / sy);
                 context.rotate(-rotation);
                 context.translate(-tx, -ty);
-                
+
                 // context.restore();
             },
             dispose: function () {
@@ -15879,7 +15879,7 @@ bento.define('bento/tiled', [
              */
             layerImages: layerSprites,
             /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
+             * Clear cached modules if cacheModules is true (the cache is global,
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearModuleCache
@@ -15888,7 +15888,7 @@ bento.define('bento/tiled', [
                 cachedModules = {};
             },
             /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
+             * Clear cached modules if cacheModules is true (the cache is global,
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearCanvasCache
@@ -17709,8 +17709,8 @@ bento.define('bento/gui/clickbutton', [
                 settings.onClick.apply(entity);
             },
             /**
-             * Performs the callback as if the button was clicked, 
-             * takes active state into account 
+             * Performs the callback as if the button was clicked,
+             * takes active state into account
              * @function
              * @instance
              * @name mimicClick
@@ -18582,7 +18582,7 @@ iterate(function (item, i, l, breakLoop) {
                 return currentSelection;
             },
             /**
-             * Cancel any scrolling immediately 
+             * Cancel any scrolling immediately
              * @instance
              * @function
              * @name cancel
@@ -19901,8 +19901,8 @@ bento.define('bento/gui/togglebutton', [
                 settings.onToggle.apply(entity);
             },
             /**
-             * Performs the callback as if the button was clicked, 
-             * takes active state into account 
+             * Performs the callback as if the button was clicked,
+             * takes active state into account
              * @function
              * @instance
              * @name mimicClick
