@@ -104,6 +104,7 @@ bento.define('bento/transform', [
         var renderer = data.renderer;
 
         // restore renderer
+        renderer.setOpacity(this.oldAlpha);
         renderer.restore();
     };
 
