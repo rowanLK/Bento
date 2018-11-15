@@ -183,9 +183,9 @@ bento.define('bento/math/transformmatrix', [
     };
 
     /**
-     * Clones matrix into another
+     * Clones this matrix values into another
      * @function
-     * @param {Matrix} matrix - Matrix to multiply with
+     * @param {Matrix} matrix - Matrix to receive new values
      * @returns {Matrix} self
      * @instance
      * @name cloneInto

@@ -4492,10 +4492,7 @@ toComparablePosition(${1:worldPosition});
         }
         data = data || Bento.getGameData();
 
-        if (!this.transform.draw(data)) {
-            // transform invalid, no need to draw at all
-            return;
-        }
+        this.transform.draw(data);
 
         // call components
         for (i = 0, l = components.length; i < l; ++i) {
@@ -5008,11 +5005,6 @@ bento.define('bento/transform', [
 
         // cache values
         this.oldAlpha = 1;        
-        this.tx = 0;
-        this.ty = 0; 
-        this.sx = 1; 
-        this.sy = 1;
-        this.r = 0;
 
         // additional transforms
         this.x = 0;
@@ -5021,34 +5013,30 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.draw = function (data) {
-        var entity = this.entity;
         var currentTransform;
         var worldTransform = this.worldTransform;
         var localTransform = this.localTransform;
+        var entity = this.entity;
         var alpha = entity.alpha;
+        var position = entity.position;
         var rotation = entity.rotation;
+        var scale = entity.scale;
         var renderer = data.renderer;
         var viewport = data.viewport;
         var tx = 0;
         var ty = 0;
-        var sx = entity.scale.x;
-        var sy = entity.scale.y;
-
-        // check validity of transforms, 0 scale can not be reversed
-        // Note: will also skip on 0 alpha, not sure if developer still expects draw functions to run if alpha 0
-        if (!sx || !sy || !alpha) {
-            return false;
-        }
+        var sx = scale.x;
+        var sy = scale.y;
 
         localTransform.reset();
 
         // translate
         if (Transform.subPixel) {
-            tx += entity.position.x + this.x;
-            ty += entity.position.y + this.y;
+            tx += position.x + this.x;
+            ty += position.y + this.y;
         } else {
-            tx += Math.round(entity.position.x + this.x);
-            ty += Math.round(entity.position.y + this.y);
+            tx += Math.round(position.x + this.x);
+            ty += Math.round(position.y + this.y);
         }
         // scroll (only applies to parent objects)
         if (!entity.parent && !entity.float) {
@@ -5066,9 +5054,9 @@ bento.define('bento/transform', [
         this.oldAlpha = data.renderer.getOpacity();
 
         // apply transform
-        currentTransform = renderer.getTransform();
+        currentTransform = renderer.getTransform().clone();
         currentTransform.cloneInto(worldTransform);
-        worldTransform.appendWith(localTransform);
+        worldTransform.multiplyWith(localTransform);
 
         renderer.save();
         renderer.setTransform(
@@ -5080,8 +5068,6 @@ bento.define('bento/transform', [
             worldTransform.ty
         );
         renderer.setOpacity(this.oldAlpha * alpha);
-
-        return true;
     };
 
     Transform.prototype.postDraw = function (data) {
@@ -13690,9 +13676,9 @@ bento.define('bento/math/transformmatrix', [
     };
 
     /**
-     * Clones matrix into another
+     * Clones this matrix values into another
      * @function
-     * @param {Matrix} matrix - Matrix to multiply with
+     * @param {Matrix} matrix - Matrix to receive new values
      * @returns {Matrix} self
      * @instance
      * @name cloneInto
@@ -16719,7 +16705,9 @@ bento.define('bento/renderers/canvas2d', [
                 matrices.push(matrix.clone());
             },
             restore: function () {
-                matrix = matrices.pop();
+                var lastMatrix = matrices.pop();
+                lastMatrix.cloneInto(matrix);
+                applyTransform();
             },
             setTransform: function (a, b, c, d, tx, ty) {
                 matrix.a = a;
