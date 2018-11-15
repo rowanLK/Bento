@@ -103,6 +103,9 @@ bento.define('bento/managers/object', [
 
             data = data || getGameData();
 
+            module.timer += data.speed;
+            module.ticker += 1;
+
             EventSystem.fire('preUpdate', data);
             for (i = 0; i < objects.length; ++i) {
                 object = objects[i];
@@ -234,6 +237,18 @@ bento.define('bento/managers/object', [
             }
         };
         var module = {
+            /**
+             * Global timer (affected by gamespeed)
+             * @instance
+             * @name timer
+             */
+            timer: 0,
+            /**
+             * Global ticker (increments every frame)
+             * @instance
+             * @name timer
+             */
+            ticker: 0,
             /**
              * Adds entity/object to the game. The object doesn't have to be an Entity. As long as the object
              * has the functions update and draw, they will be called during the loop.

@@ -96,8 +96,17 @@ bento.define('bento/managers/input', [
             },
             addTouchPosition = function (evt, n, type) {
                 var touch = evt.changedTouches[n];
-                var x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x;
-                var y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y;
+                var hasBoundingClientRect = (evt.target && evt.target.getBoundingClientRect);
+                var x, y;
+                if (hasBoundingClientRect) {
+                    // https://stackoverflow.com/a/42111623 --> more accurate?
+                    var rect = evt.target.getBoundingClientRect();
+                    x = (touch.pageX - rect.left) / canvasScale.x + offsetLocal.x;
+                    y = (touch.pageY - rect.top) / canvasScale.y + offsetLocal.y;
+                } else {
+                    x = (touch.pageX - offsetLeft) / canvasScale.x + offsetLocal.x;
+                    y = (touch.pageY - offsetTop) / canvasScale.y + offsetLocal.y;
+                }
                 var startPos = {};
 
                 evt.preventDefault();
@@ -140,10 +149,19 @@ bento.define('bento/managers/input', [
 
             },
             addMousePosition = function (evt, type) {
-                var x = (evt.pageX - offsetLeft) / canvasScale.x + offsetLocal.x,
-                    y = (evt.pageY - offsetTop) / canvasScale.y + offsetLocal.y,
-                    startPos = {},
-                    n = -1;
+                var hasBoundingClientRect = (evt.target && evt.target.getBoundingClientRect);
+                var x, y;
+                if (hasBoundingClientRect) {
+                    // https://stackoverflow.com/a/42111623 --> more accurate?
+                    var rect = evt.target.getBoundingClientRect();
+                    x = (evt.clientX - rect.left) / canvasScale.x + offsetLocal.x;
+                    y = (evt.clientY - rect.top) / canvasScale.y + offsetLocal.y;
+                } else {
+                    x = (evt.pageX - offsetLeft) / canvasScale.x + offsetLocal.x;
+                    y = (evt.pageY - offsetTop) / canvasScale.y + offsetLocal.y;
+                }
+                var startPos = {};
+                var n = -1;
                 evt.id = 0;
                 evt.eventType = 'mouse';
                 evt.position = new Vector2(x, y);

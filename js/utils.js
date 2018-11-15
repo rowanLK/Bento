@@ -654,7 +654,7 @@ Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
          * @param {Array} [params] - Parameters to pass to function
          * @name repeat
          * @snippet Utils.repeat|snippet
-        Utils.repeat(${1:1}, ${2:Function})
+        Utils.repeat(${1:1}, ${2:function (i, l) {\}})
          */
         repeat: function (number, fn) {
             var i;
