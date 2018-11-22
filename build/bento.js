@@ -16213,7 +16213,10 @@ bento.define('bento/tween', [
     'bento/entity'
 ], function (Bento, Vector2, Utils, Entity) {
     'use strict';
-    var robbertPenner = {
+    /**
+     * Interpolations (3rd party)
+     */
+    var robbertPenner = new Object({
         // t: current time, b: begInnIng value, c: change In value, d: duration
         easeInQuad: function (t, b, c, d) {
             return c * (t /= d) * t + b;
@@ -16357,8 +16360,11 @@ bento.define('bento/tween', [
             if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
             return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
         }
-    };
-    var interpolations = {
+    });
+    /**
+     * Interpolations
+     */
+    var interpolations = new Object({
         linear: function (s, e, t, alpha, beta) {
             return (e - s) * t + s;
         },
@@ -16390,35 +16396,51 @@ bento.define('bento/tween', [
             //s=offset, e=amplitude, alpha=wavenumber
             return s + e * Math.cos(alpha * t * 2 * Math.PI);
         }
-    };
-    var interpolate = function (type, s, e, t, alpha, beta) {
-        // interpolate(string type,float from,float to,float time,float alpha,float beta)
-        // s = starting value
-        // e = ending value
-        // t = time variable (going from 0 to 1)
-        var fn = interpolations[type];
-        if (s.isVector2 && e.isVector2) {
+    });
+
+    /**
+     * Generate an interpolation function based on ease and type of start/end values (Numbers or Vector2)
+     */
+    var generateInterpolation = function (ease, startVal, endVal) {
+        // generate the correct interpolation function
+        var fn = interpolations[ease];
+        if (startVal.isVector2 && endVal.isVector2) {
+            // as vectors
             if (fn) {
-                return new Vector2(
-                    fn(s.x, e.x, t, alpha, beta),
-                    fn(s.y, e.y, t, alpha, beta)
-                );
+                return function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(s.x, e.x, t, alpha, beta),
+                        fn(s.y, e.y, t, alpha, beta)
+                    );
+                };
             } else {
-                return new Vector2(
-                    robbertPenner[type](t, s.x, e.x - s.x, 1),
-                    robbertPenner[type](t, s.y, e.y - s.y, 1)
-                );
+                fn = robbertPenner[ease];
+                return function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(t, s.x, e.x - s.x, 1),
+                        fn(t, s.y, e.y - s.y, 1)
+                    );
+                };
             }
         } else {
+            // number output
             if (fn) {
-                return fn(s, e, t, alpha, beta);
+                return function (s, e, t, alpha, beta) {
+                    return fn(s, e, t, alpha, beta);
+                };
             } else {
-                return robbertPenner[type](t, s, e - s, 1);
+                fn = robbertPenner[ease];
+                return function (s, e, t, alpha, beta) {
+                    return fn(t, s, e - s, 1);
+                };
             }
         }
     };
 
-    var Tween = function (settings) {
+    /**
+     * Tween Behavior, can be used standalone or as behavior attached to Entity
+     */
+    var TweenBehavior = function (settings) {
         /* settings = {
             from: Number
             to: Number
@@ -16452,12 +16474,16 @@ bento.define('bento/tween', [
         var ignoreGameSpeed = settings.ignoreGameSpeed;
         var stay = settings.stay;
         var autoResumeTimer = -1;
-        var tween = new Entity(settings);
-        var tweenBehavior = {
+        // either the tweenBehavior or its parent entity
+        var tweenSubject;
+        // interpolation funciton to be generated
+        var interpolate = generateInterpolation(ease, startVal, endVal);
+        var tweenBehavior = new Object({
+            z: 0,
             name: 'tweenBehavior',
             start: function (data) {
                 if (onCreate) {
-                    onCreate.apply(tween);
+                    onCreate.apply(tweenSubject);
                 }
             },
             update: function (data) {
@@ -16476,8 +16502,7 @@ bento.define('bento/tween', [
                     }
                     // run onUpdate before start
                     if (applyOnDelay && onUpdate) {
-                        onUpdate.apply(tween, [interpolate(
-                            ease,
+                        onUpdate.apply(tweenSubject, [interpolate(
                             startVal,
                             endVal,
                             0,
@@ -16496,13 +16521,12 @@ bento.define('bento/tween', [
                 if (!hasStarted) {
                     hasStarted = true;
                     if (onStart) {
-                        onStart.apply(tween);
+                        onStart.apply(tweenSubject);
                     }
                 }
                 // run update
                 if (onUpdate) {
-                    onUpdate.apply(tween, [interpolate(
-                        ease,
+                    onUpdate.apply(tweenSubject, [interpolate(
                         startVal,
                         endVal,
                         time / deltaT,
@@ -16514,8 +16538,7 @@ bento.define('bento/tween', [
                 if (time >= deltaT && !stay) {
                     if (time > deltaT && onUpdate) {
                         //the tween didn't end neatly, so run onUpdate once more with a t of 1
-                        onUpdate.apply(tween, [interpolate(
-                            ease,
+                        onUpdate.apply(tweenSubject, [interpolate(
                             startVal,
                             endVal,
                             1,
@@ -16524,9 +16547,16 @@ bento.define('bento/tween', [
                         ), time]);
                     }
                     if (onComplete) {
-                        onComplete.apply(tween);
+                        onComplete.apply(tweenSubject);
                     }
-                    Bento.objects.remove(tween);
+
+                    tweenBehavior.removeSelf();
+                }
+            },
+            attached: function (data) {
+                if (data.entity) {
+                    // an entity attached this behavior
+                    tweenSubject = data.entity;
                 }
             },
             /**
@@ -16540,11 +16570,8 @@ bento.define('bento/tween', [
              */
             begin: function () {
                 time = 0;
-                if (!tween.isAdded) {
-                    Bento.objects.attach(tween);
-                }
                 running = true;
-                return tween;
+                return tweenSubject;
             },
             /**
              * Stops the tween (note that the entity isn't removed).
@@ -16558,7 +16585,7 @@ bento.define('bento/tween', [
             stop: function () {
                 time = 0;
                 running = false;
-                return tween;
+                return tweenSubject;
             },
             /**
              * Pauses the tween. The tween will resume itself after a certain duration if provided.
@@ -16574,7 +16601,7 @@ bento.define('bento/tween', [
                 if (duration) {
                     autoResumeTimer = duration;
                 }
-                return tween;
+                return tweenSubject;
             },
             /**
              * Resumes the tween.
@@ -16584,27 +16611,24 @@ bento.define('bento/tween', [
              * @name resume
              */
             resume: function () {
-                if (!tween.isAdded) {
-                    return tweenBehavior.begin();
-                } else {
-                    running = true;
-                    return tween;
+                return tweenBehavior.begin();
+            },
+            /**
+             * Removes the tweenbehavior from tween collection or from parent Entity
+             * @function
+             * @instance
+             * @name removeSelf
+             */
+            removeSelf: function () {
+                if (tweenSubject === tweenBehavior) {
+                    Bento.objects.remove(tweenBehavior);
+                } else if (tweenSubject && tweenSubject.isEntity) {
+                    tweenSubject.remove(tweenBehavior);
                 }
             }
-        };
-
-        tween.attach(tweenBehavior);
-
-        // extend functionality
-        tween.extend({
-            begin: tweenBehavior.begin,
-            stop: tweenBehavior.stop,
-            pause: tweenBehavior.pause,
-            resume: tweenBehavior.resume,
         });
-        if (settings.id) {
-            tween.id = settings.id;
-        }
+
+        tweenSubject = tweenBehavior;
 
         // convert decay and growth to alpha
         if (Utils.isDefined(settings.decay)) {
@@ -16620,14 +16644,10 @@ bento.define('bento/tween', [
             }
         }
 
-        // if (!Utils.isDefined(settings.ease)) {
-        //     Utils.log("WARNING: settings.ease is undefined.");
-        // }
-
         // Assuming that when a tween is created when the game is paused,
         // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
-            tween.updateWhenPaused = Bento.objects.isPaused();
+            tweenBehavior.updateWhenPaused = Bento.objects.isPaused();
         }
 
         // tween automatically starts
@@ -16635,8 +16655,23 @@ bento.define('bento/tween', [
             tweenBehavior.begin();
         }
 
-        return tween;
+        return tweenBehavior;
     };
+
+    /**
+     * Main Tween module, applied immediately
+     */
+    var Tween = function (settings) {
+        // this is no longer an entity, to remove the overhead an entity has
+        // if developer wants to use the tween as an Entity, construct a Tween.TweenBehavior and
+        // attach to an Entity
+        var tweenBehavior = new TweenBehavior(settings);
+        Bento.objects.attach(tweenBehavior);
+        return tweenBehavior;
+    };
+
+    // Behaviour constructor
+    Tween.TweenBehavior = TweenBehavior;
 
     // enums
     Tween.LINEAR = 'linear';
@@ -16678,6 +16713,10 @@ bento.define('bento/tween', [
     Tween.EASEINBOUNCE = 'easeInBounce';
     Tween.EASEOUTBOUNCE = 'easeOutBounce';
     Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
+
+    // expose interpolations
+    Tween.interpolations = interpolations;
+    Tween.interpolationsRP = robbertPenner;
 
     return Tween;
 });
