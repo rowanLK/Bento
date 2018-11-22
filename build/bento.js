@@ -17268,7 +17268,7 @@ bento.define('bento/renderers/pixi', [
                 }
                 if (!image.texture) {
                     // initialize pixi baseTexture
-                    image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+                    image.texture = new PIXI.BaseTexture(image, Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
                     image.frame = new PIXI.Texture(image.texture);
                 }
                 // without spritepool
@@ -19723,9 +19723,9 @@ bento.define('bento/gui/text', [
                 if (warningCounter) {
                     warningCounter -= 1;
                 }
-                if (!didWarn && warningCounter > 60 && !Text.suppressWarnings) {
+                if (!didWarn && warningCounter > 600 && !Text.suppressWarnings) {
                     didWarn = true;
-                    console.warn('PERFORMANCE WARNING: for the past 60 frames this Text module has been updating all the time.', entity);
+                    console.warn('PERFORMANCE WARNING: for the past 600 frames this Text module has been updating all the time.', entity);
                 }
             }
         };
