@@ -152,7 +152,7 @@ bento.require([
         },
         renderer: 'canvas2d',
         antiAlias: false,
-        pixelSize: 1
+        pixelSize: 3
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', onShow, function (current, total) {
