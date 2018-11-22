@@ -3974,6 +3974,10 @@ attach(${1});
             return;
         }
 
+        if (!child.name) {
+            console.warn("WARNING: component has no name", child);
+        }
+
         if (!force && (child.isAdded || child.parent)) {
             Utils.log("ERROR: Child " + child.name + " was already attached.");
             return;
@@ -5055,7 +5059,7 @@ bento.define('bento/transform', [
 
         // apply transform
         currentTransform = renderer.getTransform().clone();
-        currentTransform.cloneInto(worldTransform);
+        currentTransform.copyInto(worldTransform);
         worldTransform.multiplyWith(localTransform);
 
         renderer.save();
@@ -5083,6 +5087,7 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.toWorldPosition = function (localPosition) {
+        // TODO: transform point using the tranform matrices instead of looping through parents
         var positionVector,
             matrix,
             entity = this.entity,
@@ -5142,6 +5147,8 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.toLocalPosition = function (worldPosition) {
+        // TODO: transform point using the tranform matrices instead of looping through parents
+
         // get the comparable position and reverse transform once more to get into the local space
         var positionVector = this.toComparablePosition(worldPosition);
 
@@ -9411,9 +9418,9 @@ bento.define('bento/managers/asset', [
                         // it is in my belief that spine exports either the atlas or json wrong when skins are involved
                         // the atlas path becomes an relative path to the root as opposed to relative to images/
                         var skeletonJson = JSON.parse(data);
-                        var prefix = skeletonJson.skeleton.images;
+                        var prefix = skeletonJson.skeleton.images || '';
                         prefix = prefix.replace('./', '');
-                        while (dataAtlas.indexOf(prefix) >= 0) {
+                        while (prefix && dataAtlas.indexOf(prefix) >= 0) {
                             dataAtlas = dataAtlas.replace(prefix, '');
                         }
                         onLoadSpineAtlas(path, dataAtlas);
@@ -11810,6 +11817,10 @@ bento.define('bento/managers/object', [
                 return;
             }
 
+            if (!object.name) {
+                console.warn("WARNING: object has no name", object);
+            }
+
             if (object.isAdded || object.parent) {
                 Utils.log("ERROR: Entity " + object.name + " was already added.");
                 return;
@@ -13367,6 +13378,25 @@ bento.define('bento/math/rectangle', [
     Rectangle.prototype.clone = function () {
         return new Rectangle(this.x, this.y, this.width, this.height);
     };
+
+    /**
+     * Clones this Rectangle's values into another
+     * @function
+     * @param {Rectangle} rectangle - Other rectangle to receive new values
+     * @returns {Rectangle} self
+     * @instance
+     * @name copyInto
+     * @snippet #Rectangle.copyInto|Rectangle
+        copyInto(${1:targetRectangle});
+     */
+    Rectangle.prototype.copyInto = function (other) {
+        other.x = this.x;
+        other.y = this.y;
+        other.width = this.width;
+        other.height = this.height;
+        return this;
+    };
+
     /**
      * Checks if Vector2 lies within the rectangle
      * @function
@@ -13487,6 +13517,23 @@ bento.define('bento/math/rectangle', [
     };
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
+    };
+
+    // ==== Static functions and properties ====
+    /**
+     * Copies values into another instance
+     * @function
+     * @param {Rectangle} source - Source instance to copy from
+     * @param {Rectangle} target - Target instance to receive values
+     * @returns {Rectangle} Target Rectangle
+     * @instance
+     * @static
+     * @name copyInto
+     * @snippet Rectangle.copyInto|Rectangle
+        Rectangle.copyInto(${1:source}, ${2:target})
+     */
+    Rectangle.copyInto = function (source, target) {
+        source.copyInto(target);
     };
 
     return Rectangle;
@@ -13681,9 +13728,9 @@ bento.define('bento/math/transformmatrix', [
      * @param {Matrix} matrix - Matrix to receive new values
      * @returns {Matrix} self
      * @instance
-     * @name cloneInto
+     * @name copyInto
      */
-    Matrix.prototype.cloneInto = function (other) {
+    Matrix.prototype.copyInto = function (other) {
         other.a = this.a;
         other.b = this.b;
         other.c = this.c;
@@ -13749,7 +13796,6 @@ bento.define('bento/math/transformmatrix', [
     // aliases
     Matrix.prototype.appendWith = Matrix.prototype.multiplyWith;
     Matrix.prototype.append = Matrix.prototype.multiply;
-
 
     Matrix.prototype.toString = function () {
         return '[object Matrix]';
@@ -14134,6 +14180,21 @@ bento.define('bento/math/vector2', [
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
     };
+    /**
+     * Clones this Vector2's values into another
+     * @function
+     * @param {Vector2} vector - Other vector to receive new values
+     * @returns {Vector2} self
+     * @instance
+     * @name copyInto
+     * @snippet #Vector2.copyInto|Vector2
+        copyInto(${1:targetVector});
+     */
+    Vector2.prototype.copyInto = function (other) {
+        other.x = this.x;
+        other.y = this.y;
+        return this;
+    };
     /* DEPRECATED
      * Represent the vector as a 1x3 matrix
      * @function
@@ -14166,6 +14227,95 @@ bento.define('bento/math/vector2', [
         return '[object Vector2]';
     };
 
+    // ==== Static functions and properties ====
+    /**
+     * Copies values into another instance
+     * @function
+     * @param {Vector2} source - Source instance to copy from
+     * @param {Vector2} target - Target instance to receive values
+     * @returns {Vector2} Target Vector2
+     * @instance
+     * @static
+     * @name copyInto
+     * @snippet Vector2.copyInto|Vector2
+        Vector2.copyInto(${1:source}, ${2:target})
+     */
+    Vector2.copyInto = function (source, target) {
+        source.copyInto(target);
+    };
+
+    /**
+     * Returns a rotated vector
+     * @function
+     * @param {Vector2} angle - Angle in radians
+     * @param {Vector2} length - size of Vector2
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name fromRotation
+     * @snippet Vector2.fromRotation|Vector2
+        Vector2.fromRotation(${1:radians}, ${1:length})
+     */
+    Vector2.fromRotation = function (angle, length) {
+        return new Vector2(Math.cos(angle) * length, Math.sin(angle) * length);
+    };
+
+    /**
+     * Returns a Vector2 instance pointing up
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name up
+     * @snippet Vector2.up|Vector2
+        Vector2.up()
+     */
+    Object.defineProperty(Vector2, 'up', {
+        get: function () {
+            return new Vector2(0, -1);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing down
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name down
+     * @snippet Vector2.down|Vector2
+        Vector2.down()
+     */
+    Object.defineProperty(Vector2, 'down', {
+        get: function () {
+            return new Vector2(0, 1);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing left
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name left
+     * @snippet Vector2.left|Vector2
+        Vector2.left()
+     */
+    Object.defineProperty(Vector2, 'left', {
+        get: function () {
+            return new Vector2(-1, 0);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing right
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name right
+     * @snippet Vector2.right|Vector2
+        Vector2.right()
+     */
+    Object.defineProperty(Vector2, 'right', {
+        get: function () {
+            return new Vector2(1, 0);
+        }
+    });
     return Vector2;
 });
 /**
@@ -16745,7 +16895,7 @@ bento.define('bento/renderers/canvas2d', [
             },
             restore: function () {
                 var lastMatrix = matrices.pop();
-                lastMatrix.cloneInto(matrix);
+                lastMatrix.copyInto(matrix);
                 applyTransform();
             },
             setTransform: function (a, b, c, d, tx, ty) {
@@ -18002,6 +18152,7 @@ bento.define('bento/gui/counter', [
             });
             // settings.digit can be used to change every digit entity constructor
             var digitSettings = Utils.extend({
+                name: 'digit',
                 components: [sprite]
             }, settings.digit || {});
             var entity = new Entity(digitSettings);
@@ -18068,7 +18219,7 @@ bento.define('bento/gui/counter', [
         };
         var entitySettings = {
             z: settings.z,
-            name: settings.name,
+            name: settings.name || 'counter',
             position: settings.position
         };
         var container;
@@ -18882,6 +19033,8 @@ bento.define('bento/gui/text', [
         var shadowOffset = new Vector2(0, 0);
         var shadowOffsetMax = 0;
         var shadowColor = 'black';
+        var didWarn = false;
+        var warningCounter = 0;
         /*
          * Prepare font settings, gradients, max width/height etc.
          */
@@ -19279,6 +19432,8 @@ bento.define('bento/gui/text', [
             sprite.setup({
                 image: packedImage
             });
+
+            warningCounter += 2;
         };
         /*
          * Restore context and previous font settings
@@ -19556,6 +19711,15 @@ bento.define('bento/gui/text', [
                     canvas = null;
                     packedImage = null;
                 }
+            },
+            update: function () {
+                if (warningCounter) {
+                    warningCounter -= 1;
+                }
+                if (!didWarn && warningCounter > 60 && !Text.suppressWarnings) {
+                    didWarn = true;
+                    console.warn('PERFORMANCE WARNING: for the past 60 frames this Text module has been updating all the time.', entity);
+                }
             }
         };
         var sprite = new Sprite({
@@ -19692,6 +19856,8 @@ bento.define('bento/gui/text', [
 
     // legacy setting
     Text.generateOnConstructor = false;
+
+    Text.suppressWarnings = false;
 
     return Text;
 });
