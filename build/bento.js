@@ -3052,7 +3052,7 @@ bento.define('bento', [
     var bentoSettings;
     var canvasRatio = 0;
     var windowRatio;
-    var throttle = 1;
+    var gameSpeed = 1;
     var canvasScale = {
         x: 1,
         y: 1
@@ -3347,7 +3347,8 @@ bento.define('bento', [
             bento.refresh();
 
             // reset game speed
-            throttle = 1;
+            Bento.objects.throttle = 1;
+            gameSpeed = 1;
 
             // reload current screen
             Bento.screens.show(screenName || currentScreen.name, undefined,
@@ -3376,6 +3377,7 @@ bento.define('bento', [
             Bento.getGameData();
          */
         getGameData: function () {
+            var throttle = Bento.objects ? Bento.objects.throttle : 1;
             return {
                 canvas: canvas,
                 renderer: renderer,
@@ -3384,7 +3386,7 @@ bento.define('bento', [
                 entity: null,
                 event: null,
                 deltaT: 0,
-                speed: throttle
+                speed: throttle * gameSpeed
             };
         },
         /**
@@ -3397,7 +3399,7 @@ bento.define('bento', [
             Bento.getGameSpeed();
          */
         getGameSpeed: function () {
-            return throttle;
+            return gameSpeed;
         },
         /**
          * Sets the current game speed. Defaults to 1.
@@ -3410,7 +3412,7 @@ bento.define('bento', [
             Bento.setGameSpeed(${1:1});
          */
         setGameSpeed: function (value) {
-            throttle = value;
+            gameSpeed = value;
         },
         /**
          * Is game in dev mode?
@@ -11688,6 +11690,7 @@ bento.define('bento/managers/object', [
         var isRunning = false;
         var sortMode = settings.sortMode || 0;
         var useDeltaT = settings.useDeltaT || false;
+        var autoThrottle = settings.autoThrottle || false;
         var ms60fps = 1000 / 60;
         var isPaused = 0;
         var isStopped = false;
@@ -11730,6 +11733,9 @@ bento.define('bento/managers/object', [
             data.deltaT = deltaT;
             if (useDeltaT) {
                 cumulativeTime = ms60fps;
+                if (autoThrottle) {
+                    module.throttle = Math.min(deltaT / ms60fps, 3); // doesn't go higher than 3x speed (20fps)
+                }
             } else {
                 // fixed time will not report the real delta time, 
                 // assumes time goes by with 16.667 ms every frame
@@ -12163,7 +12169,8 @@ bento.define('bento/managers/object', [
             // useful for debugging, may be removed later so leaving this undocumented
             getCurrentObject: function () {
                 return currentObject;
-            }
+            },
+            throttle: 1
         };
 
         // swap sort method with default sorting method
