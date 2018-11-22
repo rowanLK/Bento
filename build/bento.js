@@ -3171,7 +3171,7 @@ bento.define('bento', [
     };
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.1.0',
+        version: '1.2.0',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
