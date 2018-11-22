@@ -376,6 +376,21 @@ bento.define('bento/math/vector2', [
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
     };
+    /**
+     * Clones this Vector2's values into another
+     * @function
+     * @param {Vector2} vector - Other vector to receive new values
+     * @returns {Vector2} self
+     * @instance
+     * @name copyInto
+     * @snippet #Vector2.copyInto|Vector2
+        copyInto(${1:targetVector});
+     */
+    Vector2.prototype.copyInto = function (other) {
+        other.x = this.x;
+        other.y = this.y;
+        return this;
+    };
     /* DEPRECATED
      * Represent the vector as a 1x3 matrix
      * @function
@@ -408,5 +423,94 @@ bento.define('bento/math/vector2', [
         return '[object Vector2]';
     };
 
+    // ==== Static functions and properties ====
+    /**
+     * Copies values into another instance
+     * @function
+     * @param {Vector2} source - Source instance to copy from
+     * @param {Vector2} target - Target instance to receive values
+     * @returns {Vector2} Target Vector2
+     * @instance
+     * @static
+     * @name copyInto
+     * @snippet Vector2.copyInto|Vector2
+        Vector2.copyInto(${1:source}, ${2:target})
+     */
+    Vector2.copyInto = function (source, target) {
+        source.copyInto(target);
+    };
+
+    /**
+     * Returns a rotated vector
+     * @function
+     * @param {Vector2} angle - Angle in radians
+     * @param {Vector2} length - size of Vector2
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name fromRotation
+     * @snippet Vector2.fromRotation|Vector2
+        Vector2.fromRotation(${1:radians}, ${1:length})
+     */
+    Vector2.fromRotation = function (angle, length) {
+        return new Vector2(Math.cos(angle) * length, Math.sin(angle) * length);
+    };
+
+    /**
+     * Returns a Vector2 instance pointing up
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name up
+     * @snippet Vector2.up|Vector2
+        Vector2.up()
+     */
+    Object.defineProperty(Vector2, 'up', {
+        get: function () {
+            return new Vector2(0, -1);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing down
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name down
+     * @snippet Vector2.down|Vector2
+        Vector2.down()
+     */
+    Object.defineProperty(Vector2, 'down', {
+        get: function () {
+            return new Vector2(0, 1);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing left
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name left
+     * @snippet Vector2.left|Vector2
+        Vector2.left()
+     */
+    Object.defineProperty(Vector2, 'left', {
+        get: function () {
+            return new Vector2(-1, 0);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing right
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name right
+     * @snippet Vector2.right|Vector2
+        Vector2.right()
+     */
+    Object.defineProperty(Vector2, 'right', {
+        get: function () {
+            return new Vector2(1, 0);
+        }
+    });
     return Vector2;
 });

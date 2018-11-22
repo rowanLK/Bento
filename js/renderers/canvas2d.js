@@ -23,7 +23,7 @@ bento.define('bento/renderers/canvas2d', [
             },
             restore: function () {
                 var lastMatrix = matrices.pop();
-                lastMatrix.cloneInto(matrix);
+                lastMatrix.copyInto(matrix);
                 applyTransform();
             },
             setTransform: function (a, b, c, d, tx, ty) {

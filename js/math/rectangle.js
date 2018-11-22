@@ -259,6 +259,25 @@ bento.define('bento/math/rectangle', [
     Rectangle.prototype.clone = function () {
         return new Rectangle(this.x, this.y, this.width, this.height);
     };
+
+    /**
+     * Clones this Rectangle's values into another
+     * @function
+     * @param {Rectangle} rectangle - Other rectangle to receive new values
+     * @returns {Rectangle} self
+     * @instance
+     * @name copyInto
+     * @snippet #Rectangle.copyInto|Rectangle
+        copyInto(${1:targetRectangle});
+     */
+    Rectangle.prototype.copyInto = function (other) {
+        other.x = this.x;
+        other.y = this.y;
+        other.width = this.width;
+        other.height = this.height;
+        return this;
+    };
+
     /**
      * Checks if Vector2 lies within the rectangle
      * @function
@@ -379,6 +398,23 @@ bento.define('bento/math/rectangle', [
     };
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
+    };
+
+    // ==== Static functions and properties ====
+    /**
+     * Copies values into another instance
+     * @function
+     * @param {Rectangle} source - Source instance to copy from
+     * @param {Rectangle} target - Target instance to receive values
+     * @returns {Rectangle} Target Rectangle
+     * @instance
+     * @static
+     * @name copyInto
+     * @snippet Rectangle.copyInto|Rectangle
+        Rectangle.copyInto(${1:source}, ${2:target})
+     */
+    Rectangle.copyInto = function (source, target) {
+        source.copyInto(target);
     };
 
     return Rectangle;

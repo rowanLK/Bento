@@ -188,9 +188,9 @@ bento.define('bento/math/transformmatrix', [
      * @param {Matrix} matrix - Matrix to receive new values
      * @returns {Matrix} self
      * @instance
-     * @name cloneInto
+     * @name copyInto
      */
-    Matrix.prototype.cloneInto = function (other) {
+    Matrix.prototype.copyInto = function (other) {
         other.a = this.a;
         other.b = this.b;
         other.c = this.c;
@@ -256,7 +256,6 @@ bento.define('bento/math/transformmatrix', [
     // aliases
     Matrix.prototype.appendWith = Matrix.prototype.multiplyWith;
     Matrix.prototype.append = Matrix.prototype.multiply;
-
 
     Matrix.prototype.toString = function () {
         return '[object Matrix]';
