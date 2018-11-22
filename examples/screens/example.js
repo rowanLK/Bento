@@ -23,7 +23,8 @@ bento.require([
         reload: {
             simple: 'mouseDown-right'
         },
-        pixelSize: 3
+        pixelSize: 3,
+        antiAlias: false
     }, function () {
         Bento.assets.load('assets', function (err) {
             // when assets are loaded, go to screen 1

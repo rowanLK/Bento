@@ -41,6 +41,7 @@ bento.require([
                     maxWidth: viewport.width
                 }),
                 background = new Entity({
+                    name: 'background',
                     addNow: true,
                     components: [new Fill({
                         color: [1, 1, 1, 1]
@@ -69,7 +70,7 @@ bento.require([
                 once,
                 object = new Entity({
                     z: 0,
-                    name: '',
+                    name: 'arrow',
                     addNow: false,
                     useHshg: false,
                     position: new Vector2(0, 0),
@@ -103,6 +104,7 @@ bento.require([
                 });
 
             object.attach({
+                name: 'drawPolygonBehavior',
                 draw: function (data) {
                     if (!polygon) {
                         return;

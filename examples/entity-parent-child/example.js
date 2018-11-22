@@ -23,6 +23,7 @@ bento.require([
         var viewport = Bento.getViewport();
         var background = new Entity({
             z: -100,
+            name: 'background',
             addNow: true,
             components: [new Fill({
                 color: [1, 1, 1, 1]
@@ -96,6 +97,7 @@ bento.require([
         button1.name = 'button1';
         button1.position = new Vector2(80, 80);
         button1.attach({
+            name: 'keyboardBehavior',
             update: function () {
                 // test: cursor overlap should still be correct with scrolling
                 if (Bento.input.isKeyDown('down')) {

@@ -25,6 +25,7 @@ bento.require([
         var viewport = Bento.getViewport();
         var background = new Entity({
             z: 0,
+            name: 'background',
             components: [new Fill({
                 color: [1, 1, 1, 1]
             })]
@@ -56,6 +57,7 @@ bento.require([
          * Bunny 2: stretched bunny
          */
         var stretchComponent = {
+            name: 'stretchComponent',
             start: function () {
                 // stretch in y when bunny is placed in the game
                 stretchBunny.scale.y = 0.5;

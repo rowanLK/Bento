@@ -435,6 +435,10 @@ attach(${1});
             return;
         }
 
+        if (!child.name) {
+            console.warn("WARNING: component has no name", child);
+        }
+
         if (!force && (child.isAdded || child.parent)) {
             Utils.log("ERROR: Child " + child.name + " was already attached.");
             return;

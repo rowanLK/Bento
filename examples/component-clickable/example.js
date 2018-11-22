@@ -92,6 +92,7 @@ bento.require([
         canvasId: 'canvas',
         canvasDimension: new Rectangle(0, 0, 160, 240),
         pixelSize: 3,
+        antiAlias: false,
         onComplete: function () {
             // load all assets and start game afterwards
             Bento.assets.loadAllAssets({

@@ -163,6 +163,7 @@ bento.define('bento/gui/counter', [
             });
             // settings.digit can be used to change every digit entity constructor
             var digitSettings = Utils.extend({
+                name: 'digit',
                 components: [sprite]
             }, settings.digit || {});
             var entity = new Entity(digitSettings);
@@ -229,7 +230,7 @@ bento.define('bento/gui/counter', [
         };
         var entitySettings = {
             z: settings.z,
-            name: settings.name,
+            name: settings.name || 'counter',
             position: settings.position
         };
         var container;

@@ -155,6 +155,10 @@ bento.define('bento/managers/object', [
                 return;
             }
 
+            if (!object.name) {
+                console.warn("WARNING: object has no name", object);
+            }
+
             if (object.isAdded || object.parent) {
                 Utils.log("ERROR: Entity " + object.name + " was already added.");
                 return;

@@ -24,6 +24,7 @@ bento.require([
     var onLoaded = function (err) {
         var viewport = Bento.getViewport();
         var background = new Entity({
+            name: 'background',
             addNow: true,
             components: [new Fill({
                 color: [1, 1, 1, 1]
@@ -110,6 +111,7 @@ bento.require([
 
     Bento.setup({
         canvasId: "canvas",
+        antiAlias: false,
         canvasDimension: new Rectangle(0, 0, 320, 240),
         onComplete: function () {
             // load all assets and start game afterwards
