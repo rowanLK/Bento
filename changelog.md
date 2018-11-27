@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2.0
+* Allow external assets to be loaded
+* Option to cache Tiled canvasses
+* Tile loop is skipped if there is no onTile callback in Tiled, improves performance.
+* Transform component and canvas2d renderer refactored: *save* and *restore* no longer calls the internal 2d context save and restore. Instead it saves the current transform matrix. The Transform component keeps track of a local and world transform matrix. Note that these aren't optimally used yet (can improve toWorldPosition and toLocalPosition)
+* Re-ordered the properties of Entity. This way the name will show up on top if entities are logged.
+* Page visibility can be ignored in the audio manager
+* Bento now has an option called **antiAlias** (was called *smoothing* before). Note that anti-aliasing works differently in Cocoon/Pixi, where the option applies to images/textures the moment they are loaded. The same parameter can be passed to Text modules, as these create internal canvasses (textures).
+* The **Text** modules creates an internal canvas during start instead of during the constructor. Text.generateOnConstructor is added for legacy purposes (false by default)
+* Fixed a bug where **Bento.assets.hasAsset** did not apply for images that were texture-packed
+* Option to *"compact-build"* games (see Bento Empty Project). A compact build inlines all assets into a single HTML file. 
+* Related to compact builds: assets.json itself can be inlined as javascript with window.assetsJson. This can optionally be represented as an LZString-compressed string.
+* **Tweens** are no longer Entities, for improved performance. Tweens as Entities was an uncommon feature, where you could attach components to tweens as well. Instead, if you want tweens inside Entities, **Tween.TweenBehavior** can be called as constructor which acts as a component.
+* **Bento.objects.timer** and **Bento.objects.ticker** where timer is affected by game speed.
+* Warnings will be logged when the *name* property is not set in Entities and components. Not setting the name is considered bad practice, as there is no way to retrieve the Entity or component without a name.
+* Added static functions **Vector2.copyInto(source, target)**, **Vector2.fromRotation(angle, length)** and static properties **Vector2.up**, **Vector2.down**, **Vector2.left**, **Vector2.right**. As well as **Rectangle.copyInto(source, target)**. The *copyInto* functions are also avaible as member functions.
+* Option to auto-throttle gamespeed (**autoThrottle**), useful for deltaT enabled games. When turned on, the internal gamespeed automatically adjusted when the game goes below 60fps. Speeds are adjusted down to 20fps (to ignore huge time steps). *Bento.setGameSpeed()* is still relevant, as data.speed is represented as the multiplication of the throttle speed (*Bento.objects.throttle*) and game speed (*Bento.getGameSpeed()*).
+
 ## 1.1.0
 * Starting a changelog.... finally
 * New component: **Modal** pauses everything except the parent entity, great for popups and UI

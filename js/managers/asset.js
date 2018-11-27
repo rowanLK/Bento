@@ -443,9 +443,9 @@ bento.define('bento/managers/asset', [
                         // it is in my belief that spine exports either the atlas or json wrong when skins are involved
                         // the atlas path becomes an relative path to the root as opposed to relative to images/
                         var skeletonJson = JSON.parse(data);
-                        var prefix = skeletonJson.skeleton.images;
+                        var prefix = skeletonJson.skeleton.images || '';
                         prefix = prefix.replace('./', '');
-                        while (dataAtlas.indexOf(prefix) >= 0) {
+                        while (prefix && dataAtlas.indexOf(prefix) >= 0) {
                             dataAtlas = dataAtlas.replace(prefix, '');
                         }
                         onLoadSpineAtlas(path, dataAtlas);

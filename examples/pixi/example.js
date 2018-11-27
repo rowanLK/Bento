@@ -1,3 +1,4 @@
+/* globals PIXI */
 bento.require([
     'bento',
     'bento/math/vector2',
@@ -77,6 +78,7 @@ bento.require([
         // this is the PIXI sprite, you can use it to attach other PIXI stuff
         var makePixiSprite = function () {
             var blurBehavior = {
+                name: 'blurBehavior',
                 update: function (data) {
                     // test with filter
                     blurFilter.blur = 20 * Math.cos(entity.timer / 50);
@@ -114,6 +116,7 @@ bento.require([
         canvasDimension: new Rectangle(0, 0, 160, 240),
         renderer: 'pixi', // must use pixi! the pixi library is included in index.html
         pixelSize: 3,
+        antiAlias: false,
         onComplete: function () {
             // load all assets and start game afterwards
             Bento.assets.loadAllAssets({

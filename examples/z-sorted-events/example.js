@@ -23,6 +23,7 @@ bento.require([
         var viewport = Bento.getViewport();
         var background = new Entity({
             z: -100,
+            name: 'background',
             addNow: true,
             components: [new Fill({
                 color: [1, 1, 1, 1]
@@ -109,7 +110,8 @@ bento.require([
             'assets': 'assets/assets.json'
         },
         renderer: 'canvas2d',
-        pixelSize: 3
+        pixelSize: 3,
+        antiAlias: false
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', onShow, function (current, total) {

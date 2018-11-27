@@ -194,7 +194,7 @@ bento.define('bento/renderers/pixi', [
                 }
                 if (!image.texture) {
                     // initialize pixi baseTexture
-                    image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+                    image.texture = new PIXI.BaseTexture(image, Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
                     image.frame = new PIXI.Texture(image.texture);
                 }
                 // without spritepool

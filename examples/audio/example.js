@@ -37,11 +37,13 @@ bento.require([
             sharpness: 3
         });
         var background = new Entity({
+            name: 'background',
             components: [new Fill({
                 color: [0, 0, 0, 1]
             })]
         });
-        var behavior = {
+        var behavior = new Object({
+            name: 'behavior',
             speed: 0,
             start: function () {
                 sprite.setAnimation('idle');
@@ -55,7 +57,7 @@ bento.require([
                     sprite.setAnimation('idle');
                 }
             }
-        };
+        });
         var sprite = new Sprite({
             image: Bento.assets.getImage('bunnygirlsmall'),
             frameWidth: 32,
@@ -82,6 +84,7 @@ bento.require([
             }
         });
         var bunny = new Entity({
+            name: 'bunny',
             position: new Vector2(80, 120),
             components: [
                 sprite,
@@ -102,6 +105,7 @@ bento.require([
     // setup game
     Bento.setup({
         canvasId: "canvas",
+        antiAlias: false,
         pixelSize: 3,
         canvasDimension: new Rectangle(0, 0, 160, 240),
         onComplete: loadAssets

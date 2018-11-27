@@ -7,7 +7,8 @@ bento.require([
     'bento/components/fill',
     'bento/components/clickable',
     'bento/tween',
-    'bento/autoresize'
+    'bento/autoresize',
+    'bento/utils'
 ], function (
     Bento,
     Vector2,
@@ -17,12 +18,14 @@ bento.require([
     Fill,
     Clickable,
     Tween,
-    AutoResize
+    AutoResize,
+    Utils
 ) {
     var onShow = function (err) {
         var viewport = Bento.getViewport();
         var background = new Entity({
             z: -100,
+            name: 'background',
             addNow: true,
             components: [new Fill({
                 color: [1, 1, 1, 1]
@@ -58,6 +61,7 @@ bento.require([
     var onResize = function () {
         var viewport = Bento.getViewport();
         var canvas = document.getElementById('canvas');
+        var screenSize = Utils.getScreenSize();
         canvasDimension = new AutoResize(
             new Rectangle(0, 0, 180, 320), // base size
             320, // minimum height
@@ -76,8 +80,8 @@ bento.require([
         viewport.height = canvasDimension.height;
 
         // fit to height
-        canvas.style.height = window.innerHeight + 'px';
-        canvas.style.width = (viewport.width / viewport.height * window.innerHeight) + 'px';
+        canvas.style.height = screenSize.height + 'px';
+        canvas.style.width = (viewport.width / viewport.height * screenSize.width) + 'px';
     };
     window.addEventListener('resize', onResize, false);
     window.addEventListener('orientationchange', onResize, false);
@@ -91,6 +95,7 @@ bento.require([
         },
         renderer: 'canvas2d',
         pixelSize: 3,
+        antiAlias: false,
         manualResize: true
     }, function () {
         console.log('ready');

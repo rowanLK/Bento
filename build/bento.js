@@ -3052,7 +3052,7 @@ bento.define('bento', [
     var bentoSettings;
     var canvasRatio = 0;
     var windowRatio;
-    var throttle = 1;
+    var gameSpeed = 1;
     var canvasScale = {
         x: 1,
         y: 1
@@ -3171,7 +3171,7 @@ bento.define('bento', [
     };
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.1.0',
+        version: '1.2.0',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -3347,7 +3347,8 @@ bento.define('bento', [
             bento.refresh();
 
             // reset game speed
-            throttle = 1;
+            Bento.objects.throttle = 1;
+            gameSpeed = 1;
 
             // reload current screen
             Bento.screens.show(screenName || currentScreen.name, undefined,
@@ -3376,6 +3377,7 @@ bento.define('bento', [
             Bento.getGameData();
          */
         getGameData: function () {
+            var throttle = Bento.objects ? Bento.objects.throttle : 1;
             return {
                 canvas: canvas,
                 renderer: renderer,
@@ -3384,7 +3386,7 @@ bento.define('bento', [
                 entity: null,
                 event: null,
                 deltaT: 0,
-                speed: throttle
+                speed: throttle * gameSpeed
             };
         },
         /**
@@ -3397,7 +3399,7 @@ bento.define('bento', [
             Bento.getGameSpeed();
          */
         getGameSpeed: function () {
-            return throttle;
+            return gameSpeed;
         },
         /**
          * Sets the current game speed. Defaults to 1.
@@ -3410,7 +3412,7 @@ bento.define('bento', [
             Bento.setGameSpeed(${1:1});
          */
         setGameSpeed: function (value) {
-            throttle = value;
+            gameSpeed = value;
         },
         /**
          * Is game in dev mode?
@@ -3974,6 +3976,10 @@ attach(${1});
             return;
         }
 
+        if (!child.name) {
+            console.warn("WARNING: component has no name", child);
+        }
+
         if (!force && (child.isAdded || child.parent)) {
             Utils.log("ERROR: Child " + child.name + " was already attached.");
             return;
@@ -4227,10 +4233,10 @@ collidesWith({
     family: '', // or when colliding with a family
     rectangle: rect, // or when colliding with a rectangle
     offset: vec2, // offset the collision check on original entity's position
-    firstOnly: true, // onCollide stops after having found single collision
+    firstOnly: true, // onCollide stops after having found single collision 
     onCollide: function (other) {
         // other is the other entity that is collided with
-        // onCollide is not called if no collision occurred
+        // onCollide is not called if no collision occurred 
     }
 });
      * @returns {Entity/Array} The collided entity/entities, otherwise null
@@ -5004,7 +5010,7 @@ bento.define('bento/transform', [
         this.entity = entity;
 
         // cache values
-        this.oldAlpha = 1;
+        this.oldAlpha = 1;        
 
         // additional transforms
         this.x = 0;
@@ -5055,7 +5061,7 @@ bento.define('bento/transform', [
 
         // apply transform
         currentTransform = renderer.getTransform().clone();
-        currentTransform.cloneInto(worldTransform);
+        currentTransform.copyInto(worldTransform);
         worldTransform.multiplyWith(localTransform);
 
         renderer.save();
@@ -5083,6 +5089,7 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.toWorldPosition = function (localPosition) {
+        // TODO: transform point using the tranform matrices instead of looping through parents
         var positionVector,
             matrix,
             entity = this.entity,
@@ -5142,6 +5149,8 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.toLocalPosition = function (worldPosition) {
+        // TODO: transform point using the tranform matrices instead of looping through parents
+
         // get the comparable position and reverse transform once more to get into the local space
         var positionVector = this.toComparablePosition(worldPosition);
 
@@ -6360,7 +6369,7 @@ Clickable({
  * @returns Returns a component object to be attached to an entity.
  */
 /**
- * Callback when input changed. The event data is an object that is passed by a source (usually the browser).
+ * Callback when input changed. The event data is an object that is passed by a source (usually the browser). 
  * The input manager injects some extra info useful for the game.
  *
  * @callback InputCallback
@@ -7738,7 +7747,7 @@ bento.define('bento/components/spine', [
 
     Spine.cleanLazyLoadedImages = function () {
         // clearing up memory
-        // don't call this during update loops!
+        // don't call this during update loops! 
         // no spine components should be alive when this is called, because all references will be invalid
         var spineAssetLoader = Bento.assets.getSpineLoader();
         Utils.forEach(lazyLoadedImages, function (image, imagePath, l, breakLoop) {
@@ -9411,9 +9420,9 @@ bento.define('bento/managers/asset', [
                         // it is in my belief that spine exports either the atlas or json wrong when skins are involved
                         // the atlas path becomes an relative path to the root as opposed to relative to images/
                         var skeletonJson = JSON.parse(data);
-                        var prefix = skeletonJson.skeleton.images;
+                        var prefix = skeletonJson.skeleton.images || '';
                         prefix = prefix.replace('./', '');
-                        while (dataAtlas.indexOf(prefix) >= 0) {
+                        while (prefix && dataAtlas.indexOf(prefix) >= 0) {
                             dataAtlas = dataAtlas.replace(prefix, '');
                         }
                         onLoadSpineAtlas(path, dataAtlas);
@@ -9470,7 +9479,7 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             };
             var linkSkinWithImage = function (textureAtlas) {
-                // In order for the lazy loading to work, we need to know
+                // In order for the lazy loading to work, we need to know 
                 // what skin is related to which image. Spine will not do this out of the box
                 // so we will have to parse the skeleton json and atlas manually and make
                 // think link ourselves.
@@ -11681,6 +11690,7 @@ bento.define('bento/managers/object', [
         var isRunning = false;
         var sortMode = settings.sortMode || 0;
         var useDeltaT = settings.useDeltaT || false;
+        var autoThrottle = settings.autoThrottle || false;
         var ms60fps = 1000 / 60;
         var isPaused = 0;
         var isStopped = false;
@@ -11723,8 +11733,11 @@ bento.define('bento/managers/object', [
             data.deltaT = deltaT;
             if (useDeltaT) {
                 cumulativeTime = ms60fps;
+                if (autoThrottle) {
+                    module.throttle = Math.min(deltaT / ms60fps, 3); // doesn't go higher than 3x speed (20fps)
+                }
             } else {
-                // fixed time will not report the real delta time,
+                // fixed time will not report the real delta time, 
                 // assumes time goes by with 16.667 ms every frame
                 data.deltaT = ms60fps;
             }
@@ -11808,6 +11821,10 @@ bento.define('bento/managers/object', [
             if (!object) {
                 Utils.log("ERROR: trying to attach " + object);
                 return;
+            }
+
+            if (!object.name) {
+                console.warn("WARNING: object has no name", object);
             }
 
             if (object.isAdded || object.parent) {
@@ -12152,7 +12169,8 @@ bento.define('bento/managers/object', [
             // useful for debugging, may be removed later so leaving this undocumented
             getCurrentObject: function () {
                 return currentObject;
-            }
+            },
+            throttle: 1
         };
 
         // swap sort method with default sorting method
@@ -13367,6 +13385,25 @@ bento.define('bento/math/rectangle', [
     Rectangle.prototype.clone = function () {
         return new Rectangle(this.x, this.y, this.width, this.height);
     };
+
+    /**
+     * Clones this Rectangle's values into another
+     * @function
+     * @param {Rectangle} rectangle - Other rectangle to receive new values
+     * @returns {Rectangle} self
+     * @instance
+     * @name copyInto
+     * @snippet #Rectangle.copyInto|Rectangle
+        copyInto(${1:targetRectangle});
+     */
+    Rectangle.prototype.copyInto = function (other) {
+        other.x = this.x;
+        other.y = this.y;
+        other.width = this.width;
+        other.height = this.height;
+        return this;
+    };
+
     /**
      * Checks if Vector2 lies within the rectangle
      * @function
@@ -13487,6 +13524,23 @@ bento.define('bento/math/rectangle', [
     };
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
+    };
+
+    // ==== Static functions and properties ====
+    /**
+     * Copies values into another instance
+     * @function
+     * @param {Rectangle} source - Source instance to copy from
+     * @param {Rectangle} target - Target instance to receive values
+     * @returns {Rectangle} Target Rectangle
+     * @instance
+     * @static
+     * @name copyInto
+     * @snippet Rectangle.copyInto|Rectangle
+        Rectangle.copyInto(${1:source}, ${2:target})
+     */
+    Rectangle.copyInto = function (source, target) {
+        source.copyInto(target);
     };
 
     return Rectangle;
@@ -13681,9 +13735,9 @@ bento.define('bento/math/transformmatrix', [
      * @param {Matrix} matrix - Matrix to receive new values
      * @returns {Matrix} self
      * @instance
-     * @name cloneInto
+     * @name copyInto
      */
-    Matrix.prototype.cloneInto = function (other) {
+    Matrix.prototype.copyInto = function (other) {
         other.a = this.a;
         other.b = this.b;
         other.c = this.c;
@@ -13749,7 +13803,6 @@ bento.define('bento/math/transformmatrix', [
     // aliases
     Matrix.prototype.appendWith = Matrix.prototype.multiplyWith;
     Matrix.prototype.append = Matrix.prototype.multiply;
-
 
     Matrix.prototype.toString = function () {
         return '[object Matrix]';
@@ -14134,6 +14187,21 @@ bento.define('bento/math/vector2', [
     Vector2.prototype.clone = function () {
         return new Vector2(this.x, this.y);
     };
+    /**
+     * Clones this Vector2's values into another
+     * @function
+     * @param {Vector2} vector - Other vector to receive new values
+     * @returns {Vector2} self
+     * @instance
+     * @name copyInto
+     * @snippet #Vector2.copyInto|Vector2
+        copyInto(${1:targetVector});
+     */
+    Vector2.prototype.copyInto = function (other) {
+        other.x = this.x;
+        other.y = this.y;
+        return this;
+    };
     /* DEPRECATED
      * Represent the vector as a 1x3 matrix
      * @function
@@ -14166,6 +14234,95 @@ bento.define('bento/math/vector2', [
         return '[object Vector2]';
     };
 
+    // ==== Static functions and properties ====
+    /**
+     * Copies values into another instance
+     * @function
+     * @param {Vector2} source - Source instance to copy from
+     * @param {Vector2} target - Target instance to receive values
+     * @returns {Vector2} Target Vector2
+     * @instance
+     * @static
+     * @name copyInto
+     * @snippet Vector2.copyInto|Vector2
+        Vector2.copyInto(${1:source}, ${2:target})
+     */
+    Vector2.copyInto = function (source, target) {
+        source.copyInto(target);
+    };
+
+    /**
+     * Returns a rotated vector
+     * @function
+     * @param {Vector2} angle - Angle in radians
+     * @param {Vector2} length - size of Vector2
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name fromRotation
+     * @snippet Vector2.fromRotation|Vector2
+        Vector2.fromRotation(${1:radians}, ${1:length})
+     */
+    Vector2.fromRotation = function (angle, length) {
+        return new Vector2(Math.cos(angle) * length, Math.sin(angle) * length);
+    };
+
+    /**
+     * Returns a Vector2 instance pointing up
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name up
+     * @snippet Vector2.up|Vector2
+        Vector2.up()
+     */
+    Object.defineProperty(Vector2, 'up', {
+        get: function () {
+            return new Vector2(0, -1);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing down
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name down
+     * @snippet Vector2.down|Vector2
+        Vector2.down()
+     */
+    Object.defineProperty(Vector2, 'down', {
+        get: function () {
+            return new Vector2(0, 1);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing left
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name left
+     * @snippet Vector2.left|Vector2
+        Vector2.left()
+     */
+    Object.defineProperty(Vector2, 'left', {
+        get: function () {
+            return new Vector2(-1, 0);
+        }
+    });
+    /**
+     * Returns a Vector2 instance pointing right
+     * @returns {Vector2} A new Vector2 instance
+     * @instance
+     * @static
+     * @name right
+     * @snippet Vector2.right|Vector2
+        Vector2.right()
+     */
+    Object.defineProperty(Vector2, 'right', {
+        get: function () {
+            return new Vector2(1, 0);
+        }
+    });
     return Vector2;
 });
 /**
@@ -15414,7 +15571,7 @@ bento.define('bento/tiled', [
                 context.scale(1 / sx, 1 / sy);
                 context.rotate(-rotation);
                 context.translate(-tx, -ty);
-
+                
                 // context.restore();
             },
             dispose: function () {
@@ -15879,7 +16036,7 @@ bento.define('bento/tiled', [
              */
             layerImages: layerSprites,
             /**
-             * Clear cached modules if cacheModules is true (the cache is global,
+             * Clear cached modules if cacheModules is true (the cache is global, 
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearModuleCache
@@ -15888,7 +16045,7 @@ bento.define('bento/tiled', [
                 cachedModules = {};
             },
             /**
-             * Clear cached modules if cacheModules is true (the cache is global,
+             * Clear cached modules if cacheModules is true (the cache is global, 
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearCanvasCache
@@ -16213,7 +16370,10 @@ bento.define('bento/tween', [
     'bento/entity'
 ], function (Bento, Vector2, Utils, Entity) {
     'use strict';
-    var robbertPenner = {
+    /**
+     * Interpolations (3rd party)
+     */
+    var robbertPenner = new Object({
         // t: current time, b: begInnIng value, c: change In value, d: duration
         easeInQuad: function (t, b, c, d) {
             return c * (t /= d) * t + b;
@@ -16357,8 +16517,11 @@ bento.define('bento/tween', [
             if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
             return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
         }
-    };
-    var interpolations = {
+    });
+    /**
+     * Interpolations
+     */
+    var interpolations = new Object({
         linear: function (s, e, t, alpha, beta) {
             return (e - s) * t + s;
         },
@@ -16390,35 +16553,51 @@ bento.define('bento/tween', [
             //s=offset, e=amplitude, alpha=wavenumber
             return s + e * Math.cos(alpha * t * 2 * Math.PI);
         }
-    };
-    var interpolate = function (type, s, e, t, alpha, beta) {
-        // interpolate(string type,float from,float to,float time,float alpha,float beta)
-        // s = starting value
-        // e = ending value
-        // t = time variable (going from 0 to 1)
-        var fn = interpolations[type];
-        if (s.isVector2 && e.isVector2) {
+    });
+
+    /**
+     * Generate an interpolation function based on ease and type of start/end values (Numbers or Vector2)
+     */
+    var generateInterpolation = function (ease, startVal, endVal) {
+        // generate the correct interpolation function
+        var fn = interpolations[ease];
+        if (startVal.isVector2 && endVal.isVector2) {
+            // as vectors
             if (fn) {
-                return new Vector2(
-                    fn(s.x, e.x, t, alpha, beta),
-                    fn(s.y, e.y, t, alpha, beta)
-                );
+                return function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(s.x, e.x, t, alpha, beta),
+                        fn(s.y, e.y, t, alpha, beta)
+                    );
+                };
             } else {
-                return new Vector2(
-                    robbertPenner[type](t, s.x, e.x - s.x, 1),
-                    robbertPenner[type](t, s.y, e.y - s.y, 1)
-                );
+                fn = robbertPenner[ease];
+                return function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(t, s.x, e.x - s.x, 1),
+                        fn(t, s.y, e.y - s.y, 1)
+                    );
+                };
             }
         } else {
+            // number output
             if (fn) {
-                return fn(s, e, t, alpha, beta);
+                return function (s, e, t, alpha, beta) {
+                    return fn(s, e, t, alpha, beta);
+                };
             } else {
-                return robbertPenner[type](t, s, e - s, 1);
+                fn = robbertPenner[ease];
+                return function (s, e, t, alpha, beta) {
+                    return fn(t, s, e - s, 1);
+                };
             }
         }
     };
 
-    var Tween = function (settings) {
+    /**
+     * Tween Behavior, can be used standalone or as behavior attached to Entity
+     */
+    var TweenBehavior = function (settings) {
         /* settings = {
             from: Number
             to: Number
@@ -16452,12 +16631,16 @@ bento.define('bento/tween', [
         var ignoreGameSpeed = settings.ignoreGameSpeed;
         var stay = settings.stay;
         var autoResumeTimer = -1;
-        var tween = new Entity(settings);
-        var tweenBehavior = {
+        // either the tweenBehavior or its parent entity
+        var tweenSubject;
+        // interpolation funciton to be generated
+        var interpolate = generateInterpolation(ease, startVal, endVal);
+        var tweenBehavior = new Object({
+            z: 0,
             name: 'tweenBehavior',
             start: function (data) {
                 if (onCreate) {
-                    onCreate.apply(tween);
+                    onCreate.apply(tweenSubject);
                 }
             },
             update: function (data) {
@@ -16476,8 +16659,7 @@ bento.define('bento/tween', [
                     }
                     // run onUpdate before start
                     if (applyOnDelay && onUpdate) {
-                        onUpdate.apply(tween, [interpolate(
-                            ease,
+                        onUpdate.apply(tweenSubject, [interpolate(
                             startVal,
                             endVal,
                             0,
@@ -16496,13 +16678,12 @@ bento.define('bento/tween', [
                 if (!hasStarted) {
                     hasStarted = true;
                     if (onStart) {
-                        onStart.apply(tween);
+                        onStart.apply(tweenSubject);
                     }
                 }
                 // run update
                 if (onUpdate) {
-                    onUpdate.apply(tween, [interpolate(
-                        ease,
+                    onUpdate.apply(tweenSubject, [interpolate(
                         startVal,
                         endVal,
                         time / deltaT,
@@ -16514,8 +16695,7 @@ bento.define('bento/tween', [
                 if (time >= deltaT && !stay) {
                     if (time > deltaT && onUpdate) {
                         //the tween didn't end neatly, so run onUpdate once more with a t of 1
-                        onUpdate.apply(tween, [interpolate(
-                            ease,
+                        onUpdate.apply(tweenSubject, [interpolate(
                             startVal,
                             endVal,
                             1,
@@ -16524,9 +16704,16 @@ bento.define('bento/tween', [
                         ), time]);
                     }
                     if (onComplete) {
-                        onComplete.apply(tween);
+                        onComplete.apply(tweenSubject);
                     }
-                    Bento.objects.remove(tween);
+
+                    tweenBehavior.removeSelf();
+                }
+            },
+            attached: function (data) {
+                if (data.entity) {
+                    // an entity attached this behavior
+                    tweenSubject = data.entity;
                 }
             },
             /**
@@ -16540,11 +16727,8 @@ bento.define('bento/tween', [
              */
             begin: function () {
                 time = 0;
-                if (!tween.isAdded) {
-                    Bento.objects.attach(tween);
-                }
                 running = true;
-                return tween;
+                return tweenSubject;
             },
             /**
              * Stops the tween (note that the entity isn't removed).
@@ -16558,7 +16742,7 @@ bento.define('bento/tween', [
             stop: function () {
                 time = 0;
                 running = false;
-                return tween;
+                return tweenSubject;
             },
             /**
              * Pauses the tween. The tween will resume itself after a certain duration if provided.
@@ -16574,7 +16758,7 @@ bento.define('bento/tween', [
                 if (duration) {
                     autoResumeTimer = duration;
                 }
-                return tween;
+                return tweenSubject;
             },
             /**
              * Resumes the tween.
@@ -16584,27 +16768,24 @@ bento.define('bento/tween', [
              * @name resume
              */
             resume: function () {
-                if (!tween.isAdded) {
-                    return tweenBehavior.begin();
-                } else {
-                    running = true;
-                    return tween;
+                return tweenBehavior.begin();
+            },
+            /**
+             * Removes the tweenbehavior from tween collection or from parent Entity
+             * @function
+             * @instance
+             * @name removeSelf
+             */
+            removeSelf: function () {
+                if (tweenSubject === tweenBehavior) {
+                    Bento.objects.remove(tweenBehavior);
+                } else if (tweenSubject && tweenSubject.isEntity) {
+                    tweenSubject.remove(tweenBehavior);
                 }
             }
-        };
-
-        tween.attach(tweenBehavior);
-
-        // extend functionality
-        tween.extend({
-            begin: tweenBehavior.begin,
-            stop: tweenBehavior.stop,
-            pause: tweenBehavior.pause,
-            resume: tweenBehavior.resume,
         });
-        if (settings.id) {
-            tween.id = settings.id;
-        }
+
+        tweenSubject = tweenBehavior;
 
         // convert decay and growth to alpha
         if (Utils.isDefined(settings.decay)) {
@@ -16620,14 +16801,10 @@ bento.define('bento/tween', [
             }
         }
 
-        // if (!Utils.isDefined(settings.ease)) {
-        //     Utils.log("WARNING: settings.ease is undefined.");
-        // }
-
         // Assuming that when a tween is created when the game is paused,
         // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
-            tween.updateWhenPaused = Bento.objects.isPaused();
+            tweenBehavior.updateWhenPaused = Bento.objects.isPaused();
         }
 
         // tween automatically starts
@@ -16635,8 +16812,23 @@ bento.define('bento/tween', [
             tweenBehavior.begin();
         }
 
-        return tween;
+        return tweenBehavior;
     };
+
+    /**
+     * Main Tween module, applied immediately
+     */
+    var Tween = function (settings) {
+        // this is no longer an entity, to remove the overhead an entity has
+        // if developer wants to use the tween as an Entity, construct a Tween.TweenBehavior and
+        // attach to an Entity
+        var tweenBehavior = new TweenBehavior(settings);
+        Bento.objects.attach(tweenBehavior);
+        return tweenBehavior;
+    };
+
+    // Behaviour constructor
+    Tween.TweenBehavior = TweenBehavior;
 
     // enums
     Tween.LINEAR = 'linear';
@@ -16679,6 +16871,10 @@ bento.define('bento/tween', [
     Tween.EASEOUTBOUNCE = 'easeOutBounce';
     Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
 
+    // expose interpolations
+    Tween.interpolations = interpolations;
+    Tween.interpolationsRP = robbertPenner;
+
     return Tween;
 });
 /**
@@ -16706,7 +16902,7 @@ bento.define('bento/renderers/canvas2d', [
             },
             restore: function () {
                 var lastMatrix = matrices.pop();
-                lastMatrix.cloneInto(matrix);
+                lastMatrix.copyInto(matrix);
                 applyTransform();
             },
             setTransform: function (a, b, c, d, tx, ty) {
@@ -17072,7 +17268,7 @@ bento.define('bento/renderers/pixi', [
                 }
                 if (!image.texture) {
                     // initialize pixi baseTexture
-                    image.texture = new PIXI.BaseTexture(image, PIXI.SCALE_MODES.NEAREST);
+                    image.texture = new PIXI.BaseTexture(image, Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
                     image.frame = new PIXI.Texture(image.texture);
                 }
                 // without spritepool
@@ -17709,8 +17905,8 @@ bento.define('bento/gui/clickbutton', [
                 settings.onClick.apply(entity);
             },
             /**
-             * Performs the callback as if the button was clicked,
-             * takes active state into account
+             * Performs the callback as if the button was clicked, 
+             * takes active state into account 
              * @function
              * @instance
              * @name mimicClick
@@ -17963,6 +18159,7 @@ bento.define('bento/gui/counter', [
             });
             // settings.digit can be used to change every digit entity constructor
             var digitSettings = Utils.extend({
+                name: 'digit',
                 components: [sprite]
             }, settings.digit || {});
             var entity = new Entity(digitSettings);
@@ -18029,7 +18226,7 @@ bento.define('bento/gui/counter', [
         };
         var entitySettings = {
             z: settings.z,
-            name: settings.name,
+            name: settings.name || 'counter',
             position: settings.position
         };
         var container;
@@ -18582,7 +18779,7 @@ iterate(function (item, i, l, breakLoop) {
                 return currentSelection;
             },
             /**
-             * Cancel any scrolling immediately
+             * Cancel any scrolling immediately 
              * @instance
              * @function
              * @name cancel
@@ -18843,7 +19040,8 @@ bento.define('bento/gui/text', [
         var shadowOffset = new Vector2(0, 0);
         var shadowOffsetMax = 0;
         var shadowColor = 'black';
-        var spaceCount = 0;
+        var didWarn = false;
+        var warningCounter = 0;
         /*
          * Prepare font settings, gradients, max width/height etc.
          */
@@ -18855,10 +19053,6 @@ bento.define('bento/gui/text', [
             // apply fontSettings
             if (textSettings.fontSettings) {
                 Utils.extend(textSettings, textSettings.fontSettings);
-            }
-
-            if (textSettings.hasOwnProperty('offset') && textSettings.position) {
-                textSettings.position.addTo(textSettings.offset);
             }
 
             // patch for blurry text in chrome
@@ -19245,6 +19439,8 @@ bento.define('bento/gui/text', [
             sprite.setup({
                 image: packedImage
             });
+
+            warningCounter += 2;
         };
         /*
          * Restore context and previous font settings
@@ -19274,7 +19470,6 @@ bento.define('bento/gui/text', [
             context.font = fontWeight + ' ' + fontSize.toString() + 'px ' + font;
             compositeOperation = context.globalCompositeOperation;
         };
-        var systemLanguage = (window.navigator.userLanguage || window.navigator.language || 'en-US').substr(0, 2).toLowerCase();
         /*
          * Splits the string into an array per line (canvas does not support
          * drawing of linebreaks in text)
@@ -19298,28 +19493,18 @@ bento.define('bento/gui/text', [
                     applySettings(settings);
                 }
             }
-            systemLanguage = window.currentLanguage || systemLanguage;
+            
             strings = [];
             canvasWidth = 1;
             canvasHeight = 1;
             setContext(ctx);
-            var checkLanguage = function () {
-                switch (systemLanguage) {
-                    case 'ja':
-                    case 'zh':
-                    case 'zt':
-                        return true;
-                    default:
-                        return false;
-                }
-            };
             for (i = 0; i < singleStrings.length; ++i) {
                 spaceWidth = 0;
                 singleString = singleStrings[i];
                 l = singleString.length;
                 stringWidth = ctx.measureText(singleString).width;
                 // do we need to generate extra linebreaks?
-                if (linebreaks && !isEmpty(maxWidth) && stringWidth > maxWidth && (singleStrings.length <= spaceCount || checkLanguage())) {
+                if (linebreaks && !isEmpty(maxWidth) && stringWidth > maxWidth) {
                     // start cutting off letters until width is correct
                     j = 0;
                     while (stringWidth > maxWidth) {
@@ -19533,6 +19718,15 @@ bento.define('bento/gui/text', [
                     canvas = null;
                     packedImage = null;
                 }
+            },
+            update: function () {
+                if (warningCounter) {
+                    warningCounter -= 1;
+                }
+                if (!didWarn && warningCounter > 600 && !Text.suppressWarnings) {
+                    didWarn = true;
+                    console.warn('PERFORMANCE WARNING: for the past 600 frames this Text module has been updating all the time.', entity);
+                }
             }
         };
         var sprite = new Sprite({
@@ -19617,11 +19811,7 @@ bento.define('bento/gui/text', [
                     applySettings(settings);
                 }
                 text = str;
-                spaceCount = (('' + text).split(" ").length - 1);
                 setupStrings();
-                if (text === 'Miglioramento gratuito'.toUpperCase()) {
-                    console.log('spaceCount: ' + spaceCount);
-                }
 
                 // check maxWidth and maxHeight
                 if (!isEmpty(maxWidth) || !isEmpty(maxHeight)) {
@@ -19673,6 +19863,8 @@ bento.define('bento/gui/text', [
 
     // legacy setting
     Text.generateOnConstructor = false;
+
+    Text.suppressWarnings = false;
 
     return Text;
 });
@@ -19901,8 +20093,8 @@ bento.define('bento/gui/togglebutton', [
                 settings.onToggle.apply(entity);
             },
             /**
-             * Performs the callback as if the button was clicked,
-             * takes active state into account
+             * Performs the callback as if the button was clicked, 
+             * takes active state into account 
              * @function
              * @instance
              * @name mimicClick

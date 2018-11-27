@@ -31,6 +31,7 @@ bento.require([
     var onLoaded = function (err) {
         var viewport = Bento.getViewport();
         var background = new Entity({
+            name: 'background',
             components: [new Fill({
                 color: [0, 0, 0, 1]
             })]
@@ -112,7 +113,7 @@ bento.require([
                 // update text
                 text.setText('Current Pause Level: ' + currentPauseLevel);
             }
-        })
+        });
         var clicker = new Entity({
             z: 0,
             name: 'clicker',
@@ -133,6 +134,7 @@ bento.require([
     Bento.setup({
         canvasId: 'canvas',
         pixelSize: 4,
+        antiAlias: false,
         canvasDimension: new Rectangle(0, 0, 160, 240),
         onComplete: loadAssets
     });

@@ -36,6 +36,7 @@ bento.require([
     var onLoaded = function (err) {
         var viewport = Bento.getViewport();
         var background = new Entity({
+            name: 'background',
             addNow: true,
             components: [new Fill({
                 color: [1, 1, 1, 1]
@@ -82,6 +83,7 @@ bento.require([
         // });
         // rotate the bunny around its center!
         bunny1.attach({
+            name: 'rotateBehavior',
             update: function () {
                 bunny1.position.x = 32 * Math.cos(bunny1.timer / 20);
                 bunny1.position.y = 32 * Math.sin(bunny1.timer / 20);
@@ -96,6 +98,7 @@ bento.require([
         canvasEntity2.attach(bunny2);
         // draw only inside triangle by using destination-in
         canvasEntity2.attach({
+            name: 'preDrawBehavior',
             draw: function () {
                 canvasEntity2.getContext().globalCompositeOperation = 'destination-in';
             }
@@ -104,6 +107,7 @@ bento.require([
         canvasEntity2.attach(triangle);
         // reset globalcompositeoperation
         canvasEntity2.attach({
+            name: 'postDrawBehavior',
             draw: function () {
                 canvasEntity2.getContext().globalCompositeOperation = 'source-over';
             }
@@ -149,6 +153,7 @@ bento.require([
     };
     Bento.setup({
         canvasId: 'canvas',
+        antiAlias: false,
         canvasDimension: new Rectangle(0, 0, 320, 240),
         onComplete: loadAssets
     });

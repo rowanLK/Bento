@@ -74,7 +74,7 @@ bento.define('bento/transform', [
 
         // apply transform
         currentTransform = renderer.getTransform().clone();
-        currentTransform.cloneInto(worldTransform);
+        currentTransform.copyInto(worldTransform);
         worldTransform.multiplyWith(localTransform);
 
         renderer.save();
@@ -102,6 +102,7 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.toWorldPosition = function (localPosition) {
+        // TODO: transform point using the tranform matrices instead of looping through parents
         var positionVector,
             matrix,
             entity = this.entity,
@@ -161,6 +162,8 @@ bento.define('bento/transform', [
     };
 
     Transform.prototype.toLocalPosition = function (worldPosition) {
+        // TODO: transform point using the tranform matrices instead of looping through parents
+
         // get the comparable position and reverse transform once more to get into the local space
         var positionVector = this.toComparablePosition(worldPosition);
 

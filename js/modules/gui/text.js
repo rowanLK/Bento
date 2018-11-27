@@ -146,6 +146,8 @@ bento.define('bento/gui/text', [
         var shadowOffsetMax = 0;
         var shadowColor = 'black';
         var spaceCount = 0;
+        var didWarn = false;
+        var warningCounter = 0;
         /*
          * Prepare font settings, gradients, max width/height etc.
          */
@@ -547,6 +549,8 @@ bento.define('bento/gui/text', [
             sprite.setup({
                 image: packedImage
             });
+
+            warningCounter += 2;
         };
         /*
          * Restore context and previous font settings
@@ -835,6 +839,15 @@ bento.define('bento/gui/text', [
                     canvas = null;
                     packedImage = null;
                 }
+            },
+            update: function () {
+                if (warningCounter) {
+                    warningCounter -= 1;
+                }
+                if (!didWarn && warningCounter > 600 && !Text.suppressWarnings) {
+                    didWarn = true;
+                    console.warn('PERFORMANCE WARNING: for the past 600 frames this Text module has been updating all the time.', entity);
+                }
             }
         };
         var sprite = new Sprite({
@@ -921,9 +934,6 @@ bento.define('bento/gui/text', [
                 text = str;
                 spaceCount = (('' + text).split(" ").length - 1);
                 setupStrings();
-                if (text === 'Miglioramento gratuito'.toUpperCase()) {
-                    console.log('spaceCount: ' + spaceCount);
-                }
 
                 // check maxWidth and maxHeight
                 if (!isEmpty(maxWidth) || !isEmpty(maxHeight)) {
@@ -975,6 +985,8 @@ bento.define('bento/gui/text', [
 
     // legacy setting
     Text.generateOnConstructor = false;
+
+    Text.suppressWarnings = false;
 
     return Text;
 });
