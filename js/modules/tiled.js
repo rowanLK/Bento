@@ -229,7 +229,7 @@ bento.define('bento/tiled', [
                 context.scale(1 / sx, 1 / sy);
                 context.rotate(-rotation);
                 context.translate(-tx, -ty);
-                
+
                 // context.restore();
             },
             dispose: function () {
@@ -605,13 +605,20 @@ bento.define('bento/tiled', [
                 // not an entity (it's a rectangle or other shape)
                 return;
             }
-            tileproperties = tileSet.tileproperties;
+            tileproperties = tileSet.tileproperties || tileSet.tiles;
             if (!tileproperties) {
                 return;
             }
             properties = tileproperties[tileIndex];
             if (!properties) {
                 return;
+            }
+            if (properties.properties) {
+                var propertyArray = properties.properties;
+                properties = {};
+                propertyArray.forEach(function (prop) {
+                    properties[prop.name] = prop.value;
+                });
             }
             moduleName = properties.module;
             if (!moduleName) {
@@ -694,7 +701,7 @@ bento.define('bento/tiled', [
              */
             layerImages: layerSprites,
             /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
+             * Clear cached modules if cacheModules is true (the cache is global,
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearModuleCache
@@ -703,7 +710,7 @@ bento.define('bento/tiled', [
                 cachedModules = {};
             },
             /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
+             * Clear cached modules if cacheModules is true (the cache is global,
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearCanvasCache
