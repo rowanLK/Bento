@@ -15571,7 +15571,7 @@ bento.define('bento/tiled', [
                 context.scale(1 / sx, 1 / sy);
                 context.rotate(-rotation);
                 context.translate(-tx, -ty);
-                
+
                 // context.restore();
             },
             dispose: function () {
@@ -15947,13 +15947,20 @@ bento.define('bento/tiled', [
                 // not an entity (it's a rectangle or other shape)
                 return;
             }
-            tileproperties = tileSet.tileproperties;
+            tileproperties = tileSet.tileproperties || tileSet.tiles;
             if (!tileproperties) {
                 return;
             }
             properties = tileproperties[tileIndex];
             if (!properties) {
                 return;
+            }
+            if (properties.properties) {
+                var propertyArray = properties.properties;
+                properties = {};
+                propertyArray.forEach(function (prop) {
+                    properties[prop.name] = prop.value;
+                });
             }
             moduleName = properties.module;
             if (!moduleName) {
@@ -16036,7 +16043,7 @@ bento.define('bento/tiled', [
              */
             layerImages: layerSprites,
             /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
+             * Clear cached modules if cacheModules is true (the cache is global,
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearModuleCache
@@ -16045,7 +16052,7 @@ bento.define('bento/tiled', [
                 cachedModules = {};
             },
             /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
+             * Clear cached modules if cacheModules is true (the cache is global,
              * developer need to call this manually to clear the memory)
              * @instance
              * @name clearCanvasCache
@@ -19040,6 +19047,7 @@ bento.define('bento/gui/text', [
         var shadowOffset = new Vector2(0, 0);
         var shadowOffsetMax = 0;
         var shadowColor = 'black';
+        var spaceCount = 0;
         var didWarn = false;
         var warningCounter = 0;
         /*
@@ -19053,6 +19061,10 @@ bento.define('bento/gui/text', [
             // apply fontSettings
             if (textSettings.fontSettings) {
                 Utils.extend(textSettings, textSettings.fontSettings);
+            }
+
+            if (textSettings.hasOwnProperty('offset') && textSettings.position) {
+                textSettings.position.addTo(textSettings.offset);
             }
 
             // patch for blurry text in chrome
@@ -19470,6 +19482,7 @@ bento.define('bento/gui/text', [
             context.font = fontWeight + ' ' + fontSize.toString() + 'px ' + font;
             compositeOperation = context.globalCompositeOperation;
         };
+        var systemLanguage = (window.navigator.userLanguage || window.navigator.language || 'en-US').substr(0, 2).toLowerCase();
         /*
          * Splits the string into an array per line (canvas does not support
          * drawing of linebreaks in text)
@@ -19493,18 +19506,28 @@ bento.define('bento/gui/text', [
                     applySettings(settings);
                 }
             }
-            
+            systemLanguage = window.currentLanguage || systemLanguage;
             strings = [];
             canvasWidth = 1;
             canvasHeight = 1;
             setContext(ctx);
+            var checkLanguage = function () {
+                switch (systemLanguage) {
+                    case 'ja':
+                    case 'zh':
+                    case 'zt':
+                        return true;
+                    default:
+                        return false;
+                }
+            };
             for (i = 0; i < singleStrings.length; ++i) {
                 spaceWidth = 0;
                 singleString = singleStrings[i];
                 l = singleString.length;
                 stringWidth = ctx.measureText(singleString).width;
                 // do we need to generate extra linebreaks?
-                if (linebreaks && !isEmpty(maxWidth) && stringWidth > maxWidth) {
+                if (linebreaks && !isEmpty(maxWidth) && stringWidth > maxWidth && (singleStrings.length <= spaceCount || checkLanguage())) {
                     // start cutting off letters until width is correct
                     j = 0;
                     while (stringWidth > maxWidth) {
@@ -19811,6 +19834,7 @@ bento.define('bento/gui/text', [
                     applySettings(settings);
                 }
                 text = str;
+                spaceCount = (('' + text).split(" ").length - 1);
                 setupStrings();
 
                 // check maxWidth and maxHeight
