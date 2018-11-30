@@ -67,6 +67,7 @@ bento.define('bento/managers/object', [
         var isRunning = false;
         var sortMode = settings.sortMode || 0;
         var useDeltaT = settings.useDeltaT || false;
+        var autoThrottle = settings.autoThrottle || false;
         var ms60fps = 1000 / 60;
         var isPaused = 0;
         var isStopped = false;
@@ -109,6 +110,9 @@ bento.define('bento/managers/object', [
             data.deltaT = deltaT;
             if (useDeltaT) {
                 cumulativeTime = ms60fps;
+                if (autoThrottle) {
+                    module.throttle = Math.min(deltaT / ms60fps, 3); // doesn't go higher than 3x speed (20fps)
+                }
             } else {
                 // fixed time will not report the real delta time, 
                 // assumes time goes by with 16.667 ms every frame
@@ -194,6 +198,10 @@ bento.define('bento/managers/object', [
             if (!object) {
                 Utils.log("ERROR: trying to attach " + object);
                 return;
+            }
+
+            if (!object.name) {
+                console.warn("WARNING: object has no name", object);
             }
 
             if (object.isAdded || object.parent) {
@@ -538,7 +546,8 @@ bento.define('bento/managers/object', [
             // useful for debugging, may be removed later so leaving this undocumented
             getCurrentObject: function () {
                 return currentObject;
-            }
+            },
+            throttle: 1
         };
 
         // swap sort method with default sorting method

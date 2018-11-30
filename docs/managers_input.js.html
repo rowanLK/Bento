@@ -632,7 +632,8 @@ bento.define('bento/managers/input', [
         canvas = gameData.canvas;
         viewport = gameData.viewport;
 
-        // TODO: it's a bit tricky with order of event listeners
+        // note: it's a bit tricky with order of event listeners, make sure resizing is done first
+        // otherwise updateCanvas needs to be called manually afterwards
         if (canvas) {
             window.addEventListener('resize', updateCanvas, false);
             window.addEventListener('orientationchange', updateCanvas, false);

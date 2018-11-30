@@ -53,50 +53,22 @@ bento.require([
         Bento.objects.attach(cursor);
 
     };
-    var canvasDimension = new AutoResize(
-        new Rectangle(0, 0, 180, 320), // base size
-        320, // minimum height
-        320 // maximum height
-    );
-    var onResize = function () {
-        var viewport = Bento.getViewport();
-        var canvas = document.getElementById('canvas');
-        var screenSize = Utils.getScreenSize();
-        canvasDimension = new AutoResize(
-            new Rectangle(0, 0, 180, 320), // base size
-            320, // minimum height
-            320 // maximum height
-        );
-        // max/min width
-        if (canvasDimension.width > 240) {
-            canvasDimension.width = 240;
-        }
-        if (canvasDimension.width < 180) {
-            canvasDimension.width = 180;
-        }
-        canvas.width = canvasDimension.width * 3;
-        canvas.height = canvasDimension.height * 3;
-        viewport.width = canvasDimension.width;
-        viewport.height = canvasDimension.height;
-
-        // fit to height
-        canvas.style.height = screenSize.height + 'px';
-        canvas.style.width = (viewport.width / viewport.height * screenSize.width) + 'px';
-    };
-    window.addEventListener('resize', onResize, false);
-    window.addEventListener('orientationchange', onResize, false);
-    onResize();
 
     Bento.setup({
         canvasId: 'canvas',
-        canvasDimension: canvasDimension,
         assetGroups: {
             'assets': 'assets/assets.json'
         },
         renderer: 'canvas2d',
         pixelSize: 3,
         antiAlias: false,
-        manualResize: true
+        responsiveResize: {
+            landscape: false,
+            minWidth: 180,
+            maxWidth: 240,
+            minHeight: 320, // minimum for iPad -> 240 x 320
+            maxHeight: 390, // will fill up for iPhoneX (ratio 19.5:9) -> 180 x 390
+        },
     }, function () {
         console.log('ready');
         Bento.assets.load('assets', onShow, function (current, total) {

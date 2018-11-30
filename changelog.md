@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1
+* Removed the *manualResize* option in Bento.setup, the automatic resizing behavior by Bento is now removed. Instead use *responsiveResize* which was implemented in the Bento Empty Project before.
+
 ## 1.2.0
 * Allow external assets to be loaded
 * Option to cache Tiled canvasses

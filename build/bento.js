@@ -3031,7 +3031,8 @@ bento.define('bento', [
     'bento/managers/savestate',
     'bento/math/vector2',
     'bento/math/rectangle',
-    'bento/renderer'
+    'bento/renderer',
+    'bento/autoresize'
 ], function (
     Utils,
     DomReady,
@@ -3044,7 +3045,8 @@ bento.define('bento', [
     SaveState,
     Vector2,
     Rectangle,
-    Renderer
+    Renderer,
+    AutoResize
 ) {
     'use strict';
     var canvas;
@@ -3061,6 +3063,9 @@ bento.define('bento', [
     var dev = false;
     var gameData = {};
     var viewport = new Rectangle(0, 0, 640, 480);
+    /**
+     * Set up canvas element if it doesn't exist
+     */
     var setupCanvas = function (settings) {
         var parent;
         var pixelSize = settings.pixelSize || 1;
@@ -3082,6 +3087,9 @@ bento.define('bento', [
         canvas.height = viewport.height * pixelSize;
         canvasRatio = viewport.height / viewport.width;
     };
+    /**
+     * Setup renderer (2D context or WebGL)
+     */
     var setupRenderer = function (settings, onComplete) {
         var rendererName = settings.renderer;
         settings.renderer = settings.renderer ? settings.renderer.toLowerCase() : 'canvas2d';
@@ -3110,33 +3118,87 @@ bento.define('bento', [
         });
     };
     /**
-     * Bento's default behavior to resize to fit
+     * Callback for responsive resizing
      */
     var onResize = function () {
-        var clientWidth;
-        var clientHeight;
+        var viewport = Bento.getViewport();
+        var pixiRenderer;
         var screenSize = Utils.getScreenSize();
-        var innerWidth = screenSize.width;
-        var innerHeight = screenSize.height;
+        var pixelSize = bentoSettings.pixelSize;
+        var minWidth = bentoSettings.responsiveResize.minWidth;
+        var maxWidth = bentoSettings.responsiveResize.maxWidth;
+        var minHeight = bentoSettings.responsiveResize.minHeight;
+        var maxHeight = bentoSettings.responsiveResize.maxHeight;
+        var landscape = bentoSettings.responsiveResize.landscape;
+        // lock width, fill height
+        var canvasDimension = new AutoResize(
+            new Rectangle(0, 0, minWidth, minHeight),
+            landscape ? minWidth : minHeight,
+            landscape ? maxWidth : maxHeight,
+            landscape
+        );
 
-        windowRatio = innerHeight / innerWidth;
-        // resize to fit screen
-        if (windowRatio < canvasRatio) {
-            clientWidth = innerHeight / canvasRatio;
-            clientHeight = innerHeight;
+        if (!canvas) {
+            return;
+        }
+
+        // respect max/min of other dimension
+        if (landscape) {
+            if (canvasDimension.height > maxHeight) {
+                canvasDimension.height = maxHeight;
+            }
+            if (canvasDimension.height < minHeight) {
+                canvasDimension.height = minHeight;
+            }
         } else {
-            clientWidth = innerWidth;
-            clientHeight = innerWidth * canvasRatio;
-        }
-        if (canvas.style) {
-            // browser specific
-            canvas.style.width = clientWidth + 'px';
-            canvas.style.height = clientHeight + 'px';
+            if (canvasDimension.width > maxWidth) {
+                canvasDimension.width = maxWidth;
+            }
+            if (canvasDimension.width < minWidth) {
+                canvasDimension.width = minWidth;
+            }
         }
 
-        canvasScale.x = clientWidth / viewport.width;
-        canvasScale.y = clientHeight / viewport.height;
+        // set canvas and viewport sizes
+        canvas.width = canvasDimension.width * pixelSize;
+        canvas.height = canvasDimension.height * pixelSize;
+        viewport.width = Math.round(canvasDimension.width);
+        viewport.height = Math.round(canvasDimension.height);
+
+        // css fit to height
+        if (canvas.style) {
+            if (landscape) {
+                canvas.style.width = screenSize.width + 'px';
+                canvas.style.height = (screenSize.width / (viewport.width / viewport.height)) + 'px';
+            } else {
+                canvas.style.height = screenSize.height + 'px';
+                canvas.style.width = (screenSize.height * (viewport.width / viewport.height)) + 'px';
+            }
+        }
+
+        // log results
+        console.log('Screen size: ' + screenSize.width * window.devicePixelRatio + ' x ' + screenSize.height * window.devicePixelRatio);
+        console.log('Game Resolution: ' + canvasDimension.width + ' x ' + canvasDimension.height);
+
+        // final settings
+        if (renderer) {
+            if (renderer.name === 'canvas2d') {
+                // prevent the canvas being blurry after resizing
+                if (Bento.getAntiAlias() === false) {
+                    Bento.setAntiAlias(false);
+                }
+            } else if (renderer.name === 'pixi') {
+                // use the resize function on pixi
+                pixiRenderer = Bento.getRenderer().getPixiRenderer();
+                pixiRenderer.resize(canvas.width, canvas.height);
+            } 
+
+        }
     };
+    /**
+     * Take screenshots based on events
+     * For example pressing a button to take a screenshot, handy for development
+     */
     var setScreenshotListener = function (evtName) {
         var takeScreenshot = false;
         // web only
@@ -3169,9 +3231,12 @@ bento.define('bento', [
         });
 
     };
+    /**
+     * Main module
+     */
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.2.0',
+        version: '1.2.1',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -3181,11 +3246,17 @@ bento.define('bento', [
          * @param {Object} [settings.assetGroups] - Asset groups to load. Key: group name, value: path to json file. See {@link module:bento/managers/asset#loadAssetGroups}
          * @param {String} settings.renderer - Renderer to use. Defaults to "canvas2d". To use "pixi", include the pixi.js file manually. Make sure to download v3!.
          * @param {Rectangle} settings.canvasDimension - base resolution for the game. Tip: use a bento/autoresize rectangle.
-         * @param {Boolean} settings.manualResize - Whether Bento should resize the canvas to fill automatically
          * @param {Boolean} settings.sortMode - Bento Object Manager sorts objects by their z value. See {@link module:bento/managers/object#setSortMode}
          * @param {Boolean} settings.subPixel - Disable rounding of pixels
          * @param {Number} settings.pixelSize - Defaults to 1. You may resize pixels by setting this value. A kind of cheating with pixelart games.
          * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
+         * @param {Object} settings.responsiveResize - Bento's strategy of resizing to mobile screen sizes. 
+         * In case of portrait: Bento locks the width and fills the height. If min/max height is reached, the width is adapted up to its min/max.
+         * @param {Boolean} settings.responsiveResize.landscape - Portrait (false) or Landscape (true)
+         * @param {Number} settings.responsiveResize.minWidth - Minimum width
+         * @param {Number} settings.responsiveResize.maxWidth - Maximum width
+         * @param {Number} settings.responsiveResize.minHeight - Minimum height
+         * @param {Number} settings.responsiveResize.maxHeight - Maximum height
          * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
          * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
          * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
@@ -3197,6 +3268,8 @@ bento.define('bento', [
         setup: function (settings, callback) {
             callback = callback || settings.onComplete || settings.onLoad;
             bentoSettings = settings;
+            settings.pixelSize = settings.pixelSize || 1;
+            settings.sortMode = settings.sortMode || 0;
             DomReady(function () {
                 var runGame = function () {
                     Bento.objects.run();
@@ -3211,13 +3284,20 @@ bento.define('bento', [
                         throw 'settings.canvasDimension must be a rectangle';
                     }
                 }
-                settings.sortMode = settings.sortMode || 0;
                 setupCanvas(settings);
                 setupRenderer(settings, function () {
                     dev = settings.dev || false;
                     Utils.setDev(dev);
-                    // window resize listeners
-                    if (!settings.manualResize) {
+                    if (settings.responsiveResize) {
+                        if (settings.responsiveResize === true) {
+                            settings.responsiveResize = {};
+                        }
+                        settings.responsiveResize.landscape = settings.responsiveResize.landscape || false;
+                        settings.responsiveResize.minWidth = settings.responsiveResize.minWidth || 180;
+                        settings.responsiveResize.maxWidth = settings.responsiveResize.maxWidth || 240;
+                        settings.responsiveResize.minHeight = settings.responsiveResize.minHeight || 320;
+                        settings.responsiveResize.maxHeight = settings.responsiveResize.maxHeight || 390;
+
                         window.addEventListener('resize', onResize, false);
                         window.addEventListener('orientationchange', onResize, false);
                         onResize();
@@ -3351,12 +3431,15 @@ bento.define('bento', [
             gameSpeed = 1;
 
             // reload current screen
-            Bento.screens.show(screenName || currentScreen.name, undefined,
+            Bento.screens.show(
+                screenName || currentScreen.name,
+                undefined,
                 function () {
                     // restart the mainloop
                     Bento.objects.run();
                     EventSystem.fire('bentoReload', {});
-                });
+                }
+            );
         },
         /**
          * Returns a gameData object
@@ -11429,7 +11512,8 @@ bento.define('bento/managers/input', [
         canvas = gameData.canvas;
         viewport = gameData.viewport;
 
-        // TODO: it's a bit tricky with order of event listeners
+        // note: it's a bit tricky with order of event listeners, make sure resizing is done first
+        // otherwise updateCanvas needs to be called manually afterwards
         if (canvas) {
             window.addEventListener('resize', updateCanvas, false);
             window.addEventListener('orientationchange', updateCanvas, false);
@@ -14363,24 +14447,22 @@ bento.define('bento/autoresize', [
                     ratio = 1 / ratio;
                 }
 
-                canvasDimension.height = canvasDimension.width / ratio;
+                canvasDimension.height = Math.round(canvasDimension.width / ratio);
 
                 // exceed min size?
                 if (canvasDimension.height < minSize) {
                     canvasDimension.height = minSize;
-                    canvasDimension.width = ratio * canvasDimension.height;
+                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
                 }
                 if (canvasDimension.height > maxSize) {
                     canvasDimension.height = maxSize;
-                    canvasDimension.width = ratio * canvasDimension.height;
+                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
                 }
 
                 if (isLandscape) {
                     swap();
                 }
 
-                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' + innerHeight * devicePixelRatio);
-                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' + canvasDimension.height.toFixed(2));
                 return canvasDimension;
             },
             scrollAndResize = function () {

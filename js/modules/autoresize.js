@@ -36,24 +36,22 @@ bento.define('bento/autoresize', [
                     ratio = 1 / ratio;
                 }
 
-                canvasDimension.height = canvasDimension.width / ratio;
+                canvasDimension.height = Math.round(canvasDimension.width / ratio);
 
                 // exceed min size?
                 if (canvasDimension.height < minSize) {
                     canvasDimension.height = minSize;
-                    canvasDimension.width = ratio * canvasDimension.height;
+                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
                 }
                 if (canvasDimension.height > maxSize) {
                     canvasDimension.height = maxSize;
-                    canvasDimension.width = ratio * canvasDimension.height;
+                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
                 }
 
                 if (isLandscape) {
                     swap();
                 }
 
-                console.log('Screen size: ' + innerWidth * devicePixelRatio + ' x ' + innerHeight * devicePixelRatio);
-                console.log('Resolution: ' + canvasDimension.width.toFixed(2) + ' x ' + canvasDimension.height.toFixed(2));
                 return canvasDimension;
             },
             scrollAndResize = function () {
