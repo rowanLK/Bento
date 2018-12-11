@@ -3236,7 +3236,7 @@ bento.define('bento', [
      */
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.2.1',
+        version: '1.2.2',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -5739,6 +5739,10 @@ bento.define('bento/utils', [], function () {
         isNativeIos: function () {
             if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
                 return true;
+            } else if (window.device) {
+                if (window.device && window.device.platform) {
+                    return window.device.platform.toLowerCase() === 'ios';
+                }
             }
             return false;
         },
@@ -5756,6 +5760,10 @@ bento.define('bento/utils', [], function () {
                 platform = window.Cocoon.getPlatform();
                 if (platform === 'android' || platform === 'amazon') {
                     return true;
+                }
+            }  else if (window.device) {
+                if (window.device && window.device.platform) {
+                    return window.device.platform.toLowerCase() === 'android';
                 }
             }
             return false;

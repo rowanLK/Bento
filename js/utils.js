@@ -419,6 +419,10 @@ bento.define('bento/utils', [], function () {
         isNativeIos: function () {
             if (navigator.isCocoonJS && window.Cocoon && window.Cocoon.getPlatform() === 'ios') {
                 return true;
+            } else if (window.device) {
+                if (window.device && window.device.platform) {
+                    return window.device.platform.toLowerCase() === 'ios';
+                }
             }
             return false;
         },
@@ -436,6 +440,10 @@ bento.define('bento/utils', [], function () {
                 platform = window.Cocoon.getPlatform();
                 if (platform === 'android' || platform === 'amazon') {
                     return true;
+                }
+            }  else if (window.device) {
+                if (window.device && window.device.platform) {
+                    return window.device.platform.toLowerCase() === 'android';
                 }
             }
             return false;
