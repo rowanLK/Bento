@@ -17,31 +17,36 @@ bento.define('bento/managers/savestate', [
         // an object that acts like a localStorageObject
         storageFallBack = {
             data: {},
+            keys: [],
+            length: 0,
             setItem: function (key, value) {
-                var k,
-                    count = 0,
-                    data = this.data;
-                data[key] = value;
-                // update length
-                for (k in data) {
-                    if (data.hasOwnProperty(k)) {
-                        ++count;
-                    }
+                var data = this.data;
+                if (!data.hasOwnProperty(key)) {
+                    this.keys.push(key);
+                    this.length++;
                 }
-                this.length = count;
+                data[key] = value;
             },
             getItem: function (key) {
-                var item = storageFallBack.data[key];
+                var item = this.data[key];
                 return Utils.isDefined(item) ? item : null;
             },
             removeItem: function (key) {
-                delete storageFallBack.data[key];
+                var index = this.keys.indexOf(key);
+                if (index !== -1) {
+                    this.keys.splice(index, 1);
+                    this.length--;
+                }
+                delete this.data[key];
+            },
+            key: function (i) {
+                return this.keys[i];
             },
             clear: function () {
                 this.data = {};
+                this.keys = [];
                 this.length = 0;
-            },
-            length: 0
+            }
         };
 
     // initialize
@@ -217,6 +222,27 @@ bento.define('bento/managers/savestate', [
          */
         getStorage: function () {
             return storage;
+        },
+        /**
+         * Returns an array of all save keys.
+         * If saveKeys is false, array will be built from the ground up.
+         * @function
+         * @instance
+         * @name getKeys
+         */
+        getKeys: function () {
+            if (this.saveKeys) {
+                return this.load('_keys', []);
+            }
+            var keys = [];
+            var i, len, k;
+            for (i = 0, len = storage.length; i < len; i++) {
+                k = storage.key(i);
+                if (k.indexOf(uniqueID) === 0) {
+                    keys.push(k.slice(uniqueID.length));
+                }
+            }
+            return keys;
         }
     };
 });
