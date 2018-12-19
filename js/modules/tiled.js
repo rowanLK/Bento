@@ -400,7 +400,7 @@ bento.define('bento/tiled', [
                 }
                 if (settings.spawnEntities) {
                     // note: we can pass currentLayer, as onLayer is synchronously called before onObject
-                    spawnEntity(object, tileSet, tileIndex, currentLayer);
+                    spawnEntity(object, tileSet, tileIndex, currentLayer, function () {});
                 }
             },
             onComplete: function () {
@@ -482,7 +482,7 @@ bento.define('bento/tiled', [
         };
         // attempt to spawn object by tileproperty "module"
         // this is mainly for backwards compatibility of the old Tiled module
-        var spawnEntity = function (object, tileSet, tileIndex, layerIndex) {
+        var spawnEntity = function (object, tileSet, tileIndex, layerIndex, onSpawnCallback) {
             var tileproperties;
             var properties;
             var moduleName;
@@ -591,6 +591,11 @@ bento.define('bento/tiled', [
                         properties: properties
                     }, layerIndex);
                 }
+                onSpawnCallback.call(tiled, instance, object, {
+                    tileSet: tileSet,
+                    moduleName: moduleName,
+                    properties: properties
+                }, layerIndex);
 
                 // cache module
                 if (cacheModules) {
@@ -719,7 +724,8 @@ bento.define('bento/tiled', [
                 if (cacheCanvas) {
                     layerSprites.dispose();
                 }
-            }
+            },
+            spawnEntity: spawnEntity
         };
 
         tiledReader.read();
