@@ -8,18 +8,21 @@
  * @returns AssetManager
  */
 bento.define('bento/managers/asset', [
+    'bento/eventsystem',
     'bento/packedimage',
     'bento/utils',
     'audia',
     'lzstring'
 ], function (
+    EventSystem,
     PackedImage,
     Utils,
     Audia,
     LZString
 ) {
     'use strict';
-    return function () {
+    return function (settings) {
+        var autoDisposeTextures = settings.autoDisposeTextures;
         var assetGroups = {};
         var loadedGroups = {};
         var path = '';
@@ -192,6 +195,17 @@ bento.define('bento/managers/asset', [
         };
         var loadImage = function (name, source, callback) {
             var img = new Image();
+            img._dispose = img.dispose; // backup original if it exists
+            img.dispose = function () {
+                // cocoon
+                if (img._dispose) {
+                    img._dispose();
+                }
+                // pixi
+                if (img.texture && img.texture.destroy) {
+                    img.texture.destroy();
+                }
+            };
 
             // cocoon lazy load, might be useful some day?
             // img.cocoonLazyLoad = true;
@@ -1075,11 +1089,14 @@ bento.define('bento/managers/asset', [
         var unload = function (groupName, dispose) {
             // find all assets in this group
             var assetGroup = assetGroups[groupName];
+            
+            dispose = Utils.getDefault(dispose, true);
 
             if (!assetGroup) {
                 Utils.log('ERROR: asset group ' + groupName + ' does not exist');
                 return;
             }
+
             Utils.forEach(assetGroup, function (group, type) {
                 if (typeof group !== "object") {
                     return;
@@ -1542,6 +1559,18 @@ bento.define('bento/managers/asset', [
                 }
             };
         }*/
+
+        if (autoDisposeTextures) {
+            // destroy webgl textures on every screen hide
+            EventSystem.on('screenHidden', function () {
+                Utils.forEach(assets.images, function (image) {
+                    if (image && image.texture && image.texture.destroy) {
+                        image.texture.destroy();
+                    }
+                });
+            });
+        }
+
         return manager;
     };
 });

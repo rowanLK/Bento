@@ -301,6 +301,7 @@ bento.define('bento', [
          * @param {Boolean} settings.subPixel - Disable rounding of pixels
          * @param {Number} settings.pixelSize - Defaults to 1. You may resize pixels by setting this value. A kind of cheating with pixelart games.
          * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
+         * @param {Boolean} settings.autoDisposeTextures - Removes all internal textures on screen ends to reduce memory usage
          * @param {Object} settings.responsiveResize - Bento's strategy of resizing to mobile screen sizes. 
          * In case of portrait: Bento locks the width and fills the height. If min/max height is reached, the width is adapted up to its min/max.
          * @param {Boolean} settings.responsiveResize.landscape - Portrait (false) or Landscape (true)
@@ -356,9 +357,9 @@ bento.define('bento', [
 
                     Bento.input = new InputManager(gameData, settings);
                     Bento.objects = new ObjectManager(Bento.getGameData, settings);
-                    Bento.assets = new AssetManager();
+                    Bento.assets = new AssetManager(settings);
                     Bento.audio = new AudioManager(Bento);
-                    Bento.screens = new ScreenManager();
+                    Bento.screens = new ScreenManager(settings);
 
                     // mix functions
                     Utils.extend(Bento, Bento.objects);
