@@ -127,7 +127,6 @@ bento.define('bento/gui/text', [
         var centerByCanvas = false; // quick fix
         var strings = [];
         var spaceWidth = 0;
-        var margin = new Vector2(8, 8);
         var ySpacing = 0;
         var overlaySprite = null;
         var canvas;
@@ -138,6 +137,7 @@ bento.define('bento/gui/text', [
         var compositeOperation = 'source-over';
         var sharpness = Text.defaultSharpness; // extra scaling to counter blurriness in chrome
         var invSharpness = 1 / sharpness;
+        var margin = new Vector2(0, 0);
         var fontSizeCache = {};
         var antiAliasing; // do not set a default value here
         var drawDebug = settings.drawDebug || false;
@@ -308,7 +308,7 @@ bento.define('bento/gui/text', [
                 maxHeight = textSettings.maxHeight * sharpness;
             }
             if (Utils.isDefined(textSettings.margin)) {
-                margin = textSettings.margin;
+                margin = textSettings.margin.scalarMultiply(sharpness);
             }
 
             // set up text
@@ -466,10 +466,10 @@ bento.define('bento/gui/text', [
                 origin.y = 0;
                 break;
             case 'middle':
-                origin.y = (centerByCanvas ? canvas.height : canvasHeight) / 2;
+                origin.y = margin.y + (centerByCanvas ? canvas.height : canvasHeight) / 2;
                 break;
             case 'bottom':
-                origin.y = (centerByCanvas ? canvas.height : canvasHeight);
+                origin.y = margin.y + (centerByCanvas ? canvas.height : canvasHeight);
                 break;
             default:
                 break;
