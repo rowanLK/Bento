@@ -136,7 +136,7 @@ bento.define('bento/gui/text', [
         var canvasWidth = 1;
         var canvasHeight = 1;
         var compositeOperation = 'source-over';
-        var sharpness = 4; // extra scaling to counter blurriness in chrome
+        var sharpness = Text.defaultSharpness; // extra scaling to counter blurriness in chrome
         var invSharpness = 1 / sharpness;
         var fontSizeCache = {};
         var antiAliasing; // do not set a default value here
@@ -972,6 +972,9 @@ bento.define('bento/gui/text', [
     Text.generateOnConstructor = false;
 
     Text.suppressWarnings = false;
+
+    // static value for default sharpness so it can be applied to all text beforehand
+    Text.defaultSharpness = 4;
 
     return Text;
 });
