@@ -164,6 +164,8 @@ bento.define('bento/gui/text', [
             if (textSettings.sharpness) {
                 sharpness = textSettings.sharpness;
                 invSharpness = 1 / sharpness;
+                scaler.scale.x = invSharpness;
+                scaler.scale.y = invSharpness;
             }
             if (textSettings.fontSize) {
                 textSettings.fontSize *= sharpness;
