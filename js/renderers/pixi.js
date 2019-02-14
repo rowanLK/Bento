@@ -30,6 +30,28 @@ bento.define('bento/renderers/pixi', [
         this.index += 1;
         return sprite;
     };
+    var GraphicsPool = function (initialSize) {
+        var i;
+        // initialize
+        this.graphics = [];
+        for (i = 0; i < initialSize; ++i) {
+            this.graphics.push(new PIXI.Graphics());
+        }
+        this.index = 0;
+    };
+    GraphicsPool.prototype.reset = function () {
+        this.index = 0;
+    };
+    GraphicsPool.prototype.get = function () {
+        var graphic = this.graphics[this.index];
+        if (!graphic) {
+            graphic = new PIXI.Graphics();
+            this.graphics.push(graphic);
+        }
+        this.index += 1;
+        graphic.clear();
+        return graphic;
+    };
 
     return function (canvas, settings) {
         var gl;
@@ -57,6 +79,7 @@ bento.define('bento/renderers/pixi', [
         var pixelSize = settings.pixelSize || 1;
         var tempDisplayObjectParent = null;
         var spritePool = new SpritePool(2000);
+        var graphicsPool = new GraphicsPool(500);
         var transformObject = {
             worldTransform: null,
             worldAlpha: 1,
@@ -73,7 +96,7 @@ bento.define('bento/renderers/pixi', [
             return pixiMatrix;
         };
         var getFillGraphics = function (color) {
-            var graphics = new PIXI.Graphics();
+            var graphics = graphicsPool.get();
             var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
             var alphaColor = color[3];
             graphics.beginFill(colorInt, alphaColor);
@@ -132,7 +155,7 @@ bento.define('bento/renderers/pixi', [
 
             },
             strokeRect: function (color, x, y, w, h, lineWidth) {
-                var graphics = new PIXI.Graphics();
+                var graphics = graphicsPool.get();
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
                 var alphaColor = color[3];
                 graphics.worldTransform = getPixiMatrix();
@@ -145,7 +168,7 @@ bento.define('bento/renderers/pixi', [
                 graphicsRenderer.render(graphics);
             },
             strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
-                var graphics = new PIXI.Graphics();
+                var graphics = graphicsPool.get();
                 var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
                 var alphaColor = color[3];
                 graphics.worldTransform = getPixiMatrix();
@@ -233,6 +256,7 @@ bento.define('bento/renderers/pixi', [
                 if (spriteRenderer.currentBatchSize === 0) {
                     // the spritepool can be reset as well then
                     spritePool.reset();
+                    graphicsPool.reset();
                 }
             },
             begin: function () {
@@ -246,6 +270,7 @@ bento.define('bento/renderers/pixi', [
                 // note: only spriterenderer has an implementation of flush
                 spriteRenderer.flush();
                 spritePool.reset();
+                graphicsPool.reset();
                 if (pixelSize !== 1 || Utils.isCocoonJs()) {
                     this.restore();
                 }
