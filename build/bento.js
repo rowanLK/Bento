@@ -9091,7 +9091,9 @@ bento.define('bento/managers/asset', [
 ) {
     'use strict';
     return function (settings) {
+        var useQueries = settings.useQueries; // placing queries avoids cached http requests
         var autoDisposeTextures = settings.autoDisposeTextures;
+        var now = Date.now();
         var assetGroups = {};
         var loadedGroups = {};
         var path = '';
@@ -9144,7 +9146,7 @@ bento.define('bento/managers/asset', [
                     if (src.indexOf('http') === 0) {
                         audio.crossOrigin = 'Anonymous';
                     }
-                    audio.src = src;
+                    audio.src = src + (useQueries ? '?t=' + now : '');
                     failed = false;
                     return true;
                 }
@@ -9211,7 +9213,7 @@ bento.define('bento/managers/asset', [
                 xhr.overrideMimeType('application/json');
             }
 
-            xhr.open('GET', source, true);
+            xhr.open('GET', source + (useQueries ? '?t=' + now : ''), true);
             xhr.onerror = function () {
                 callback('Error: loading JSON ' + source);
             };
@@ -9241,7 +9243,7 @@ bento.define('bento/managers/asset', [
             var buffer;
             var i = 0;
 
-            xhr.open('GET', source, true);
+            xhr.open('GET', source + (useQueries ? '?t=' + now : ''), true);
             xhr.onerror = function () {
                 failure('ERROR: loading binary ' + source);
             };
@@ -9291,7 +9293,7 @@ bento.define('bento/managers/asset', [
                 img.crossOrigin = "Anonymous";
             }
 
-            img.src = source;
+            img.src = source + (useQueries ? '?t=' + now : '');
         };
         var loadTTF = function (name, source, callback) {
             // for every font to load we measure the width on a canvas
