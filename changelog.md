@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.3
+* Added **Bento.saveState.getKeys()** to retrieve all available keys.
+* Exposed **Tiled.spawnEntity**, allowing you to spawn an Entity defined in Tiled later
+* Pixi textures now get disposed when unloading an asset group. WebGL textures take up quite some memory. Note that proper memory management is still in the hands of the developer.
+* Fixed bug with Text sharpness, as it wasn't properly applied.
+* Added the static **Text.defaultSharpness** property to change all sharpness (still defaults to 4x pixel size)
+* Fixed a bug with margins around Text. Note that this fix will offset vertically compared to old Text objects (!)
+* Pixi renderer optimized for Graphics objects (relates to all drawing functions using primitives). Note that primitives are still slower than sprites.
+* Added *useQueries* to Bento settings. This option adds query strings to http calls in the asset manager. This is to combat possible caching in webviews and browsers (Cache Busting).
+
+## 1.2.2
+* Fix *Utils.isNativeIos()* and *Utils.isNativeAndroid()* to work on Cordova and not rely on Cocoon
+
 ## 1.2.1
 * Removed the *manualResize* option in Bento.setup, the automatic resizing behavior by Bento is now removed. Instead use *responsiveResize* which was implemented in the Bento Empty Project before.
 
