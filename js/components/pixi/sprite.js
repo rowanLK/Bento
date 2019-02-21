@@ -18,6 +18,7 @@ bento.define('bento/components/pixi/sprite', [
         }
         Sprite.call(this, settings);
         this.sprite = new window.PIXI.Sprite();
+        this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? window.PIXI.SCALE_MODES.LINEAR : window.PIXI.SCALE_MODES.NEAREST);
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
