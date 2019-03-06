@@ -57,8 +57,6 @@ bento.define('bento/components/pixi/sprite', [
             image.texture = new window.PIXI.BaseTexture(image, this.scaleMode);
             image.frame = new window.PIXI.Texture(image.texture);
         }
-
-        // with spritepool
         texture = image.frame;
         rectangle = texture._frame;
         rectangle.x = sx;

@@ -64,6 +64,9 @@ bento.define('bento/canvas', [
             context.clearRect(0, 0, obj.width, obj.height);
             // clear texture
             if (obj.texture) {
+                if (obj.texture.destroy) {
+                    obj.texture.destroy();
+                }
                 obj.texture = null;
             }
             return obj;
@@ -99,6 +102,9 @@ bento.define('bento/canvas', [
 
                 // clear up webgl
                 if (canvas.texture) {
+                    if (canvas.texture.destroy) {
+                        canvas.texture.destroy();
+                    }
                     canvas.texture = null;
                 }
 

@@ -541,6 +541,11 @@ bento.define('bento/gui/text', [
                 }
             }
             restoreContext(ctx);
+
+            // delete texture in case of pixi
+            if (canvas.texture && canvas.texture.destroy) {
+                canvas.texture.destroy();
+            }
             canvas.texture = null;
             packedImage = new PackedImage(canvas);
             sprite.setup({
