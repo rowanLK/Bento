@@ -18,6 +18,7 @@ bento.define('bento/components/pixi/sprite', [
         }
         Sprite.call(this, settings);
         this.sprite = new window.PIXI.Sprite();
+        this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? window.PIXI.SCALE_MODES.LINEAR : window.PIXI.SCALE_MODES.NEAREST);
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
@@ -53,10 +54,15 @@ bento.define('bento/components/pixi/sprite', [
         image = packedImage.image;
         if (!image.texture) {
             // initialize pixi baseTexture
-            image.texture = new window.PIXI.BaseTexture(image, window.PIXI.SCALE_MODES.NEAREST);
+            image.texture = new window.PIXI.BaseTexture(image, this.scaleMode);
+            image.frame = new window.PIXI.Texture(image.texture);
         }
-        rectangle = new window.PIXI.Rectangle(sx, sy, sw, sh);
-        texture = new window.PIXI.Texture(image.texture, rectangle);
+        texture = image.frame;
+        rectangle = texture._frame;
+        rectangle.x = sx;
+        rectangle.y = sy;
+        rectangle.width = sw;
+        rectangle.height = sh;
         texture._updateUvs();
 
         this.sprite.texture = texture;
