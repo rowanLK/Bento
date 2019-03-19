@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.4
+* Fix possible crash if Sprites and PixiSprites are mixed
+* PixiSprite now has an additional parameter called scaleMode where you can pass PIXI.SCALE_MODES.LINEAR or PIXI.SCALE_MODES.NEAREST
+* Clear canvas textures (e.g. in the Text module) as soon as possible to prevent memory issues
+
 ## 1.2.3
 * Added **Bento.saveState.getKeys()** to retrieve all available keys.
 * Exposed **Tiled.spawnEntity**, allowing you to spawn an Entity defined in Tiled later
