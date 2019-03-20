@@ -3,6 +3,8 @@
 ## 1.2.5
 
 * Dispose canvas textures properly in Text and Tiled modules.
+* Text.disposeCanvas is true by default now.
+* The dev reload with assets will now also reload images.
 
 ## 1.2.4
 * Fix possible crash if Sprites and PixiSprites are mixed
