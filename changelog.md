@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.5
+
+* Dispose canvas textures properly in Text and Tiled modules.
+
 ## 1.2.4
 * Fix possible crash if Sprites and PixiSprites are mixed
 * PixiSprite now has an additional parameter called scaleMode where you can pass PIXI.SCALE_MODES.LINEAR or PIXI.SCALE_MODES.NEAREST
@@ -9,6 +13,7 @@
 * Added **Bento.saveState.getKeys()** to retrieve all available keys.
 * Exposed **Tiled.spawnEntity**, allowing you to spawn an Entity defined in Tiled later
 * Pixi textures now get disposed when unloading an asset group. WebGL textures take up quite some memory. Note that proper memory management is still in the hands of the developer.
+* Added parameter **autoDisposeTexture** to the Asset Manager (pass this during Game.setup(). This feature will destroy every Pixi texture on a screenHidden event.
 * Fixed bug with Text sharpness, as it wasn't properly applied.
 * Added the static **Text.defaultSharpness** property to change all sharpness (still defaults to 4x pixel size)
 * Fixed a bug with margins around Text. Note that this fix will offset vertically compared to old Text objects (!)

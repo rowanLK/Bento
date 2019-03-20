@@ -3236,7 +3236,7 @@ bento.define('bento', [
      */
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.2.4',
+        version: '1.2.5',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -15733,8 +15733,15 @@ bento.define('bento/tiled', [
                 Utils.forEach(layers, function (layer) {
                     if (layer.length) {
                         Utils.forEach(layer, function (canvas) {
-                            if (canvas && canvas.dispose) {
-                                canvas.dispose();
+                            if (canvas) {
+                                if (canvas.dispose) {
+                                    // destroy Cocoon texture
+                                    canvas.dispose();
+                                }
+                                if (canvas.texture && canvas.texture.destroy) {
+                                    // destroy PixiJS texture
+                                    canvas.texture.destroy();
+                                }
                             }
                         });
                     }
@@ -19911,8 +19918,15 @@ bento.define('bento/gui/text', [
                 }
             },
             destroy: function () {
-                if (Text.disposeCanvas && canvas.dispose) {
-                    canvas.dispose();
+                if (Text.disposeCanvas && canvas) {
+                    if (canvas.dispose) {
+                        // destroy Cocoon texture
+                        canvas.dispose();
+                    }
+                    if (canvas.texture && canvas.texture.destroy) {
+                        // destroy PixiJS texture
+                        canvas.texture.destroy();
+                    }
                     canvas = null;
                     packedImage = null;
                 }
@@ -20057,7 +20071,7 @@ bento.define('bento/gui/text', [
     Text.drawDebug = false;
 
     // clean up internal canvas immediately on destroy
-    Text.disposeCanvas = false;
+    Text.disposeCanvas = true;
 
     // legacy setting
     Text.generateOnConstructor = false;
