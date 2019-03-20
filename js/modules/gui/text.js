@@ -825,8 +825,15 @@ bento.define('bento/gui/text', [
                 }
             },
             destroy: function () {
-                if (Text.disposeCanvas && canvas.dispose) {
-                    canvas.dispose();
+                if (Text.disposeCanvas && canvas) {
+                    if (canvas.dispose) {
+                        // destroy Cocoon texture
+                        canvas.dispose();
+                    }
+                    if (canvas.texture && canvas.texture.destroy) {
+                        // destroy PixiJS texture
+                        canvas.texture.destroy();
+                    }
                     canvas = null;
                     packedImage = null;
                 }
@@ -971,7 +978,7 @@ bento.define('bento/gui/text', [
     Text.drawDebug = false;
 
     // clean up internal canvas immediately on destroy
-    Text.disposeCanvas = false;
+    Text.disposeCanvas = true;
 
     // legacy setting
     Text.generateOnConstructor = false;

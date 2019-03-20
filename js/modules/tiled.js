@@ -237,8 +237,15 @@ bento.define('bento/tiled', [
                 Utils.forEach(layers, function (layer) {
                     if (layer.length) {
                         Utils.forEach(layer, function (canvas) {
-                            if (canvas && canvas.dispose) {
-                                canvas.dispose();
+                            if (canvas) {
+                                if (canvas.dispose) {
+                                    // destroy Cocoon texture
+                                    canvas.dispose();
+                                }
+                                if (canvas.texture && canvas.texture.destroy) {
+                                    // destroy PixiJS texture
+                                    canvas.texture.destroy();
+                                }
                             }
                         });
                     }
