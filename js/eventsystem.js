@@ -17,7 +17,7 @@ bento.define('bento/eventsystem', [
     'bento/utils'
 ], function (Utils) {
     
-    var isLooping = {};  // Mapping of event name to bool (true if this even is current being looped over)
+    var isLooping = {};  // Mapping of event name to bool (true if this event is currently being looped over)
     var events = {};     // Mapping of event name to array[{callback:Function, context:Object}]
     var removed = {};    // Mapping of event name to array[{callback:Function, context:Object}]
 
@@ -26,7 +26,7 @@ bento.define('bento/eventsystem', [
     window.addEventListener('error', function (errorEvent) {
         isLooping = {};
     });
-    
+
     // Clean a single event
     // (remove any listeners that are queued for removal)
     var cleanEvent = function (eventName) {
