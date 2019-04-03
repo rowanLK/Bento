@@ -21,6 +21,12 @@ bento.define('bento/eventsystem', [
     var events = {};     // Mapping of event name to array[{callback:Function, context:Object}]
     var removed = {};    // Mapping of event name to array[{callback:Function, context:Object}]
 
+    // Clear the looping status of all events if an unhandled exception occurs.
+    // Without this, the event would be blocked from ever occuring again.
+    window.addEventListener('error', function (errorEvent) {
+        isLooping = {};
+    });
+    
     // Clean a single event
     // (remove any listeners that are queued for removal)
     var cleanEvent = function (eventName) {
@@ -122,12 +128,6 @@ bento.define('bento/eventsystem', [
     var stopPropagation = false;
     var EventSystem = {
         SortedEventSystem: null,
-        /**
-         * Ignore warnings
-         * @instance
-         * @name suppressWarnings
-         */
-        suppressWarnings: false,
         /**
          * Stops the current event from further propagating
          * @function
