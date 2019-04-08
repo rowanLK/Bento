@@ -4004,6 +4004,12 @@ getBoundingBox();
         box.y *= Math.abs(scale.y);
         box.width *= Math.abs(scale.x);
         box.height *= Math.abs(scale.y);
+        if (scale.x < 0) {
+            box.x = -box.x - box.width;
+        }
+        if (scale.y < 0) {
+            box.y = -box.y - box.height;
+        }
         box.x += position.x;
         box.y += position.y;
         return box;
@@ -10643,6 +10649,7 @@ bento.define('bento/managers/asset', [
                 Utils.forEach(assets.images, function (image) {
                     if (image && image.texture && image.texture.destroy) {
                         image.texture.destroy();
+                        image.texture = null;
                     }
                 });
             });
