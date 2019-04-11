@@ -4705,9 +4705,15 @@ bento.define('bento/eventsystem', [
     'bento/utils'
 ], function (Utils) {
     
-    var isLooping = {};  // Mapping of event name to bool (true if this even is current being looped over)
+    var isLooping = {};  // Mapping of event name to bool (true if this event is currently being looped over)
     var events = {};     // Mapping of event name to array[{callback:Function, context:Object}]
     var removed = {};    // Mapping of event name to array[{callback:Function, context:Object}]
+
+    // Clear the looping status of all events if an unhandled exception occurs.
+    // Without this, the event would be blocked from ever occuring again.
+    window.addEventListener('error', function (errorEvent) {
+        isLooping = {};
+    });
 
     // Clean a single event
     // (remove any listeners that are queued for removal)
@@ -4810,12 +4816,6 @@ bento.define('bento/eventsystem', [
     var stopPropagation = false;
     var EventSystem = {
         SortedEventSystem: null,
-        /**
-         * Ignore warnings
-         * @instance
-         * @name suppressWarnings
-         */
-        suppressWarnings: false,
         /**
          * Stops the current event from further propagating
          * @function
@@ -9087,6 +9087,2568 @@ bento.define('bento/lib/requestanimationframe', [], function () {
             clearTimeout(id);
         };
     return window.requestAnimationFrame;
+});
+/**
+ * A helper module that returns a rectangle with the same aspect ratio as the screen size.
+ * Assuming portrait mode, autoresize holds the width and then fills up the height
+ * If the height goes over the max or minimum size, then the width gets adapted.
+ * <br>Exports: Constructor
+ * @module bento/autoresize
+ * @moduleName AutoResize
+ * @param {Rectangle} canvasDimension - Default size
+ * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
+ * then autoresize will start filling up the width
+ * @param {Boolean} isLandscape - Game is landscape, swap operations of width and height
+ * @returns Rectangle
+ */
+bento.define('bento/autoresize', [
+    'bento/utils'
+], function (Utils) {
+    return function (canvasDimension, minSize, maxSize, isLandscape) {
+        var originalDimension = canvasDimension.clone(),
+            screenSize = Utils.getScreenSize(),
+            innerWidth = screenSize.width,
+            innerHeight = screenSize.height,
+            devicePixelRatio = window.devicePixelRatio,
+            deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
+            deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,
+            swap = function () {
+                // swap width and height
+                var temp = canvasDimension.width;
+                canvasDimension.width = canvasDimension.height;
+                canvasDimension.height = temp;
+            },
+            setup = function () {
+                var ratio = deviceWidth / deviceHeight;
+
+                if (ratio > 1) {
+                    // user is holding device wrong
+                    ratio = 1 / ratio;
+                }
+
+                canvasDimension.height = Math.round(canvasDimension.width / ratio);
+
+                // exceed min size?
+                if (canvasDimension.height < minSize) {
+                    canvasDimension.height = minSize;
+                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
+                }
+                if (canvasDimension.height > maxSize) {
+                    canvasDimension.height = maxSize;
+                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
+                }
+
+                if (isLandscape) {
+                    swap();
+                }
+
+                return canvasDimension;
+            },
+            scrollAndResize = function () {
+                window.scrollTo(0, 0);
+            };
+
+
+        window.addEventListener('orientationchange', scrollAndResize, false);
+
+        if (isLandscape) {
+            swap();
+        }
+
+        return setup();
+    };
+});
+/**
+ * An Entity that helps using a HTML5 2d canvas as Sprite. Its component temporarily takes over
+ * the renderer, so any entity that gets attached to the parent will start drawing on the canvas.
+ * <br>Exports: Constructor
+ * @param {Object} settings - Required, set the width and height
+ * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
+ * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
+ * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
+ * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
+ * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
+ * @module bento/canvas
+ * @moduleName Canvas
+ * @returns Entity
+ * @snippet Canvas|constructor
+Canvas({
+    z: ${1:0},
+    width: ${2:64},
+    height: ${3:64},
+    preventAutoClear: ${4:false}, // prevent canvas from clearing every tick
+    pixelSize: ${5:1}, // multiplies internal canvas size
+    drawOnce: ${6:false}, // draw canvas only once
+    originRelative: new Vector2(${7:0}, ${8:0}),
+    components: []
+});
+ */
+bento.define('bento/canvas', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/utils',
+    'bento/tween',
+    'bento/packedimage',
+    'bento/objectpool',
+    'bento/renderers/canvas2d'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween,
+    PackedImage,
+    ObjectPool,
+    Canvas2D
+) {
+    'use strict';
+    var canvasPool = new ObjectPool({
+        poolSize: 1,
+        constructor: function () {
+            var canvas = Bento.createCanvas();
+
+            return canvas;
+        },
+        destructor: function (obj) {
+            // clear canvas
+            var context = obj.getContext('2d');
+            context.clearRect(0, 0, obj.width, obj.height);
+            // clear texture
+            if (obj.texture) {
+                if (obj.texture.destroy) {
+                    obj.texture.destroy();
+                }
+                obj.texture = null;
+            }
+            return obj;
+        }
+    });
+    return function (settings) {
+        var viewport = Bento.getViewport();
+        var i;
+        var l;
+        var sprite;
+        var canvas;
+        var context;
+        var originalRenderer;
+        var renderer;
+        var packedImage;
+        var origin = new Vector2(0, 0);
+        var entity;
+        var components;
+        var drawn = false;
+        // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
+        var component = {
+            name: 'rendererSwapper',
+            draw: function (data) {
+                // draw once
+                if (drawn) {
+                    return;
+                }
+
+                // clear up canvas
+                if (!settings.preventAutoClear) {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                // clear up webgl
+                if (canvas.texture) {
+                    if (canvas.texture.destroy) {
+                        canvas.texture.destroy();
+                    }
+                    canvas.texture = null;
+                }
+
+                // swap renderer
+                originalRenderer = data.renderer;
+                data.renderer = renderer;
+
+                // re-apply the origin translation
+                data.renderer.save();
+                data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+            },
+            postDraw: function (data) {
+                if (drawn) {
+                    return;
+                }
+                data.renderer.restore();
+                // swap back
+                data.renderer = originalRenderer;
+
+                // draw once
+                if (settings.drawOnce) {
+                    drawn = true;
+                }
+            }
+        };
+
+        // init canvas
+        if (settings.canvas) {
+            canvas = settings.canvas;
+        } else {
+            canvas = canvasPool.get();
+            canvas.width = settings.width;
+            canvas.height = settings.height;
+        }
+        context = canvas.getContext('2d');
+
+        // init renderer
+        renderer = new Canvas2D(canvas, {
+            pixelSize: settings.pixelSize || 1
+        });
+
+        if (settings.origin) {
+            origin = settings.origin;
+        } else if (settings.originRelative) {
+            origin = new Vector2(
+                settings.width * settings.originRelative.x,
+                settings.height * settings.originRelative.y
+            );
+        }
+
+        // init sprite
+        packedImage = new PackedImage(canvas);
+        sprite = new Sprite({
+            image: packedImage,
+            origin: settings.origin,
+            originRelative: settings.originRelative
+        });
+
+        // init entity and its components
+        // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
+        components = [sprite, component];
+        // attach any other component in settings
+        if (settings.components) {
+            for (i = 0, l = settings.components.length; i < l; ++i) {
+                components.push(settings.components[i]);
+            }
+        }
+        entity = new Entity({
+            z: settings.z,
+            name: settings.name || 'canvas',
+            position: settings.position,
+            components: components,
+            family: settings.family,
+            init: settings.init
+        });
+
+        // public interface
+        entity.extend({
+            /**
+             * Returns the canvas element
+             * @function
+             * @instance
+             * @returns HTML Canvas Element
+             * @name getCanvas
+             * @snippet #Canvas.getCanvas|CanvasElement
+                getCanvas();
+             */
+            getCanvas: function () {
+                return canvas;
+            },
+            /**
+             * Returns the 2d context, to perform manual drawing operations
+             * @function
+             * @instance
+             * @returns HTML Canvas 2d Context
+             * @snippet #Canvas.getContext|Context2D
+                getContext();
+             * @name getContext
+             */
+            getContext: function () {
+                return context;
+            },
+            /**
+             * Get the base64 string of the canvas
+             * @function
+             * @instance
+             * @returns String
+             * @name getBase64
+             * @snippet #Canvas.getBase64|String
+                getBase64();
+             */
+            getBase64: function () {
+                return canvas.toDataURL();
+            },
+            /**
+             * Download the canvas as png (useful for debugging purposes)
+             * @function
+             * @instance
+             * @name downloadImage
+             * @snippet #Canvas.downloadImage|debug
+                downloadImage();
+             */
+            downloadImage: function (name) {
+                var link = document.createElement("a");
+                link.download = name || entity.name;
+                link.href = canvas.toDataURL();
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            },
+            /**
+             * Call this function if you have no intent on attaching the canvas,
+             * but you do want to draw on the canvas once
+             * @function
+             * @instance
+             * @name drawOnce
+             * @snippet #Canvas.drawOnce|snippet
+                drawOnce();
+             */
+            drawOnce: function (data) {
+                if (canvas.isAdded) {
+                    Utils.log('This Canvas is already attached, no need to call this function.');
+                    return;
+                }
+                canvas.start(data);
+                canvas.draw(data);
+            }
+        });
+
+        return entity;
+    };
+});
+/*
+ * Returns a color array, for use in renderer
+ * <br>Exports: Constructor
+ * @param {Number} r - Red value [0...255]
+ * @param {Number} g - Green value [0...255]
+ * @param {Number} b - Blue value [0...255]
+ * @param {Number} a - Alpha value [0...1]
+ * @returns {Array} Returns a color array
+ * @module bento/color
+ * @module Color
+ */
+bento.define('bento/color', ['bento/utils'], function (Utils) {
+    return function (r, g, b, a) {
+        r = r / 255;
+        r = g / 255;
+        r = b / 255;
+        if (!Utils.isDefined(a)) {
+            a = 1;
+        }
+        return [r, g, b, a];
+    };
+});
+/*
+ * DEPRECATED
+ * Simple container that masks the children's sprites in a rectangle. Does not work with rotated children.
+ * The container's boundingbox is used as mask.
+ * @moduleName MaskedContainer
+ */
+bento.define('bento/maskedcontainer', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/components/clickable',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/gui/clickbutton',
+    'bento/gui/counter',
+    'bento/gui/text',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Sprite,
+    Clickable,
+    Entity,
+    EventSystem,
+    ClickButton,
+    Counter,
+    Text,
+    Utils,
+    Tween
+) {
+    'use strict';
+    return function (settings) {
+        var viewport = Bento.getViewport();
+        var components = settings.components || [];
+        var container;
+        var maskedDraw = function (data) {
+            // target rectangle to draw, determine x and y below
+            var target;
+            // mask is local to the container
+            var mask = container.getBoundingBox();
+            if (!this.currentAnimation || !this.visible) {
+                return;
+            }
+
+            // do the sprite update
+            var entity = data.entity;
+            this.updateFrame();
+
+            // determine target
+            // target is local to the sprite
+            target = new Rectangle(
+                (-this.origin.x) | 0,
+                (-this.origin.y) | 0,
+                this.frameWidth,
+                this.frameHeight
+            );
+
+            // we have to transform the mask to the sprite's local space
+            // first to world
+            var maskTopLeftWorld = container.toWorldPosition(mask.getCorner(Rectangle.TOPLEFT));
+            var maskBottomRightWorld = container.toWorldPosition(mask.getCorner(Rectangle.BOTTOMRIGHT));
+            // world to sprite's local
+            var maskTopLeft = entity.toLocalPosition(maskTopLeftWorld);
+            var maskBottomRight = entity.toLocalPosition(maskBottomRightWorld);
+            // construct a rectangle using the topleft and bottomright positions
+            var localMask = new Rectangle(maskTopLeft.x, maskTopLeft.y, maskBottomRight.x - maskTopLeft.x, maskBottomRight.y - maskTopLeft.y);
+            // get the intersection between mask and target
+            var intersection = localMask.intersection(target);
+
+            if (!intersection.width && !intersection.height) {
+                // there is nothing to draw
+                return;
+            }
+            // console.log(intersection)
+
+            data.renderer.drawImage(
+                this.spriteImage,
+                this.sourceX + (intersection.x - target.x),
+                this.sourceY + (intersection.y - target.y),
+                intersection.width,
+                intersection.height,
+                intersection.x,
+                intersection.y,
+                intersection.width,
+                intersection.height
+            );
+        };
+        // traverse through children, find sprites
+        var traverse = function (children) {
+            Utils.forEach(children, function (child, i, l, breakLoop) {
+                // check if this is an entity
+                if (child.components) {
+                    traverse(child.components);
+                }
+                // overwrite the sprite's draw function
+                if (child.name === 'sprite' && child.draw !== maskedDraw) {
+                    child.draw = maskedDraw;
+                }
+            });
+        };
+        // this component traverses through all child components and updates the sprites
+        var watcher = {
+            name: 'componentWatcher',
+            start: function () {
+                traverse(components);
+            },
+            update: function () {
+                // would be better to only traverse when a new entity/component is attached, this requires some new event
+                // for now, it's a setting
+                if (settings.watchComponents) {
+                    traverse(components);
+                }
+            }
+        };
+
+        components.push(watcher);
+
+        container = new Entity(settings);
+        return container;
+    };
+});
+/**
+ * General object pool
+ * <br>Exports: Constructor
+ * @param {Object} settings - Settings object is required
+ * @param {Function} settings.constructor - function that returns the object for pooling
+ * @param {Function} settings.destructor - function that resets object for reuse
+ * @param {Number} settings.poolSize - amount to pre-initialize
+ * @module bento/objectpool
+ * @moduleName ObjectPool
+ * @returns ObjectPool
+ */
+bento.define('bento/objectpool', [
+    'bento',
+    'bento/utils'
+], function (
+    Bento,
+    Utils
+) {
+    'use strict';
+    return function (specs) {
+        var pool = [],
+            isInitialized = false,
+            constructor = specs.constructor,
+            destructor = specs.destructor,
+            pushObject = function () {
+                pool.push(constructor());
+            };
+
+        if (!constructor) {
+            throw 'Error: Must pass a settings.constructor function that returns an object';
+        }
+        if (!destructor) {
+            throw 'Error: Must pass a settings.destructor function that cleans the object';
+        }
+
+        // return interface
+        return {
+            /**
+             * Returns a new object from the pool, the pool is populated automatically if empty
+             */
+            get: function () {
+                // pool is empty!
+                if (pool.length === 0) {
+                    pushObject();
+                }
+                // get the last in the pool
+                return pool.pop();
+            },
+            /**
+             * Puts object back in the pool
+             */
+            discard: function (obj) {
+                // reset the object
+                destructor(obj);
+                // put it back
+                pool.push(obj);
+            },
+            init: function () {
+                if (isInitialized) {
+                    return;
+                }
+                isInitialized = true;
+                Utils.repeat(specs.poolSize || 0, pushObject);
+
+            }
+        };
+    };
+});
+/**
+ * Screen object. Screens are convenience modules that are similar to levels/rooms/scenes in games.
+ * Tiled Map Editor can be used to design the levels {@link http://www.mapeditor.org/}.
+ * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
+ * <br>Exports: Constructor
+ * @module bento/screen
+ * @moduleName Screen
+ * @param {Object} settings - Settings object
+ * @param {String} settings.tiled - Asset name of the json file
+ * @param {String} settings.onShow - Callback when screen starts
+ * @param {String} settings.onHide - Callback when screen is removed
+ * @param {Rectangle} [settings.dimension] - Set dimension of the screen (overwritten by tmx size)
+ * @returns Screen
+ */
+bento.define('bento/screen', [
+    'bento/utils',
+    'bento',
+    'bento/math/rectangle',
+    'bento/math/vector2',
+    'bento/tiled'
+], function (Utils, Bento, Rectangle, Vector2, Tiled) {
+    'use strict';
+    var Screen = function (settings) {
+        /*settings = {
+            dimension: Rectangle, [optional / overwritten by tmx size]
+            tiled: String
+        }*/
+        var viewport = Bento.getViewport(),
+            module = {
+                /**
+                 * Name of the screen
+                 * @instance
+                 * @name name
+                 */
+                name: null,
+                /**
+                 * Reference to Tiled object (if tiled was used)
+                 * @instance
+                 * @see module:bento/tiled
+                 * @name tiled
+                 */
+                tiled: null,
+                /**
+                 * Dimension of the screen
+                 * @instance
+                 * @name dimension
+                 */
+                dimension: (settings && settings.dimension) ? settings.dimension : viewport.clone(),
+                extend: function (object) {
+                    return Utils.extend(this, object);
+                },
+                /**
+                 * Loads a tiled map
+                 * @function
+                 * @instance
+                 * @returns {String} name - Name of the JSON asset
+                 * @name loadTiled
+                 */
+                loadTiled: function (name) {
+                    this.tiled = new Tiled({
+                        assetName: name,
+                        spawnBackground: true,
+                        spawnEntities: true
+                    });
+                    this.dimension = this.tiled.dimension;
+                },
+                /**
+                 * Callback when the screen is shown (called by screen manager)
+                 * @function
+                 * @instance
+                 * @returns {Object} data - Extra data to be passed
+                 * @name onShow
+                 */
+                onShow: function (data) {
+                    if (settings) {
+                        // load tiled map if present
+                        if (settings.tiled) {
+                            this.loadTiled(settings.tiled);
+                        }
+                        // callback
+                        if (settings.onShow) {
+                            settings.onShow.call(module, data);
+                        }
+                    }
+                },
+                /**
+                 * Removes all objects and restores viewport position
+                 * @function
+                 * @instance
+                 * @returns {Object} data - Extra data to be passed
+                 * @name onHide
+                 */
+                onHide: function (data) {
+                    var viewport = Bento.getViewport();
+                    // 1st callback
+                    if (settings.onHide) {
+                        settings.onHide.call(module, data);
+                    }
+                    // reset viewport scroll when hiding screen
+                    viewport.x = 0;
+                    viewport.y = 0;
+                    // remove all objects
+                    Bento.removeAll();
+
+                    // 2nd callback
+                    if (settings.onHidden) {
+                        settings.onHidden.call(module, data);
+                    }
+                    // reset pause level
+                    Bento.objects.resume();
+                }
+            };
+
+        return module;
+    };
+    return Screen;
+});
+/**
+ * Sorted EventSystem is EventSystem's "little brother". It's functionality is the same as
+ * EventSystem, except you can pass a component to the event listener. The event listener will then
+ * be sorted by which component is visually "on top". Sorted EventSystem will listen to events fired by
+ * the normal EventSystem. Recommended to use this only when you need to.
+ * <br>Exports: Object
+ * @module bento/sortedeventsystem
+ */
+bento.define('bento/sortedeventsystem', [
+    'bento',
+    'bento/eventsystem',
+    'bento/utils'
+], function (
+    Bento,
+    EventSystem,
+    Utils
+) {
+    // sorting data class: its purpose is to cache variables useful for sorting
+    var SortingData = function (component) {
+        var rootIndex = -1; // index of root parent in object manager
+        var componentIndex = -1; // index of component in entity
+        var depth = -1; // how many grandparents
+        var parent = component.parent; // component's direct parent
+        var parentIndex = -1;
+        var parents = [];
+        var rootParent = null;
+        var rootZ;
+
+        // init objects if needed
+        if (objects === null) {
+            objects = Bento.objects.getObjects();
+        }
+
+        if (!parent) {
+            // either the component itself a rootParent, or it wasn't attached yet
+            rootParent = component;
+        } else {
+            // get index of component
+            componentIndex = component.rootIndex;
+            // grandparent?
+            if (parent.parent) {
+                parentIndex = parent.rootIndex;
+            }
+
+            // find the root
+            while (parent) {
+                parents.unshift(parent);
+                depth += 1;
+                if (!parent.parent) {
+                    // current parent must be the root
+                    rootParent = parent;
+                }
+                // next iteration
+                parent = parent.parent;
+            }
+        }
+
+        // collect data
+        rootIndex = rootParent.rootIndex;
+        rootZ = rootParent.z;
+
+        this.isDirty = false;
+        this.component = component;
+        this.parent = parent;
+        this.parentIndex = parentIndex;
+        this.parents = parents;
+        this.componentIndex = componentIndex;
+        this.depth = depth;
+        this.rootParent = rootParent;
+        this.rootIndex = rootIndex;
+        this.rootZ = rootZ;
+    };
+
+    var isLoopingEvents = false;
+    var objects = null;
+    var events = {};
+    /*events = {
+        [String eventName]: [Array listeners = {callback: Function, context: this}]
+    }*/
+    var removedEvents = [];
+    var cleanEventListeners = function () {
+        var i, j, l, listeners, eventName, callback, context;
+
+        if (isLoopingEvents) {
+            return;
+        }
+        for (j = 0, l = removedEvents.length; j < l; ++j) {
+            eventName = removedEvents[j].eventName;
+            if (removedEvents[j].reset === true) {
+                // reset the whole event listener
+                events[eventName] = [];
+                continue;
+            }
+            callback = removedEvents[j].callback;
+            context = removedEvents[j].context;
+            if (Utils.isUndefined(events[eventName])) {
+                continue;
+            }
+            listeners = events[eventName];
+            for (i = listeners.length - 1; i >= 0; --i) {
+                if (listeners[i].callback === callback) {
+                    if (context) {
+                        if (listeners[i].context === context) {
+                            events[eventName].splice(i, 1);
+                            break;
+                        }
+                    } else {
+                        events[eventName].splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+        removedEvents = [];
+    };
+    var addEventListener = function (component, eventName, callback, context) {
+        var sortingData = new SortingData(component);
+
+        if (Utils.isString(component)) {
+            Utils.log('ERROR: First parameter of SortedEventSystem.on is the component!');
+            return;
+        }
+        if (Utils.isUndefined(events[eventName])) {
+            events[eventName] = [];
+        }
+        events[eventName].push({
+            sortingData: sortingData,
+            callback: callback,
+            context: context
+        });
+    };
+    var removeEventListener = function (eventName, callback, context) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            callback: callback,
+            context: context
+        });
+
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
+    };
+    var clearEventListeners = function (eventName) {
+        var listeners = events[eventName];
+        if (!listeners || listeners.length === 0) {
+            return;
+        }
+        removedEvents.push({
+            eventName: eventName,
+            reset: true
+        });
+
+        if (!isLoopingEvents) {
+            // can clean immediately
+            cleanEventListeners();
+        }
+    };
+    var sortFunction = function (a, b) {
+        // sort event listeners by the component location in the scenegraph
+        var sortA = a.sortingData;
+        var sortB = b.sortingData;
+        // refresh sorting data
+        if (sortA.isDirty) {
+            a.sortingData = new SortingData(sortA.component);
+            sortA = a.sortingData;
+        }
+        if (sortB.isDirty) {
+            b.sortingData = new SortingData(sortB.component);
+            sortB = b.sortingData;
+        }
+
+        // 0. A === B
+        if (sortA.component === sortB.component) {
+            // no preference.
+            return 0;
+        }
+
+        // 1. Sort by z
+        var zDiff = sortB.rootZ - sortA.rootZ;
+        if (zDiff) {
+            return zDiff;
+        }
+
+        // 2. Same z: sort by index of the root entity
+        var rootDiff = sortB.rootIndex - sortA.rootIndex;
+        if (rootDiff) {
+            // different roots: sort by root
+            return rootDiff;
+        }
+
+        // 3. Same index: the components must have common (grand)parents, aka in the same scenegraph
+        // NOTE: there might be a better way to sort scenegraphs than this
+        // 3A. are the components siblings?
+        var parentA = sortA.component.parent;
+        var parentB = sortB.component.parent;
+        if (parentA === parentB) {
+            return sortB.componentIndex - sortA.componentIndex;
+        }
+        // 3B. common grandparent? This should be a pretty common case
+        if (parentA && parentB && parentA.parent === parentB.parent) {
+            return sortB.parentIndex - sortA.parentIndex;
+        }
+
+        // 3C. one of the component's parent entity is a (grand)parent of the other?
+        if (sortA.parents.indexOf(sortB.component.parent) >= 0 || sortB.parents.indexOf(sortA.component.parent) >= 0) {
+            return sortB.depth - sortA.depth;
+        }
+        // 3D. last resort: find the earliest common parent and compare their component index
+        return findCommonParentIndex(sortA, sortB);
+    };
+    var findCommonParentIndex = function (sortA, sortB) {
+        // used when components have a common parent, but that common parent is not the root
+        var parentsA = sortA.parents;
+        var parentsB = sortB.parents;
+        var min = Math.min(parentsA.length, parentsB.length);
+        var i;
+        var commonParent = null;
+        var componentA;
+        var componentB;
+        // find the last common parent
+        for (i = 0; i < min; ++i) {
+            if (parentsA[i] === parentsB[i]) {
+                commonParent = parentsA[i];
+            } else {
+                // we found the last common parent, now we need to compare these children
+                componentA = parentsA[i];
+                componentB = parentsB[i];
+                break;
+            }
+        }
+        if (!commonParent || !commonParent.components) {
+            // error: couldn't find common parent
+            return 0;
+        }
+        // compare indices
+        return commonParent.components.indexOf(componentB) - commonParent.components.indexOf(componentA);
+    };
+    var inspectSortingData = function (listeners) {
+        // go through all sortingData and check if their z index didnt change in the meantime
+        var sortingData;
+        var i = 0,
+            l = listeners.length;
+        for (i = 0; i < l; ++i) {
+            sortingData = listeners[i].sortingData;
+            if (sortingData.rootZ !== sortingData.rootParent.z) {
+                sortingData.isDirty = true;
+            }
+            // update rootIndex
+            sortingData.rootIndex = sortingData.rootParent.rootIndex;
+        }
+    };
+    var sortListeners = function (listeners) {
+        // sort the listeners
+        Utils.stableSort.inplace(listeners, sortFunction);
+    };
+    var stopPropagation = false;
+
+    var SortedEventSystem = {
+        suppressWarnings: false,
+        stopPropagation: function () {
+            stopPropagation = true;
+        },
+        fire: function (eventName, eventData) {
+            var i, l, listeners, listener;
+
+            stopPropagation = false;
+
+            // clean up before firing event
+            cleanEventListeners();
+
+            if (!Utils.isString(eventName)) {
+                eventName = eventName.toString();
+            }
+            if (Utils.isUndefined(events[eventName])) {
+                return;
+            }
+
+            listeners = events[eventName];
+
+            // leaving this for debugging purposes
+            // if (eventName === 'pointerDown') {
+            //     console.log(listeners);
+            // }
+
+            // sort before looping through listeners
+            inspectSortingData(listeners);
+            sortListeners(listeners);
+
+            for (i = 0, l = listeners.length; i < l; ++i) {
+                isLoopingEvents = true;
+                listener = listeners[i];
+                if (listener) {
+                    if (listener.context) {
+                        listener.callback.apply(listener.context, [eventData]);
+                    } else {
+                        listener.callback(eventData);
+                    }
+                } else if (!this.suppressWarnings) {
+                    // TODO: this warning appears when event listeners are removed
+                    // during another listener being triggered. For example, removing an entity
+                    // while that entity was listening to the same event.
+                    // In a lot of cases, this is normal... Consider removing this warning?
+                    // console.log('Warning: listener is not a function');
+                }
+                if (stopPropagation) {
+                    stopPropagation = false;
+                    break;
+                }
+            }
+            isLoopingEvents = false;
+        },
+        addEventListener: addEventListener,
+        removeEventListener: removeEventListener,
+        /**
+         * Callback function
+         *
+         * @callback Callback
+         * @param {Object} eventData - Any data that is passed
+         */
+        /**
+         * Listen to event.
+         * @function
+         * @instance
+         * @param {Object} component - The component as sorting reference
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Callback function.
+         * Be careful about adding anonymous functions here, you should consider removing the event listener
+         * to prevent memory leaks.
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
+         * @name on
+         */
+        on: addEventListener,
+        /**
+         * Removes event listener
+         * @function
+         * @instance
+         * @param {String} eventName - Name of the event
+         * @param {Callback} callback - Reference to the callback function
+         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
+         you must pass the object instance or "this" here!
+         * @name off
+         */
+        off: removeEventListener,
+        clear: clearEventListeners,
+        sortListeners: sortListeners
+    };
+
+    // save reference in EventSystem
+    EventSystem.SortedEventSystem = SortedEventSystem;
+
+
+    return SortedEventSystem;
+});
+/**
+ * Reads Tiled JSON file and draws layers.
+ * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
+ * the layer is split into multiple canvases. Easiest way to get started is to pass the asset name of the Tiled
+ * JSON and set spawnBackground and spawnEntities to true.
+ * <br>Exports: Constructor
+ * @module bento/tiled
+ * @moduleName Tiled
+ * @param {Object} settings - Settings object
+ * @param {String} settings.assetName - Name of the Tiled JSON asset to load
+ * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
+ * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
+ * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
+ * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)
+ * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
+ * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
+ * @param {Function} [settings.onComplete] - Called when the reader passed all layers
+ * @param {Boolean} [settings.drawTiles] - Draw tiles (default: true)
+ * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
+ * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
+ * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
+ * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
+ * @param {Boolean} [settings.cacheModules] - Cache spawned modules. Modules are retrieved with bento.require, caching them can speed up loading. Note that it also can clash with quick reloading unless the cache is cleared on reload. default: false
+ * @returns Object
+ * @snippet Tiled|constructor
+Tiled({
+    assetName: '$1',
+    drawTiles: ${2:true},
+    merge: ${3:false},
+    spawnEntities: ${4:true}, // require the module (asynchronously)
+    spawnBackground: ${5:true}, // spawn background entities (drawn tile layers)
+    attachEntities: ${6:true}, // attach after spawning
+    onInit: function (tiledJson, externalTilesets) {
+        // Callback after initial parsing
+        $7
+    },
+    onLayer: function (layer) {
+        // Callback when the reader passes a layer
+        $8
+    },
+    onTile: function (tileX, tileY, tilesetJSON, tileIndex) {
+        // Callback after tile is drawn
+        $9
+    },
+    onObject: function (objectJSON, tilesetJSON, tileIndex) {
+        // Callback when the reader passes a Tiled object
+        ${10}
+    },
+    onComplete: function () {
+        // Synchronous callback when the reader passed all layers
+        // `this` references the tiled object (to get width and height)
+        ${11}
+    },
+    onLayerMergeCheck: function (layer) {
+        // called for each layer when merge: true
+        // return false if layer should not merge
+        return ${12:true};
+    },
+    onSpawn: function (entity) {
+        // called after all a module is spawned (asynchronous)
+        ${13}
+    },
+    onSpawnComplete: function () {
+        // called after all modules are spawned (asynchronous)
+        ${14}
+    }
+});
+ */
+bento.define('bento/tiled', [
+    'bento',
+    'bento/entity',
+    'bento/components/sprite',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/math/polygon',
+    'bento/packedimage',
+    'bento/utils',
+    'bento/tiledreader'
+], function (
+    Bento,
+    Entity,
+    Sprite,
+    Vector2,
+    Rectangle,
+    Polygon,
+    PackedImage,
+    Utils,
+    TiledReader
+) {
+    'use strict';
+    // cached modules by require
+    var cachedModules = {
+        // name: argumentsArray
+    };
+    var cachedLayerSprites = {
+        // name: LayerSprites
+    };
+    // a collection of sprites/canvases that represent the drawn tiled layers
+    var LayerSprites = function (canvasSize, mapSize) {
+        // number of sprites horizontally
+        var spritesCountX = Math.ceil(mapSize.x / canvasSize.x);
+        var spritesCountY = Math.ceil(mapSize.y / canvasSize.y);
+        // combined width of canvases
+        var width = spritesCountX * canvasSize.x;
+        var height = spritesCountY * canvasSize.y;
+        // collection of canvases
+        var layers = {
+            // "0": [canvas, canvas, ...]
+            length: 0
+        };
+        var initLayer = function (layerId) {
+            var i;
+            var layer = [];
+            var canvas;
+            var context;
+
+            for (i = 0; i < spritesCountX * spritesCountY; ++i) {
+                canvas = Bento.createCanvas();
+                canvas.width = canvasSize.x;
+                canvas.height = canvasSize.y;
+                context = canvas.getContext('2d');
+                canvas.context = context;
+                layer.push(canvas);
+            }
+            layers[layerId] = layer;
+            layers.length = Math.max(layers.length, layerId + 1);
+        };
+        var getCanvas = function (layerId, destination) {
+            // convert destination position to array index
+            var x = Math.floor(destination.x / canvasSize.x) % spritesCountX;
+            var y = Math.floor(destination.y / canvasSize.y) % spritesCountY;
+            var index = x + y * spritesCountX;
+
+            // init collection if needed
+            if (!layers[layerId]) {
+                initLayer(layerId);
+            }
+
+            return {
+                index: index,
+                canvas: layers[layerId][index]
+            };
+        };
+
+        return {
+            spritesCountX: spritesCountX,
+            spritesCountY: spritesCountY,
+            canvasSize: canvasSize,
+            layers: layers,
+            drawn: false, // used to check if cached
+            getSpritesFromLayer: function (layerId) {
+                return layers[layerId];
+            },
+            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD, opacity) {
+                // get the corresponding canvas
+                var canvasData = getCanvas(layerId, destination);
+                var canvas = canvasData.canvas;
+                var index = canvasData.index;
+                var context = canvas.context;
+                var doFlipX = false;
+                var doFlipY = false;
+                var rotation = 0;
+                var tx = 0, ty = 0, sx = 0, sy = 0;
+                // canvas offset
+                var offset = new Vector2(
+                    canvasSize.x * (index % spritesCountX),
+                    canvasSize.y * Math.floor(index / spritesCountX)
+                );
+
+                // convert to rotation and flipping
+                if (!flipD) {
+                    if (flipX && flipY) {
+                        rotation = Math.PI;
+                    } else {
+                        doFlipX = flipX;
+                        doFlipY = flipY;
+                    }
+                } else {
+                    if (!flipX && !flipY) {
+                        rotation = Math.PI / 2;
+                        doFlipY = true;
+                    } else if (flipX && !flipY) {
+                        rotation = Math.PI / 2;
+                    } else if (!flipX && flipY) {
+                        rotation = Math.PI * 3 / 2;
+                    } else if (flipX && flipY) {
+                        rotation = Math.PI / 2;
+                        doFlipX = true;
+                    }
+                }
+
+                // context.save();
+                // move to destination
+                tx += destination.x - offset.x;
+                ty += destination.y - offset.y;
+                // offset origin for rotation
+                tx += source.width / 2;
+                ty += source.height / 2;
+                // scale
+                sx = doFlipX ? -1 : 1;
+                sy = doFlipY ? -1 : 1;
+                // apply transforms
+                context.translate(tx, ty);
+                context.rotate(rotation);
+                context.scale(sx, sy);
+                // offset origin
+                context.translate(-source.width / 2, -source.height / 2);
+                // opacity
+                if (opacity !== undefined) {
+                    context.globalAlpha = opacity;
+                }
+
+                // draw the tile!
+                context.drawImage(
+                    packedImage.image,
+                    packedImage.x + source.x,
+                    packedImage.y + source.y,
+                    source.width,
+                    source.height,
+                    0,
+                    0,
+                    destination.width,
+                    destination.height
+                );
+                // restore transforms
+                context.globalAlpha = 1;
+                context.translate(source.width / 2, source.height / 2);
+                context.scale(1 / sx, 1 / sy);
+                context.rotate(-rotation);
+                context.translate(-tx, -ty);
+                
+                // context.restore();
+            },
+            dispose: function () {
+                // Cocoon: dispose canvasses
+                Utils.forEach(layers, function (layer) {
+                    if (layer.length) {
+                        Utils.forEach(layer, function (canvas) {
+                            if (canvas && canvas.dispose) {
+                                canvas.dispose();
+                            }
+                        });
+                    }
+                });
+            }
+        };
+    };
+    var getCachedLayerSprites = function (name, maxCanvasSize, mapSize) {
+        var cache = cachedLayerSprites[name];
+        if (cache) {
+            return cache;
+        } else {
+            return new LayerSprites(maxCanvasSize, mapSize);
+        }
+    };
+
+    var Tiled = function (settings) {
+        var assetName = settings.assetName;
+        var drawTiles = Utils.isDefined(settings.drawTiles) ? settings.drawTiles : true;
+        var json = settings.tiled || Bento.assets.getJson(assetName);
+        var width = json.width || 0;
+        var height = json.height || 0;
+        var tileWidth = json.tilewidth || 0;
+        var tileHeight = json.tileheight || 0;
+        var mapProperties = json.properties || {};
+        var mergeLayers = settings.merge || false;
+        var onInit = settings.onInit;
+        var onLayer = settings.onLayer;
+        var onTile = settings.onTile;
+        var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+        var onSpawn = settings.onSpawn;
+        var onSpawnComplete = settings.onSpawnComplete;
+        var onLayerMergeCheck = settings.onLayerMergeCheck;
+        var cacheModules = settings.cacheModules || false;
+        var cacheCanvas = settings.cacheCanvas || false;
+        var attachEntities = Utils.getDefault(settings.attachEntities, true);
+        var offset = settings.offset || new Vector2(0, 0);
+        var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
+        var mapSize = new Vector2(width * tileWidth, height * tileHeight);
+        var currentSpriteLayer = -1;
+        var layerSprites = getCachedLayerSprites(assetName, maxCanvasSize, mapSize);
+        var entities = [];
+        var backgrounds = [];
+        var entitiesSpawned = 0;
+        var entitiesToSpawn = 0;
+        var opacity = 1;
+        var currentLayer = 0;
+        var tiledReader = new TiledReader({
+            tiled: json,
+            onInit: onInit,
+            onExternalTileset: function (source) {
+                // unfortunately, external tileset paths are relative to the tile json path
+                // making it difficult to load (would need to do path parsing etc...)
+                // instead we try to make an educated guess what the asset name is
+                var json;
+                var jsonPath = source.indexOf('json/');
+                var relativePath = source.indexOf('../');
+                var path = source;
+                var split;
+                if (jsonPath >= 0) {
+                    // if the name "json/" is there, we can guess the path is after the json/ part
+                    path = source.substring(jsonPath + ('json/').length);
+                } else if (relativePath >= 0) {
+                    // no json/ is there and the path has relative indicators
+                    path = source;
+
+                    if (assetName) {
+                        // path parsing, urgh
+                        split = assetName.split('/');
+                        split.pop(); // remove filename
+                        while (path.indexOf('../') >= 0) {
+                            if (split.length === 0) {
+                                throw "ERROR: Impossible path to external tileset";
+                            }
+                            // move up one folder
+                            split.pop();
+                            path = path.replace('../', '');
+                        }
+                        // final path, may need an extra slash
+                        path = split.join('/') + (split.length ? '/' : '') + path;
+                    } else {
+                        // more dangerous method: try removing all relative indicators
+                        while (path.indexOf('../') >= 0) {
+                            path = path.replace('../', '');
+                        }
+                    }
+                }
+                path = path.replace('.json', '');
+
+                json = Bento.assets.getJson(path);
+
+                return json;
+            },
+            onLayer: function (layer, index) {
+                var shouldMerge = false;
+                currentLayer = index;
+                if (layer.type === "tilelayer") {
+                    if (!mergeLayers) {
+                        // check per layer
+                        if (onLayerMergeCheck) {
+                            shouldMerge = onLayerMergeCheck(layer);
+                        }
+                        if (shouldMerge) {
+                            currentSpriteLayer = 9999;
+                        } else {
+                            currentSpriteLayer = index;
+                        }
+                    } else {
+                        currentSpriteLayer = 9999;
+                    }
+                }
+                opacity = layer.opacity;
+                if (onLayer) {
+                    onLayer.call(tiled, layer, index);
+                }
+            },
+            // we pass null if there is nothing to draw in order to skip the tile loop entirely
+            onTile: layerSprites.drawn || !drawTiles ? null : function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
+                // get destination position
+                var x = tileX * tileWidth;
+                var y = tileY * tileHeight;
+                var destination = new Rectangle(x, y, tileWidth, tileHeight);
+
+                // get source position
+                var source = getSourceTile(tileSet, tileIndex);
+                var layerIndex = currentLayer;
+
+                // retrieve the corresponding image asset
+                // there is a very high chance the url contains "images/" since the json files
+                // should be stored in the "json/" folder and images in "images/"
+                var imageUrl = tileSet.image;
+                var assetName;
+                var imageAsset;
+
+                assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
+                assetName = assetName.replace('.png', '');
+                imageAsset = Bento.assets.getImage(assetName);
+
+                // draw on the layer
+                layerSprites.drawTile(
+                    currentSpriteLayer,
+                    destination,
+                    source,
+                    imageAsset,
+                    flipX,
+                    flipY,
+                    flipD,
+                    opacity
+                );
+
+                if (onTile) {
+                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);
+                }
+            },
+            onObject: function (object, tileSet, tileIndex) {
+                if (onObject) {
+                    onObject.call(tiled, object, tileSet, tileIndex, currentLayer);
+                }
+                if (settings.spawnEntities) {
+                    // note: we can pass currentLayer, as onLayer is synchronously called before onObject
+                    spawnEntity(object, tileSet, tileIndex, currentLayer, function () {});
+                }
+            },
+            onComplete: function () {
+                var canvasLayers = layerSprites.layers;
+                var layer;
+                var l = canvasLayers.length;
+                var i;
+                var canvasSize = layerSprites.canvasSize;
+                var spritesCountX = layerSprites.spritesCountX;
+                var spritesCountY = layerSprites.spritesCountY;
+                var makeEntity = function () {
+                    var j = 0;
+                    var canvas;
+                    var sprite;
+                    var entity;
+                    var tiledLayer = json.layers[i];
+                    for (j = 0; j < layer.length; ++j) {
+                        canvas = layer[j];
+                        sprite = new Sprite({
+                            image: new PackedImage(canvas)
+                        });
+                        entity = new Entity({
+                            z: 0,
+                            name: tiledLayer ? tiledLayer.name || 'tiledLayer' : 'tiledLayer',
+                            family: ['backgrounds'],
+                            position: new Vector2(
+                                offset.x + canvasSize.x * (j % spritesCountX),
+                                offset.y + canvasSize.y * Math.floor(j / spritesCountX)
+                            ),
+                            components: [sprite]
+                        });
+                        // spawn background entities now?
+                        if (settings.spawnBackground) {
+                            Bento.objects.attach(entity);
+                        }
+                        backgrounds.push(entity);
+                    }
+                };
+
+                for (i = 0; i < l; ++i) {
+                    layer = canvasLayers[i];
+                    if (layer) {
+                        makeEntity();
+                    }
+                }
+
+                // cache layers
+                if (cacheCanvas) {
+                    layerSprites.drawn = true;
+                    cachedLayerSprites[assetName] = layerSprites;
+                }
+
+                if (onComplete) {
+                    onComplete.call(tiled);
+                }
+
+                // call onSpawnComplete anyway, maybe no objects were spawned or synchronously spawned
+                didLoopThrough = true;
+                checkSpawnComplete();
+            }
+        });
+        var didLoopThrough = false;
+        var checkSpawnComplete = function () {
+            if (didLoopThrough && entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
+                onSpawnComplete.call(tiled);
+            }
+        };
+        // helper function to get the source in the image
+        var getSourceTile = function (tileset, index) {
+            var tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
+            var tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
+
+            return new Rectangle(
+                (index % tilesetWidth) * tileset.tilewidth,
+                Math.floor(index / tilesetWidth) * tileset.tileheight,
+                tileset.tilewidth,
+                tileset.tileheight
+            );
+        };
+        // attempt to spawn object by tileproperty "module"
+        // this is mainly for backwards compatibility of the old Tiled module
+        var spawnEntity = function (object, tileSet, tileIndex, layerIndex, onSpawnCallback) {
+            var tileproperties;
+            var properties;
+            var moduleName;
+            var components = {};
+            var tiledSettings = {};
+            var require = {
+                // paths to module and components
+                paths: [],
+                // parameters for respective module and components
+                parameters: []
+            };
+            var x = object.x;
+            var y = object.y;
+
+            // Reads all custom properties and fishes out the components that need
+            // to be attached to the entity. Also gets the component's parameters.
+            var getComponents = function (props) {
+                var prop = '';
+                var name = '';
+                var paramName = '';
+                var dotIndex = -1;
+                for (prop in props) {
+                    // in order to pass a component through custom properties
+                    // it needs to have 'component' somewhere in the name
+                    if (prop.indexOf('component') > -1) {
+
+                        dotIndex = prop.indexOf('.');
+                        name = prop.slice(0, dotIndex === -1 ? undefined : dotIndex);
+
+                        if (!components[name]) {
+                            components[name] = {};
+                        }
+
+                        // Is it a parameter for the component?
+                        if (dotIndex > -1) {
+                            // component parameters have the same name as the component
+                            // followed by a dot and the parameter name
+                            paramName = prop.slice(dotIndex + 1);
+                            components[name][paramName] = props[prop];
+                        }
+                        // Otherwise it's the path to the component
+                        else {
+                            components[name].pathToComponent = props[prop];
+                        }
+                    }
+                }
+            };
+            var savePathsAndParameters = function () {
+                var prop = '';
+                var key = '';
+                var component;
+                var parameters = {};
+
+                for (key in components) {
+                    parameters = {
+                        tiled: tiledSettings
+                    };
+                    component = components[key];
+
+                    // make an object with all parameters for the component
+                    for (prop in component) {
+                        if (prop !== 'pathToComponent') {
+                            parameters[prop] = component[prop];
+                        }
+                    }
+
+                    // save paths to JS files and corresponding parameters
+                    require.paths.push(component.pathToComponent);
+                    require.parameters.push(Utils.cloneJson(parameters));
+                }
+            };
+            var onRequire = function () {
+                var Constructor = arguments[0];
+                var instance = new Constructor(require.parameters[0]);
+                var dimension = instance.dimension;
+                var spriteOrigin = new Vector2(0, 0);
+                var ii = 1;
+                var iil = arguments.length;
+
+                instance.getComponent('sprite', function (sprite) {
+                    spriteOrigin = sprite.origin;
+                });
+
+                instance.position = new Vector2(
+                    offset.x + x + spriteOrigin.x,
+                    offset.y + y + (spriteOrigin.y - dimension.height)
+                );
+
+                // instantiate and attach all the specified components
+                for (; ii < iil; ++ii) {
+                    instance.attach(new arguments[ii](require.parameters[ii]));
+                }
+
+                // add to game
+                if (attachEntities) {
+                    Bento.objects.attach(instance);
+                }
+                entities.push(instance);
+
+                entitiesSpawned += 1;
+
+                if (onSpawn) {
+                    onSpawn.call(tiled, instance, object, {
+                        tileSet: tileSet,
+                        moduleName: moduleName,
+                        properties: properties
+                    }, layerIndex);
+                }
+                onSpawnCallback.call(tiled, instance, object, {
+                    tileSet: tileSet,
+                    moduleName: moduleName,
+                    properties: properties
+                }, layerIndex);
+
+                // cache module
+                if (cacheModules) {
+                    // caching the arguments as an actual array for safety
+                    cachedModules[moduleName] = Array.prototype.slice.call(arguments);
+                }
+
+                checkSpawnComplete();
+            };
+
+            if (!object.gid) {
+                // not an entity (it's a rectangle or other shape)
+                return;
+            }
+            tileproperties = tileSet.tileproperties;
+            if (!tileproperties) {
+                return;
+            }
+            properties = tileproperties[tileIndex];
+            if (!properties) {
+                return;
+            }
+            moduleName = properties.module;
+            if (!moduleName) {
+                return;
+            }
+            // save path to module and its paramters
+            require.paths.push(moduleName);
+            tiledSettings = {
+                position: new Vector2(x, y),
+                tileSet: tileSet,
+                tileIndex: tileIndex,
+                tileProperties: properties,
+                object: object,
+                objectProperties: object.properties,
+                jsonName: assetName // reference to current json name
+            };
+            require.parameters.push({
+                tiled: tiledSettings
+            });
+
+            // search through the tileset's custom properties
+            getComponents(properties);
+            // search through any custom properties that were added to this instance of the object
+            getComponents(object.properties);
+            // save the paths to the components and save their parameters
+            savePathsAndParameters();
+
+            entitiesToSpawn += 1;
+
+            if (cacheModules && cachedModules[moduleName]) {
+                // use the cached module
+                onRequire.apply(this, cachedModules[moduleName]);
+            } else {
+                // use require
+                bento.require(require.paths, onRequire);
+            }
+        };
+        var tiled = {
+            name: settings.name || 'tiled',
+            /**
+             * Name of the Tiled JSON asset
+             * @instance
+             * @name assetName
+             */
+            assetName: assetName,
+            /**
+             * Map properties
+             * @instance
+             * @name mapProperties
+             */
+            mapProperties: mapProperties,
+            /**
+             * Reference to the Tiled JSON asset
+             * @instance
+             * @name json
+             */
+            json: json,
+            /**
+             * Rectangle with width and height of the Tiled map in pixels
+             * @instance
+             * @name dimension
+             */
+            dimension: new Rectangle(0, 0, mapSize.x, mapSize.y),
+            /**
+             * Array of all entities spawned
+             * @instance
+             * @name entities
+             */
+            entities: entities,
+            /**
+             * Array of all background entities spawned
+             * @instance
+             * @name backgrounds
+             */
+            backgrounds: backgrounds,
+            /**
+             * Object containing all drawn layers
+             * @instance
+             * @name layerImages
+             */
+            layerImages: layerSprites,
+            /**
+             * Clear cached modules if cacheModules is true (the cache is global, 
+             * developer need to call this manually to clear the memory)
+             * @instance
+             * @name clearModuleCache
+             */
+            clearModuleCache: function () {
+                cachedModules = {};
+            },
+            /**
+             * Clear cached modules if cacheModules is true (the cache is global, 
+             * developer need to call this manually to clear the memory)
+             * @instance
+             * @name clearCanvasCache
+             */
+            clearCanvasCache: function () {
+                Utils.forEach(cachedLayerSprites, function (cachedLayerSprite) {
+                    cachedLayerSprite.dispose();
+                });
+                cachedLayerSprites = {};
+            },
+            // clean up
+            destroy: function () {
+                if (cacheCanvas) {
+                    layerSprites.dispose();
+                }
+            },
+            spawnEntity: spawnEntity
+        };
+
+        tiledReader.read();
+
+        return tiled;
+    };
+
+    return Tiled;
+});
+/**
+ * A generic interpreter for Tiled map JSON files.
+ * <br>Exports: Constructor
+ * @module bento/tiledreader
+ * @moduleName TiledReader
+ * @param {Object} settings - Settings object
+ * @param {String} settings.tiled - Tiled map JSON asset
+ * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
+ * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
+ * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
+ * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
+ * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON
+ * @param {Function} [settings.onComplete] - Called when the reader is done
+ * @param {Boolean} [settings.spawn] - Spawns entities
+ * @returns Object
+ */
+bento.define('bento/tiledreader', [], function () {
+    'use strict';
+    var FLIPX = 0x80000000;
+    var FLIPY = 0x40000000;
+    var FLIPDIAGONAL = 0x20000000;
+
+    var TiledReader = function (settings) {
+        // cache callbacks
+        var onExternalTileset = settings.onExternalTileset;
+        var onInit = settings.onInit;
+        var onLayer = settings.onLayer;
+        var onTile = settings.onTile;
+        var onObject = settings.onObject;
+        var onComplete = settings.onComplete;
+
+        // the tiled json
+        var json = settings.tiled || {};
+
+        // width and height in tiles
+        var width = json.width || 0;
+        var height = json.height || 0;
+
+        // width and height of a single tile
+        var tileWidth = json.tilewidth || 0;
+        var tileHeight = json.tileheight || 0;
+
+        // tilesets
+        var tilesets = json.tilesets || [];
+        var tilesetsCount = tilesets.length;
+        var externalTilesets = {
+            // "source": tileset JSON
+        };
+        var cachedFirstGids = [];
+
+        // layers
+        var layers = json.layers || [];
+        var layersCount = layers.length;
+
+        // load external tilesets
+        var importTilesets = function () {
+            var i;
+            var l;
+            var tileset;
+            var source;
+
+            // loop through all tilesets, look for external tilesets
+            for (i = 0, l = tilesets.length; i < l; ++i) {
+                tileset = tilesets[i];
+                source = tileset.source;
+                if (source) {
+                    // to stay independent of any asset loader, this is loaded through a callback
+                    externalTilesets[source] = onExternalTileset(source);
+                }
+
+                // meanwhile, cache all firstGids for faster lookups
+                cachedFirstGids.push(tileset.firstgid);
+            }
+        };
+        var decompress = function (layer) {
+            var base64ToUint32array = function (base64) {
+                var raw = window.atob(base64);
+                var i;
+                var len = raw.length;
+                var bytes = new Uint8Array(len);
+                for (i = 0; i < len; i++) {
+                    bytes[i] = raw.charCodeAt(i);
+                }
+                var data = new Uint32Array(bytes.buffer, 0, len / 4);
+                return data;
+            };
+            var encoding = layer.encoding;
+            if (encoding === 'base64') {
+                layer.data = base64ToUint32array(layer.data);
+                layer.encoding = null;
+            } else if (encoding) {
+                // TODO: compression formats
+                throw "ERROR: compression not supported. Please set Tile Layer Format to CSV in Tiled.";
+            }
+            return layer;
+        };
+        var loopLayers = function () {
+            var i, il;
+            var j, jl;
+            var k, kl;
+            var layers = json.layers;
+            var layer;
+            var layerData;
+            var lh;
+            var lw;
+            var objects;
+            var object;
+            var properties;
+            var layerId = 0;
+            var type;
+            var getTileset = function (gid) {
+                var l,
+                    tileset,
+                    count = tilesetsCount,
+                    current = null,
+                    firstGid,
+                    currentFirstGid;
+
+                // loop through tilesets and find the highest firstgid that's
+                // still lower or equal to the gid
+                for (l = 0; l < count; ++l) {
+                    firstGid = cachedFirstGids[l];
+                    if (firstGid <= gid) {
+                        current = tilesets[l];
+                        currentFirstGid = firstGid;
+                    }
+                }
+
+                // tileset is external?
+                if (current.source) {
+                    current = externalTilesets[current.source];
+                }
+
+                return {
+                    tileSet: current,
+                    firstGid: currentFirstGid
+                };
+            };
+            var tileCallback = function (data, x, y) {
+                // callback for every tile (stored layer.data)
+                var gid = data[y * width + x];
+                var tilesetData;
+                var tileIndex;
+                var flipX;
+                var flipY;
+                var flipDiagonal;
+
+                // no tile
+                if (gid === 0) {
+                    return;
+                }
+
+                // read out the flags
+                flipX = (gid & FLIPX);
+                flipY = (gid & FLIPY);
+                flipDiagonal = (gid & FLIPDIAGONAL);
+
+                // clear flags
+                gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
+
+                // get the corresponding tileset and tile index
+                tilesetData = getTileset(gid);
+                tileIndex = gid - tilesetData.firstGid;
+
+                // callback
+                onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
+            };
+            var objectCallback = function (object) {
+                var tileIndex;
+                var tilesetData;
+                var gid = object.gid;
+                if (gid) {
+                    // get the corresponding tileset and tile index
+                    tilesetData = getTileset(gid);
+                    tileIndex = gid - tilesetData.firstGid;
+                    onObject(object, tilesetData.tileSet, tileIndex);
+                } else {
+                    // gid may not be present, in that case it's a rectangle or other shape
+                    onObject(object);
+                }
+            };
+
+            // loop through layers
+            for (k = 0, kl = layers.length; k < kl; ++k) {
+                layer = layers[k];
+                type = layer.type;
+
+                if (onLayer) {
+                    onLayer(layer, k);
+                }
+                if (type === 'tilelayer' && onTile) {
+                    // skip layer if invisible???
+                    if (!layer.visible) {
+                        continue;
+                    }
+
+                    // decompress data?
+                    decompress(layer);
+
+                    layerData = layer.data;
+
+                    // loop through layer.data, which should be width * height in size
+                    for (j = 0; j < height; ++j) {
+                        for (i = 0; i < width; ++i) {
+                            tileCallback(layerData, i, j);
+                        }
+                    }
+                } else if (type === 'objectgroup' && onObject) {
+                    objects = layer.objects || [];
+                    il = objects.length;
+                    for (i = 0; i < il; ++i) {
+                        object = objects[i];
+
+                        objectCallback(object);
+                    }
+                }
+            }
+            if (onComplete) {
+                onComplete();
+            }
+        };
+
+        importTilesets();
+
+        if (onInit) {
+            onInit(json, externalTilesets);
+        }
+        // loopLayers();
+
+        return {
+            /**
+             * Read tiled JSON and loop through all layers, tiles and objects
+             * @function
+             * @instance
+             * @name read
+             */
+            read: loopLayers
+        };
+    };
+
+    return TiledReader;
+});
+/**
+ * The Tween is an entity that performs an interpolation within a timeframe. The entity
+ * removes itself after the tween ends.
+ * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
+ * <br>Exports: Constructor
+ * @module bento/tween
+ * @moduleName Tween
+ * @param {Object} settings - Settings object
+ * @param {Number} settings.from - Starting value
+ * @param {Number} settings.to - End value
+ * @param {Number} settings.in - Time frame
+ * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
+ * @param {Boolean} settings.wait - Do not immediately begin tween (default false)
+ * @param {Number} [settings.decay] - For use in exponential and elastic tweens: decay factor (negative growth)
+ * @param {Number} [settings.growth] - For use in exponential and elastic tweens: growth factor
+ * @param {Number} [settings.oscillations] - For use in sin, cos and elastic tweens: number of oscillations
+ * @param {Function} [settings.onCreate] - Called as soon as the tween is added to the object manager and before the delay (if any).
+ * @param {Function} [settings.onStart] - Called before the first tween update and after a delay (if any).
+ * @param {Function} [settings.onUpdate] - Called every tick during the tween lifetime. Callback parameters: (value, time)
+ * @param {Function} [settings.onComplete] - Called when tween ends
+ * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
+ * @param {Number} [settings.delay] - Wait an amount of ticks before starting
+ * @param {Boolean} [settings.applyOnDelay] - Perform onUpdate even during delay
+ * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
+ * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
+ * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
+ * @returns Entity
+ * @snippet Tween|constructor
+Tween({
+    from: ${1:0},
+    to: ${2:1},
+    in: ${3:60},
+    delay: ${4:0},
+    applyOnDelay: ${5:0},
+    ease: '${6:linear}',
+    decay: ${7:1},
+    oscillations: ${8:1},
+    onStart: function () {},
+    onUpdate: function (v, t) {
+        ${9}
+    },
+    onComplete: function () {
+        ${10}
+    }
+});
+ */
+
+// Deprecated parameters
+// * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
+// * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
+bento.define('bento/tween', [
+    'bento',
+    'bento/math/vector2',
+    'bento/utils',
+    'bento/entity'
+], function (Bento, Vector2, Utils, Entity) {
+    'use strict';
+    /**
+     * Interpolations (3rd party)
+     */
+    var robbertPenner = new Object({
+        // t: current time, b: begInnIng value, c: change In value, d: duration
+        easeInQuad: function (t, b, c, d) {
+            return c * (t /= d) * t + b;
+        },
+        easeOutQuad: function (t, b, c, d) {
+            return -c * (t /= d) * (t - 2) + b;
+        },
+        easeInOutQuad: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t + b;
+            return -c / 2 * ((--t) * (t - 2) - 1) + b;
+        },
+        easeInCubic: function (t, b, c, d) {
+            return c * (t /= d) * t * t + b;
+        },
+        easeOutCubic: function (t, b, c, d) {
+            return c * ((t = t / d - 1) * t * t + 1) + b;
+        },
+        easeInOutCubic: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
+            return c / 2 * ((t -= 2) * t * t + 2) + b;
+        },
+        easeInQuart: function (t, b, c, d) {
+            return c * (t /= d) * t * t * t + b;
+        },
+        easeOutQuart: function (t, b, c, d) {
+            return -c * ((t = t / d - 1) * t * t * t - 1) + b;
+        },
+        easeInOutQuart: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
+            return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
+        },
+        easeInQuint: function (t, b, c, d) {
+            return c * (t /= d) * t * t * t * t + b;
+        },
+        easeOutQuint: function (t, b, c, d) {
+            return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+        },
+        easeInOutQuint: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
+            return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
+        },
+        easeInSine: function (t, b, c, d) {
+            return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
+        },
+        easeOutSine: function (t, b, c, d) {
+            return c * Math.sin(t / d * (Math.PI / 2)) + b;
+        },
+        easeInOutSine: function (t, b, c, d) {
+            return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+        },
+        easeInExpo: function (t, b, c, d) {
+            return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
+        },
+        easeOutExpo: function (t, b, c, d) {
+            return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
+        },
+        easeInOutExpo: function (t, b, c, d) {
+            if (t === 0) return b;
+            if (t === d) return b + c;
+            if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
+            return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
+        },
+        easeInCirc: function (t, b, c, d) {
+            return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
+        },
+        easeOutCirc: function (t, b, c, d) {
+            return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
+        },
+        easeInOutCirc: function (t, b, c, d) {
+            if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
+            return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
+        },
+        easeInElastic: function (t, b, c, d) {
+            var s = 1.70158,
+                p = 0,
+                a = c;
+            if (t === 0) return b;
+            if ((t /= d) === 1) return b + c;
+            if (!p) p = d * 0.3;
+            if (a < Math.abs(c)) {
+                a = c;
+                s = p / 4;
+            } else s = p / (2 * Math.PI) * Math.asin(c / a);
+            return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+        },
+        easeOutElastic: function (t, b, c, d) {
+            var s = 1.70158,
+                p = 0,
+                a = c;
+            if (t === 0) return b;
+            if ((t /= d) === 1) return b + c;
+            if (!p) p = d * 0.3;
+            if (a < Math.abs(c)) {
+                a = c;
+                s = p / 4;
+            } else s = p / (2 * Math.PI) * Math.asin(c / a);
+            return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
+        },
+        easeInOutElastic: function (t, b, c, d) {
+            var s = 1.70158,
+                p = 0,
+                a = c;
+            if (t === 0) return b;
+            if ((t /= d / 2) === 2) return b + c;
+            if (!p) p = d * (0.3 * 1.5);
+            if (a < Math.abs(c)) {
+                a = c;
+                s = p / 4;
+            } else s = p / (2 * Math.PI) * Math.asin(c / a);
+            if (t < 1) return -0.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+            return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * 0.5 + c + b;
+        },
+        easeInBack: function (t, b, c, d, s) {
+            if (s === undefined) s = 1.70158;
+            return c * (t /= d) * t * ((s + 1) * t - s) + b;
+        },
+        easeOutBack: function (t, b, c, d, s) {
+            if (s === undefined) s = 1.70158;
+            return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+        },
+        easeInOutBack: function (t, b, c, d, s) {
+            if (s === undefined) s = 1.70158;
+            if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
+            return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
+        },
+        easeInBounce: function (t, b, c, d) {
+            return c - this.easeOutBounce(d - t, 0, c, d) + b;
+        },
+        easeOutBounce: function (t, b, c, d) {
+            if ((t /= d) < (1 / 2.75)) {
+                return c * (7.5625 * t * t) + b;
+            } else if (t < (2 / 2.75)) {
+                return c * (7.5625 * (t -= (1.5 / 2.75)) * t + 0.75) + b;
+            } else if (t < (2.5 / 2.75)) {
+                return c * (7.5625 * (t -= (2.25 / 2.75)) * t + 0.9375) + b;
+            } else {
+                return c * (7.5625 * (t -= (2.625 / 2.75)) * t + 0.984375) + b;
+            }
+        },
+        easeInOutBounce: function (t, b, c, d) {
+            if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
+            return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
+        }
+    });
+    /**
+     * Interpolations
+     */
+    var interpolations = new Object({
+        linear: function (s, e, t, alpha, beta) {
+            return (e - s) * t + s;
+        },
+        quadratic: function (s, e, t, alpha, beta) {
+            return (e - s) * t * t + s;
+        },
+        squareroot: function (s, e, t, alpha, beta) {
+            return (e - s) * Math.pow(t, 0.5) + s;
+        },
+        cubic: function (s, e, t, alpha, beta) {
+            return (e - s) * t * t * t + s;
+        },
+        cuberoot: function (s, e, t, alpha, beta) {
+            return (e - s) * Math.pow(t, 1 / 3) + s;
+        },
+        exponential: function (s, e, t, alpha, beta) {
+            //takes alpha as growth/damp factor
+            return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+        },
+        elastic: function (s, e, t, alpha, beta) {
+            //alpha=growth factor, beta=wavenumber
+            return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
+        },
+        sin: function (s, e, t, alpha, beta) {
+            //s=offset, e=amplitude, alpha=wavenumber
+            return s + e * Math.sin(alpha * t * 2 * Math.PI);
+        },
+        cos: function (s, e, t, alpha, beta) {
+            //s=offset, e=amplitude, alpha=wavenumber
+            return s + e * Math.cos(alpha * t * 2 * Math.PI);
+        }
+    });
+
+    /**
+     * Generate an interpolation function based on ease and type of start/end values (Numbers or Vector2)
+     */
+    var generateInterpolation = function (ease, startVal, endVal) {
+        // generate the correct interpolation function
+        var fn = interpolations[ease];
+        if (startVal.isVector2 && endVal.isVector2) {
+            // as vectors
+            if (fn) {
+                return function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(s.x, e.x, t, alpha, beta),
+                        fn(s.y, e.y, t, alpha, beta)
+                    );
+                };
+            } else {
+                fn = robbertPenner[ease];
+                return function (s, e, t, alpha, beta) {
+                    return new Vector2(
+                        fn(t, s.x, e.x - s.x, 1),
+                        fn(t, s.y, e.y - s.y, 1)
+                    );
+                };
+            }
+        } else {
+            // number output
+            if (fn) {
+                return function (s, e, t, alpha, beta) {
+                    return fn(s, e, t, alpha, beta);
+                };
+            } else {
+                fn = robbertPenner[ease];
+                return function (s, e, t, alpha, beta) {
+                    return fn(t, s, e - s, 1);
+                };
+            }
+        }
+    };
+
+    /**
+     * Tween Behavior, can be used standalone or as behavior attached to Entity
+     */
+    var TweenBehavior = function (settings) {
+        /* settings = {
+            from: Number
+            to: Number
+            in: Number
+            ease: String
+            alpha: Number (optional)
+            beta: Number (optional)
+            stay: Boolean (optional)
+            do: Gunction (value, time) {} (optional)
+            onComplete: function () {} (optional)
+            id: Number (optional),
+            updateWhenPaused: Boolean (optional)
+            ignoreGameSpeed: Boolean (optional)
+        }*/
+        var time = 0;
+        var running = !settings.wait;
+        var onUpdate = settings.onUpdate || settings.do;
+        var onComplete = settings.onComplete;
+        var onCreate = settings.onCreate;
+        var onStart = settings.onStart;
+        var applyOnDelay = settings.applyOnDelay;
+        var hasStarted = false;
+        var ease = settings.ease || 'linear';
+        var startVal = settings.from || 0;
+        var delay = settings.delay || 0;
+        var delayTimer = 0;
+        var endVal = Utils.isDefined(settings.to) ? settings.to : 1;
+        var deltaT = settings.in || 1;
+        var alpha = Utils.isDefined(settings.alpha) ? settings.alpha : 1;
+        var beta = Utils.isDefined(settings.beta) ? settings.beta : 1;
+        var ignoreGameSpeed = settings.ignoreGameSpeed;
+        var stay = settings.stay;
+        var autoResumeTimer = -1;
+        // either the tweenBehavior or its parent entity
+        var tweenSubject;
+        // interpolation funciton to be generated
+        var interpolate = generateInterpolation(ease, startVal, endVal);
+        var tweenBehavior = new Object({
+            z: 0,
+            name: 'tweenBehavior',
+            start: function (data) {
+                if (onCreate) {
+                    onCreate.apply(tweenSubject);
+                }
+            },
+            update: function (data) {
+                //if an autoresume timer is running, decrease it and resume when it is done
+                if (--autoResumeTimer === 0) {
+                    tweenBehavior.resume();
+                }
+                if (!running) {
+                    return;
+                }
+                if (delayTimer < delay) {
+                    if (ignoreGameSpeed) {
+                        delayTimer += 1;
+                    } else {
+                        delayTimer += data.speed;
+                    }
+                    // run onUpdate before start
+                    if (applyOnDelay && onUpdate) {
+                        onUpdate.apply(tweenSubject, [interpolate(
+                            startVal,
+                            endVal,
+                            0,
+                            alpha,
+                            beta
+                        ), 0]);
+                    }
+                    return;
+                }
+                if (ignoreGameSpeed) {
+                    time += 1;
+                } else {
+                    time += data.speed;
+                }
+                // run onStart once
+                if (!hasStarted) {
+                    hasStarted = true;
+                    if (onStart) {
+                        onStart.apply(tweenSubject);
+                    }
+                }
+                // run update
+                if (onUpdate) {
+                    onUpdate.apply(tweenSubject, [interpolate(
+                        startVal,
+                        endVal,
+                        time / deltaT,
+                        alpha,
+                        beta
+                    ), time]);
+                }
+                // end
+                if (time >= deltaT && !stay) {
+                    if (time > deltaT && onUpdate) {
+                        //the tween didn't end neatly, so run onUpdate once more with a t of 1
+                        onUpdate.apply(tweenSubject, [interpolate(
+                            startVal,
+                            endVal,
+                            1,
+                            alpha,
+                            beta
+                        ), time]);
+                    }
+                    if (onComplete) {
+                        onComplete.apply(tweenSubject);
+                    }
+
+                    tweenBehavior.removeSelf();
+                }
+            },
+            attached: function (data) {
+                if (data.entity) {
+                    // an entity attached this behavior
+                    tweenSubject = data.entity;
+                }
+            },
+            /**
+             * Start the tween. Only call if you used stop() before.
+             * @function
+             * @instance
+             * @returns {Entity} Returns self
+             * @name begin
+             * @snippet #Tween.begin|Tween
+            begin();
+             */
+            begin: function () {
+                time = 0;
+                running = true;
+                return tweenSubject;
+            },
+            /**
+             * Stops the tween (note that the entity isn't removed).
+             * @function
+             * @instance
+             * @returns {Entity} Returns self
+             * @name stop
+             * @snippet #Tween.stop|Tween
+            stop();
+             */
+            stop: function () {
+                time = 0;
+                running = false;
+                return tweenSubject;
+            },
+            /**
+             * Pauses the tween. The tween will resume itself after a certain duration if provided.
+             * @function
+             * @instance
+             * @param {Number} [duration] - time after which to autoresume. If not provided the tween is paused indefinitely.
+             * @returns {Entity} Returns self
+             * @name pause
+             */
+            pause: function (duration) {
+                running = false;
+                //if a duration is provided, resume the tween after that duration.
+                if (duration) {
+                    autoResumeTimer = duration;
+                }
+                return tweenSubject;
+            },
+            /**
+             * Resumes the tween.
+             * @function
+             * @instance
+             * @returns {Entity} Returns self
+             * @name resume
+             */
+            resume: function () {
+                return tweenBehavior.begin();
+            },
+            /**
+             * Removes the tweenbehavior from tween collection or from parent Entity
+             * @function
+             * @instance
+             * @name removeSelf
+             */
+            removeSelf: function () {
+                if (tweenSubject === tweenBehavior) {
+                    Bento.objects.remove(tweenBehavior);
+                } else if (tweenSubject && tweenSubject.isEntity) {
+                    tweenSubject.remove(tweenBehavior);
+                }
+            }
+        });
+
+        tweenSubject = tweenBehavior;
+
+        // convert decay and growth to alpha
+        if (Utils.isDefined(settings.decay)) {
+            alpha = -settings.decay;
+        }
+        if (Utils.isDefined(settings.growth)) {
+            alpha = settings.growth;
+        }
+        if (Utils.isDefined(settings.oscillations)) {
+            beta = settings.oscillations;
+            if (settings.ease === 'sin' || settings.ease === 'cos') {
+                alpha = settings.oscillations;
+            }
+        }
+
+        // Assuming that when a tween is created when the game is paused,
+        // one wants to see the tween move during that pause
+        if (!Utils.isDefined(settings.updateWhenPaused)) {
+            tweenBehavior.updateWhenPaused = Bento.objects.isPaused();
+        }
+
+        // tween automatically starts
+        if (running) {
+            tweenBehavior.begin();
+        }
+
+        return tweenBehavior;
+    };
+
+    /**
+     * Main Tween module, applied immediately
+     */
+    var Tween = function (settings) {
+        // this is no longer an entity, to remove the overhead an entity has
+        // if developer wants to use the tween as an Entity, construct a Tween.TweenBehavior and
+        // attach to an Entity
+        var tweenBehavior = new TweenBehavior(settings);
+        Bento.objects.attach(tweenBehavior);
+        return tweenBehavior;
+    };
+
+    // Behaviour constructor
+    Tween.TweenBehavior = TweenBehavior;
+
+    // enums
+    Tween.LINEAR = 'linear';
+    Tween.QUADRATIC = 'quadratic';
+    Tween.CUBIC = 'cubic';
+    Tween.SQUAREROOT = 'squareroot';
+    Tween.CUBEROOT = 'cuberoot';
+    Tween.EXPONENTIAL = 'exponential';
+    Tween.ELASTIC = 'elastic';
+    Tween.SIN = 'sin';
+    Tween.COS = 'cos';
+    Tween.EASEINQUAD = 'easeInQuad';
+    Tween.EASEOUTQUAD = 'easeOutQuad';
+    Tween.EASEINOUTQUAD = 'easeInOutQuad';
+    Tween.EASEINCUBIC = 'easeInCubic';
+    Tween.EASEOUTCUBIC = 'easeOutCubic';
+    Tween.EASEINOUTCUBIC = 'easeInOutCubic';
+    Tween.EASEINQUART = 'easeInQuart';
+    Tween.EASEOUTQUART = 'easeOutQuart';
+    Tween.EASEINOUTQUART = 'easeInOutQuart';
+    Tween.EASEINQUINT = 'easeInQuint';
+    Tween.EASEOUTQUINT = 'easeOutQuint';
+    Tween.EASEINOUTQUINT = 'easeInOutQuint';
+    Tween.EASEINSINE = 'easeInSine';
+    Tween.EASEOUTSINE = 'easeOutSine';
+    Tween.EASEINOUTSINE = 'easeInOutSine';
+    Tween.EASEINEXPO = 'easeInExpo';
+    Tween.EASEOUTEXPO = 'easeOutExpo';
+    Tween.EASEINOUTEXPO = 'easeInOutExpo';
+    Tween.EASEINCIRC = 'easeInCirc';
+    Tween.EASEOUTCIRC = 'easeOutCirc';
+    Tween.EASEINOUTCIRC = 'easeInOutCirc';
+    Tween.EASEINELASTIC = 'easeInElastic';
+    Tween.EASEOUTELASTIC = 'easeOutElastic';
+    Tween.EASEINOUTELASTIC = 'easeInOutElastic';
+    Tween.EASEINBACK = 'easeInBack';
+    Tween.EASEOUTBACK = 'easeOutBack';
+    Tween.EASEINOUTBACK = 'easeInOutBack';
+    Tween.EASEINBOUNCE = 'easeInBounce';
+    Tween.EASEOUTBOUNCE = 'easeOutBounce';
+    Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
+
+    // expose interpolations
+    Tween.interpolations = interpolations;
+    Tween.interpolationsRP = robbertPenner;
+
+    return Tween;
 });
 /**
  * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
@@ -14495,2568 +17057,6 @@ bento.define('bento/math/vector2', [
         }
     });
     return Vector2;
-});
-/**
- * A helper module that returns a rectangle with the same aspect ratio as the screen size.
- * Assuming portrait mode, autoresize holds the width and then fills up the height
- * If the height goes over the max or minimum size, then the width gets adapted.
- * <br>Exports: Constructor
- * @module bento/autoresize
- * @moduleName AutoResize
- * @param {Rectangle} canvasDimension - Default size
- * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
- * then autoresize will start filling up the width
- * @param {Boolean} isLandscape - Game is landscape, swap operations of width and height
- * @returns Rectangle
- */
-bento.define('bento/autoresize', [
-    'bento/utils'
-], function (Utils) {
-    return function (canvasDimension, minSize, maxSize, isLandscape) {
-        var originalDimension = canvasDimension.clone(),
-            screenSize = Utils.getScreenSize(),
-            innerWidth = screenSize.width,
-            innerHeight = screenSize.height,
-            devicePixelRatio = window.devicePixelRatio,
-            deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
-            deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,
-            swap = function () {
-                // swap width and height
-                var temp = canvasDimension.width;
-                canvasDimension.width = canvasDimension.height;
-                canvasDimension.height = temp;
-            },
-            setup = function () {
-                var ratio = deviceWidth / deviceHeight;
-
-                if (ratio > 1) {
-                    // user is holding device wrong
-                    ratio = 1 / ratio;
-                }
-
-                canvasDimension.height = Math.round(canvasDimension.width / ratio);
-
-                // exceed min size?
-                if (canvasDimension.height < minSize) {
-                    canvasDimension.height = minSize;
-                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
-                }
-                if (canvasDimension.height > maxSize) {
-                    canvasDimension.height = maxSize;
-                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
-                }
-
-                if (isLandscape) {
-                    swap();
-                }
-
-                return canvasDimension;
-            },
-            scrollAndResize = function () {
-                window.scrollTo(0, 0);
-            };
-
-
-        window.addEventListener('orientationchange', scrollAndResize, false);
-
-        if (isLandscape) {
-            swap();
-        }
-
-        return setup();
-    };
-});
-/**
- * An Entity that helps using a HTML5 2d canvas as Sprite. Its component temporarily takes over
- * the renderer, so any entity that gets attached to the parent will start drawing on the canvas.
- * <br>Exports: Constructor
- * @param {Object} settings - Required, set the width and height
- * @param {Number} settings.width - Width of the canvas (ignored if settings.canvas is set)
- * @param {Number} settings.height - Height of the canvas (ignored if settings.canvas is set)
- * @param {HTML-Canvas-Element} (settings.canvas) - Reference to an existing canvas object. Optional.
- * @param {Number} settings.preventAutoClear - Stops the canvas from clearing every tick
- * @param {Number} settings.pixelSize - size of a pixel (multiplies canvas size)
- * @module bento/canvas
- * @moduleName Canvas
- * @returns Entity
- * @snippet Canvas|constructor
-Canvas({
-    z: ${1:0},
-    width: ${2:64},
-    height: ${3:64},
-    preventAutoClear: ${4:false}, // prevent canvas from clearing every tick
-    pixelSize: ${5:1}, // multiplies internal canvas size
-    drawOnce: ${6:false}, // draw canvas only once
-    originRelative: new Vector2(${7:0}, ${8:0}),
-    components: []
-});
- */
-bento.define('bento/canvas', [
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/components/sprite',
-    'bento/components/clickable',
-    'bento/entity',
-    'bento/eventsystem',
-    'bento/utils',
-    'bento/tween',
-    'bento/packedimage',
-    'bento/objectpool',
-    'bento/renderers/canvas2d'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Sprite,
-    Clickable,
-    Entity,
-    EventSystem,
-    Utils,
-    Tween,
-    PackedImage,
-    ObjectPool,
-    Canvas2D
-) {
-    'use strict';
-    var canvasPool = new ObjectPool({
-        poolSize: 1,
-        constructor: function () {
-            var canvas = Bento.createCanvas();
-
-            return canvas;
-        },
-        destructor: function (obj) {
-            // clear canvas
-            var context = obj.getContext('2d');
-            context.clearRect(0, 0, obj.width, obj.height);
-            // clear texture
-            if (obj.texture) {
-                if (obj.texture.destroy) {
-                    obj.texture.destroy();
-                }
-                obj.texture = null;
-            }
-            return obj;
-        }
-    });
-    return function (settings) {
-        var viewport = Bento.getViewport();
-        var i;
-        var l;
-        var sprite;
-        var canvas;
-        var context;
-        var originalRenderer;
-        var renderer;
-        var packedImage;
-        var origin = new Vector2(0, 0);
-        var entity;
-        var components;
-        var drawn = false;
-        // this component swaps the renderer with a Canvas2D renderer (see bento/renderers/canvas2d)
-        var component = {
-            name: 'rendererSwapper',
-            draw: function (data) {
-                // draw once
-                if (drawn) {
-                    return;
-                }
-
-                // clear up canvas
-                if (!settings.preventAutoClear) {
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-                }
-
-                // clear up webgl
-                if (canvas.texture) {
-                    if (canvas.texture.destroy) {
-                        canvas.texture.destroy();
-                    }
-                    canvas.texture = null;
-                }
-
-                // swap renderer
-                originalRenderer = data.renderer;
-                data.renderer = renderer;
-
-                // re-apply the origin translation
-                data.renderer.save();
-                data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-            },
-            postDraw: function (data) {
-                if (drawn) {
-                    return;
-                }
-                data.renderer.restore();
-                // swap back
-                data.renderer = originalRenderer;
-
-                // draw once
-                if (settings.drawOnce) {
-                    drawn = true;
-                }
-            }
-        };
-
-        // init canvas
-        if (settings.canvas) {
-            canvas = settings.canvas;
-        } else {
-            canvas = canvasPool.get();
-            canvas.width = settings.width;
-            canvas.height = settings.height;
-        }
-        context = canvas.getContext('2d');
-
-        // init renderer
-        renderer = new Canvas2D(canvas, {
-            pixelSize: settings.pixelSize || 1
-        });
-
-        if (settings.origin) {
-            origin = settings.origin;
-        } else if (settings.originRelative) {
-            origin = new Vector2(
-                settings.width * settings.originRelative.x,
-                settings.height * settings.originRelative.y
-            );
-        }
-
-        // init sprite
-        packedImage = new PackedImage(canvas);
-        sprite = new Sprite({
-            image: packedImage,
-            origin: settings.origin,
-            originRelative: settings.originRelative
-        });
-
-        // init entity and its components
-        // sprite goes before the swapcomponent, otherwise the canvas will never be drawn
-        components = [sprite, component];
-        // attach any other component in settings
-        if (settings.components) {
-            for (i = 0, l = settings.components.length; i < l; ++i) {
-                components.push(settings.components[i]);
-            }
-        }
-        entity = new Entity({
-            z: settings.z,
-            name: settings.name || 'canvas',
-            position: settings.position,
-            components: components,
-            family: settings.family,
-            init: settings.init
-        });
-
-        // public interface
-        entity.extend({
-            /**
-             * Returns the canvas element
-             * @function
-             * @instance
-             * @returns HTML Canvas Element
-             * @name getCanvas
-             * @snippet #Canvas.getCanvas|CanvasElement
-                getCanvas();
-             */
-            getCanvas: function () {
-                return canvas;
-            },
-            /**
-             * Returns the 2d context, to perform manual drawing operations
-             * @function
-             * @instance
-             * @returns HTML Canvas 2d Context
-             * @snippet #Canvas.getContext|Context2D
-                getContext();
-             * @name getContext
-             */
-            getContext: function () {
-                return context;
-            },
-            /**
-             * Get the base64 string of the canvas
-             * @function
-             * @instance
-             * @returns String
-             * @name getBase64
-             * @snippet #Canvas.getBase64|String
-                getBase64();
-             */
-            getBase64: function () {
-                return canvas.toDataURL();
-            },
-            /**
-             * Download the canvas as png (useful for debugging purposes)
-             * @function
-             * @instance
-             * @name downloadImage
-             * @snippet #Canvas.downloadImage|debug
-                downloadImage();
-             */
-            downloadImage: function (name) {
-                var link = document.createElement("a");
-                link.download = name || entity.name;
-                link.href = canvas.toDataURL();
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            },
-            /**
-             * Call this function if you have no intent on attaching the canvas,
-             * but you do want to draw on the canvas once
-             * @function
-             * @instance
-             * @name drawOnce
-             * @snippet #Canvas.drawOnce|snippet
-                drawOnce();
-             */
-            drawOnce: function (data) {
-                if (canvas.isAdded) {
-                    Utils.log('This Canvas is already attached, no need to call this function.');
-                    return;
-                }
-                canvas.start(data);
-                canvas.draw(data);
-            }
-        });
-
-        return entity;
-    };
-});
-/*
- * Returns a color array, for use in renderer
- * <br>Exports: Constructor
- * @param {Number} r - Red value [0...255]
- * @param {Number} g - Green value [0...255]
- * @param {Number} b - Blue value [0...255]
- * @param {Number} a - Alpha value [0...1]
- * @returns {Array} Returns a color array
- * @module bento/color
- * @module Color
- */
-bento.define('bento/color', ['bento/utils'], function (Utils) {
-    return function (r, g, b, a) {
-        r = r / 255;
-        r = g / 255;
-        r = b / 255;
-        if (!Utils.isDefined(a)) {
-            a = 1;
-        }
-        return [r, g, b, a];
-    };
-});
-/*
- * DEPRECATED
- * Simple container that masks the children's sprites in a rectangle. Does not work with rotated children.
- * The container's boundingbox is used as mask.
- * @moduleName MaskedContainer
- */
-bento.define('bento/maskedcontainer', [
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/components/sprite',
-    'bento/components/clickable',
-    'bento/entity',
-    'bento/eventsystem',
-    'bento/gui/clickbutton',
-    'bento/gui/counter',
-    'bento/gui/text',
-    'bento/utils',
-    'bento/tween'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Sprite,
-    Clickable,
-    Entity,
-    EventSystem,
-    ClickButton,
-    Counter,
-    Text,
-    Utils,
-    Tween
-) {
-    'use strict';
-    return function (settings) {
-        var viewport = Bento.getViewport();
-        var components = settings.components || [];
-        var container;
-        var maskedDraw = function (data) {
-            // target rectangle to draw, determine x and y below
-            var target;
-            // mask is local to the container
-            var mask = container.getBoundingBox();
-            if (!this.currentAnimation || !this.visible) {
-                return;
-            }
-
-            // do the sprite update
-            var entity = data.entity;
-            this.updateFrame();
-
-            // determine target
-            // target is local to the sprite
-            target = new Rectangle(
-                (-this.origin.x) | 0,
-                (-this.origin.y) | 0,
-                this.frameWidth,
-                this.frameHeight
-            );
-
-            // we have to transform the mask to the sprite's local space
-            // first to world
-            var maskTopLeftWorld = container.toWorldPosition(mask.getCorner(Rectangle.TOPLEFT));
-            var maskBottomRightWorld = container.toWorldPosition(mask.getCorner(Rectangle.BOTTOMRIGHT));
-            // world to sprite's local
-            var maskTopLeft = entity.toLocalPosition(maskTopLeftWorld);
-            var maskBottomRight = entity.toLocalPosition(maskBottomRightWorld);
-            // construct a rectangle using the topleft and bottomright positions
-            var localMask = new Rectangle(maskTopLeft.x, maskTopLeft.y, maskBottomRight.x - maskTopLeft.x, maskBottomRight.y - maskTopLeft.y);
-            // get the intersection between mask and target
-            var intersection = localMask.intersection(target);
-
-            if (!intersection.width && !intersection.height) {
-                // there is nothing to draw
-                return;
-            }
-            // console.log(intersection)
-
-            data.renderer.drawImage(
-                this.spriteImage,
-                this.sourceX + (intersection.x - target.x),
-                this.sourceY + (intersection.y - target.y),
-                intersection.width,
-                intersection.height,
-                intersection.x,
-                intersection.y,
-                intersection.width,
-                intersection.height
-            );
-        };
-        // traverse through children, find sprites
-        var traverse = function (children) {
-            Utils.forEach(children, function (child, i, l, breakLoop) {
-                // check if this is an entity
-                if (child.components) {
-                    traverse(child.components);
-                }
-                // overwrite the sprite's draw function
-                if (child.name === 'sprite' && child.draw !== maskedDraw) {
-                    child.draw = maskedDraw;
-                }
-            });
-        };
-        // this component traverses through all child components and updates the sprites
-        var watcher = {
-            name: 'componentWatcher',
-            start: function () {
-                traverse(components);
-            },
-            update: function () {
-                // would be better to only traverse when a new entity/component is attached, this requires some new event
-                // for now, it's a setting
-                if (settings.watchComponents) {
-                    traverse(components);
-                }
-            }
-        };
-
-        components.push(watcher);
-
-        container = new Entity(settings);
-        return container;
-    };
-});
-/**
- * General object pool
- * <br>Exports: Constructor
- * @param {Object} settings - Settings object is required
- * @param {Function} settings.constructor - function that returns the object for pooling
- * @param {Function} settings.destructor - function that resets object for reuse
- * @param {Number} settings.poolSize - amount to pre-initialize
- * @module bento/objectpool
- * @moduleName ObjectPool
- * @returns ObjectPool
- */
-bento.define('bento/objectpool', [
-    'bento',
-    'bento/utils'
-], function (
-    Bento,
-    Utils
-) {
-    'use strict';
-    return function (specs) {
-        var pool = [],
-            isInitialized = false,
-            constructor = specs.constructor,
-            destructor = specs.destructor,
-            pushObject = function () {
-                pool.push(constructor());
-            };
-
-        if (!constructor) {
-            throw 'Error: Must pass a settings.constructor function that returns an object';
-        }
-        if (!destructor) {
-            throw 'Error: Must pass a settings.destructor function that cleans the object';
-        }
-
-        // return interface
-        return {
-            /**
-             * Returns a new object from the pool, the pool is populated automatically if empty
-             */
-            get: function () {
-                // pool is empty!
-                if (pool.length === 0) {
-                    pushObject();
-                }
-                // get the last in the pool
-                return pool.pop();
-            },
-            /**
-             * Puts object back in the pool
-             */
-            discard: function (obj) {
-                // reset the object
-                destructor(obj);
-                // put it back
-                pool.push(obj);
-            },
-            init: function () {
-                if (isInitialized) {
-                    return;
-                }
-                isInitialized = true;
-                Utils.repeat(specs.poolSize || 0, pushObject);
-
-            }
-        };
-    };
-});
-/**
- * Screen object. Screens are convenience modules that are similar to levels/rooms/scenes in games.
- * Tiled Map Editor can be used to design the levels {@link http://www.mapeditor.org/}.
- * Note: in Tiled, you must export as json file and leave uncompressed as CSV (for now)
- * <br>Exports: Constructor
- * @module bento/screen
- * @moduleName Screen
- * @param {Object} settings - Settings object
- * @param {String} settings.tiled - Asset name of the json file
- * @param {String} settings.onShow - Callback when screen starts
- * @param {String} settings.onHide - Callback when screen is removed
- * @param {Rectangle} [settings.dimension] - Set dimension of the screen (overwritten by tmx size)
- * @returns Screen
- */
-bento.define('bento/screen', [
-    'bento/utils',
-    'bento',
-    'bento/math/rectangle',
-    'bento/math/vector2',
-    'bento/tiled'
-], function (Utils, Bento, Rectangle, Vector2, Tiled) {
-    'use strict';
-    var Screen = function (settings) {
-        /*settings = {
-            dimension: Rectangle, [optional / overwritten by tmx size]
-            tiled: String
-        }*/
-        var viewport = Bento.getViewport(),
-            module = {
-                /**
-                 * Name of the screen
-                 * @instance
-                 * @name name
-                 */
-                name: null,
-                /**
-                 * Reference to Tiled object (if tiled was used)
-                 * @instance
-                 * @see module:bento/tiled
-                 * @name tiled
-                 */
-                tiled: null,
-                /**
-                 * Dimension of the screen
-                 * @instance
-                 * @name dimension
-                 */
-                dimension: (settings && settings.dimension) ? settings.dimension : viewport.clone(),
-                extend: function (object) {
-                    return Utils.extend(this, object);
-                },
-                /**
-                 * Loads a tiled map
-                 * @function
-                 * @instance
-                 * @returns {String} name - Name of the JSON asset
-                 * @name loadTiled
-                 */
-                loadTiled: function (name) {
-                    this.tiled = new Tiled({
-                        assetName: name,
-                        spawnBackground: true,
-                        spawnEntities: true
-                    });
-                    this.dimension = this.tiled.dimension;
-                },
-                /**
-                 * Callback when the screen is shown (called by screen manager)
-                 * @function
-                 * @instance
-                 * @returns {Object} data - Extra data to be passed
-                 * @name onShow
-                 */
-                onShow: function (data) {
-                    if (settings) {
-                        // load tiled map if present
-                        if (settings.tiled) {
-                            this.loadTiled(settings.tiled);
-                        }
-                        // callback
-                        if (settings.onShow) {
-                            settings.onShow.call(module, data);
-                        }
-                    }
-                },
-                /**
-                 * Removes all objects and restores viewport position
-                 * @function
-                 * @instance
-                 * @returns {Object} data - Extra data to be passed
-                 * @name onHide
-                 */
-                onHide: function (data) {
-                    var viewport = Bento.getViewport();
-                    // 1st callback
-                    if (settings.onHide) {
-                        settings.onHide.call(module, data);
-                    }
-                    // reset viewport scroll when hiding screen
-                    viewport.x = 0;
-                    viewport.y = 0;
-                    // remove all objects
-                    Bento.removeAll();
-
-                    // 2nd callback
-                    if (settings.onHidden) {
-                        settings.onHidden.call(module, data);
-                    }
-                    // reset pause level
-                    Bento.objects.resume();
-                }
-            };
-
-        return module;
-    };
-    return Screen;
-});
-/**
- * Sorted EventSystem is EventSystem's "little brother". It's functionality is the same as
- * EventSystem, except you can pass a component to the event listener. The event listener will then
- * be sorted by which component is visually "on top". Sorted EventSystem will listen to events fired by
- * the normal EventSystem. Recommended to use this only when you need to.
- * <br>Exports: Object
- * @module bento/sortedeventsystem
- */
-bento.define('bento/sortedeventsystem', [
-    'bento',
-    'bento/eventsystem',
-    'bento/utils'
-], function (
-    Bento,
-    EventSystem,
-    Utils
-) {
-    // sorting data class: its purpose is to cache variables useful for sorting
-    var SortingData = function (component) {
-        var rootIndex = -1; // index of root parent in object manager
-        var componentIndex = -1; // index of component in entity
-        var depth = -1; // how many grandparents
-        var parent = component.parent; // component's direct parent
-        var parentIndex = -1;
-        var parents = [];
-        var rootParent = null;
-        var rootZ;
-
-        // init objects if needed
-        if (objects === null) {
-            objects = Bento.objects.getObjects();
-        }
-
-        if (!parent) {
-            // either the component itself a rootParent, or it wasn't attached yet
-            rootParent = component;
-        } else {
-            // get index of component
-            componentIndex = component.rootIndex;
-            // grandparent?
-            if (parent.parent) {
-                parentIndex = parent.rootIndex;
-            }
-
-            // find the root
-            while (parent) {
-                parents.unshift(parent);
-                depth += 1;
-                if (!parent.parent) {
-                    // current parent must be the root
-                    rootParent = parent;
-                }
-                // next iteration
-                parent = parent.parent;
-            }
-        }
-
-        // collect data
-        rootIndex = rootParent.rootIndex;
-        rootZ = rootParent.z;
-
-        this.isDirty = false;
-        this.component = component;
-        this.parent = parent;
-        this.parentIndex = parentIndex;
-        this.parents = parents;
-        this.componentIndex = componentIndex;
-        this.depth = depth;
-        this.rootParent = rootParent;
-        this.rootIndex = rootIndex;
-        this.rootZ = rootZ;
-    };
-
-    var isLoopingEvents = false;
-    var objects = null;
-    var events = {};
-    /*events = {
-        [String eventName]: [Array listeners = {callback: Function, context: this}]
-    }*/
-    var removedEvents = [];
-    var cleanEventListeners = function () {
-        var i, j, l, listeners, eventName, callback, context;
-
-        if (isLoopingEvents) {
-            return;
-        }
-        for (j = 0, l = removedEvents.length; j < l; ++j) {
-            eventName = removedEvents[j].eventName;
-            if (removedEvents[j].reset === true) {
-                // reset the whole event listener
-                events[eventName] = [];
-                continue;
-            }
-            callback = removedEvents[j].callback;
-            context = removedEvents[j].context;
-            if (Utils.isUndefined(events[eventName])) {
-                continue;
-            }
-            listeners = events[eventName];
-            for (i = listeners.length - 1; i >= 0; --i) {
-                if (listeners[i].callback === callback) {
-                    if (context) {
-                        if (listeners[i].context === context) {
-                            events[eventName].splice(i, 1);
-                            break;
-                        }
-                    } else {
-                        events[eventName].splice(i, 1);
-                        break;
-                    }
-                }
-            }
-        }
-        removedEvents = [];
-    };
-    var addEventListener = function (component, eventName, callback, context) {
-        var sortingData = new SortingData(component);
-
-        if (Utils.isString(component)) {
-            Utils.log('ERROR: First parameter of SortedEventSystem.on is the component!');
-            return;
-        }
-        if (Utils.isUndefined(events[eventName])) {
-            events[eventName] = [];
-        }
-        events[eventName].push({
-            sortingData: sortingData,
-            callback: callback,
-            context: context
-        });
-    };
-    var removeEventListener = function (eventName, callback, context) {
-        var listeners = events[eventName];
-        if (!listeners || listeners.length === 0) {
-            return;
-        }
-        removedEvents.push({
-            eventName: eventName,
-            callback: callback,
-            context: context
-        });
-
-        if (!isLoopingEvents) {
-            // can clean immediately
-            cleanEventListeners();
-        }
-    };
-    var clearEventListeners = function (eventName) {
-        var listeners = events[eventName];
-        if (!listeners || listeners.length === 0) {
-            return;
-        }
-        removedEvents.push({
-            eventName: eventName,
-            reset: true
-        });
-
-        if (!isLoopingEvents) {
-            // can clean immediately
-            cleanEventListeners();
-        }
-    };
-    var sortFunction = function (a, b) {
-        // sort event listeners by the component location in the scenegraph
-        var sortA = a.sortingData;
-        var sortB = b.sortingData;
-        // refresh sorting data
-        if (sortA.isDirty) {
-            a.sortingData = new SortingData(sortA.component);
-            sortA = a.sortingData;
-        }
-        if (sortB.isDirty) {
-            b.sortingData = new SortingData(sortB.component);
-            sortB = b.sortingData;
-        }
-
-        // 0. A === B
-        if (sortA.component === sortB.component) {
-            // no preference.
-            return 0;
-        }
-
-        // 1. Sort by z
-        var zDiff = sortB.rootZ - sortA.rootZ;
-        if (zDiff) {
-            return zDiff;
-        }
-
-        // 2. Same z: sort by index of the root entity
-        var rootDiff = sortB.rootIndex - sortA.rootIndex;
-        if (rootDiff) {
-            // different roots: sort by root
-            return rootDiff;
-        }
-
-        // 3. Same index: the components must have common (grand)parents, aka in the same scenegraph
-        // NOTE: there might be a better way to sort scenegraphs than this
-        // 3A. are the components siblings?
-        var parentA = sortA.component.parent;
-        var parentB = sortB.component.parent;
-        if (parentA === parentB) {
-            return sortB.componentIndex - sortA.componentIndex;
-        }
-        // 3B. common grandparent? This should be a pretty common case
-        if (parentA && parentB && parentA.parent === parentB.parent) {
-            return sortB.parentIndex - sortA.parentIndex;
-        }
-
-        // 3C. one of the component's parent entity is a (grand)parent of the other?
-        if (sortA.parents.indexOf(sortB.component.parent) >= 0 || sortB.parents.indexOf(sortA.component.parent) >= 0) {
-            return sortB.depth - sortA.depth;
-        }
-        // 3D. last resort: find the earliest common parent and compare their component index
-        return findCommonParentIndex(sortA, sortB);
-    };
-    var findCommonParentIndex = function (sortA, sortB) {
-        // used when components have a common parent, but that common parent is not the root
-        var parentsA = sortA.parents;
-        var parentsB = sortB.parents;
-        var min = Math.min(parentsA.length, parentsB.length);
-        var i;
-        var commonParent = null;
-        var componentA;
-        var componentB;
-        // find the last common parent
-        for (i = 0; i < min; ++i) {
-            if (parentsA[i] === parentsB[i]) {
-                commonParent = parentsA[i];
-            } else {
-                // we found the last common parent, now we need to compare these children
-                componentA = parentsA[i];
-                componentB = parentsB[i];
-                break;
-            }
-        }
-        if (!commonParent || !commonParent.components) {
-            // error: couldn't find common parent
-            return 0;
-        }
-        // compare indices
-        return commonParent.components.indexOf(componentB) - commonParent.components.indexOf(componentA);
-    };
-    var inspectSortingData = function (listeners) {
-        // go through all sortingData and check if their z index didnt change in the meantime
-        var sortingData;
-        var i = 0,
-            l = listeners.length;
-        for (i = 0; i < l; ++i) {
-            sortingData = listeners[i].sortingData;
-            if (sortingData.rootZ !== sortingData.rootParent.z) {
-                sortingData.isDirty = true;
-            }
-            // update rootIndex
-            sortingData.rootIndex = sortingData.rootParent.rootIndex;
-        }
-    };
-    var sortListeners = function (listeners) {
-        // sort the listeners
-        Utils.stableSort.inplace(listeners, sortFunction);
-    };
-    var stopPropagation = false;
-
-    var SortedEventSystem = {
-        suppressWarnings: false,
-        stopPropagation: function () {
-            stopPropagation = true;
-        },
-        fire: function (eventName, eventData) {
-            var i, l, listeners, listener;
-
-            stopPropagation = false;
-
-            // clean up before firing event
-            cleanEventListeners();
-
-            if (!Utils.isString(eventName)) {
-                eventName = eventName.toString();
-            }
-            if (Utils.isUndefined(events[eventName])) {
-                return;
-            }
-
-            listeners = events[eventName];
-
-            // leaving this for debugging purposes
-            // if (eventName === 'pointerDown') {
-            //     console.log(listeners);
-            // }
-
-            // sort before looping through listeners
-            inspectSortingData(listeners);
-            sortListeners(listeners);
-
-            for (i = 0, l = listeners.length; i < l; ++i) {
-                isLoopingEvents = true;
-                listener = listeners[i];
-                if (listener) {
-                    if (listener.context) {
-                        listener.callback.apply(listener.context, [eventData]);
-                    } else {
-                        listener.callback(eventData);
-                    }
-                } else if (!this.suppressWarnings) {
-                    // TODO: this warning appears when event listeners are removed
-                    // during another listener being triggered. For example, removing an entity
-                    // while that entity was listening to the same event.
-                    // In a lot of cases, this is normal... Consider removing this warning?
-                    // console.log('Warning: listener is not a function');
-                }
-                if (stopPropagation) {
-                    stopPropagation = false;
-                    break;
-                }
-            }
-            isLoopingEvents = false;
-        },
-        addEventListener: addEventListener,
-        removeEventListener: removeEventListener,
-        /**
-         * Callback function
-         *
-         * @callback Callback
-         * @param {Object} eventData - Any data that is passed
-         */
-        /**
-         * Listen to event.
-         * @function
-         * @instance
-         * @param {Object} component - The component as sorting reference
-         * @param {String} eventName - Name of the event
-         * @param {Callback} callback - Callback function.
-         * Be careful about adding anonymous functions here, you should consider removing the event listener
-         * to prevent memory leaks.
-         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
-         you must pass the object instance or "this" here!
-         * @name on
-         */
-        on: addEventListener,
-        /**
-         * Removes event listener
-         * @function
-         * @instance
-         * @param {String} eventName - Name of the event
-         * @param {Callback} callback - Reference to the callback function
-         * @param {Object} [context] - For prototype objects only: if the callback function is a prototype of an object
-         you must pass the object instance or "this" here!
-         * @name off
-         */
-        off: removeEventListener,
-        clear: clearEventListeners,
-        sortListeners: sortListeners
-    };
-
-    // save reference in EventSystem
-    EventSystem.SortedEventSystem = SortedEventSystem;
-
-
-    return SortedEventSystem;
-});
-/**
- * Reads Tiled JSON file and draws layers.
- * Tile layers are drawn onto canvas images. If the map is larger than maxCanvasSize (default 1024 * 1024),
- * the layer is split into multiple canvases. Easiest way to get started is to pass the asset name of the Tiled
- * JSON and set spawnBackground and spawnEntities to true.
- * <br>Exports: Constructor
- * @module bento/tiled
- * @moduleName Tiled
- * @param {Object} settings - Settings object
- * @param {String} settings.assetName - Name of the Tiled JSON asset to load
- * @param {Boolean} [settings.merge] - Merge tile layers into a single canvas layer, default: false
- * @param {Vector2} [settings.maxCanvasSize] - Max canvasSize for the canvas objects, default: Vector2(1024, 1024)
- * @param {Vector2} [settings.offset] - Offsets all entities/backgrounds spawned
- * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
- * @param {Function} [settings.onLayer] - Callback when the reader passes a layer object, parameters: (layer)
- * @param {Function} [settings.onTile] - Callback after tile is drawn, parameters: (tileX, tileY, tilesetJSON, tileIndex)
- * @param {Function} [settings.onObject] - Callback when the reader passes a Tiled object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present. If no gid is present in the object JSON, it's most likely a shape! Check for object.rectangle, object.polygon etc.
- * @param {Function} [settings.onComplete] - Called when the reader passed all layers
- * @param {Boolean} [settings.drawTiles] - Draw tiles (default: true)
- * @param {Boolean} [settings.spawnBackground] - Spawns background entities (drawn tile layers)
- * @param {Boolean} [settings.spawnEntities] - Spawns objects (in Tiled: assign a tile property called "module" and enter the module name, placing an object with that tile will spawn the corresponding entity), shapes are not spawned! You are expected to handle this yourself with the onObject callback.
- * @param {Boolean} [settings.onSpawn] - Callback when entity is spawned, parameters: (entity)
- * @param {Boolean} [settings.onSpawnComplete] - Callback when all entities were spawned, may be called later than onComplete due to its asynchronous nature
- * @param {Boolean} [settings.cacheModules] - Cache spawned modules. Modules are retrieved with bento.require, caching them can speed up loading. Note that it also can clash with quick reloading unless the cache is cleared on reload. default: false
- * @returns Object
- * @snippet Tiled|constructor
-Tiled({
-    assetName: '$1',
-    drawTiles: ${2:true},
-    merge: ${3:false},
-    spawnEntities: ${4:true}, // require the module (asynchronously)
-    spawnBackground: ${5:true}, // spawn background entities (drawn tile layers)
-    attachEntities: ${6:true}, // attach after spawning
-    onInit: function (tiledJson, externalTilesets) {
-        // Callback after initial parsing
-        $7
-    },
-    onLayer: function (layer) {
-        // Callback when the reader passes a layer
-        $8
-    },
-    onTile: function (tileX, tileY, tilesetJSON, tileIndex) {
-        // Callback after tile is drawn
-        $9
-    },
-    onObject: function (objectJSON, tilesetJSON, tileIndex) {
-        // Callback when the reader passes a Tiled object
-        ${10}
-    },
-    onComplete: function () {
-        // Synchronous callback when the reader passed all layers
-        // `this` references the tiled object (to get width and height)
-        ${11}
-    },
-    onLayerMergeCheck: function (layer) {
-        // called for each layer when merge: true
-        // return false if layer should not merge
-        return ${12:true};
-    },
-    onSpawn: function (entity) {
-        // called after all a module is spawned (asynchronous)
-        ${13}
-    },
-    onSpawnComplete: function () {
-        // called after all modules are spawned (asynchronous)
-        ${14}
-    }
-});
- */
-bento.define('bento/tiled', [
-    'bento',
-    'bento/entity',
-    'bento/components/sprite',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/math/polygon',
-    'bento/packedimage',
-    'bento/utils',
-    'bento/tiledreader'
-], function (
-    Bento,
-    Entity,
-    Sprite,
-    Vector2,
-    Rectangle,
-    Polygon,
-    PackedImage,
-    Utils,
-    TiledReader
-) {
-    'use strict';
-    // cached modules by require
-    var cachedModules = {
-        // name: argumentsArray
-    };
-    var cachedLayerSprites = {
-        // name: LayerSprites
-    };
-    // a collection of sprites/canvases that represent the drawn tiled layers
-    var LayerSprites = function (canvasSize, mapSize) {
-        // number of sprites horizontally
-        var spritesCountX = Math.ceil(mapSize.x / canvasSize.x);
-        var spritesCountY = Math.ceil(mapSize.y / canvasSize.y);
-        // combined width of canvases
-        var width = spritesCountX * canvasSize.x;
-        var height = spritesCountY * canvasSize.y;
-        // collection of canvases
-        var layers = {
-            // "0": [canvas, canvas, ...]
-            length: 0
-        };
-        var initLayer = function (layerId) {
-            var i;
-            var layer = [];
-            var canvas;
-            var context;
-
-            for (i = 0; i < spritesCountX * spritesCountY; ++i) {
-                canvas = Bento.createCanvas();
-                canvas.width = canvasSize.x;
-                canvas.height = canvasSize.y;
-                context = canvas.getContext('2d');
-                canvas.context = context;
-                layer.push(canvas);
-            }
-            layers[layerId] = layer;
-            layers.length = Math.max(layers.length, layerId + 1);
-        };
-        var getCanvas = function (layerId, destination) {
-            // convert destination position to array index
-            var x = Math.floor(destination.x / canvasSize.x) % spritesCountX;
-            var y = Math.floor(destination.y / canvasSize.y) % spritesCountY;
-            var index = x + y * spritesCountX;
-
-            // init collection if needed
-            if (!layers[layerId]) {
-                initLayer(layerId);
-            }
-
-            return {
-                index: index,
-                canvas: layers[layerId][index]
-            };
-        };
-
-        return {
-            spritesCountX: spritesCountX,
-            spritesCountY: spritesCountY,
-            canvasSize: canvasSize,
-            layers: layers,
-            drawn: false, // used to check if cached
-            getSpritesFromLayer: function (layerId) {
-                return layers[layerId];
-            },
-            drawTile: function (layerId, destination, source, packedImage, flipX, flipY, flipD, opacity) {
-                // get the corresponding canvas
-                var canvasData = getCanvas(layerId, destination);
-                var canvas = canvasData.canvas;
-                var index = canvasData.index;
-                var context = canvas.context;
-                var doFlipX = false;
-                var doFlipY = false;
-                var rotation = 0;
-                var tx = 0, ty = 0, sx = 0, sy = 0;
-                // canvas offset
-                var offset = new Vector2(
-                    canvasSize.x * (index % spritesCountX),
-                    canvasSize.y * Math.floor(index / spritesCountX)
-                );
-
-                // convert to rotation and flipping
-                if (!flipD) {
-                    if (flipX && flipY) {
-                        rotation = Math.PI;
-                    } else {
-                        doFlipX = flipX;
-                        doFlipY = flipY;
-                    }
-                } else {
-                    if (!flipX && !flipY) {
-                        rotation = Math.PI / 2;
-                        doFlipY = true;
-                    } else if (flipX && !flipY) {
-                        rotation = Math.PI / 2;
-                    } else if (!flipX && flipY) {
-                        rotation = Math.PI * 3 / 2;
-                    } else if (flipX && flipY) {
-                        rotation = Math.PI / 2;
-                        doFlipX = true;
-                    }
-                }
-
-                // context.save();
-                // move to destination
-                tx += destination.x - offset.x;
-                ty += destination.y - offset.y;
-                // offset origin for rotation
-                tx += source.width / 2;
-                ty += source.height / 2;
-                // scale
-                sx = doFlipX ? -1 : 1;
-                sy = doFlipY ? -1 : 1;
-                // apply transforms
-                context.translate(tx, ty);
-                context.rotate(rotation);
-                context.scale(sx, sy);
-                // offset origin
-                context.translate(-source.width / 2, -source.height / 2);
-                // opacity
-                if (opacity !== undefined) {
-                    context.globalAlpha = opacity;
-                }
-
-                // draw the tile!
-                context.drawImage(
-                    packedImage.image,
-                    packedImage.x + source.x,
-                    packedImage.y + source.y,
-                    source.width,
-                    source.height,
-                    0,
-                    0,
-                    destination.width,
-                    destination.height
-                );
-                // restore transforms
-                context.globalAlpha = 1;
-                context.translate(source.width / 2, source.height / 2);
-                context.scale(1 / sx, 1 / sy);
-                context.rotate(-rotation);
-                context.translate(-tx, -ty);
-                
-                // context.restore();
-            },
-            dispose: function () {
-                // Cocoon: dispose canvasses
-                Utils.forEach(layers, function (layer) {
-                    if (layer.length) {
-                        Utils.forEach(layer, function (canvas) {
-                            if (canvas && canvas.dispose) {
-                                canvas.dispose();
-                            }
-                        });
-                    }
-                });
-            }
-        };
-    };
-    var getCachedLayerSprites = function (name, maxCanvasSize, mapSize) {
-        var cache = cachedLayerSprites[name];
-        if (cache) {
-            return cache;
-        } else {
-            return new LayerSprites(maxCanvasSize, mapSize);
-        }
-    };
-
-    var Tiled = function (settings) {
-        var assetName = settings.assetName;
-        var drawTiles = Utils.isDefined(settings.drawTiles) ? settings.drawTiles : true;
-        var json = settings.tiled || Bento.assets.getJson(assetName);
-        var width = json.width || 0;
-        var height = json.height || 0;
-        var tileWidth = json.tilewidth || 0;
-        var tileHeight = json.tileheight || 0;
-        var mapProperties = json.properties || {};
-        var mergeLayers = settings.merge || false;
-        var onInit = settings.onInit;
-        var onLayer = settings.onLayer;
-        var onTile = settings.onTile;
-        var onObject = settings.onObject;
-        var onComplete = settings.onComplete;
-        var onSpawn = settings.onSpawn;
-        var onSpawnComplete = settings.onSpawnComplete;
-        var onLayerMergeCheck = settings.onLayerMergeCheck;
-        var cacheModules = settings.cacheModules || false;
-        var cacheCanvas = settings.cacheCanvas || false;
-        var attachEntities = Utils.getDefault(settings.attachEntities, true);
-        var offset = settings.offset || new Vector2(0, 0);
-        var maxCanvasSize = settings.maxCanvasSize || new Vector2(1024, 1024);
-        var mapSize = new Vector2(width * tileWidth, height * tileHeight);
-        var currentSpriteLayer = -1;
-        var layerSprites = getCachedLayerSprites(assetName, maxCanvasSize, mapSize);
-        var entities = [];
-        var backgrounds = [];
-        var entitiesSpawned = 0;
-        var entitiesToSpawn = 0;
-        var opacity = 1;
-        var currentLayer = 0;
-        var tiledReader = new TiledReader({
-            tiled: json,
-            onInit: onInit,
-            onExternalTileset: function (source) {
-                // unfortunately, external tileset paths are relative to the tile json path
-                // making it difficult to load (would need to do path parsing etc...)
-                // instead we try to make an educated guess what the asset name is
-                var json;
-                var jsonPath = source.indexOf('json/');
-                var relativePath = source.indexOf('../');
-                var path = source;
-                var split;
-                if (jsonPath >= 0) {
-                    // if the name "json/" is there, we can guess the path is after the json/ part
-                    path = source.substring(jsonPath + ('json/').length);
-                } else if (relativePath >= 0) {
-                    // no json/ is there and the path has relative indicators
-                    path = source;
-
-                    if (assetName) {
-                        // path parsing, urgh
-                        split = assetName.split('/');
-                        split.pop(); // remove filename
-                        while (path.indexOf('../') >= 0) {
-                            if (split.length === 0) {
-                                throw "ERROR: Impossible path to external tileset";
-                            }
-                            // move up one folder
-                            split.pop();
-                            path = path.replace('../', '');
-                        }
-                        // final path, may need an extra slash
-                        path = split.join('/') + (split.length ? '/' : '') + path;
-                    } else {
-                        // more dangerous method: try removing all relative indicators
-                        while (path.indexOf('../') >= 0) {
-                            path = path.replace('../', '');
-                        }
-                    }
-                }
-                path = path.replace('.json', '');
-
-                json = Bento.assets.getJson(path);
-
-                return json;
-            },
-            onLayer: function (layer, index) {
-                var shouldMerge = false;
-                currentLayer = index;
-                if (layer.type === "tilelayer") {
-                    if (!mergeLayers) {
-                        // check per layer
-                        if (onLayerMergeCheck) {
-                            shouldMerge = onLayerMergeCheck(layer);
-                        }
-                        if (shouldMerge) {
-                            currentSpriteLayer = 9999;
-                        } else {
-                            currentSpriteLayer = index;
-                        }
-                    } else {
-                        currentSpriteLayer = 9999;
-                    }
-                }
-                opacity = layer.opacity;
-                if (onLayer) {
-                    onLayer.call(tiled, layer, index);
-                }
-            },
-            // we pass null if there is nothing to draw in order to skip the tile loop entirely
-            onTile: layerSprites.drawn || !drawTiles ? null : function (tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD) {
-                // get destination position
-                var x = tileX * tileWidth;
-                var y = tileY * tileHeight;
-                var destination = new Rectangle(x, y, tileWidth, tileHeight);
-
-                // get source position
-                var source = getSourceTile(tileSet, tileIndex);
-                var layerIndex = currentLayer;
-
-                // retrieve the corresponding image asset
-                // there is a very high chance the url contains "images/" since the json files
-                // should be stored in the "json/" folder and images in "images/"
-                var imageUrl = tileSet.image;
-                var assetName;
-                var imageAsset;
-
-                assetName = imageUrl.substring(imageUrl.indexOf('images/') + ('images/').length);
-                assetName = assetName.replace('.png', '');
-                imageAsset = Bento.assets.getImage(assetName);
-
-                // draw on the layer
-                layerSprites.drawTile(
-                    currentSpriteLayer,
-                    destination,
-                    source,
-                    imageAsset,
-                    flipX,
-                    flipY,
-                    flipD,
-                    opacity
-                );
-
-                if (onTile) {
-                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);
-                }
-            },
-            onObject: function (object, tileSet, tileIndex) {
-                if (onObject) {
-                    onObject.call(tiled, object, tileSet, tileIndex, currentLayer);
-                }
-                if (settings.spawnEntities) {
-                    // note: we can pass currentLayer, as onLayer is synchronously called before onObject
-                    spawnEntity(object, tileSet, tileIndex, currentLayer, function () {});
-                }
-            },
-            onComplete: function () {
-                var canvasLayers = layerSprites.layers;
-                var layer;
-                var l = canvasLayers.length;
-                var i;
-                var canvasSize = layerSprites.canvasSize;
-                var spritesCountX = layerSprites.spritesCountX;
-                var spritesCountY = layerSprites.spritesCountY;
-                var makeEntity = function () {
-                    var j = 0;
-                    var canvas;
-                    var sprite;
-                    var entity;
-                    var tiledLayer = json.layers[i];
-                    for (j = 0; j < layer.length; ++j) {
-                        canvas = layer[j];
-                        sprite = new Sprite({
-                            image: new PackedImage(canvas)
-                        });
-                        entity = new Entity({
-                            z: 0,
-                            name: tiledLayer ? tiledLayer.name || 'tiledLayer' : 'tiledLayer',
-                            family: ['backgrounds'],
-                            position: new Vector2(
-                                offset.x + canvasSize.x * (j % spritesCountX),
-                                offset.y + canvasSize.y * Math.floor(j / spritesCountX)
-                            ),
-                            components: [sprite]
-                        });
-                        // spawn background entities now?
-                        if (settings.spawnBackground) {
-                            Bento.objects.attach(entity);
-                        }
-                        backgrounds.push(entity);
-                    }
-                };
-
-                for (i = 0; i < l; ++i) {
-                    layer = canvasLayers[i];
-                    if (layer) {
-                        makeEntity();
-                    }
-                }
-
-                // cache layers
-                if (cacheCanvas) {
-                    layerSprites.drawn = true;
-                    cachedLayerSprites[assetName] = layerSprites;
-                }
-
-                if (onComplete) {
-                    onComplete.call(tiled);
-                }
-
-                // call onSpawnComplete anyway, maybe no objects were spawned or synchronously spawned
-                didLoopThrough = true;
-                checkSpawnComplete();
-            }
-        });
-        var didLoopThrough = false;
-        var checkSpawnComplete = function () {
-            if (didLoopThrough && entitiesSpawned === entitiesToSpawn && onSpawnComplete) {
-                onSpawnComplete.call(tiled);
-            }
-        };
-        // helper function to get the source in the image
-        var getSourceTile = function (tileset, index) {
-            var tilesetWidth = Math.floor(tileset.imagewidth / tileset.tilewidth);
-            var tilesetHeight = Math.floor(tileset.imageheight / tileset.tileheight);
-
-            return new Rectangle(
-                (index % tilesetWidth) * tileset.tilewidth,
-                Math.floor(index / tilesetWidth) * tileset.tileheight,
-                tileset.tilewidth,
-                tileset.tileheight
-            );
-        };
-        // attempt to spawn object by tileproperty "module"
-        // this is mainly for backwards compatibility of the old Tiled module
-        var spawnEntity = function (object, tileSet, tileIndex, layerIndex, onSpawnCallback) {
-            var tileproperties;
-            var properties;
-            var moduleName;
-            var components = {};
-            var tiledSettings = {};
-            var require = {
-                // paths to module and components
-                paths: [],
-                // parameters for respective module and components
-                parameters: []
-            };
-            var x = object.x;
-            var y = object.y;
-
-            // Reads all custom properties and fishes out the components that need
-            // to be attached to the entity. Also gets the component's parameters.
-            var getComponents = function (props) {
-                var prop = '';
-                var name = '';
-                var paramName = '';
-                var dotIndex = -1;
-                for (prop in props) {
-                    // in order to pass a component through custom properties
-                    // it needs to have 'component' somewhere in the name
-                    if (prop.indexOf('component') > -1) {
-
-                        dotIndex = prop.indexOf('.');
-                        name = prop.slice(0, dotIndex === -1 ? undefined : dotIndex);
-
-                        if (!components[name]) {
-                            components[name] = {};
-                        }
-
-                        // Is it a parameter for the component?
-                        if (dotIndex > -1) {
-                            // component parameters have the same name as the component
-                            // followed by a dot and the parameter name
-                            paramName = prop.slice(dotIndex + 1);
-                            components[name][paramName] = props[prop];
-                        }
-                        // Otherwise it's the path to the component
-                        else {
-                            components[name].pathToComponent = props[prop];
-                        }
-                    }
-                }
-            };
-            var savePathsAndParameters = function () {
-                var prop = '';
-                var key = '';
-                var component;
-                var parameters = {};
-
-                for (key in components) {
-                    parameters = {
-                        tiled: tiledSettings
-                    };
-                    component = components[key];
-
-                    // make an object with all parameters for the component
-                    for (prop in component) {
-                        if (prop !== 'pathToComponent') {
-                            parameters[prop] = component[prop];
-                        }
-                    }
-
-                    // save paths to JS files and corresponding parameters
-                    require.paths.push(component.pathToComponent);
-                    require.parameters.push(Utils.cloneJson(parameters));
-                }
-            };
-            var onRequire = function () {
-                var Constructor = arguments[0];
-                var instance = new Constructor(require.parameters[0]);
-                var dimension = instance.dimension;
-                var spriteOrigin = new Vector2(0, 0);
-                var ii = 1;
-                var iil = arguments.length;
-
-                instance.getComponent('sprite', function (sprite) {
-                    spriteOrigin = sprite.origin;
-                });
-
-                instance.position = new Vector2(
-                    offset.x + x + spriteOrigin.x,
-                    offset.y + y + (spriteOrigin.y - dimension.height)
-                );
-
-                // instantiate and attach all the specified components
-                for (; ii < iil; ++ii) {
-                    instance.attach(new arguments[ii](require.parameters[ii]));
-                }
-
-                // add to game
-                if (attachEntities) {
-                    Bento.objects.attach(instance);
-                }
-                entities.push(instance);
-
-                entitiesSpawned += 1;
-
-                if (onSpawn) {
-                    onSpawn.call(tiled, instance, object, {
-                        tileSet: tileSet,
-                        moduleName: moduleName,
-                        properties: properties
-                    }, layerIndex);
-                }
-                onSpawnCallback.call(tiled, instance, object, {
-                    tileSet: tileSet,
-                    moduleName: moduleName,
-                    properties: properties
-                }, layerIndex);
-
-                // cache module
-                if (cacheModules) {
-                    // caching the arguments as an actual array for safety
-                    cachedModules[moduleName] = Array.prototype.slice.call(arguments);
-                }
-
-                checkSpawnComplete();
-            };
-
-            if (!object.gid) {
-                // not an entity (it's a rectangle or other shape)
-                return;
-            }
-            tileproperties = tileSet.tileproperties;
-            if (!tileproperties) {
-                return;
-            }
-            properties = tileproperties[tileIndex];
-            if (!properties) {
-                return;
-            }
-            moduleName = properties.module;
-            if (!moduleName) {
-                return;
-            }
-            // save path to module and its paramters
-            require.paths.push(moduleName);
-            tiledSettings = {
-                position: new Vector2(x, y),
-                tileSet: tileSet,
-                tileIndex: tileIndex,
-                tileProperties: properties,
-                object: object,
-                objectProperties: object.properties,
-                jsonName: assetName // reference to current json name
-            };
-            require.parameters.push({
-                tiled: tiledSettings
-            });
-
-            // search through the tileset's custom properties
-            getComponents(properties);
-            // search through any custom properties that were added to this instance of the object
-            getComponents(object.properties);
-            // save the paths to the components and save their parameters
-            savePathsAndParameters();
-
-            entitiesToSpawn += 1;
-
-            if (cacheModules && cachedModules[moduleName]) {
-                // use the cached module
-                onRequire.apply(this, cachedModules[moduleName]);
-            } else {
-                // use require
-                bento.require(require.paths, onRequire);
-            }
-        };
-        var tiled = {
-            name: settings.name || 'tiled',
-            /**
-             * Name of the Tiled JSON asset
-             * @instance
-             * @name assetName
-             */
-            assetName: assetName,
-            /**
-             * Map properties
-             * @instance
-             * @name mapProperties
-             */
-            mapProperties: mapProperties,
-            /**
-             * Reference to the Tiled JSON asset
-             * @instance
-             * @name json
-             */
-            json: json,
-            /**
-             * Rectangle with width and height of the Tiled map in pixels
-             * @instance
-             * @name dimension
-             */
-            dimension: new Rectangle(0, 0, mapSize.x, mapSize.y),
-            /**
-             * Array of all entities spawned
-             * @instance
-             * @name entities
-             */
-            entities: entities,
-            /**
-             * Array of all background entities spawned
-             * @instance
-             * @name backgrounds
-             */
-            backgrounds: backgrounds,
-            /**
-             * Object containing all drawn layers
-             * @instance
-             * @name layerImages
-             */
-            layerImages: layerSprites,
-            /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
-             * developer need to call this manually to clear the memory)
-             * @instance
-             * @name clearModuleCache
-             */
-            clearModuleCache: function () {
-                cachedModules = {};
-            },
-            /**
-             * Clear cached modules if cacheModules is true (the cache is global, 
-             * developer need to call this manually to clear the memory)
-             * @instance
-             * @name clearCanvasCache
-             */
-            clearCanvasCache: function () {
-                Utils.forEach(cachedLayerSprites, function (cachedLayerSprite) {
-                    cachedLayerSprite.dispose();
-                });
-                cachedLayerSprites = {};
-            },
-            // clean up
-            destroy: function () {
-                if (cacheCanvas) {
-                    layerSprites.dispose();
-                }
-            },
-            spawnEntity: spawnEntity
-        };
-
-        tiledReader.read();
-
-        return tiled;
-    };
-
-    return Tiled;
-});
-/**
- * A generic interpreter for Tiled map JSON files.
- * <br>Exports: Constructor
- * @module bento/tiledreader
- * @moduleName TiledReader
- * @param {Object} settings - Settings object
- * @param {String} settings.tiled - Tiled map JSON asset
- * @param {Function} settings.onExternalTileset - Called if an external tileset is needed, expects a JSON to be returned (the developer is expected to load the external tileset) Must be .json and not .tsx files.
- * @param {Function} [settings.onInit] - Callback on initial parsing, parameters: (tiledJson, externalTilesets)
- * @param {Function} [settings.onLayer] - Called when passing a layer, parameters: (layerJSON)
- * @param {Function} [settings.onTile] - Called when passing a tile, parameters: (tileX, tileY, tilesetJSON, tileIndex, flipX, flipY, flipDiagonal)
- * @param {Function} [settings.onObject] - Called when passing an object, parameters: (objectJSON, tilesetJSON, tileIndex) <br>Latter two if a gid is present in the objectJSON
- * @param {Function} [settings.onComplete] - Called when the reader is done
- * @param {Boolean} [settings.spawn] - Spawns entities
- * @returns Object
- */
-bento.define('bento/tiledreader', [], function () {
-    'use strict';
-    var FLIPX = 0x80000000;
-    var FLIPY = 0x40000000;
-    var FLIPDIAGONAL = 0x20000000;
-
-    var TiledReader = function (settings) {
-        // cache callbacks
-        var onExternalTileset = settings.onExternalTileset;
-        var onInit = settings.onInit;
-        var onLayer = settings.onLayer;
-        var onTile = settings.onTile;
-        var onObject = settings.onObject;
-        var onComplete = settings.onComplete;
-
-        // the tiled json
-        var json = settings.tiled || {};
-
-        // width and height in tiles
-        var width = json.width || 0;
-        var height = json.height || 0;
-
-        // width and height of a single tile
-        var tileWidth = json.tilewidth || 0;
-        var tileHeight = json.tileheight || 0;
-
-        // tilesets
-        var tilesets = json.tilesets || [];
-        var tilesetsCount = tilesets.length;
-        var externalTilesets = {
-            // "source": tileset JSON
-        };
-        var cachedFirstGids = [];
-
-        // layers
-        var layers = json.layers || [];
-        var layersCount = layers.length;
-
-        // load external tilesets
-        var importTilesets = function () {
-            var i;
-            var l;
-            var tileset;
-            var source;
-
-            // loop through all tilesets, look for external tilesets
-            for (i = 0, l = tilesets.length; i < l; ++i) {
-                tileset = tilesets[i];
-                source = tileset.source;
-                if (source) {
-                    // to stay independent of any asset loader, this is loaded through a callback
-                    externalTilesets[source] = onExternalTileset(source);
-                }
-
-                // meanwhile, cache all firstGids for faster lookups
-                cachedFirstGids.push(tileset.firstgid);
-            }
-        };
-        var decompress = function (layer) {
-            var base64ToUint32array = function (base64) {
-                var raw = window.atob(base64);
-                var i;
-                var len = raw.length;
-                var bytes = new Uint8Array(len);
-                for (i = 0; i < len; i++) {
-                    bytes[i] = raw.charCodeAt(i);
-                }
-                var data = new Uint32Array(bytes.buffer, 0, len / 4);
-                return data;
-            };
-            var encoding = layer.encoding;
-            if (encoding === 'base64') {
-                layer.data = base64ToUint32array(layer.data);
-                layer.encoding = null;
-            } else if (encoding) {
-                // TODO: compression formats
-                throw "ERROR: compression not supported. Please set Tile Layer Format to CSV in Tiled.";
-            }
-            return layer;
-        };
-        var loopLayers = function () {
-            var i, il;
-            var j, jl;
-            var k, kl;
-            var layers = json.layers;
-            var layer;
-            var layerData;
-            var lh;
-            var lw;
-            var objects;
-            var object;
-            var properties;
-            var layerId = 0;
-            var type;
-            var getTileset = function (gid) {
-                var l,
-                    tileset,
-                    count = tilesetsCount,
-                    current = null,
-                    firstGid,
-                    currentFirstGid;
-
-                // loop through tilesets and find the highest firstgid that's
-                // still lower or equal to the gid
-                for (l = 0; l < count; ++l) {
-                    firstGid = cachedFirstGids[l];
-                    if (firstGid <= gid) {
-                        current = tilesets[l];
-                        currentFirstGid = firstGid;
-                    }
-                }
-
-                // tileset is external?
-                if (current.source) {
-                    current = externalTilesets[current.source];
-                }
-
-                return {
-                    tileSet: current,
-                    firstGid: currentFirstGid
-                };
-            };
-            var tileCallback = function (data, x, y) {
-                // callback for every tile (stored layer.data)
-                var gid = data[y * width + x];
-                var tilesetData;
-                var tileIndex;
-                var flipX;
-                var flipY;
-                var flipDiagonal;
-
-                // no tile
-                if (gid === 0) {
-                    return;
-                }
-
-                // read out the flags
-                flipX = (gid & FLIPX);
-                flipY = (gid & FLIPY);
-                flipDiagonal = (gid & FLIPDIAGONAL);
-
-                // clear flags
-                gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
-
-                // get the corresponding tileset and tile index
-                tilesetData = getTileset(gid);
-                tileIndex = gid - tilesetData.firstGid;
-
-                // callback
-                onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
-            };
-            var objectCallback = function (object) {
-                var tileIndex;
-                var tilesetData;
-                var gid = object.gid;
-                if (gid) {
-                    // get the corresponding tileset and tile index
-                    tilesetData = getTileset(gid);
-                    tileIndex = gid - tilesetData.firstGid;
-                    onObject(object, tilesetData.tileSet, tileIndex);
-                } else {
-                    // gid may not be present, in that case it's a rectangle or other shape
-                    onObject(object);
-                }
-            };
-
-            // loop through layers
-            for (k = 0, kl = layers.length; k < kl; ++k) {
-                layer = layers[k];
-                type = layer.type;
-
-                if (onLayer) {
-                    onLayer(layer, k);
-                }
-                if (type === 'tilelayer' && onTile) {
-                    // skip layer if invisible???
-                    if (!layer.visible) {
-                        continue;
-                    }
-
-                    // decompress data?
-                    decompress(layer);
-
-                    layerData = layer.data;
-
-                    // loop through layer.data, which should be width * height in size
-                    for (j = 0; j < height; ++j) {
-                        for (i = 0; i < width; ++i) {
-                            tileCallback(layerData, i, j);
-                        }
-                    }
-                } else if (type === 'objectgroup' && onObject) {
-                    objects = layer.objects || [];
-                    il = objects.length;
-                    for (i = 0; i < il; ++i) {
-                        object = objects[i];
-
-                        objectCallback(object);
-                    }
-                }
-            }
-            if (onComplete) {
-                onComplete();
-            }
-        };
-
-        importTilesets();
-
-        if (onInit) {
-            onInit(json, externalTilesets);
-        }
-        // loopLayers();
-
-        return {
-            /**
-             * Read tiled JSON and loop through all layers, tiles and objects
-             * @function
-             * @instance
-             * @name read
-             */
-            read: loopLayers
-        };
-    };
-
-    return TiledReader;
-});
-/**
- * The Tween is an entity that performs an interpolation within a timeframe. The entity
- * removes itself after the tween ends.
- * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
- * <br>Exports: Constructor
- * @module bento/tween
- * @moduleName Tween
- * @param {Object} settings - Settings object
- * @param {Number} settings.from - Starting value
- * @param {Number} settings.to - End value
- * @param {Number} settings.in - Time frame
- * @param {String} settings.ease - Choose between default tweens or see {@link http://easings.net/}
- * @param {Boolean} settings.wait - Do not immediately begin tween (default false)
- * @param {Number} [settings.decay] - For use in exponential and elastic tweens: decay factor (negative growth)
- * @param {Number} [settings.growth] - For use in exponential and elastic tweens: growth factor
- * @param {Number} [settings.oscillations] - For use in sin, cos and elastic tweens: number of oscillations
- * @param {Function} [settings.onCreate] - Called as soon as the tween is added to the object manager and before the delay (if any).
- * @param {Function} [settings.onStart] - Called before the first tween update and after a delay (if any).
- * @param {Function} [settings.onUpdate] - Called every tick during the tween lifetime. Callback parameters: (value, time)
- * @param {Function} [settings.onComplete] - Called when tween ends
- * @param {Number} [settings.id] - Adds an id property to the tween. Useful when spawning tweens in a loop (remember that functions form closures)
- * @param {Number} [settings.delay] - Wait an amount of ticks before starting
- * @param {Boolean} [settings.applyOnDelay] - Perform onUpdate even during delay
- * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
- * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
- * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
- * @returns Entity
- * @snippet Tween|constructor
-Tween({
-    from: ${1:0},
-    to: ${2:1},
-    in: ${3:60},
-    delay: ${4:0},
-    applyOnDelay: ${5:0},
-    ease: '${6:linear}',
-    decay: ${7:1},
-    oscillations: ${8:1},
-    onStart: function () {},
-    onUpdate: function (v, t) {
-        ${9}
-    },
-    onComplete: function () {
-        ${10}
-    }
-});
- */
-
-// Deprecated parameters
-// * @param {Number} [settings.alpha] - For use in exponential y=exp(αt) or elastic y=exp(αt)*cos(βt)
-// * @param {Number} [settings.beta] - For use in elastic y=exp(αt)*cos(βt)
-bento.define('bento/tween', [
-    'bento',
-    'bento/math/vector2',
-    'bento/utils',
-    'bento/entity'
-], function (Bento, Vector2, Utils, Entity) {
-    'use strict';
-    /**
-     * Interpolations (3rd party)
-     */
-    var robbertPenner = new Object({
-        // t: current time, b: begInnIng value, c: change In value, d: duration
-        easeInQuad: function (t, b, c, d) {
-            return c * (t /= d) * t + b;
-        },
-        easeOutQuad: function (t, b, c, d) {
-            return -c * (t /= d) * (t - 2) + b;
-        },
-        easeInOutQuad: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t + b;
-            return -c / 2 * ((--t) * (t - 2) - 1) + b;
-        },
-        easeInCubic: function (t, b, c, d) {
-            return c * (t /= d) * t * t + b;
-        },
-        easeOutCubic: function (t, b, c, d) {
-            return c * ((t = t / d - 1) * t * t + 1) + b;
-        },
-        easeInOutCubic: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
-            return c / 2 * ((t -= 2) * t * t + 2) + b;
-        },
-        easeInQuart: function (t, b, c, d) {
-            return c * (t /= d) * t * t * t + b;
-        },
-        easeOutQuart: function (t, b, c, d) {
-            return -c * ((t = t / d - 1) * t * t * t - 1) + b;
-        },
-        easeInOutQuart: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
-            return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
-        },
-        easeInQuint: function (t, b, c, d) {
-            return c * (t /= d) * t * t * t * t + b;
-        },
-        easeOutQuint: function (t, b, c, d) {
-            return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
-        },
-        easeInOutQuint: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
-            return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
-        },
-        easeInSine: function (t, b, c, d) {
-            return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
-        },
-        easeOutSine: function (t, b, c, d) {
-            return c * Math.sin(t / d * (Math.PI / 2)) + b;
-        },
-        easeInOutSine: function (t, b, c, d) {
-            return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
-        },
-        easeInExpo: function (t, b, c, d) {
-            return (t === 0) ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
-        },
-        easeOutExpo: function (t, b, c, d) {
-            return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
-        },
-        easeInOutExpo: function (t, b, c, d) {
-            if (t === 0) return b;
-            if (t === d) return b + c;
-            if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
-            return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
-        },
-        easeInCirc: function (t, b, c, d) {
-            return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
-        },
-        easeOutCirc: function (t, b, c, d) {
-            return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
-        },
-        easeInOutCirc: function (t, b, c, d) {
-            if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
-            return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
-        },
-        easeInElastic: function (t, b, c, d) {
-            var s = 1.70158,
-                p = 0,
-                a = c;
-            if (t === 0) return b;
-            if ((t /= d) === 1) return b + c;
-            if (!p) p = d * 0.3;
-            if (a < Math.abs(c)) {
-                a = c;
-                s = p / 4;
-            } else s = p / (2 * Math.PI) * Math.asin(c / a);
-            return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-        },
-        easeOutElastic: function (t, b, c, d) {
-            var s = 1.70158,
-                p = 0,
-                a = c;
-            if (t === 0) return b;
-            if ((t /= d) === 1) return b + c;
-            if (!p) p = d * 0.3;
-            if (a < Math.abs(c)) {
-                a = c;
-                s = p / 4;
-            } else s = p / (2 * Math.PI) * Math.asin(c / a);
-            return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
-        },
-        easeInOutElastic: function (t, b, c, d) {
-            var s = 1.70158,
-                p = 0,
-                a = c;
-            if (t === 0) return b;
-            if ((t /= d / 2) === 2) return b + c;
-            if (!p) p = d * (0.3 * 1.5);
-            if (a < Math.abs(c)) {
-                a = c;
-                s = p / 4;
-            } else s = p / (2 * Math.PI) * Math.asin(c / a);
-            if (t < 1) return -0.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
-            return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * 0.5 + c + b;
-        },
-        easeInBack: function (t, b, c, d, s) {
-            if (s === undefined) s = 1.70158;
-            return c * (t /= d) * t * ((s + 1) * t - s) + b;
-        },
-        easeOutBack: function (t, b, c, d, s) {
-            if (s === undefined) s = 1.70158;
-            return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
-        },
-        easeInOutBack: function (t, b, c, d, s) {
-            if (s === undefined) s = 1.70158;
-            if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
-            return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
-        },
-        easeInBounce: function (t, b, c, d) {
-            return c - this.easeOutBounce(d - t, 0, c, d) + b;
-        },
-        easeOutBounce: function (t, b, c, d) {
-            if ((t /= d) < (1 / 2.75)) {
-                return c * (7.5625 * t * t) + b;
-            } else if (t < (2 / 2.75)) {
-                return c * (7.5625 * (t -= (1.5 / 2.75)) * t + 0.75) + b;
-            } else if (t < (2.5 / 2.75)) {
-                return c * (7.5625 * (t -= (2.25 / 2.75)) * t + 0.9375) + b;
-            } else {
-                return c * (7.5625 * (t -= (2.625 / 2.75)) * t + 0.984375) + b;
-            }
-        },
-        easeInOutBounce: function (t, b, c, d) {
-            if (t < d / 2) return this.easeInBounce(t * 2, 0, c, d) * 0.5 + b;
-            return this.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
-        }
-    });
-    /**
-     * Interpolations
-     */
-    var interpolations = new Object({
-        linear: function (s, e, t, alpha, beta) {
-            return (e - s) * t + s;
-        },
-        quadratic: function (s, e, t, alpha, beta) {
-            return (e - s) * t * t + s;
-        },
-        squareroot: function (s, e, t, alpha, beta) {
-            return (e - s) * Math.pow(t, 0.5) + s;
-        },
-        cubic: function (s, e, t, alpha, beta) {
-            return (e - s) * t * t * t + s;
-        },
-        cuberoot: function (s, e, t, alpha, beta) {
-            return (e - s) * Math.pow(t, 1 / 3) + s;
-        },
-        exponential: function (s, e, t, alpha, beta) {
-            //takes alpha as growth/damp factor
-            return (e - s) / (Math.exp(alpha) - 1) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
-        },
-        elastic: function (s, e, t, alpha, beta) {
-            //alpha=growth factor, beta=wavenumber
-            return (e - s) / (Math.exp(alpha) - 1) * Math.cos(beta * t * 2 * Math.PI) * Math.exp(alpha * t) + s - (e - s) / (Math.exp(alpha) - 1);
-        },
-        sin: function (s, e, t, alpha, beta) {
-            //s=offset, e=amplitude, alpha=wavenumber
-            return s + e * Math.sin(alpha * t * 2 * Math.PI);
-        },
-        cos: function (s, e, t, alpha, beta) {
-            //s=offset, e=amplitude, alpha=wavenumber
-            return s + e * Math.cos(alpha * t * 2 * Math.PI);
-        }
-    });
-
-    /**
-     * Generate an interpolation function based on ease and type of start/end values (Numbers or Vector2)
-     */
-    var generateInterpolation = function (ease, startVal, endVal) {
-        // generate the correct interpolation function
-        var fn = interpolations[ease];
-        if (startVal.isVector2 && endVal.isVector2) {
-            // as vectors
-            if (fn) {
-                return function (s, e, t, alpha, beta) {
-                    return new Vector2(
-                        fn(s.x, e.x, t, alpha, beta),
-                        fn(s.y, e.y, t, alpha, beta)
-                    );
-                };
-            } else {
-                fn = robbertPenner[ease];
-                return function (s, e, t, alpha, beta) {
-                    return new Vector2(
-                        fn(t, s.x, e.x - s.x, 1),
-                        fn(t, s.y, e.y - s.y, 1)
-                    );
-                };
-            }
-        } else {
-            // number output
-            if (fn) {
-                return function (s, e, t, alpha, beta) {
-                    return fn(s, e, t, alpha, beta);
-                };
-            } else {
-                fn = robbertPenner[ease];
-                return function (s, e, t, alpha, beta) {
-                    return fn(t, s, e - s, 1);
-                };
-            }
-        }
-    };
-
-    /**
-     * Tween Behavior, can be used standalone or as behavior attached to Entity
-     */
-    var TweenBehavior = function (settings) {
-        /* settings = {
-            from: Number
-            to: Number
-            in: Number
-            ease: String
-            alpha: Number (optional)
-            beta: Number (optional)
-            stay: Boolean (optional)
-            do: Gunction (value, time) {} (optional)
-            onComplete: function () {} (optional)
-            id: Number (optional),
-            updateWhenPaused: Boolean (optional)
-            ignoreGameSpeed: Boolean (optional)
-        }*/
-        var time = 0;
-        var running = !settings.wait;
-        var onUpdate = settings.onUpdate || settings.do;
-        var onComplete = settings.onComplete;
-        var onCreate = settings.onCreate;
-        var onStart = settings.onStart;
-        var applyOnDelay = settings.applyOnDelay;
-        var hasStarted = false;
-        var ease = settings.ease || 'linear';
-        var startVal = settings.from || 0;
-        var delay = settings.delay || 0;
-        var delayTimer = 0;
-        var endVal = Utils.isDefined(settings.to) ? settings.to : 1;
-        var deltaT = settings.in || 1;
-        var alpha = Utils.isDefined(settings.alpha) ? settings.alpha : 1;
-        var beta = Utils.isDefined(settings.beta) ? settings.beta : 1;
-        var ignoreGameSpeed = settings.ignoreGameSpeed;
-        var stay = settings.stay;
-        var autoResumeTimer = -1;
-        // either the tweenBehavior or its parent entity
-        var tweenSubject;
-        // interpolation funciton to be generated
-        var interpolate = generateInterpolation(ease, startVal, endVal);
-        var tweenBehavior = new Object({
-            z: 0,
-            name: 'tweenBehavior',
-            start: function (data) {
-                if (onCreate) {
-                    onCreate.apply(tweenSubject);
-                }
-            },
-            update: function (data) {
-                //if an autoresume timer is running, decrease it and resume when it is done
-                if (--autoResumeTimer === 0) {
-                    tweenBehavior.resume();
-                }
-                if (!running) {
-                    return;
-                }
-                if (delayTimer < delay) {
-                    if (ignoreGameSpeed) {
-                        delayTimer += 1;
-                    } else {
-                        delayTimer += data.speed;
-                    }
-                    // run onUpdate before start
-                    if (applyOnDelay && onUpdate) {
-                        onUpdate.apply(tweenSubject, [interpolate(
-                            startVal,
-                            endVal,
-                            0,
-                            alpha,
-                            beta
-                        ), 0]);
-                    }
-                    return;
-                }
-                if (ignoreGameSpeed) {
-                    time += 1;
-                } else {
-                    time += data.speed;
-                }
-                // run onStart once
-                if (!hasStarted) {
-                    hasStarted = true;
-                    if (onStart) {
-                        onStart.apply(tweenSubject);
-                    }
-                }
-                // run update
-                if (onUpdate) {
-                    onUpdate.apply(tweenSubject, [interpolate(
-                        startVal,
-                        endVal,
-                        time / deltaT,
-                        alpha,
-                        beta
-                    ), time]);
-                }
-                // end
-                if (time >= deltaT && !stay) {
-                    if (time > deltaT && onUpdate) {
-                        //the tween didn't end neatly, so run onUpdate once more with a t of 1
-                        onUpdate.apply(tweenSubject, [interpolate(
-                            startVal,
-                            endVal,
-                            1,
-                            alpha,
-                            beta
-                        ), time]);
-                    }
-                    if (onComplete) {
-                        onComplete.apply(tweenSubject);
-                    }
-
-                    tweenBehavior.removeSelf();
-                }
-            },
-            attached: function (data) {
-                if (data.entity) {
-                    // an entity attached this behavior
-                    tweenSubject = data.entity;
-                }
-            },
-            /**
-             * Start the tween. Only call if you used stop() before.
-             * @function
-             * @instance
-             * @returns {Entity} Returns self
-             * @name begin
-             * @snippet #Tween.begin|Tween
-            begin();
-             */
-            begin: function () {
-                time = 0;
-                running = true;
-                return tweenSubject;
-            },
-            /**
-             * Stops the tween (note that the entity isn't removed).
-             * @function
-             * @instance
-             * @returns {Entity} Returns self
-             * @name stop
-             * @snippet #Tween.stop|Tween
-            stop();
-             */
-            stop: function () {
-                time = 0;
-                running = false;
-                return tweenSubject;
-            },
-            /**
-             * Pauses the tween. The tween will resume itself after a certain duration if provided.
-             * @function
-             * @instance
-             * @param {Number} [duration] - time after which to autoresume. If not provided the tween is paused indefinitely.
-             * @returns {Entity} Returns self
-             * @name pause
-             */
-            pause: function (duration) {
-                running = false;
-                //if a duration is provided, resume the tween after that duration.
-                if (duration) {
-                    autoResumeTimer = duration;
-                }
-                return tweenSubject;
-            },
-            /**
-             * Resumes the tween.
-             * @function
-             * @instance
-             * @returns {Entity} Returns self
-             * @name resume
-             */
-            resume: function () {
-                return tweenBehavior.begin();
-            },
-            /**
-             * Removes the tweenbehavior from tween collection or from parent Entity
-             * @function
-             * @instance
-             * @name removeSelf
-             */
-            removeSelf: function () {
-                if (tweenSubject === tweenBehavior) {
-                    Bento.objects.remove(tweenBehavior);
-                } else if (tweenSubject && tweenSubject.isEntity) {
-                    tweenSubject.remove(tweenBehavior);
-                }
-            }
-        });
-
-        tweenSubject = tweenBehavior;
-
-        // convert decay and growth to alpha
-        if (Utils.isDefined(settings.decay)) {
-            alpha = -settings.decay;
-        }
-        if (Utils.isDefined(settings.growth)) {
-            alpha = settings.growth;
-        }
-        if (Utils.isDefined(settings.oscillations)) {
-            beta = settings.oscillations;
-            if (settings.ease === 'sin' || settings.ease === 'cos') {
-                alpha = settings.oscillations;
-            }
-        }
-
-        // Assuming that when a tween is created when the game is paused,
-        // one wants to see the tween move during that pause
-        if (!Utils.isDefined(settings.updateWhenPaused)) {
-            tweenBehavior.updateWhenPaused = Bento.objects.isPaused();
-        }
-
-        // tween automatically starts
-        if (running) {
-            tweenBehavior.begin();
-        }
-
-        return tweenBehavior;
-    };
-
-    /**
-     * Main Tween module, applied immediately
-     */
-    var Tween = function (settings) {
-        // this is no longer an entity, to remove the overhead an entity has
-        // if developer wants to use the tween as an Entity, construct a Tween.TweenBehavior and
-        // attach to an Entity
-        var tweenBehavior = new TweenBehavior(settings);
-        Bento.objects.attach(tweenBehavior);
-        return tweenBehavior;
-    };
-
-    // Behaviour constructor
-    Tween.TweenBehavior = TweenBehavior;
-
-    // enums
-    Tween.LINEAR = 'linear';
-    Tween.QUADRATIC = 'quadratic';
-    Tween.CUBIC = 'cubic';
-    Tween.SQUAREROOT = 'squareroot';
-    Tween.CUBEROOT = 'cuberoot';
-    Tween.EXPONENTIAL = 'exponential';
-    Tween.ELASTIC = 'elastic';
-    Tween.SIN = 'sin';
-    Tween.COS = 'cos';
-    Tween.EASEINQUAD = 'easeInQuad';
-    Tween.EASEOUTQUAD = 'easeOutQuad';
-    Tween.EASEINOUTQUAD = 'easeInOutQuad';
-    Tween.EASEINCUBIC = 'easeInCubic';
-    Tween.EASEOUTCUBIC = 'easeOutCubic';
-    Tween.EASEINOUTCUBIC = 'easeInOutCubic';
-    Tween.EASEINQUART = 'easeInQuart';
-    Tween.EASEOUTQUART = 'easeOutQuart';
-    Tween.EASEINOUTQUART = 'easeInOutQuart';
-    Tween.EASEINQUINT = 'easeInQuint';
-    Tween.EASEOUTQUINT = 'easeOutQuint';
-    Tween.EASEINOUTQUINT = 'easeInOutQuint';
-    Tween.EASEINSINE = 'easeInSine';
-    Tween.EASEOUTSINE = 'easeOutSine';
-    Tween.EASEINOUTSINE = 'easeInOutSine';
-    Tween.EASEINEXPO = 'easeInExpo';
-    Tween.EASEOUTEXPO = 'easeOutExpo';
-    Tween.EASEINOUTEXPO = 'easeInOutExpo';
-    Tween.EASEINCIRC = 'easeInCirc';
-    Tween.EASEOUTCIRC = 'easeOutCirc';
-    Tween.EASEINOUTCIRC = 'easeInOutCirc';
-    Tween.EASEINELASTIC = 'easeInElastic';
-    Tween.EASEOUTELASTIC = 'easeOutElastic';
-    Tween.EASEINOUTELASTIC = 'easeInOutElastic';
-    Tween.EASEINBACK = 'easeInBack';
-    Tween.EASEOUTBACK = 'easeOutBack';
-    Tween.EASEINOUTBACK = 'easeInOutBack';
-    Tween.EASEINBOUNCE = 'easeInBounce';
-    Tween.EASEOUTBOUNCE = 'easeOutBounce';
-    Tween.EASEINOUTBOUNCE = 'easeInOutBounce';
-
-    // expose interpolations
-    Tween.interpolations = interpolations;
-    Tween.interpolationsRP = robbertPenner;
-
-    return Tween;
 });
 /**
  * Canvas 2d renderer
