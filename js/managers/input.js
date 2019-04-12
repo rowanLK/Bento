@@ -188,7 +188,8 @@ bento.define('bento/managers/input', [
                 evt.id = -1;
             },
             updatePointer = function (evt) {
-                var i = 0, l;
+                var i = 0,
+                    l;
                 for (i = 0, l = pointers.length; i < l; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers[i].position = evt.position;
@@ -199,7 +200,8 @@ bento.define('bento/managers/input', [
                 }
             },
             removePointer = function (evt) {
-                var i = 0, l;
+                var i = 0,
+                    l;
                 for (i = 0, l = pointers.length; i < l; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers.splice(i, 1);
@@ -442,7 +444,8 @@ bento.define('bento/managers/input', [
              * continually checking for input is the only way for now.
              */
             initRemote = function () {
-                var i = 0, l,
+                var i = 0,
+                    l,
                     tvOSGamepads;
 
                 if (window.ejecta) {
@@ -479,7 +482,8 @@ bento.define('bento/managers/input', [
                 }
             },
             remoteButtonDown = function (id) {
-                var i = 0, l,
+                var i = 0,
+                    l,
                     names = Utils.remoteMapping[id];
                 // save value in array
                 remoteButtonsPressed[id] = true;
@@ -488,7 +492,8 @@ bento.define('bento/managers/input', [
                     remoteButtonStates[names[i]] = true;
             },
             remoteButtonUp = function (id) {
-                var i = 0, l,
+                var i = 0,
+                    l,
                     names = Utils.remoteMapping[id];
                 // save value in array
                 remoteButtonsPressed[id] = false;
@@ -594,8 +599,6 @@ bento.define('bento/managers/input', [
         // note: it's a bit tricky with order of event listeners, make sure resizing is done first
         // otherwise updateCanvas needs to be called manually afterwards
         if (canvas) {
-            window.addEventListener('resize', updateCanvas, false);
-            window.addEventListener('orientationchange', updateCanvas, false);
             updateCanvas();
         }
 
