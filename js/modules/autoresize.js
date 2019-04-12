@@ -1,70 +1,45 @@
 /**
- * A helper module that returns a rectangle with the same aspect ratio as the screen size.
- * Assuming portrait mode, autoresize holds the width and then fills up the height
+ * A helper module that returns an object with a correctly sized width and height for the aspect ratio
+ * 'type' defines the allowed orientation
  * If the height goes over the max or minimum size, then the width gets adapted.
  * <br>Exports: Constructor
  * @module bento/autoresize
  * @moduleName AutoResize
- * @param {Rectangle} canvasDimension - Default size
- * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
- * then autoresize will start filling up the width
- * @param {Boolean} isLandscape - Game is landscape, swap operations of width and height
- * @returns Rectangle
+ * @param {Number} minWidth - Lowest clamped width in portrait. Smaller than this, and height is scaled up to fit the aspect ratio. Acts as a 'target dimension'
+ * @param {Number} maxWidth - Max clamped width in portrait.
+ * @param {Number} minHeight - Lowest clamped height in portrait. . Smaller than this, and width is scaled up to fit the aspect ratio. Acts as a 'target dimension'
+ * @param {Number} maxHeight - Max clamped height in portrait.
+ * @param {String} lockedRotation - 'portrait' or 'landscape' - Enforces an aspect ratio for one or the other, not necessary if forcable by other means
+ * @returns Object
  */
 bento.define('bento/autoresize', [
     'bento/utils'
 ], function (Utils) {
-    return function (canvasDimension, minSize, maxSize, isLandscape) {
-        var originalDimension = canvasDimension.clone(),
-            screenSize = Utils.getScreenSize(),
-            innerWidth = screenSize.width,
-            innerHeight = screenSize.height,
-            devicePixelRatio = window.devicePixelRatio,
-            deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
-            deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,
-            swap = function () {
-                // swap width and height
-                var temp = canvasDimension.width;
-                canvasDimension.width = canvasDimension.height;
-                canvasDimension.height = temp;
-            },
-            setup = function () {
-                var ratio = deviceWidth / deviceHeight;
+    return function (minWidth, maxWidth, minHeight, maxHeight, lockedRotation) {
+        var screenSize = Utils.getScreenSize();
+        // get the ration of screen height to width 
+        var ratio = screenSize.width / screenSize.height;
+        // work out if we are currently in portrait or landscape
+        var isPortrait = (ratio <= 1);
 
-                if (ratio > 1) {
-                    // user is holding device wrong
-                    ratio = 1 / ratio;
-                }
-
-                canvasDimension.height = Math.round(canvasDimension.width / ratio);
-
-                // exceed min size?
-                if (canvasDimension.height < minSize) {
-                    canvasDimension.height = minSize;
-                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
-                }
-                if (canvasDimension.height > maxSize) {
-                    canvasDimension.height = maxSize;
-                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
-                }
-
-                if (isLandscape) {
-                    swap();
-                }
-
-                return canvasDimension;
-            },
-            scrollAndResize = function () {
-                window.scrollTo(0, 0);
-            };
-
-
-        window.addEventListener('orientationchange', scrollAndResize, false);
-
-        if (isLandscape) {
-            swap();
+        //force a specific rotation
+        switch (lockedRotation) {
+        case 'portrait':
+            isPortrait = true;
+            break;
+        case 'landscape':
+            isPortrait = false;
+            break;
         }
 
-        return setup();
+        // create new object with correctly scaled and clamped dimensions
+        var newDimension = (isPortrait) ? {
+            width: Utils.clamp(minWidth, minHeight * ratio, maxWidth),
+            height: Utils.clamp(minHeight, minWidth / ratio, maxHeight)
+        } : {
+            width: Utils.clamp(minHeight, minWidth * ratio, maxHeight),
+            height: Utils.clamp(minWidth, minHeight / ratio, maxWidth)
+        };
+        return newDimension;
     };
 });

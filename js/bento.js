@@ -171,43 +171,29 @@ bento.define('bento', [
     /**
      * Callback for responsive resizing
      */
-    var onResize = function () {
+    var performResize = function () {
         var viewport = Bento.getViewport();
-        var pixiRenderer;
         var screenSize = Utils.getScreenSize();
+        var pixiRenderer;
         var pixelSize = bentoSettings.pixelSize;
         var minWidth = bentoSettings.responsiveResize.minWidth;
         var maxWidth = bentoSettings.responsiveResize.maxWidth;
         var minHeight = bentoSettings.responsiveResize.minHeight;
         var maxHeight = bentoSettings.responsiveResize.maxHeight;
-        var landscape = bentoSettings.responsiveResize.landscape;
-        // lock width, fill height
+        var lockedRotation = bentoSettings.responsiveResize.lockedRotation;
+
+        // get scaled screen res
         var canvasDimension = new AutoResize(
-            new Rectangle(0, 0, minWidth, minHeight),
-            landscape ? minWidth : minHeight,
-            landscape ? maxWidth : maxHeight,
-            landscape
+            minWidth,
+            maxWidth,
+            minHeight,
+            maxHeight,
+            lockedRotation
         );
 
+        // we don't have a canvas?
         if (!canvas) {
             return;
-        }
-
-        // respect max/min of other dimension
-        if (landscape) {
-            if (canvasDimension.height > maxHeight) {
-                canvasDimension.height = maxHeight;
-            }
-            if (canvasDimension.height < minHeight) {
-                canvasDimension.height = minHeight;
-            }
-        } else {
-            if (canvasDimension.width > maxWidth) {
-                canvasDimension.width = maxWidth;
-            }
-            if (canvasDimension.width < minWidth) {
-                canvasDimension.width = minWidth;
-            }
         }
 
         // set canvas and viewport sizes
@@ -218,13 +204,8 @@ bento.define('bento', [
 
         // css fit to height
         if (canvas.style) {
-            if (landscape) {
-                canvas.style.width = screenSize.width + 'px';
-                canvas.style.height = (screenSize.width / (viewport.width / viewport.height)) + 'px';
-            } else {
-                canvas.style.height = screenSize.height + 'px';
-                canvas.style.width = (screenSize.height * (viewport.width / viewport.height)) + 'px';
-            }
+            canvas.style.height = screenSize.height + 'px';
+            canvas.style.width = (screenSize.height * (viewport.width / viewport.height)) + 'px';
         }
 
         // log results
@@ -242,9 +223,20 @@ bento.define('bento', [
                 // use the resize function on pixi
                 pixiRenderer = Bento.getRenderer().getPixiRenderer();
                 pixiRenderer.resize(canvas.width, canvas.height);
-            } 
-
+            }
         }
+        // update input and canvas
+        Bento.input.updateCanvas();
+        // clear the task id
+        resizeTaskId = null;
+    };
+    var resizeTaskId = null;
+    var onResize = function () {
+        // start a 100ms timeout, if interupted with a repeat event start over
+        if (resizeTaskId != null) {
+            window.clearTimeout(resizeTaskId);
+        }
+        resizeTaskId = window.setTimeout(performResize, 100);
     };
     /**
      * Take screenshots based on events
