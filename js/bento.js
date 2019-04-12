@@ -295,12 +295,12 @@ bento.define('bento', [
          * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
          * @param {Boolean} settings.autoDisposeTextures - Removes all internal textures on screen ends to reduce memory usage
          * @param {Object} settings.responsiveResize - Bento's strategy of resizing to mobile screen sizes. 
-         * In case of portrait: Bento locks the width and fills the height. If min/max height is reached, the width is adapted up to its min/max.
-         * @param {Boolean} settings.responsiveResize.landscape - Portrait (false) or Landscape (true)
-         * @param {Number} settings.responsiveResize.minWidth - Minimum width
-         * @param {Number} settings.responsiveResize.maxWidth - Maximum width
-         * @param {Number} settings.responsiveResize.minHeight - Minimum height
-         * @param {Number} settings.responsiveResize.maxHeight - Maximum height
+         * In case of portrait: Bento locks the  min height and fills the width by aspect ratio until the max width is reached. If min width is reached, the height is then adapted by aspect ratio up to it's defined maximum.
+         * @param {Number} settings.responsiveResize.minWidth - Minimum width in portrait.
+         * @param {Number} settings.responsiveResize.maxWidth - Maximum width in portrait.
+         * @param {Number} settings.responsiveResize.minHeight - Minimum height in portrait.
+         * @param {Number} settings.responsiveResize.maxHeight - Maximum height in portrait.
+         * @param {String} settings.responsiveResize.lockedRotation - 'portrait' or 'landscape' enforces an aspect ratio corrseponding to this, instead of handling this automatically, unnecessary to be used if enforcable by another means
          * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
          * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
          * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
