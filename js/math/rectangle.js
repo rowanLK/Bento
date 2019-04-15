@@ -323,6 +323,41 @@ bento.define('bento/math/rectangle', [
         return this;
     };
     /**
+       * Ensures the rectangle contains the provided position, extending if necessary.
+       * @function
+       * param {Vector2} position - the position the rectangle should contain
+       * @returns {Rectangle} the update rectangle
+       * @instance
+       * @name includePosition
+       * @snippet #Rectangle.includePosition|Rectangle
+          includePosition(${1:Vector2});
+    */
+    Rectangle.prototype.includePosition = function (position) {
+        if (this.hasPosition(position)) return this;
+
+        var diff;
+
+        if (position.x < this.x) {
+            diff = this.x - position.x;
+            this.x -= diff;
+            this.width += diff;
+        } else if (position.x > this.x + this.width) {
+            diff = position.x - (this.x + this.width);
+            this.width += diff;
+        }
+
+        if (position.y < this.y) {
+            diff = this.y - position.y;
+            this.y -= diff;
+            this.height += diff;
+        } else if (position.y > this.y + this.height) {
+            diff = position.y - (this.y + this.height);
+            this.height += diff;
+        }
+
+        return this;
+    };
+    /**
      * Returns one of the corners are vector position
      * @function
      * param {Number} corner - 0: topleft, 1: topright, 2: bottomleft, 3: bottomright, 4: center
