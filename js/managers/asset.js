@@ -1350,6 +1350,12 @@ bento.define('bento/managers/asset', [
                     callback();
                 }
             };
+            // refresh query
+            now = Date.now();
+
+            // refresh cache in textures
+            assets.texturePacker = {};
+
             // collect groups
             for (group in assetGroups) {
                 if (!assetGroups.hasOwnProperty(group)) {
@@ -1568,6 +1574,7 @@ bento.define('bento/managers/asset', [
                 Utils.forEach(assets.images, function (image) {
                     if (image && image.texture && image.texture.destroy) {
                         image.texture.destroy();
+                        image.texture = null;
                     }
                 });
             });
