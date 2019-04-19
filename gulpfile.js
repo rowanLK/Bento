@@ -4,6 +4,7 @@ var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var jshint = require('gulp-jshint');
 var addsrc = require('gulp-add-src');
+var sort = require('gulp-sort');
 // var exec = require('gulp-exec');
 var exec = require('child_process').exec;
 var fs = require('fs');
@@ -13,18 +14,19 @@ gulp.task('default', ['build', 'updateVersion'], function () {});
 gulp.task('build', [], function () {
     // place code for your default task here
     return gulp.src([
-            'js/**/main.js',
-            'js/lib/lzstring.js',
-            'js/lib/audia.js',
             'js/**/*.js',
+            '!js/main.js',
             '!js/lib/bento-require.js'
         ])
+        // consistent order
+        .pipe(sort())
         // check for mistakes
         /*.pipe(jshint({
             newcap: false
         }))
         .pipe(jshint.reporter())*/
-        // add requirejs
+        // place these two files on top
+        .pipe(addsrc.prepend('js/main.js'))
         .pipe(addsrc.prepend('node_modules/requirejs/require.js'))
         // output bento.js
         .pipe(concat('bento.js'))

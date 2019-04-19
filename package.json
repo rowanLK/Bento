@@ -14,6 +14,7 @@
         "gulp-jshint": "1.11.2",
         "gulp-rename": "1.2.2",
         "gulp-uglify": "1.5.1",
+        "gulp-sort": "2.0.0",
         "jsdoc": "3.4.0",
         "minami": "git://github.com/LuckyKat/minami.git",
         "requirejs": "2.1.9"
