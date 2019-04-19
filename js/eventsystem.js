@@ -16,31 +16,36 @@ EventSystem.fire('${1}', ${2:data});
 bento.define('bento/eventsystem', [
     'bento/utils'
 ], function (Utils) {
-    var isLoopingEvents = false;
-    var events = {};
-    /*events = {
-            [String eventName]: [Array listeners = {callback: Function, context: this}]
-        }*/
-    var removedEvents = [];
-    var cleanEventListeners = function () {
-        var i, j, l, listeners, eventName, callback, context;
+    
+    var isLooping = {};  // Mapping of event name to bool (true if this event is currently being looped over)
+    var events = {};     // Mapping of event name to array[{callback:Function, context:Object}]
+    var removed = {};    // Mapping of event name to array[{callback:Function, context:Object}]
 
-        if (isLoopingEvents) {
+    // Clear the looping status of all events if an unhandled exception occurs.
+    // Without this, the event would be blocked from ever occuring again.
+    window.addEventListener('error', function (errorEvent) {
+        isLooping = {};
+    });
+
+    // Clean a single event
+    // (remove any listeners that are queued for removal)
+    var cleanEvent = function (eventName) {
+        var i, j, l, callback, context;
+
+        var removedEvents = removed[eventName];
+        var listeners = events[eventName];
+        if (!listeners || !removedEvents) {
             return;
         }
+
         for (j = 0, l = removedEvents.length; j < l; ++j) {
-            eventName = removedEvents[j].eventName;
-            if (removedEvents[j].reset === true) {
+            if (removedEvents[j].reset) {
                 // reset the whole event listener
                 events[eventName] = [];
-                continue;
+                break;
             }
             callback = removedEvents[j].callback;
             context = removedEvents[j].context;
-            if (Utils.isUndefined(events[eventName])) {
-                continue;
-            }
-            listeners = events[eventName];
             for (i = listeners.length - 1; i >= 0; --i) {
                 if (listeners[i].callback === callback) {
                     if (context) {
@@ -55,57 +60,74 @@ bento.define('bento/eventsystem', [
                 }
             }
         }
-        removedEvents = [];
+        removed[eventName] = [];
     };
+
     var addEventListener = function (eventName, callback, context) {
         if (Utils.isUndefined(events[eventName])) {
             events[eventName] = [];
+            isLooping[eventName] = false;
+            removed[eventName] = [];
         }
         events[eventName].push({
             callback: callback,
             context: context
         });
     };
+
     var removeEventListener = function (eventName, callback, context) {
-        var listeners = events[eventName];
-        if (!listeners || listeners.length === 0) {
+        var i, listeners, removedEvents;
+        
+        listeners = events[eventName];
+        removedEvents = removed[eventName];
+        if (!listeners || !removedEvents) {
             return;
         }
-        removedEvents.push({
-            eventName: eventName,
-            callback: callback,
-            context: context
-        });
 
-        if (!isLoopingEvents) {
-            // can clean immediately
-            cleanEventListeners();
+        if (isLooping[eventName]) {
+            // remove this event after we are done looping over it
+            removedEvents.push({
+                callback: callback,
+                context: context
+            });
+        } else {
+            // remove this event immediately
+            for (i = listeners.length - 1; i >= 0; --i) {
+                if (listeners[i].callback === callback) {
+                    if (context) {
+                        if (listeners[i].context === context) {
+                            events[eventName].splice(i, 1);
+                            break;
+                        }
+                    } else {
+                        events[eventName].splice(i, 1);
+                        break;
+                    }
+                }
+            }
         }
     };
+
     var clearEventListeners = function (eventName) {
         var listeners = events[eventName];
-        if (!listeners || listeners.length === 0) {
+        var removedEvents = removed[eventName];
+
+        if (!listeners || !removedEvents) {
             return;
         }
-        removedEvents.push({
-            eventName: eventName,
-            reset: true
-        });
-
-        if (!isLoopingEvents) {
-            // can clean immediately
-            cleanEventListeners();
+        if (isLooping[eventName]) {
+            // reset the whole event after we're done looping over it
+            removedEvents.push({
+                reset: true
+            });
+        } else {
+            // reset the whole event now
+            events[eventName] = [];
         }
     };
     var stopPropagation = false;
     var EventSystem = {
         SortedEventSystem: null,
-        /**
-         * Ignore warnings
-         * @instance
-         * @name suppressWarnings
-         */
-        suppressWarnings: false,
         /**
          * Stops the current event from further propagating
          * @function
@@ -139,7 +161,7 @@ bento.define('bento/eventsystem', [
             stopPropagation = false;
 
             // clean up before firing event
-            cleanEventListeners();
+            cleanEvent(eventName);
 
             if (!Utils.isString(eventName)) {
                 eventName = eventName.toString();
@@ -148,8 +170,13 @@ bento.define('bento/eventsystem', [
                 return;
             }
             listeners = events[eventName];
+            if (isLooping[eventName]) {
+                Utils.log('ERROR: Already looping over event "' + eventName + '"');
+                return;
+            }
+            isLooping[eventName] = true;
+
             for (i = 0, l = listeners.length; i < l; ++i) {
-                isLoopingEvents = true;
                 listener = listeners[i];
                 if (listener) {
                     if (listener.context) {
@@ -157,12 +184,6 @@ bento.define('bento/eventsystem', [
                     } else {
                         listener.callback(eventData);
                     }
-                } else if (!this.suppressWarnings) {
-                    // TODO: this warning appears when event listeners are removed
-                    // during another listener being triggered. For example, removing an entity
-                    // while that entity was listening to the same event.
-                    // In a lot of cases, this is normal... Consider removing this warning?
-                    // console.log('Warning: listener is not a function');
                 }
                 if (stopPropagation) {
                     stopPropagation = false;
@@ -170,7 +191,7 @@ bento.define('bento/eventsystem', [
                 }
 
             }
-            isLoopingEvents = false;
+            isLooping[eventName] = false;
         },
         addEventListener: addEventListener,
         removeEventListener: removeEventListener,
