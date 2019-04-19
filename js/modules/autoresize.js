@@ -34,11 +34,11 @@ bento.define('bento/autoresize', [
 
         // create new object with correctly scaled and clamped dimensions
         var newDimension = (isPortrait) ? {
-            width: Utils.clamp(minWidth, minHeight * ratio, maxWidth),
-            height: Utils.clamp(minHeight, minWidth / ratio, maxHeight)
+            width: Math.ceil(Utils.clamp(minWidth, minHeight * ratio, maxWidth)),
+            height: Math.ceil(Utils.clamp(minHeight, minWidth / ratio, maxHeight))
         } : {
-            width: Utils.clamp(minHeight, minWidth * ratio, maxHeight),
-            height: Utils.clamp(minWidth, minHeight / ratio, maxWidth)
+            width: Math.ceil(Utils.clamp(minHeight, minWidth * ratio, maxHeight)),
+            height: Math.ceil(Utils.clamp(minWidth, minHeight / ratio, maxWidth))
         };
         return newDimension;
     };
