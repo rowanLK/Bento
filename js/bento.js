@@ -171,43 +171,29 @@ bento.define('bento', [
     /**
      * Callback for responsive resizing
      */
-    var onResize = function () {
+    var performResize = function () {
         var viewport = Bento.getViewport();
-        var pixiRenderer;
         var screenSize = Utils.getScreenSize();
+        var pixiRenderer;
         var pixelSize = bentoSettings.pixelSize;
         var minWidth = bentoSettings.responsiveResize.minWidth;
         var maxWidth = bentoSettings.responsiveResize.maxWidth;
         var minHeight = bentoSettings.responsiveResize.minHeight;
         var maxHeight = bentoSettings.responsiveResize.maxHeight;
-        var landscape = bentoSettings.responsiveResize.landscape;
-        // lock width, fill height
+        var lockedRotation = bentoSettings.responsiveResize.lockedRotation;
+
+        // get scaled screen res
         var canvasDimension = new AutoResize(
-            new Rectangle(0, 0, minWidth, minHeight),
-            landscape ? minWidth : minHeight,
-            landscape ? maxWidth : maxHeight,
-            landscape
+            minWidth,
+            maxWidth,
+            minHeight,
+            maxHeight,
+            lockedRotation
         );
 
+        // we don't have a canvas?
         if (!canvas) {
             return;
-        }
-
-        // respect max/min of other dimension
-        if (landscape) {
-            if (canvasDimension.height > maxHeight) {
-                canvasDimension.height = maxHeight;
-            }
-            if (canvasDimension.height < minHeight) {
-                canvasDimension.height = minHeight;
-            }
-        } else {
-            if (canvasDimension.width > maxWidth) {
-                canvasDimension.width = maxWidth;
-            }
-            if (canvasDimension.width < minWidth) {
-                canvasDimension.width = minWidth;
-            }
         }
 
         // set canvas and viewport sizes
@@ -218,13 +204,8 @@ bento.define('bento', [
 
         // css fit to height
         if (canvas.style) {
-            if (landscape) {
-                canvas.style.width = screenSize.width + 'px';
-                canvas.style.height = (screenSize.width / (viewport.width / viewport.height)) + 'px';
-            } else {
-                canvas.style.height = screenSize.height + 'px';
-                canvas.style.width = (screenSize.height * (viewport.width / viewport.height)) + 'px';
-            }
+            canvas.style.height = screenSize.height + 'px';
+            canvas.style.width = (screenSize.height * (viewport.width / viewport.height)) + 'px';
         }
 
         // log results
@@ -242,9 +223,20 @@ bento.define('bento', [
                 // use the resize function on pixi
                 pixiRenderer = Bento.getRenderer().getPixiRenderer();
                 pixiRenderer.resize(canvas.width, canvas.height);
-            } 
-
+            }
         }
+        // update input and canvas
+        Bento.input.updateCanvas();
+        // clear the task id
+        resizeTaskId = null;
+    };
+    var resizeTaskId = null;
+    var onResize = function () {
+        // start a 100ms timeout, if interupted with a repeat event start over
+        if (resizeTaskId != null) {
+            window.clearTimeout(resizeTaskId);
+        }
+        resizeTaskId = window.setTimeout(performResize, 100);
     };
     /**
      * Take screenshots based on events
@@ -303,12 +295,12 @@ bento.define('bento', [
          * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
          * @param {Boolean} settings.autoDisposeTextures - Removes all internal textures on screen ends to reduce memory usage
          * @param {Object} settings.responsiveResize - Bento's strategy of resizing to mobile screen sizes. 
-         * In case of portrait: Bento locks the width and fills the height. If min/max height is reached, the width is adapted up to its min/max.
-         * @param {Boolean} settings.responsiveResize.landscape - Portrait (false) or Landscape (true)
-         * @param {Number} settings.responsiveResize.minWidth - Minimum width
-         * @param {Number} settings.responsiveResize.maxWidth - Maximum width
-         * @param {Number} settings.responsiveResize.minHeight - Minimum height
-         * @param {Number} settings.responsiveResize.maxHeight - Maximum height
+         * In case of portrait: Bento locks the  min height and fills the width by aspect ratio until the max width is reached. If min width is reached, the height is then adapted by aspect ratio up to it's defined maximum.
+         * @param {Number} settings.responsiveResize.minWidth - Minimum width in portrait.
+         * @param {Number} settings.responsiveResize.maxWidth - Maximum width in portrait.
+         * @param {Number} settings.responsiveResize.minHeight - Minimum height in portrait.
+         * @param {Number} settings.responsiveResize.maxHeight - Maximum height in portrait.
+         * @param {String} settings.responsiveResize.lockedRotation - 'portrait' or 'landscape' enforces an aspect ratio corrseponding to this, instead of handling this automatically, unnecessary to be used if enforcable by another means
          * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
          * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
          * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
