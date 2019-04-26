@@ -490,6 +490,8 @@ bento.define('bento/tween', [
         // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
             tweenBehavior.updateWhenPaused = Bento.objects.isPaused();
+        } else {
+            tweenBehavior.updateWhenPaused = settings.updateWhenPaused;
         }
 
         // tween automatically starts
