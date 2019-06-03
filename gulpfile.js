@@ -9,9 +9,7 @@ var sort = require('gulp-sort');
 var exec = require('child_process').exec;
 var fs = require('fs');
 
-gulp.task('default', ['build', 'updateVersion'], function () {});
-
-gulp.task('build', [], function () {
+gulp.task('build', function () {
     // place code for your default task here
     return gulp.src([
             'js/**/*.js',
@@ -32,7 +30,7 @@ gulp.task('build', [], function () {
         .pipe(concat('bento.js'))
         .pipe(gulp.dest('build'));
 });
-gulp.task('updateVersion', ['build'], function (callback) {
+gulp.task('updateVersion', function (callback) {
     var pjson = require('./package.json');
     var fs = require('fs');
     var path = require('path');
@@ -55,7 +53,7 @@ gulp.task('updateVersion', ['build'], function (callback) {
     });
 });
 
-gulp.task('min', [], function () {
+gulp.task('min', function () {
     // place code for your default task here
     return gulp.src([
             'js/**/main.js',
@@ -73,7 +71,7 @@ gulp.task('min', [], function () {
         .pipe(gulp.dest('build'));
 });
 
-gulp.task('amdless', [], function () {
+gulp.task('amdless', function () {
     // place code for your default task here
     return gulp.src([
             'js/**/main.js',
@@ -89,7 +87,7 @@ gulp.task('amdless', [], function () {
         .pipe(gulp.dest('build'));
 });
 
-gulp.task('switch', [], function () {
+gulp.task('switch', function () {
     // place code for your default task here
     return gulp.src([
             'js/lib/bento-require.js',
@@ -141,3 +139,8 @@ gulp.task('docwatch', function () {
         }, ['doc']
     );
 });
+
+gulp.task('default', gulp.series(
+    'build',
+    'updateVersion'
+));

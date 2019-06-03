@@ -7,14 +7,15 @@
         "url": "http://lucky-kat.com"
     },
     "devDependencies": {
-        "gulp": "3.9.1",
-        "gulp-add-src": "0.2.0",
-        "gulp-concat": "2.6.0",
-        "gulp-exec": "2.1.2",
-        "gulp-jshint": "1.11.2",
-        "gulp-rename": "1.2.2",
-        "gulp-uglify": "1.5.1",
-        "gulp-sort": "2.0.0",
+        "gulp": "*",
+        "gulp-add-src": "*",
+        "gulp-concat": "*",
+        "gulp-exec": "*",
+        "gulp-jshint": "*",
+        "gulp-rename": "*",
+        "gulp-uglify": "*",
+        "gulp-sort": "*",
+        "jshint": "*",
         "jsdoc": "3.4.0",
         "minami": "git://github.com/LuckyKat/minami.git",
         "requirejs": "2.1.9"
