@@ -166,14 +166,27 @@ bento.define('bento/tiledreader', [], function () {
                 onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
             };
             var objectCallback = function (object) {
-                var tileIndex;
                 var tilesetData;
+                var tileIndex;
+                var flipX;
+                var flipY;
+                var flipDiagonal;
                 var gid = object.gid;
                 if (gid) {
+                    // read out the flags
+                    flipX = (gid & FLIPX);
+                    flipY = (gid & FLIPY);
+                    flipDiagonal = (gid & FLIPDIAGONAL);
+
+                    // clear flags
+                    gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
+
                     // get the corresponding tileset and tile index
                     tilesetData = getTileset(gid);
                     tileIndex = gid - tilesetData.firstGid;
-                    onObject(object, tilesetData.tileSet, tileIndex);
+                    
+                    // callback
+                    onObject(object, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
                 } else {
                     // gid may not be present, in that case it's a rectangle or other shape
                     onObject(object);

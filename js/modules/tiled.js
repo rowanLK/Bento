@@ -372,7 +372,6 @@ bento.define('bento/tiled', [
 
                 // get source position
                 var source = getSourceTile(tileSet, tileIndex);
-                var layerIndex = currentLayer;
 
                 // retrieve the corresponding image asset
                 // there is a very high chance the url contains "images/" since the json files
@@ -398,12 +397,12 @@ bento.define('bento/tiled', [
                 );
 
                 if (onTile) {
-                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);
+                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, currentLayer);
                 }
             },
-            onObject: function (object, tileSet, tileIndex) {
+            onObject: function (object, tileSet, tileIndex, flipX, flipY, flipDiagonal) {
                 if (onObject) {
-                    onObject.call(tiled, object, tileSet, tileIndex, currentLayer);
+                    onObject.call(tiled, object, tileSet, tileIndex, flipX, flipY, flipDiagonal, currentLayer);
                 }
                 if (settings.spawnEntities) {
                     // note: we can pass currentLayer, as onLayer is synchronously called before onObject
