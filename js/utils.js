@@ -441,7 +441,7 @@ bento.define('bento/utils', [], function () {
                 if (platform === 'android' || platform === 'amazon') {
                     return true;
                 }
-            }  else if (window.device) {
+            } else if (window.device) {
                 if (window.device && window.device.platform) {
                     return window.device.platform.toLowerCase() === 'android';
                 }
@@ -581,7 +581,10 @@ Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
                 width: 0,
                 height: 0
             };
-            if (window.mraid) {
+            if (window.dapi) {
+                screenSize.width = window.dapi.getScreenSize().width;
+                screenSize.height = window.dapi.getScreenSize().height;
+            } else if (window.mraid) {
                 screenSize.width = window.mraid.getMaxSize().width;
                 screenSize.height = window.mraid.getMaxSize().height;
             } else {
