@@ -110,6 +110,11 @@ bento.define('bento/managers/object', [
             module.timer += data.speed;
             module.ticker += 1;
 
+            /**
+             * Fired before the Object manager's update loop
+             * @event preUpdate 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('preUpdate', data);
             for (i = 0; i < objects.length; ++i) {
                 object = objects[i];
@@ -125,6 +130,11 @@ bento.define('bento/managers/object', [
                     object.rootIndex = i;
                 }
             }
+            /**
+             * Fired after the Object manager's update loop
+             * @event postUpdate 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('postUpdate', data);
         };
         var draw = function (data) {
@@ -132,8 +142,19 @@ bento.define('bento/managers/object', [
                 i, l;
             data = data || getGameData();
 
+
+            /**
+             * Fired before the Object manager's draw loop, before start of renderer
+             * @event preDraw 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('preDraw', data);
             data.renderer.begin();
+            /**
+             * Fired before the Object manager's draw loop, after start of renderer
+             * @event preDrawLoop 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('preDrawLoop', data);
             for (i = 0, l = objects.length; i < l; ++i) {
                 object = objects[i];
@@ -145,8 +166,18 @@ bento.define('bento/managers/object', [
                     object.draw(data);
                 }
             }
+            /**
+             * Fired after the Object manager's draw loop, before end of renderer
+             * @event postDrawLoop 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('postDrawLoop', data);
             data.renderer.flush();
+            /**
+             * Fired after the Object manager's draw loop, after end of renderer
+             * @event postDraw 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('postDraw', data);
         };
         var attach = function (object) {

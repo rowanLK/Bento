@@ -52,6 +52,11 @@ bento.define('bento/managers/screen', [
                     if (currentScreen.onShow) {
                         currentScreen.onShow(data);
                     }
+                    /**
+                     * Fired when a new screen is shown using Bento.screens.show
+                     * @event screenShown 
+                     * @param {Screen} screen - Bento screen object (not to be confused with browser's screen object)
+                     */
                     EventSystem.fire('screenShown', currentScreen);
                     if (callback) {
                         callback();
@@ -85,6 +90,11 @@ bento.define('bento/managers/screen', [
                 if (currentScreen.onHide) {
                     currentScreen.onHide(data);
                 }
+                /**
+                 * Fired when a previous screen is hidden (typically before Bento.screens.show)
+                 * @event screenHidden
+                 * @param {Screen} screen - Screen object that was hidden 
+                 */
                 EventSystem.fire('screenHidden', currentScreen);
                 currentScreen = null;
             },

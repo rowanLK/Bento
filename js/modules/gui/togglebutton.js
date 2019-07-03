@@ -76,47 +76,67 @@ bento.define('bento/gui/togglebutton', [
         var clickable = new Clickable({
             sort: settings.sort,
             ignorePauseDuringPointerUpEvent: settings.ignorePauseDuringPointerUpEvent,
-            onClick: function () {
+            onClick: function (data) {
+                if (!active) {
+                    return;
+                }
+                /**
+                 * Fired by any ToggleButton's button down
+                 * @event toggleButton-toggle-down
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
+                sprite.setAnimation('down');
+                EventSystem.fire('toggleButton-toggle-down', {
+                    entity: entity,
+                    event: 'onClick',
+                    data: data
+                });
+            },
+            onHoldEnter: function (data) {
                 if (!active) {
                     return;
                 }
                 sprite.setAnimation('down');
                 EventSystem.fire('toggleButton-toggle-down', {
                     entity: entity,
-                    event: 'onClick'
+                    event: 'onHoldEnter',
+                    data: data
                 });
             },
-            onHoldEnter: function () {
+            onHoldLeave: function (data) {
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('down');
-                EventSystem.fire('toggleButton-toggle-down', {
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                /**
+                 * Fired by any ToggleButton's button up
+                 * @event toggleButton-toggle-up
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
+                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                     entity: entity,
-                    event: 'onHoldEnter'
+                    event: 'onHoldLeave',
+                    data: data
                 });
             },
-            onHoldLeave: function () {
+            pointerUp: function (data) {
                 if (!active) {
                     return;
                 }
                 sprite.setAnimation(toggled ? 'down' : 'up');
                 EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                     entity: entity,
-                    event: 'onHoldLeave'
+                    event: 'pointerUp',
+                    data: data
                 });
             },
-            pointerUp: function () {
-                if (!active) {
-                    return;
-                }
-                sprite.setAnimation(toggled ? 'down' : 'up');
-                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
-                    entity: entity,
-                    event: 'pointerUp'
-                });
-            },
-            onHoldEnd: function () {
+            onHoldEnd: function (data) {
                 if (!active) {
                     return;
                 }
@@ -133,9 +153,18 @@ bento.define('bento/gui/togglebutton', [
                     }
                 }
                 sprite.setAnimation(toggled ? 'down' : 'up');
+                /**
+                 * Fired by any ToggleButton's toggle
+                 * @event toggleButton-onToggle
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
                 EventSystem.fire('toggleButton-onToggle', {
                     entity: entity,
-                    event: 'onHoldEnd'
+                    event: 'onHoldEnd',
+                    data: data
                 });
             }
         });
@@ -270,11 +299,23 @@ bento.define('bento/gui/togglebutton', [
         entity.attach({
             name: 'attachComponent',
             start: function () {
+                /**
+                 * Fired by any ToggleButtons's start behavior
+                 * @event toggleButton-start 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 */
                 EventSystem.fire('toggleButton-start', {
                     entity: entity
                 });
             },
             destroy: function () {
+                /**
+                 * Fired by any ToggleButtons's destroy behavior
+                 * @event toggleButton-destroy 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 */
                 EventSystem.fire('toggleButton-destroy', {
                     entity: entity
                 });

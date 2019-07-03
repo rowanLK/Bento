@@ -2303,43 +2303,29 @@ bento.define('bento', [
     /**
      * Callback for responsive resizing
      */
-    var onResize = function () {
+    var performResize = function () {
         var viewport = Bento.getViewport();
-        var pixiRenderer;
         var screenSize = Utils.getScreenSize();
+        var pixiRenderer;
         var pixelSize = bentoSettings.pixelSize;
         var minWidth = bentoSettings.responsiveResize.minWidth;
         var maxWidth = bentoSettings.responsiveResize.maxWidth;
         var minHeight = bentoSettings.responsiveResize.minHeight;
         var maxHeight = bentoSettings.responsiveResize.maxHeight;
-        var landscape = bentoSettings.responsiveResize.landscape;
-        // lock width, fill height
+        var lockedRotation = bentoSettings.responsiveResize.lockedRotation;
+
+        // get scaled screen res
         var canvasDimension = new AutoResize(
-            new Rectangle(0, 0, minWidth, minHeight),
-            landscape ? minWidth : minHeight,
-            landscape ? maxWidth : maxHeight,
-            landscape
+            minWidth,
+            maxWidth,
+            minHeight,
+            maxHeight,
+            lockedRotation
         );
 
+        // we don't have a canvas?
         if (!canvas) {
             return;
-        }
-
-        // respect max/min of other dimension
-        if (landscape) {
-            if (canvasDimension.height > maxHeight) {
-                canvasDimension.height = maxHeight;
-            }
-            if (canvasDimension.height < minHeight) {
-                canvasDimension.height = minHeight;
-            }
-        } else {
-            if (canvasDimension.width > maxWidth) {
-                canvasDimension.width = maxWidth;
-            }
-            if (canvasDimension.width < minWidth) {
-                canvasDimension.width = minWidth;
-            }
         }
 
         // set canvas and viewport sizes
@@ -2350,13 +2336,8 @@ bento.define('bento', [
 
         // css fit to height
         if (canvas.style) {
-            if (landscape) {
-                canvas.style.width = screenSize.width + 'px';
-                canvas.style.height = (screenSize.width / (viewport.width / viewport.height)) + 'px';
-            } else {
-                canvas.style.height = screenSize.height + 'px';
-                canvas.style.width = (screenSize.height * (viewport.width / viewport.height)) + 'px';
-            }
+            canvas.style.height = screenSize.height + 'px';
+            canvas.style.width = (screenSize.height * (viewport.width / viewport.height)) + 'px';
         }
 
         // log results
@@ -2374,9 +2355,26 @@ bento.define('bento', [
                 // use the resize function on pixi
                 pixiRenderer = Bento.getRenderer().getPixiRenderer();
                 pixiRenderer.resize(canvas.width, canvas.height);
-            } 
-
+            }
         }
+        // update input and canvas
+        Bento.input.updateCanvas();
+        /**
+         * Fired when screen resizes
+         * @event resize
+         * @param {Rectangle} viewport - New viewport size 
+         */
+        EventSystem.fire('resize', viewport);
+        // clear the task id
+        resizeTaskId = null;
+    };
+    var resizeTaskId = null;
+    var onResize = function () {
+        // start a 100ms timeout, if interupted with a repeat event start over
+        if (resizeTaskId != null) {
+            window.clearTimeout(resizeTaskId);
+        }
+        resizeTaskId = window.setTimeout(performResize, 100);
     };
     /**
      * Take screenshots based on events
@@ -2415,6 +2413,83 @@ bento.define('bento', [
 
     };
     /**
+     * Listens to cordova events and pass them to Bento (with exception of deviceready)
+     */
+    var forwardCordovaEvents = function () {
+        if (document && document.addEventListener) {
+            document.addEventListener('pause', function (evt) {
+                /**
+                 * The pause event fires when the native platform puts the application into the background, 
+                 * typically when the user switches to a different application.
+                 * @event cordova-pause 
+                 */
+                EventSystem.fire('cordova-pause', evt);
+            }, false);
+            document.addEventListener('resume', function (evt) {
+                /**
+                 * @event cordova-resume 
+                 */
+                EventSystem.fire('cordova-resume', evt);
+            }, false);
+            document.addEventListener('resign', function (evt) {
+                /**
+                 * (iOS only) The iOS-specific resign event is available as an alternative to pause, and detects when users 
+                 * enable the Lock button to lock the device with the app running in the foreground. If 
+                 * the app (and device) is enabled for multi-tasking, this is paired with a subsequent 
+                 * pause event, but only under iOS 5. In effect, all locked apps in iOS 5 that have multi-tasking 
+                 * enabled are pushed to the background. For apps to remain running when locked under iOS 5, disable 
+                 * the app's multi-tasking by setting UIApplicationExitsOnSuspend to YES. To run when locked on iOS 4, 
+                 * this setting does not matter.
+                 * @event cordova-resign 
+                 */
+                EventSystem.fire('cordova-resign', evt);
+            }, false);
+            document.addEventListener('backbutton', function (evt) {
+                /**
+                 * (Android+Windows only) The event fires when the user presses the back button. 
+                 * @event cordova-backbutton 
+                 */
+                EventSystem.fire('cordova-backbutton', evt);
+            }, false);
+            document.addEventListener('menubutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the menu button.
+                 * @event cordova-menubutton 
+                 */
+                EventSystem.fire('cordova-menubutton', evt);
+            }, false);
+            document.addEventListener('searchbutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the search button on Android.
+                 * @event cordova-searchbutton 
+                 */
+                EventSystem.fire('cordova-searchbutton', evt);
+            }, false);
+            document.addEventListener('volumedownbutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the volume down button.
+                 * @event cordova-volumedownbutton 
+                 */
+                EventSystem.fire('cordova-volumedownbutton', evt);
+            }, false);
+            document.addEventListener('volumeupbutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the volume down button.
+                 * @event cordova-volumeupbutton 
+                 */
+                EventSystem.fire('cordova-volumeupbutton', evt);
+            }, false);
+            document.addEventListener('activated', function (evt) {
+                /**
+                 * (Windows only) The event fires when Windows Runtime activation has occurred.
+                 * @event cordova-activated 
+                 */
+                EventSystem.fire('cordova-activated', evt);
+            }, false);
+        }
+
+    };
+    /**
      * Main module
      */
     var Bento = {
@@ -2435,12 +2510,12 @@ bento.define('bento', [
          * @param {Boolean} settings.preventContextMenu - Stops the context menu from appearing in browsers when using right click
          * @param {Boolean} settings.autoDisposeTextures - Removes all internal textures on screen ends to reduce memory usage
          * @param {Object} settings.responsiveResize - Bento's strategy of resizing to mobile screen sizes. 
-         * In case of portrait: Bento locks the width and fills the height. If min/max height is reached, the width is adapted up to its min/max.
-         * @param {Boolean} settings.responsiveResize.landscape - Portrait (false) or Landscape (true)
-         * @param {Number} settings.responsiveResize.minWidth - Minimum width
-         * @param {Number} settings.responsiveResize.maxWidth - Maximum width
-         * @param {Number} settings.responsiveResize.minHeight - Minimum height
-         * @param {Number} settings.responsiveResize.maxHeight - Maximum height
+         * In case of portrait: Bento locks the  min height and fills the width by aspect ratio until the max width is reached. If min width is reached, the height is then adapted by aspect ratio up to it's defined maximum.
+         * @param {Number} settings.responsiveResize.minWidth - Minimum width in portrait.
+         * @param {Number} settings.responsiveResize.maxWidth - Maximum width in portrait.
+         * @param {Number} settings.responsiveResize.minHeight - Minimum height in portrait.
+         * @param {Number} settings.responsiveResize.maxHeight - Maximum height in portrait.
+         * @param {String} settings.responsiveResize.lockedRotation - 'portrait' or 'landscape' enforces an aspect ratio corrseponding to this, instead of handling this automatically, unnecessary to be used if enforcable by another means
          * @param {Object} settings.reload - Settings for module reloading, set the event names for Bento to listen
          * @param {String} settings.reload.simple - Event name for simple reload: reloads modules and resets current screen
          * @param {String} settings.reload.assets - Event name for asset reload: reloads modules and all assets and resets current screen
@@ -2538,6 +2613,8 @@ bento.define('bento', [
                     }
                 });
             });
+
+            forwardCordovaEvents();
         },
         /**
          * Returns the settings object supplied to Bento.setup
@@ -2621,6 +2698,10 @@ bento.define('bento', [
                 function () {
                     // restart the mainloop
                     Bento.objects.run();
+                    /**
+                     * Fired when using Bento's quick reload feature
+                     * @event bentoReload 
+                     */
                     EventSystem.fire('bentoReload', {});
                 }
             );
@@ -5928,19 +6009,14 @@ EventSystem.fire('${1}', ${2:data});
 bento.define('bento/eventsystem', [
     'bento/utils'
 ], function (Utils) {
-    
-    var isLooping = {};  // Mapping of event name to bool (true if this event is currently being looped over)
-    var events = {};     // Mapping of event name to array[{callback:Function, context:Object}]
-    var removed = {};    // Mapping of event name to array[{callback:Function, context:Object}]
 
-    // Clear the looping status of all events if an unhandled exception occurs.
-    // Without this, the event would be blocked from ever occuring again.
-    window.addEventListener('error', function (errorEvent) {
-        isLooping = {};
-    });
-
-    // Clean a single event
-    // (remove any listeners that are queued for removal)
+    var isLooping = {}; // Mapping of event name to bool (true if this event is currently being looped over)
+    var events = {}; // Mapping of event name to array[{callback:Function, context:Object}]
+    var removed = {}; // Mapping of event name to array[{callback:Function, context:Object}]
+    /**
+     * Clean a single event
+     * (remove any listeners that are queued for removal)
+     */
     var cleanEvent = function (eventName) {
         var i, j, l, callback, context;
 
@@ -5989,7 +6065,7 @@ bento.define('bento/eventsystem', [
 
     var removeEventListener = function (eventName, callback, context) {
         var i, listeners, removedEvents;
-        
+
         listeners = events[eventName];
         removedEvents = removed[eventName];
         if (!listeners || !removedEvents) {
@@ -6146,6 +6222,14 @@ bento.define('bento/eventsystem', [
          */
         clear: clearEventListeners
     };
+
+    // Clear the looping status of all events if an unhandled exception occurs.
+    // Without this, the event would be blocked from ever occuring again.
+    if (window.addEventListener) {
+        window.addEventListener('error', function (errorEvent) {
+            isLooping = {};
+        });
+    }
 
     return EventSystem;
 });
@@ -9599,13 +9683,26 @@ bento.define('bento/managers/input', [
                     localPosition: evt.localPosition,
                     worldPosition: evt.worldPosition
                 });
+                /**
+                 * Fired when a pointer (e.g. touch or mouse) touches the screen (browser event)
+                 * @event pointerDown 
+                 * @param {Event} event - Browser event object
+                 */
                 EventSystem.fire('pointerDown', evt);
             },
             pointerMove = function (evt) {
+                /**
+                 * Fired when a pointer (e.g. touch or mouse) moves on the screen (browser event)
+                 * @event pointerMove 
+                 */
                 EventSystem.fire('pointerMove', evt);
                 updatePointer(evt);
             },
             pointerUp = function (evt) {
+                /**
+                 * Fired when a pointer (e.g. touch or mouse) leaves the screen (browser event)
+                 * @event pointerUp 
+                 */
                 EventSystem.fire('pointerUp', evt);
                 removePointer(evt);
             },
@@ -9742,7 +9839,8 @@ bento.define('bento/managers/input', [
                 evt.id = -1;
             },
             updatePointer = function (evt) {
-                var i = 0, l;
+                var i = 0,
+                    l;
                 for (i = 0, l = pointers.length; i < l; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers[i].position = evt.position;
@@ -9753,7 +9851,8 @@ bento.define('bento/managers/input', [
                 }
             },
             removePointer = function (evt) {
-                var i = 0, l;
+                var i = 0,
+                    l;
                 for (i = 0, l = pointers.length; i < l; ++i) {
                     if (pointers[i].id === evt.id) {
                         pointers.splice(i, 1);
@@ -9803,6 +9902,10 @@ bento.define('bento/managers/input', [
 
                 // touchcancel can be used when system interveness with the game
                 canvas.addEventListener('touchcancel', function (evt) {
+                    /**
+                     * Fired when a touch is interupted (browser event)
+                     * @event touchcancel 
+                     */
                     EventSystem.fire('touchcancel', evt);
                 });
             },
@@ -9837,6 +9940,11 @@ bento.define('bento/managers/input', [
                 }
                 for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = true;
+                    /**
+                     * Fired when keyboard button goes down. Can also be caught with buttonDown-[keyName]
+                     * @event buttonDown 
+                     * @param {String} name - Name of key
+                     */
                     EventSystem.fire('buttonDown', names[i]);
                     EventSystem.fire('buttonDown-' + names[i]);
                 }
@@ -9854,6 +9962,11 @@ bento.define('bento/managers/input', [
                 }
                 for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = false;
+                    /**
+                     * Fired when keyboard button goes up. Can also be caught with buttonUp-[keyName]
+                     * @event buttonUp 
+                     * @param {String} name - Name of key
+                     */
                     EventSystem.fire('buttonUp', names[i]);
                     EventSystem.fire('buttonUp-' + names[i]);
                 }
@@ -9884,6 +9997,10 @@ bento.define('bento/managers/input', [
                     return;
                 }
                 canvas.addEventListener('contextmenu', function (e) {
+                    /**
+                     * Fired when right mouse button is clicked
+                     * @event mouseDown-right 
+                     */
                     EventSystem.fire('mouseDown-right');
                     // prevent context menu
                     if (settings.preventContextMenu) {
@@ -9892,9 +10009,17 @@ bento.define('bento/managers/input', [
                 }, false);
                 canvas.addEventListener('click', function (e) {
                     if (e.which === 1) {
+                        /**
+                         * Fired when left mouse button is clicked
+                         * @event mouseDown-left 
+                         */
                         EventSystem.fire('mouseDown-left');
                         e.preventDefault();
                     } else if (e.which === 2) {
+                        /**
+                         * Fired when middle mouse button is clicked
+                         * @event mouseDown-middle 
+                         */
                         EventSystem.fire('mouseDown-middle');
                         e.preventDefault();
                     }
@@ -9917,6 +10042,13 @@ bento.define('bento/managers/input', [
                 EventSystem.on('preUpdate', checkGamepad);
 
                 console.log('Gamepad connected:', evt.gamepad);
+                /**
+                 * Fired when gamepad is connected
+                 * @event gamepadConnected
+                 * @param {Event} event - Browser event object (see GamePad API)
+                 */
+                EventSystem.fire('gamepadConnected', evt);
+
             },
             /**
              * Fired when the browser detects that a gamepad has been disconnected.
@@ -9928,6 +10060,12 @@ bento.define('bento/managers/input', [
 
                 // stop checking for button input
                 EventSystem.off('preUpdate', checkGamepad);
+                /**
+                 * Fired when gamepad is disconnected
+                 * @event gamepadDisconnected
+                 * @param {Event} event - Browser event object (see GamePad API)
+                 */
+                EventSystem.fire('gamepadDisconnected', evt);
             },
             /**
              * Gets a list of all gamepads and checks if any buttons are pressed.
@@ -9970,6 +10108,11 @@ bento.define('bento/managers/input', [
 
                 for (i = 0, len = names.length; i < len; ++i) {
                     gamepadButtonStates[names[i]] = true;
+                    /**
+                     * Fired when gamepad button goes down. Can also be caught with gamepadButtonDown-[keyName]
+                     * @event gamepadButtonDown 
+                     * @param {String} name - Name of button
+                     */
                     EventSystem.fire('gamepadButtonDown', names[i]);
                     EventSystem.fire('gamepadButtonDown-' + names[i]);
                 }
@@ -9986,7 +10129,13 @@ bento.define('bento/managers/input', [
 
                 for (i = 0, len = names.length; i < len; ++i) {
                     gamepadButtonStates[names[i]] = false;
+                    /**
+                     * Fired when gamepad button goes up. Can also be caught with gamepadButtonUp-[keyName]
+                     * @event gamepadButtonUp 
+                     * @param {String} name - Name of button
+                     */
                     EventSystem.fire('gamepadButtonUp', names[i]);
+                    EventSystem.fire('gamepadButtonUp-' + names[i]);
                 }
             },
             /**
@@ -9996,7 +10145,8 @@ bento.define('bento/managers/input', [
              * continually checking for input is the only way for now.
              */
             initRemote = function () {
-                var i = 0, l,
+                var i = 0,
+                    l,
                     tvOSGamepads;
 
                 if (window.ejecta) {
@@ -10033,7 +10183,8 @@ bento.define('bento/managers/input', [
                 }
             },
             remoteButtonDown = function (id) {
-                var i = 0, l,
+                var i = 0,
+                    l,
                     names = Utils.remoteMapping[id];
                 // save value in array
                 remoteButtonsPressed[id] = true;
@@ -10042,7 +10193,8 @@ bento.define('bento/managers/input', [
                     remoteButtonStates[names[i]] = true;
             },
             remoteButtonUp = function (id) {
-                var i = 0, l,
+                var i = 0,
+                    l,
                     names = Utils.remoteMapping[id];
                 // save value in array
                 remoteButtonsPressed[id] = false;
@@ -10058,13 +10210,25 @@ bento.define('bento/managers/input', [
                     localPosition: evt.localPosition,
                     worldPosition: evt.worldPosition
                 });
+                /**
+                 * Fired when Apple TV remote is touched (requires Ejecta)
+                 * @event tvPointerDown 
+                 */
                 EventSystem.fire('tvPointerDown', evt);
             },
             tvPointerMove = function (evt) {
+                /**
+                 * Fired when Apple TV remote is moved (requires Ejecta)
+                 * @event tvPointerMove 
+                 */
                 EventSystem.fire('tvPointerMove', evt);
                 updatePointer(evt);
             },
             tvPointerUp = function (evt) {
+                /**
+                 * Fired when Apple TV remote is released (requires Ejecta)
+                 * @event tvPointerUp 
+                 */
                 EventSystem.fire('tvPointerUp', evt);
                 removePointer(evt);
             },
@@ -10148,8 +10312,6 @@ bento.define('bento/managers/input', [
         // note: it's a bit tricky with order of event listeners, make sure resizing is done first
         // otherwise updateCanvas needs to be called manually afterwards
         if (canvas) {
-            window.addEventListener('resize', updateCanvas, false);
-            window.addEventListener('orientationchange', updateCanvas, false);
             updateCanvas();
         }
 
@@ -10491,6 +10653,11 @@ bento.define('bento/managers/object', [
             module.timer += data.speed;
             module.ticker += 1;
 
+            /**
+             * Fired before the Object manager's update loop
+             * @event preUpdate 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('preUpdate', data);
             for (i = 0; i < objects.length; ++i) {
                 object = objects[i];
@@ -10506,6 +10673,11 @@ bento.define('bento/managers/object', [
                     object.rootIndex = i;
                 }
             }
+            /**
+             * Fired after the Object manager's update loop
+             * @event postUpdate 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('postUpdate', data);
         };
         var draw = function (data) {
@@ -10513,8 +10685,19 @@ bento.define('bento/managers/object', [
                 i, l;
             data = data || getGameData();
 
+
+            /**
+             * Fired before the Object manager's draw loop, before start of renderer
+             * @event preDraw 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('preDraw', data);
             data.renderer.begin();
+            /**
+             * Fired before the Object manager's draw loop, after start of renderer
+             * @event preDrawLoop 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('preDrawLoop', data);
             for (i = 0, l = objects.length; i < l; ++i) {
                 object = objects[i];
@@ -10526,8 +10709,18 @@ bento.define('bento/managers/object', [
                     object.draw(data);
                 }
             }
+            /**
+             * Fired after the Object manager's draw loop, before end of renderer
+             * @event postDrawLoop 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('postDrawLoop', data);
             data.renderer.flush();
+            /**
+             * Fired after the Object manager's draw loop, after end of renderer
+             * @event postDraw 
+             * @param {Object} data - Game data, see {@link module:bento#getGameData}
+             */
             EventSystem.fire('postDraw', data);
         };
         var attach = function (object) {
@@ -11200,6 +11393,11 @@ bento.define('bento/managers/screen', [
                     if (currentScreen.onShow) {
                         currentScreen.onShow(data);
                     }
+                    /**
+                     * Fired when a new screen is shown using Bento.screens.show
+                     * @event screenShown 
+                     * @param {Screen} screen - Bento screen object (not to be confused with browser's screen object)
+                     */
                     EventSystem.fire('screenShown', currentScreen);
                     if (callback) {
                         callback();
@@ -11233,6 +11431,11 @@ bento.define('bento/managers/screen', [
                 if (currentScreen.onHide) {
                     currentScreen.onHide(data);
                 }
+                /**
+                 * Fired when a previous screen is hidden (typically before Bento.screens.show)
+                 * @event screenHidden
+                 * @param {Screen} screen - Screen object that was hidden 
+                 */
                 EventSystem.fire('screenHidden', currentScreen);
                 currentScreen = null;
             },
@@ -13104,73 +13307,48 @@ bento.define('bento/math/vector2', [
     return Vector2;
 });
 /**
- * A helper module that returns a rectangle with the same aspect ratio as the screen size.
- * Assuming portrait mode, autoresize holds the width and then fills up the height
+ * A helper module that returns an object with a correctly sized width and height for the aspect ratio
+ * 'type' defines the allowed orientation
  * If the height goes over the max or minimum size, then the width gets adapted.
  * <br>Exports: Constructor
  * @module bento/autoresize
  * @moduleName AutoResize
- * @param {Rectangle} canvasDimension - Default size
- * @param {Number} minSize - Minimal height (in portrait mode), if the height goes lower than this,
- * then autoresize will start filling up the width
- * @param {Boolean} isLandscape - Game is landscape, swap operations of width and height
- * @returns Rectangle
+ * @param {Number} minWidth - Lowest clamped width in portrait. Smaller than this, and height is scaled up to fit the aspect ratio. Acts as a 'target dimension'
+ * @param {Number} maxWidth - Max clamped width in portrait.
+ * @param {Number} minHeight - Lowest clamped height in portrait. . Smaller than this, and width is scaled up to fit the aspect ratio. Acts as a 'target dimension'
+ * @param {Number} maxHeight - Max clamped height in portrait.
+ * @param {String} lockedRotation - 'portrait' or 'landscape' - Enforces an aspect ratio for one or the other, not necessary if forcable by other means
+ * @returns Object
  */
 bento.define('bento/autoresize', [
     'bento/utils'
 ], function (Utils) {
-    return function (canvasDimension, minSize, maxSize, isLandscape) {
-        var originalDimension = canvasDimension.clone(),
-            screenSize = Utils.getScreenSize(),
-            innerWidth = screenSize.width,
-            innerHeight = screenSize.height,
-            devicePixelRatio = window.devicePixelRatio,
-            deviceHeight = !isLandscape ? innerHeight * devicePixelRatio : innerWidth * devicePixelRatio,
-            deviceWidth = !isLandscape ? innerWidth * devicePixelRatio : innerHeight * devicePixelRatio,
-            swap = function () {
-                // swap width and height
-                var temp = canvasDimension.width;
-                canvasDimension.width = canvasDimension.height;
-                canvasDimension.height = temp;
-            },
-            setup = function () {
-                var ratio = deviceWidth / deviceHeight;
+    return function (minWidth, maxWidth, minHeight, maxHeight, lockedRotation) {
+        var screenSize = Utils.getScreenSize();
+        // get the ration of screen height to width 
+        var ratio = screenSize.width / screenSize.height;
+        // work out if we are currently in portrait or landscape
+        var isPortrait = (ratio <= 1);
 
-                if (ratio > 1) {
-                    // user is holding device wrong
-                    ratio = 1 / ratio;
-                }
-
-                canvasDimension.height = Math.round(canvasDimension.width / ratio);
-
-                // exceed min size?
-                if (canvasDimension.height < minSize) {
-                    canvasDimension.height = minSize;
-                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
-                }
-                if (canvasDimension.height > maxSize) {
-                    canvasDimension.height = maxSize;
-                    canvasDimension.width = Math.round(ratio * canvasDimension.height);
-                }
-
-                if (isLandscape) {
-                    swap();
-                }
-
-                return canvasDimension;
-            },
-            scrollAndResize = function () {
-                window.scrollTo(0, 0);
-            };
-
-
-        window.addEventListener('orientationchange', scrollAndResize, false);
-
-        if (isLandscape) {
-            swap();
+        //force a specific rotation
+        switch (lockedRotation) {
+        case 'portrait':
+            isPortrait = true;
+            break;
+        case 'landscape':
+            isPortrait = false;
+            break;
         }
 
-        return setup();
+        // create new object with correctly scaled and clamped dimensions
+        var newDimension = (isPortrait) ? {
+            width: Math.ceil(Utils.clamp(minWidth, minHeight * ratio, maxWidth)),
+            height: Math.ceil(Utils.clamp(minHeight, minWidth / ratio, maxHeight))
+        } : {
+            width: Math.ceil(Utils.clamp(minHeight, minWidth * ratio, maxHeight)),
+            height: Math.ceil(Utils.clamp(minWidth, minHeight / ratio, maxWidth))
+        };
+        return newDimension;
     };
 });
 /**
@@ -13759,6 +13937,14 @@ bento.define('bento/gui/clickbutton', [
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity, [data]);
                 }
+                /**
+                 * Fired by any Clickbutton's buttonDown
+                 * @event clickButton-onButtonDown 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ClickButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
                 EventSystem.fire('clickButton-onButtonDown', {
                     entity: entity,
                     event: 'onClick',
@@ -13787,6 +13973,14 @@ bento.define('bento/gui/clickbutton', [
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity, [data]);
                 }
+                /**
+                 * Fired by any Clickbutton's buttonUp
+                 * @event clickButton-onButtonUp
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - Clickbutton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
                 EventSystem.fire('clickButton-onButtonUp', {
                     entity: entity,
                     event: 'onHoldLeave',
@@ -13819,6 +14013,14 @@ bento.define('bento/gui/clickbutton', [
                         Bento.audio.stopSound(settings.sfx);
                         Bento.audio.playSound(settings.sfx);
                     }
+                    /**
+                     * Fired by any Clickbutton's click
+                     * @event clickButton-onClick 
+                     * @param {Object} data - Data object
+                     * @param {Entity} data.entity - Clickbutton instance
+                     * @param {String} data.event - Origin of Clickable event
+                     * @param {Object} data.data - data of Clickable event
+                     */
                     EventSystem.fire('clickButton-onClick', {
                         entity: entity,
                         event: 'onHoldEnd',
@@ -13952,11 +14154,23 @@ bento.define('bento/gui/clickbutton', [
         entity.attach({
             name: 'attachComponent',
             start: function () {
+                /**
+                 * Fired by any Clickbutton's start behavior
+                 * @event clickButton-start 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - Clickbutton instance
+                 */
                 EventSystem.fire('clickButton-start', {
                     entity: entity
                 });
             },
             destroy: function () {
+                /**
+                 * Fired by any Clickbutton's destroy behavior
+                 * @event clickButton-destroy 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - Clickbutton instance
+                 */
                 EventSystem.fire('clickButton-destroy', {
                     entity: entity
                 });
@@ -15955,47 +16169,67 @@ bento.define('bento/gui/togglebutton', [
         var clickable = new Clickable({
             sort: settings.sort,
             ignorePauseDuringPointerUpEvent: settings.ignorePauseDuringPointerUpEvent,
-            onClick: function () {
+            onClick: function (data) {
+                if (!active) {
+                    return;
+                }
+                /**
+                 * Fired by any ToggleButton's button down
+                 * @event toggleButton-toggle-down
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
+                sprite.setAnimation('down');
+                EventSystem.fire('toggleButton-toggle-down', {
+                    entity: entity,
+                    event: 'onClick',
+                    data: data
+                });
+            },
+            onHoldEnter: function (data) {
                 if (!active) {
                     return;
                 }
                 sprite.setAnimation('down');
                 EventSystem.fire('toggleButton-toggle-down', {
                     entity: entity,
-                    event: 'onClick'
+                    event: 'onHoldEnter',
+                    data: data
                 });
             },
-            onHoldEnter: function () {
+            onHoldLeave: function (data) {
                 if (!active) {
                     return;
                 }
-                sprite.setAnimation('down');
-                EventSystem.fire('toggleButton-toggle-down', {
+                sprite.setAnimation(toggled ? 'down' : 'up');
+                /**
+                 * Fired by any ToggleButton's button up
+                 * @event toggleButton-toggle-up
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
+                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                     entity: entity,
-                    event: 'onHoldEnter'
+                    event: 'onHoldLeave',
+                    data: data
                 });
             },
-            onHoldLeave: function () {
+            pointerUp: function (data) {
                 if (!active) {
                     return;
                 }
                 sprite.setAnimation(toggled ? 'down' : 'up');
                 EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
                     entity: entity,
-                    event: 'onHoldLeave'
+                    event: 'pointerUp',
+                    data: data
                 });
             },
-            pointerUp: function () {
-                if (!active) {
-                    return;
-                }
-                sprite.setAnimation(toggled ? 'down' : 'up');
-                EventSystem.fire('toggleButton-toggle-' + (toggled ? 'down' : 'up'), {
-                    entity: entity,
-                    event: 'pointerUp'
-                });
-            },
-            onHoldEnd: function () {
+            onHoldEnd: function (data) {
                 if (!active) {
                     return;
                 }
@@ -16012,9 +16246,18 @@ bento.define('bento/gui/togglebutton', [
                     }
                 }
                 sprite.setAnimation(toggled ? 'down' : 'up');
+                /**
+                 * Fired by any ToggleButton's toggle
+                 * @event toggleButton-onToggle
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
                 EventSystem.fire('toggleButton-onToggle', {
                     entity: entity,
-                    event: 'onHoldEnd'
+                    event: 'onHoldEnd',
+                    data: data
                 });
             }
         });
@@ -16149,11 +16392,23 @@ bento.define('bento/gui/togglebutton', [
         entity.attach({
             name: 'attachComponent',
             start: function () {
+                /**
+                 * Fired by any ToggleButtons's start behavior
+                 * @event toggleButton-start 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 */
                 EventSystem.fire('toggleButton-start', {
                     entity: entity
                 });
             },
             destroy: function () {
+                /**
+                 * Fired by any ToggleButtons's destroy behavior
+                 * @event toggleButton-destroy 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ToggleButton instance
+                 */
                 EventSystem.fire('toggleButton-destroy', {
                     entity: entity
                 });
@@ -17213,7 +17468,6 @@ bento.define('bento/tiled', [
 
                 // get source position
                 var source = getSourceTile(tileSet, tileIndex);
-                var layerIndex = currentLayer;
 
                 // retrieve the corresponding image asset
                 // there is a very high chance the url contains "images/" since the json files
@@ -17239,12 +17493,12 @@ bento.define('bento/tiled', [
                 );
 
                 if (onTile) {
-                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, layerIndex);
+                    onTile.call(tiled, tileX, tileY, tileSet, tileIndex, flipX, flipY, flipD, currentLayer);
                 }
             },
-            onObject: function (object, tileSet, tileIndex) {
+            onObject: function (object, tileSet, tileIndex, flipX, flipY, flipDiagonal) {
                 if (onObject) {
-                    onObject.call(tiled, object, tileSet, tileIndex, currentLayer);
+                    onObject.call(tiled, object, tileSet, tileIndex, flipX, flipY, flipDiagonal, currentLayer);
                 }
                 if (settings.spawnEntities) {
                     // note: we can pass currentLayer, as onLayer is synchronously called before onObject
@@ -17751,14 +18005,27 @@ bento.define('bento/tiledreader', [], function () {
                 onTile(x, y, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
             };
             var objectCallback = function (object) {
-                var tileIndex;
                 var tilesetData;
+                var tileIndex;
+                var flipX;
+                var flipY;
+                var flipDiagonal;
                 var gid = object.gid;
                 if (gid) {
+                    // read out the flags
+                    flipX = (gid & FLIPX);
+                    flipY = (gid & FLIPY);
+                    flipDiagonal = (gid & FLIPDIAGONAL);
+
+                    // clear flags
+                    gid &= ~(FLIPX | FLIPY | FLIPDIAGONAL);
+
                     // get the corresponding tileset and tile index
                     tilesetData = getTileset(gid);
                     tileIndex = gid - tilesetData.firstGid;
-                    onObject(object, tilesetData.tileSet, tileIndex);
+                    
+                    // callback
+                    onObject(object, tilesetData.tileSet, tileIndex, flipX, flipY, flipDiagonal);
                 } else {
                     // gid may not be present, in that case it's a rectangle or other shape
                     onObject(object);
@@ -18317,6 +18584,8 @@ bento.define('bento/tween', [
         // one wants to see the tween move during that pause
         if (!Utils.isDefined(settings.updateWhenPaused)) {
             tweenBehavior.updateWhenPaused = Bento.objects.isPaused();
+        } else {
+            tweenBehavior.updateWhenPaused = settings.updateWhenPaused;
         }
 
         // tween automatically starts
@@ -19787,7 +20056,7 @@ bento.define('bento/utils', [], function () {
                 if (platform === 'android' || platform === 'amazon') {
                     return true;
                 }
-            }  else if (window.device) {
+            } else if (window.device) {
                 if (window.device && window.device.platform) {
                     return window.device.platform.toLowerCase() === 'android';
                 }
@@ -19927,7 +20196,10 @@ Utils.forEach(${1:array}, function (${2:item}, i, l, breakLoop) {
                 width: 0,
                 height: 0
             };
-            if (window.mraid) {
+            if (window.dapi) {
+                screenSize.width = window.dapi.getScreenSize().width;
+                screenSize.height = window.dapi.getScreenSize().height;
+            } else if (window.mraid) {
                 screenSize.width = window.mraid.getMaxSize().width;
                 screenSize.height = window.mraid.getMaxSize().height;
             } else {

@@ -118,6 +118,14 @@ bento.define('bento/gui/clickbutton', [
                 if (settings.onButtonDown) {
                     settings.onButtonDown.apply(entity, [data]);
                 }
+                /**
+                 * Fired by any Clickbutton's buttonDown
+                 * @event clickButton-onButtonDown 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - ClickButton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
                 EventSystem.fire('clickButton-onButtonDown', {
                     entity: entity,
                     event: 'onClick',
@@ -146,6 +154,14 @@ bento.define('bento/gui/clickbutton', [
                 if (settings.onButtonUp) {
                     settings.onButtonUp.apply(entity, [data]);
                 }
+                /**
+                 * Fired by any Clickbutton's buttonUp
+                 * @event clickButton-onButtonUp
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - Clickbutton instance
+                 * @param {String} data.event - Origin of Clickable event
+                 * @param {Object} data.data - data of Clickable event
+                 */
                 EventSystem.fire('clickButton-onButtonUp', {
                     entity: entity,
                     event: 'onHoldLeave',
@@ -178,6 +194,14 @@ bento.define('bento/gui/clickbutton', [
                         Bento.audio.stopSound(settings.sfx);
                         Bento.audio.playSound(settings.sfx);
                     }
+                    /**
+                     * Fired by any Clickbutton's click
+                     * @event clickButton-onClick 
+                     * @param {Object} data - Data object
+                     * @param {Entity} data.entity - Clickbutton instance
+                     * @param {String} data.event - Origin of Clickable event
+                     * @param {Object} data.data - data of Clickable event
+                     */
                     EventSystem.fire('clickButton-onClick', {
                         entity: entity,
                         event: 'onHoldEnd',
@@ -311,11 +335,23 @@ bento.define('bento/gui/clickbutton', [
         entity.attach({
             name: 'attachComponent',
             start: function () {
+                /**
+                 * Fired by any Clickbutton's start behavior
+                 * @event clickButton-start 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - Clickbutton instance
+                 */
                 EventSystem.fire('clickButton-start', {
                     entity: entity
                 });
             },
             destroy: function () {
+                /**
+                 * Fired by any Clickbutton's destroy behavior
+                 * @event clickButton-destroy 
+                 * @param {Object} data - Data object
+                 * @param {Entity} data.entity - Clickbutton instance
+                 */
                 EventSystem.fire('clickButton-destroy', {
                     entity: entity
                 });

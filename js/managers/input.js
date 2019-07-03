@@ -45,13 +45,26 @@ bento.define('bento/managers/input', [
                     localPosition: evt.localPosition,
                     worldPosition: evt.worldPosition
                 });
+                /**
+                 * Fired when a pointer (e.g. touch or mouse) touches the screen (browser event)
+                 * @event pointerDown 
+                 * @param {Event} event - Browser event object
+                 */
                 EventSystem.fire('pointerDown', evt);
             },
             pointerMove = function (evt) {
+                /**
+                 * Fired when a pointer (e.g. touch or mouse) moves on the screen (browser event)
+                 * @event pointerMove 
+                 */
                 EventSystem.fire('pointerMove', evt);
                 updatePointer(evt);
             },
             pointerUp = function (evt) {
+                /**
+                 * Fired when a pointer (e.g. touch or mouse) leaves the screen (browser event)
+                 * @event pointerUp 
+                 */
                 EventSystem.fire('pointerUp', evt);
                 removePointer(evt);
             },
@@ -251,6 +264,10 @@ bento.define('bento/managers/input', [
 
                 // touchcancel can be used when system interveness with the game
                 canvas.addEventListener('touchcancel', function (evt) {
+                    /**
+                     * Fired when a touch is interupted (browser event)
+                     * @event touchcancel 
+                     */
                     EventSystem.fire('touchcancel', evt);
                 });
             },
@@ -285,6 +302,11 @@ bento.define('bento/managers/input', [
                 }
                 for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = true;
+                    /**
+                     * Fired when keyboard button goes down. Can also be caught with buttonDown-[keyName]
+                     * @event buttonDown 
+                     * @param {String} name - Name of key
+                     */
                     EventSystem.fire('buttonDown', names[i]);
                     EventSystem.fire('buttonDown-' + names[i]);
                 }
@@ -302,6 +324,11 @@ bento.define('bento/managers/input', [
                 }
                 for (i = 0, l = names.length; i < l; ++i) {
                     keyStates[names[i]] = false;
+                    /**
+                     * Fired when keyboard button goes up. Can also be caught with buttonUp-[keyName]
+                     * @event buttonUp 
+                     * @param {String} name - Name of key
+                     */
                     EventSystem.fire('buttonUp', names[i]);
                     EventSystem.fire('buttonUp-' + names[i]);
                 }
@@ -332,6 +359,10 @@ bento.define('bento/managers/input', [
                     return;
                 }
                 canvas.addEventListener('contextmenu', function (e) {
+                    /**
+                     * Fired when right mouse button is clicked
+                     * @event mouseDown-right 
+                     */
                     EventSystem.fire('mouseDown-right');
                     // prevent context menu
                     if (settings.preventContextMenu) {
@@ -340,9 +371,17 @@ bento.define('bento/managers/input', [
                 }, false);
                 canvas.addEventListener('click', function (e) {
                     if (e.which === 1) {
+                        /**
+                         * Fired when left mouse button is clicked
+                         * @event mouseDown-left 
+                         */
                         EventSystem.fire('mouseDown-left');
                         e.preventDefault();
                     } else if (e.which === 2) {
+                        /**
+                         * Fired when middle mouse button is clicked
+                         * @event mouseDown-middle 
+                         */
                         EventSystem.fire('mouseDown-middle');
                         e.preventDefault();
                     }
@@ -365,6 +404,13 @@ bento.define('bento/managers/input', [
                 EventSystem.on('preUpdate', checkGamepad);
 
                 console.log('Gamepad connected:', evt.gamepad);
+                /**
+                 * Fired when gamepad is connected
+                 * @event gamepadConnected
+                 * @param {Event} event - Browser event object (see GamePad API)
+                 */
+                EventSystem.fire('gamepadConnected', evt);
+
             },
             /**
              * Fired when the browser detects that a gamepad has been disconnected.
@@ -376,6 +422,12 @@ bento.define('bento/managers/input', [
 
                 // stop checking for button input
                 EventSystem.off('preUpdate', checkGamepad);
+                /**
+                 * Fired when gamepad is disconnected
+                 * @event gamepadDisconnected
+                 * @param {Event} event - Browser event object (see GamePad API)
+                 */
+                EventSystem.fire('gamepadDisconnected', evt);
             },
             /**
              * Gets a list of all gamepads and checks if any buttons are pressed.
@@ -418,6 +470,11 @@ bento.define('bento/managers/input', [
 
                 for (i = 0, len = names.length; i < len; ++i) {
                     gamepadButtonStates[names[i]] = true;
+                    /**
+                     * Fired when gamepad button goes down. Can also be caught with gamepadButtonDown-[keyName]
+                     * @event gamepadButtonDown 
+                     * @param {String} name - Name of button
+                     */
                     EventSystem.fire('gamepadButtonDown', names[i]);
                     EventSystem.fire('gamepadButtonDown-' + names[i]);
                 }
@@ -434,7 +491,13 @@ bento.define('bento/managers/input', [
 
                 for (i = 0, len = names.length; i < len; ++i) {
                     gamepadButtonStates[names[i]] = false;
+                    /**
+                     * Fired when gamepad button goes up. Can also be caught with gamepadButtonUp-[keyName]
+                     * @event gamepadButtonUp 
+                     * @param {String} name - Name of button
+                     */
                     EventSystem.fire('gamepadButtonUp', names[i]);
+                    EventSystem.fire('gamepadButtonUp-' + names[i]);
                 }
             },
             /**
@@ -509,13 +572,25 @@ bento.define('bento/managers/input', [
                     localPosition: evt.localPosition,
                     worldPosition: evt.worldPosition
                 });
+                /**
+                 * Fired when Apple TV remote is touched (requires Ejecta)
+                 * @event tvPointerDown 
+                 */
                 EventSystem.fire('tvPointerDown', evt);
             },
             tvPointerMove = function (evt) {
+                /**
+                 * Fired when Apple TV remote is moved (requires Ejecta)
+                 * @event tvPointerMove 
+                 */
                 EventSystem.fire('tvPointerMove', evt);
                 updatePointer(evt);
             },
             tvPointerUp = function (evt) {
+                /**
+                 * Fired when Apple TV remote is released (requires Ejecta)
+                 * @event tvPointerUp 
+                 */
                 EventSystem.fire('tvPointerUp', evt);
                 removePointer(evt);
             },

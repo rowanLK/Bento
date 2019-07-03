@@ -227,6 +227,11 @@ bento.define('bento', [
         }
         // update input and canvas
         Bento.input.updateCanvas();
+        /**
+         * Fired when screen resizes
+         * @event resize
+         * @param {Rectangle} viewport - New viewport size 
+         */
         EventSystem.fire('resize', viewport);
         // clear the task id
         resizeTaskId = null;
@@ -273,6 +278,83 @@ bento.define('bento', [
                 downloadImage(canvas.toDataURL(), 'screenshot');
             }
         });
+
+    };
+    /**
+     * Listens to cordova events and pass them to Bento (with exception of deviceready)
+     */
+    var forwardCordovaEvents = function () {
+        if (document && document.addEventListener) {
+            document.addEventListener('pause', function (evt) {
+                /**
+                 * The pause event fires when the native platform puts the application into the background, 
+                 * typically when the user switches to a different application.
+                 * @event cordova-pause 
+                 */
+                EventSystem.fire('cordova-pause', evt);
+            }, false);
+            document.addEventListener('resume', function (evt) {
+                /**
+                 * @event cordova-resume 
+                 */
+                EventSystem.fire('cordova-resume', evt);
+            }, false);
+            document.addEventListener('resign', function (evt) {
+                /**
+                 * (iOS only) The iOS-specific resign event is available as an alternative to pause, and detects when users 
+                 * enable the Lock button to lock the device with the app running in the foreground. If 
+                 * the app (and device) is enabled for multi-tasking, this is paired with a subsequent 
+                 * pause event, but only under iOS 5. In effect, all locked apps in iOS 5 that have multi-tasking 
+                 * enabled are pushed to the background. For apps to remain running when locked under iOS 5, disable 
+                 * the app's multi-tasking by setting UIApplicationExitsOnSuspend to YES. To run when locked on iOS 4, 
+                 * this setting does not matter.
+                 * @event cordova-resign 
+                 */
+                EventSystem.fire('cordova-resign', evt);
+            }, false);
+            document.addEventListener('backbutton', function (evt) {
+                /**
+                 * (Android+Windows only) The event fires when the user presses the back button. 
+                 * @event cordova-backbutton 
+                 */
+                EventSystem.fire('cordova-backbutton', evt);
+            }, false);
+            document.addEventListener('menubutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the menu button.
+                 * @event cordova-menubutton 
+                 */
+                EventSystem.fire('cordova-menubutton', evt);
+            }, false);
+            document.addEventListener('searchbutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the search button on Android.
+                 * @event cordova-searchbutton 
+                 */
+                EventSystem.fire('cordova-searchbutton', evt);
+            }, false);
+            document.addEventListener('volumedownbutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the volume down button.
+                 * @event cordova-volumedownbutton 
+                 */
+                EventSystem.fire('cordova-volumedownbutton', evt);
+            }, false);
+            document.addEventListener('volumeupbutton', function (evt) {
+                /**
+                 * (Android only) The event fires when the user presses the volume down button.
+                 * @event cordova-volumeupbutton 
+                 */
+                EventSystem.fire('cordova-volumeupbutton', evt);
+            }, false);
+            document.addEventListener('activated', function (evt) {
+                /**
+                 * (Windows only) The event fires when Windows Runtime activation has occurred.
+                 * @event cordova-activated 
+                 */
+                EventSystem.fire('cordova-activated', evt);
+            }, false);
+        }
 
     };
     /**
@@ -399,6 +481,8 @@ bento.define('bento', [
                     }
                 });
             });
+
+            forwardCordovaEvents();
         },
         /**
          * Returns the settings object supplied to Bento.setup
@@ -482,6 +566,10 @@ bento.define('bento', [
                 function () {
                     // restart the mainloop
                     Bento.objects.run();
+                    /**
+                     * Fired when using Bento's quick reload feature
+                     * @event bentoReload 
+                     */
                     EventSystem.fire('bentoReload', {});
                 }
             );
