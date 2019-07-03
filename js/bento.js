@@ -227,6 +227,7 @@ bento.define('bento', [
         }
         // update input and canvas
         Bento.input.updateCanvas();
+        EventSystem.fire('resize', viewport);
         // clear the task id
         resizeTaskId = null;
     };
