@@ -5,6 +5,16 @@
 * Dispose canvas textures properly in Text and Tiled modules.
 * Text.disposeCanvas is true by default now.
 * The dev reload with assets will now also reload images.
+* Bounding box correction when Entity's scale is flipped (PR #92)
+* EventSystem fix related to looping of events (PR #95)
+* Refactoring and fixes of auto resizing. (PR #96) Also will fire the event **resize** after resizing.(PR #107)
+* **Rectangle.prototype.includePosition** added (PR 97)
+* Tween updatewhenpaused fixed (PR #100)
+* Support for DAPI screensize (PR #108)
+* Support for Tiled flip flags on object layers (PR #107)
+* Documented all events fired by Bento's EventSystem
+* Build process: converted all tasks to Gulp 4 (PR #106)
+* Build process: consistent order of files
 
 ## 1.2.4
 * Fix possible crash if Sprites and PixiSprites are mixed
