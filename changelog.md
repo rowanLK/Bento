@@ -15,6 +15,9 @@
 * Documented all events fired by Bento's EventSystem
 * Build process: converted all tasks to Gulp 4 (PR #106)
 * Build process: consistent order of files
+* Bento Empty Project: Added gulp-cache to the imagemin task (biggest bottleneck when building)
+* Bento Empty Project: Fixed error with node_modules/gulp-fontmin/index.js not being found
+* Bento Empty Project: Removed init steps that were related to Cocoon, added safety event for touch input
 
 ## 1.2.4
 * Fix possible crash if Sprites and PixiSprites are mixed
