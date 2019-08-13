@@ -319,31 +319,30 @@ bento.define('bento/gui/text', [
             }
         };
         var createCanvas = function () {
-            if (!canvas) {
-
-                if (settings.fontSettings) {
-                    if (Utils.isDefined(settings.fontSettings.antiAlias)) {
-                        antiAliasing = settings.fontSettings.antiAlias;
-                    }
-                } else if (Utils.isDefined(settings.antiAlias)) {
-                    antiAliasing = settings.antiAlias;
+            var textCanvas;
+            if (settings.fontSettings) {
+                if (Utils.isDefined(settings.fontSettings.antiAlias)) {
+                    antiAliasing = settings.fontSettings.antiAlias;
                 }
-
-                // (re-)initialize canvas
-                canvas = Bento.createCanvas(antiAliasing);
-                ctx = canvas.getContext('2d');
+            } else if (Utils.isDefined(settings.antiAlias)) {
+                antiAliasing = settings.antiAlias;
             }
+
+            // (re-)initialize canvas
+            textCanvas = Bento.createCanvas(antiAliasing);
+            return textCanvas;
         };
         /*
          * Draw text to canvas
          */
-        var updateCanvas = function () {
+        var updateCanvas = function (canvasTarget) {
             var i, ii,
                 j, jj,
                 l,
                 x,
                 y,
                 scale,
+                context,
                 // extra offset because we may draw a line around the text
                 offset = new Vector2(maxLineWidth / 2, maxLineWidth / 2),
                 origin = sprite.origin,
@@ -406,7 +405,20 @@ bento.define('bento/gui/text', [
                     // draw it again on normal canvas
                     ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, shadowOffset.x, shadowOffset.y, tempCanvas.width, tempCanvas.height);
                 };
-            createCanvas();
+
+            if (!canvasTarget) {
+                if (!canvas) {
+                    // generat it first
+                    canvas = createCanvas();
+                    canvasTarget = canvas;
+                    ctx = canvasTarget.getContext('2d');
+                }
+                // use closure's canvas and context
+                canvasTarget = canvas;
+                context = ctx;
+            } else {
+                context = canvasTarget.getContext('2d');
+            }
 
             var cacheAntiAlias = Bento.getAntiAlias();
             // set anti alias (setting width and height will generate a new texture)
@@ -415,8 +427,8 @@ bento.define('bento/gui/text', [
             }
 
             // resize canvas based on text size
-            canvas.width = canvasWidth + maxLineWidth + shadowOffsetMax + margin.x * 2;
-            canvas.height = canvasHeight + maxLineWidth + shadowOffsetMax + margin.y * 2;
+            canvasTarget.width = canvasWidth + maxLineWidth + shadowOffsetMax + margin.x * 2;
+            canvasTarget.height = canvasHeight + maxLineWidth + shadowOffsetMax + margin.y * 2;
 
             // revert anti alias
             if (Utils.isDefined(antiAliasing)) {
@@ -424,14 +436,16 @@ bento.define('bento/gui/text', [
             }
 
             // clear
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            context.clearRect(0, 0, canvasTarget.width, canvasTarget.height);
             // update baseobject
-            entity.dimension = new Rectangle(0, 0, canvas.width / sharpness, canvas.height / sharpness);
+            if (canvas === canvasTarget) {
+                entity.dimension = new Rectangle(0, 0, canvasTarget.width / sharpness, canvasTarget.height / sharpness);
+            }
 
             // TODO: fix this if needed
             // fit overlay onto canvas
             if (overlaySprite) {
-                scale = canvas.width / overlaySprite.getDimension().width;
+                scale = canvasTarget.width / overlaySprite.getDimension().width;
                 if (overlaySprite.scalable) {
                     overlaySprite.scalable.setScale(new Vector2(scale, scale));
                 }
@@ -448,48 +462,50 @@ bento.define('bento/gui/text', [
             }
 
             // set alignment by setting the origin
-            switch (align) {
-            case 'left':
-                origin.x = 0;
-                break;
-            case 'center':
-                origin.x = margin.x + canvasWidth / 2;
-                break;
-            case 'right':
-                origin.x = margin.x + canvasWidth;
-                break;
-            default:
-                break;
-            }
-            switch (textBaseline) {
-            case 'top':
-                origin.y = 0;
-                break;
-            case 'middle':
-                origin.y = margin.y + (centerByCanvas ? canvas.height : canvasHeight) / 2;
-                break;
-            case 'bottom':
-                origin.y = margin.y + (centerByCanvas ? canvas.height : canvasHeight);
-                break;
-            default:
-                break;
+            if (canvas === canvasTarget) {
+                switch (align) {
+                case 'left':
+                    origin.x = 0;
+                    break;
+                case 'center':
+                    origin.x = margin.x + canvasWidth / 2;
+                    break;
+                case 'right':
+                    origin.x = margin.x + canvasWidth;
+                    break;
+                default:
+                    break;
+                }
+                switch (textBaseline) {
+                case 'top':
+                    origin.y = 0;
+                    break;
+                case 'middle':
+                    origin.y = margin.y + (centerByCanvas ? canvasTarget.height : canvasHeight) / 2;
+                    break;
+                case 'bottom':
+                    origin.y = margin.y + (centerByCanvas ? canvasTarget.height : canvasHeight);
+                    break;
+                default:
+                    break;
+                }
             }
 
             // draw text
-            setContext(ctx);
+            setContext(context);
             for (i = 0, ii = strings.length; i < ii; ++i) {
                 // gradient or solid color
                 if (Utils.isDefined(strings[i].gradient)) {
-                    ctx.fillStyle = strings[i].gradient;
+                    context.fillStyle = strings[i].gradient;
                 } else {
-                    ctx.fillStyle = fontColor;
+                    context.fillStyle = fontColor;
                 }
                 // add 1 fontSize because text is aligned to the bottom (most reliable one)
                 x = offset.x + origin.x + strings[i].spaceWidth / 2;
                 y = offset.y + (i + 1) * fontSize + margin.y + ySpacing * i;
 
                 // outer stroke with pixelStroke
-                ctx.globalCompositeOperation = 'source-over';
+                context.globalCompositeOperation = 'source-over';
                 if (pixelStroke) {
                     for (j = lineWidth.length - 1; j >= 0; --j) {
                         if (lineWidth[j] && !innerStroke[j]) {
@@ -504,55 +520,59 @@ bento.define('bento/gui/text', [
                 }
 
                 // fillText
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillText(strings[i].string, ~~x, ~~y + (navigator.isCocoonJS ? 0 : 0.5));
+                context.globalCompositeOperation = 'source-over';
+                context.fillText(strings[i].string, ~~x, ~~y + (navigator.isCocoonJS ? 0 : 0.5));
 
 
                 // pattern
                 if (!isEmpty(overlaySprite)) {
-                    ctx.globalCompositeOperation = 'source-atop';
+                    context.globalCompositeOperation = 'source-atop';
                     overlaySprite.setPosition(new Vector2(x, y - fontSize));
                     overlaySprite.draw({
                         canvas: canvas,
-                        context: ctx
+                        context: context
                     });
                 }
 
                 // inner stroke
-                ctx.globalCompositeOperation = 'source-atop';
+                context.globalCompositeOperation = 'source-atop';
                 for (j = 0, jj = lineWidth.length; j < jj; ++j) {
                     if (lineWidth[j] && innerStroke[j]) {
-                        ctx.lineWidth = lineWidth[j] * 2;
-                        ctx.strokeStyle = strokeStyle[j];
-                        ctx.strokeText(strings[i].string, ~~x, ~~y);
+                        context.lineWidth = lineWidth[j] * 2;
+                        context.strokeStyle = strokeStyle[j];
+                        context.strokeText(strings[i].string, ~~x, ~~y);
                     }
                 }
 
                 // outer stroke
                 if (!pixelStroke) {
-                    ctx.globalCompositeOperation = 'destination-over';
+                    context.globalCompositeOperation = 'destination-over';
                     for (j = lineWidth.length - 1; j >= 0; --j) {
                         if (lineWidth[j] && !innerStroke[j]) {
-                            ctx.lineWidth = lineWidth[j] * 2;
-                            ctx.strokeStyle = strokeStyle[j];
-                            ctx.strokeText(strings[i].string, ~~x, ~~y);
+                            context.lineWidth = lineWidth[j] * 2;
+                            context.strokeStyle = strokeStyle[j];
+                            context.strokeText(strings[i].string, ~~x, ~~y);
                         }
                     }
                 }
             }
-            restoreContext(ctx);
+            restoreContext(context);
 
             // delete texture in case of pixi
-            if (canvas.texture && canvas.texture.destroy) {
-                canvas.texture.destroy();
+            if (canvas === canvasTarget) {
+                if (canvas.texture && canvas.texture.destroy) {
+                    canvas.texture.destroy();
+                }
+                canvas.texture = null;
+                packedImage = new PackedImage(canvas);
+                sprite.setup({
+                    image: packedImage
+                });
             }
-            canvas.texture = null;
-            packedImage = new PackedImage(canvas);
-            sprite.setup({
-                image: packedImage
-            });
 
             warningCounter += 2;
+
+            return canvasTarget;
         };
         /*
          * Restore context and previous font settings
@@ -600,12 +620,15 @@ bento.define('bento/gui/text', [
             if (!canvas) {
                 if (!didInit && !Text.generateOnConstructor) {
                     // first time initialization with text
-                    createCanvas();
+                    if (!canvas) {
+                        canvas = createCanvas();
+                        ctx = canvas.getContext('2d');
+                    }
                     didInit = true;
                     applySettings(settings);
                 }
             }
-            
+
             strings = [];
             canvasWidth = 1;
             canvasHeight = 1;
@@ -815,7 +838,10 @@ bento.define('bento/gui/text', [
                 if (!canvas) {
                     if (!didInit && !Text.generateOnConstructor) {
                         // first time initialization with text
-                        createCanvas();
+                        if (!canvas) {
+                            canvas = createCanvas();
+                            ctx = canvas.getContext('2d');
+                        }
                         didInit = true;
                         applySettings(settings);
                     } else {
@@ -962,12 +988,29 @@ bento.define('bento/gui/text', [
              */
             getEffectiveFontSize: function () {
                 return fontSize / sharpness;
-            }
+            },
+
+            /**
+             * Generate text manually (on a seperate canvas)
+             * @function
+             * @instance
+             * @name generateText
+             * @returns Canvas
+             * @snippet #Text.generateText|Text
+                generateText(canvas);
+             */
+            generateText: function (canvasTarget) {
+                applySettings(settings);
+                return updateCanvas(canvasTarget);
+            },
 
         });
 
         if (Text.generateOnConstructor) {
-            createCanvas();
+            if (!canvas) {
+                canvas = createCanvas();
+                ctx = canvas.getContext('2d');
+            }
             applySettings(settings);
         }
 
