@@ -589,6 +589,7 @@ removeSelf();
      * @instance
      * @param {String} name - name of the component
      * @param {FoundCallback} callback - called when component is found
+     * @param {Function} errorCallback - called when component is not found
      * @name getComponent
      * @snippet #Entity.getComponent|Entity
 getComponent('${1}', function (${1:component}) {
@@ -596,7 +597,7 @@ getComponent('${1}', function (${1:component}) {
 });
      * @returns {Entity} Returns the component, null if not found
      */
-    Entity.prototype.getComponent = function (name, callback) {
+    Entity.prototype.getComponent = function (name, callback, errorCallback) {
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
@@ -606,6 +607,9 @@ getComponent('${1}', function (${1:component}) {
                 }
                 return component;
             }
+        }
+        if (errorCallback) {
+            errorCallback();
         }
         return null;
     };

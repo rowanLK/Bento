@@ -339,10 +339,11 @@ bento.define('bento/managers/object', [
              * @instance
              * @param {String} objectName - Name of the object
              * @param {Function} [callback] - Called if the object is found
+             * @param {Function} [errorCallback] - Called if the object is not found
              * @returns {Object} null if not found
              * @name get
              */
-            get: function (objectName, callback) {
+            get: function (objectName, callback, errorCallback) {
                 // retrieves the first object it finds by its name
                 var i, l,
                     object;
@@ -361,6 +362,9 @@ bento.define('bento/managers/object', [
                         }
                         return object;
                     }
+                }
+                if (errorCallback) {
+                    errorCallback();
                 }
                 return null;
             },
