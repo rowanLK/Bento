@@ -172,6 +172,7 @@ bento.define('bento/gui/scrollinglist', [
         });
         var behavior = {
             pointers: [],
+            name: 'inputBehavior',
             start: function () {
                 this.pointers = Bento.input.getPointers();
             },
