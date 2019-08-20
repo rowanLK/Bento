@@ -5513,6 +5513,7 @@ removeSelf();
      * @instance
      * @param {String} name - name of the component
      * @param {FoundCallback} callback - called when component is found
+     * @param {Function} errorCallback - called when component is not found
      * @name getComponent
      * @snippet #Entity.getComponent|Entity
 getComponent('${1}', function (${1:component}) {
@@ -5520,7 +5521,7 @@ getComponent('${1}', function (${1:component}) {
 });
      * @returns {Entity} Returns the component, null if not found
      */
-    Entity.prototype.getComponent = function (name, callback) {
+    Entity.prototype.getComponent = function (name, callback, errorCallback) {
         var i, l, component;
         for (i = 0, l = this.components.length; i < l; ++i) {
             component = this.components[i];
@@ -5530,6 +5531,9 @@ getComponent('${1}', function (${1:component}) {
                 }
                 return component;
             }
+        }
+        if (errorCallback) {
+            errorCallback();
         }
         return null;
     };
@@ -10879,10 +10883,11 @@ bento.define('bento/managers/object', [
              * @instance
              * @param {String} objectName - Name of the object
              * @param {Function} [callback] - Called if the object is found
+             * @param {Function} [errorCallback] - Called if the object is not found
              * @returns {Object} null if not found
              * @name get
              */
-            get: function (objectName, callback) {
+            get: function (objectName, callback, errorCallback) {
                 // retrieves the first object it finds by its name
                 var i, l,
                     object;
@@ -10901,6 +10906,9 @@ bento.define('bento/managers/object', [
                         }
                         return object;
                     }
+                }
+                if (errorCallback) {
+                    errorCallback();
                 }
                 return null;
             },
@@ -14687,6 +14695,7 @@ bento.define('bento/gui/scrollinglist', [
         });
         var behavior = {
             pointers: [],
+            name: 'inputBehavior',
             start: function () {
                 this.pointers = Bento.input.getPointers();
             },
@@ -15218,6 +15227,7 @@ bento.define('bento/gui/text', [
         var fontColor = 'black';
         var lineWidth = [0];
         var maxLineWidth = 0;
+        var lineJoin = 'round';
         var strokeStyle = ['black'];
         var innerStroke = [false];
         var textBaseline = 'top';
@@ -15357,6 +15367,7 @@ bento.define('bento/gui/text', [
                 }
             }
             pixelStroke = textSettings.pixelStroke || false;
+            lineJoin = Utils.getDefault(textSettings.lineJoin, 'round');
             // align array lengths
             maxLength = Math.max(lineWidth.length, strokeStyle.length, innerStroke.length);
             while (lineWidth.length < maxLength) {
@@ -15508,6 +15519,7 @@ bento.define('bento/gui/text', [
                 if (!canvas) {
                     // generat it first
                     canvas = createCanvas();
+                    canvasTarget = canvas;
                     ctx = canvasTarget.getContext('2d');
                 }
                 // use closure's canvas and context
@@ -15643,6 +15655,7 @@ bento.define('bento/gui/text', [
 
                 // outer stroke
                 if (!pixelStroke) {
+                    context.lineJoin = lineJoin;
                     context.globalCompositeOperation = 'destination-over';
                     for (j = lineWidth.length - 1; j >= 0; --j) {
                         if (lineWidth[j] && !innerStroke[j]) {

@@ -120,6 +120,7 @@ bento.define('bento/gui/text', [
         var fontColor = 'black';
         var lineWidth = [0];
         var maxLineWidth = 0;
+        var lineJoin = 'round';
         var strokeStyle = ['black'];
         var innerStroke = [false];
         var textBaseline = 'top';
@@ -259,6 +260,7 @@ bento.define('bento/gui/text', [
                 }
             }
             pixelStroke = textSettings.pixelStroke || false;
+            lineJoin = Utils.getDefault(textSettings.lineJoin, 'round');
             // align array lengths
             maxLength = Math.max(lineWidth.length, strokeStyle.length, innerStroke.length);
             while (lineWidth.length < maxLength) {
@@ -546,6 +548,7 @@ bento.define('bento/gui/text', [
 
                 // outer stroke
                 if (!pixelStroke) {
+                    context.lineJoin = lineJoin;
                     context.globalCompositeOperation = 'destination-over';
                     for (j = lineWidth.length - 1; j >= 0; --j) {
                         if (lineWidth[j] && !innerStroke[j]) {
