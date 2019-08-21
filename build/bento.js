@@ -2494,7 +2494,7 @@ bento.define('bento', [
      */
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.2.5',
+        version: '1.2.6',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -7817,7 +7817,7 @@ bento.define('bento/managers/asset', [
                     if (src.indexOf('http') === 0) {
                         audio.crossOrigin = 'Anonymous';
                     }
-                    audio.src = src + (useQueries ? '?t=' + now : '');
+                    audio.src = src + (useQueries && src.indexOf('data:') < 0 ? '?t=' + now : '');
                     failed = false;
                     return true;
                 }
@@ -7964,7 +7964,7 @@ bento.define('bento/managers/asset', [
                 img.crossOrigin = "Anonymous";
             }
 
-            img.src = source + (useQueries ? '?t=' + now : '');
+            img.src = source + (useQueries && source.indexOf('data:') < 0 ? '?t=' + now : '');
         };
         var loadTTF = function (name, source, callback) {
             // for every font to load we measure the width on a canvas
