@@ -467,7 +467,7 @@ bento.define('bento/gui/text', [
             if (canvas === canvasTarget) {
                 switch (align) {
                 case 'left':
-                    origin.x = 0;
+                    origin.x = margin.x;
                     break;
                 case 'center':
                     origin.x = margin.x + canvasWidth / 2;
@@ -480,7 +480,7 @@ bento.define('bento/gui/text', [
                 }
                 switch (textBaseline) {
                 case 'top':
-                    origin.y = 0;
+                    origin.y = margin.y;
                     break;
                 case 'middle':
                     origin.y = margin.y + (centerByCanvas ? canvasTarget.height : canvasHeight) / 2;
