@@ -59,8 +59,8 @@ bento.define('bento/components/pixi/sprite', [
         }
         texture = image.frame;
         rectangle = texture._frame;
-        rectangle.x = sx;
-        rectangle.y = sy;
+        rectangle.x = packedImage.x + sx;
+        rectangle.y = packedImage.y + sy;
         rectangle.width = sw;
         rectangle.height = sh;
         texture._updateUvs();
