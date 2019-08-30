@@ -6,6 +6,8 @@
 * Add *lineJoin* parameter to Text and setting the default to *round* instead of *miter*, making strokes on Text look better.
 * **Bento.objects.get()** and **Entity.getComponent()** have a 2nd callback in the case of not finding the child.
 * Bugfix: the queries for cache busting were also added to base64 assets, which could break the *build-compact* option.
+* Bugfix: horizontal origin of Text did not take margin into account (PR #113).
+* Bugfix: PixiSprite did not take packed texture coordinates into account (PR #114).
 
 ## 1.2.5
 
