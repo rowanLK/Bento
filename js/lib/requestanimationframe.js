@@ -12,6 +12,10 @@ bento.define('bento/lib/requestanimationframe', [], function () {
         window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
     }
 
+    if (window.nativeAnimationFrame) {
+        window.requestAnimationFrame = window.nativeAnimationFrame;
+    }
+
     if (!window.requestAnimationFrame)
         window.requestAnimationFrame = function (callback, element) {
             var currTime = new Date().getTime(),

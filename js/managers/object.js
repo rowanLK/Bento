@@ -13,8 +13,9 @@
  */
 bento.define('bento/managers/object', [
     'bento/utils',
-    'bento/eventsystem'
-], function (Utils, EventSystem) {
+    'bento/eventsystem',
+    'lib/loop'
+], function (Utils, EventSystem, Loop) {
     'use strict';
     return function (getGameData, settings) {
         var objects = [];
@@ -98,7 +99,7 @@ bento.define('bento/managers/object', [
 
             lastFrameTime = time;
 
-            window.requestAnimationFrame(mainLoop);
+            Loop.run(mainLoop);
         };
         var currentObject; // the current object being processed in the main loop
         var update = function (data) {

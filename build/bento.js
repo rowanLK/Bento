@@ -4028,8 +4028,8 @@ bento.define('bento/components/pixi/sprite', [
         }
         texture = image.frame;
         rectangle = texture._frame;
-        rectangle.x = sx;
-        rectangle.y = sy;
+        rectangle.x = packedImage.x + sx;
+        rectangle.y = packedImage.y + sy;
         rectangle.width = sw;
         rectangle.height = sh;
         texture._updateUvs();
@@ -7182,6 +7182,26 @@ bento.define('bento/lib/domready', [], function () {
 });
 
 /**
+ * Game loop implementation
+ */
+bento.define('lib/loop', [
+    'bento',
+    'bento/utils',
+    'bento/lib/requestanimationframe'
+], function (
+    Bento,
+    Utils,
+    RequestAnimationFrame
+) {
+    'use strict';
+    var Loop = {
+        run: function (callback) {
+            RequestAnimationFrame(callback);
+        }
+    };
+    return Loop;
+});
+/**
  * https://github.com/pieroxy/lz-string/
  * Modifications: wrapped in Bento define
  *
@@ -7719,6 +7739,10 @@ bento.define('bento/lib/requestanimationframe', [], function () {
     for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
         window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
         window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
+    }
+
+    if (window.nativeAnimationFrame) {
+        window.requestAnimationFrame = window.nativeAnimationFrame;
     }
 
     if (!window.requestAnimationFrame)
@@ -10557,8 +10581,9 @@ bento.define('bento/managers/input', [
  */
 bento.define('bento/managers/object', [
     'bento/utils',
-    'bento/eventsystem'
-], function (Utils, EventSystem) {
+    'bento/eventsystem',
+    'lib/loop'
+], function (Utils, EventSystem, Loop) {
     'use strict';
     return function (getGameData, settings) {
         var objects = [];
@@ -10642,7 +10667,7 @@ bento.define('bento/managers/object', [
 
             lastFrameTime = time;
 
-            window.requestAnimationFrame(mainLoop);
+            Loop.run(mainLoop);
         };
         var currentObject; // the current object being processed in the main loop
         var update = function (data) {
