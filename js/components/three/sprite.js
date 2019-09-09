@@ -42,7 +42,7 @@ bento.define('bento/components/three/sprite', [
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
 
-        this.name = settings.name || 'planeSprite';
+        this.name = settings.name || 'threeSprite';
     };
     ThreeSprite.prototype = Object.create(Sprite.prototype);
     ThreeSprite.prototype.constructor = ThreeSprite;
@@ -157,7 +157,11 @@ bento.define('bento/components/three/sprite', [
 
     ThreeSprite.prototype.draw = function (data) {
         // ThreeSprite is not responsible for drawing on screen, only calculating the UVs and positioning
-        data.renderer.render(this.container, this.parent.z || 0);
+        data.renderer.render({
+            object3d: this.container,
+            material: this.material,
+            z: -this.parent.z || 0
+        });
     };
 
     ThreeSprite.prototype.updateUvs = function () {

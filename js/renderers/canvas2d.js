@@ -4,9 +4,11 @@
  * @moduleName Canvas2DRenderer
  */
 bento.define('bento/renderers/canvas2d', [
+    'bento',
     'bento/utils',
     'bento/math/transformmatrix'
 ], function (
+    Bento,
     Utils,
     TransformMatrix
 ) {
@@ -175,6 +177,12 @@ bento.define('bento/renderers/canvas2d', [
             flush: function () {
                 if (context === original && pixelSize !== 1) {
                     renderer.restore();
+                }
+            },
+            updateSize: function () {
+                // prevent the canvas being blurry after resizing
+                if (Bento.getAntiAlias() === false) {
+                    Bento.setAntiAlias(false);
                 }
             }
         };

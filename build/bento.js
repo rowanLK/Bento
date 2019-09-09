@@ -2347,17 +2347,8 @@ bento.define('bento', [
         console.log('Game Resolution: ' + canvasDimension.width + ' x ' + canvasDimension.height);
 
         // final settings
-        if (renderer) {
-            if (renderer.name === 'canvas2d') {
-                // prevent the canvas being blurry after resizing
-                if (Bento.getAntiAlias() === false) {
-                    Bento.setAntiAlias(false);
-                }
-            } else if (renderer.name === 'pixi') {
-                // use the resize function on pixi
-                pixiRenderer = Bento.getRenderer().getPixiRenderer();
-                pixiRenderer.resize(canvas.width, canvas.height);
-            }
+        if (renderer && renderer.updateSize) {
+            renderer.updateSize();
         }
         // update input and canvas
         Bento.input.updateCanvas();
@@ -4968,7 +4959,7 @@ bento.define('bento/components/three/sprite', [
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
 
-        this.name = settings.name || 'planeSprite';
+        this.name = settings.name || 'threeSprite';
     };
     ThreeSprite.prototype = Object.create(Sprite.prototype);
     ThreeSprite.prototype.constructor = ThreeSprite;
@@ -5083,7 +5074,11 @@ bento.define('bento/components/three/sprite', [
 
     ThreeSprite.prototype.draw = function (data) {
         // ThreeSprite is not responsible for drawing on screen, only calculating the UVs and positioning
-        data.renderer.render(this.container, this.parent.z || 0);
+        data.renderer.render({
+            object3d: this.container,
+            material: this.material,
+            z: -this.parent.z || 0
+        });
     };
 
     ThreeSprite.prototype.updateUvs = function () {
@@ -19108,9 +19103,11 @@ bento.define('bento/renderer', [
  * @moduleName Canvas2DRenderer
  */
 bento.define('bento/renderers/canvas2d', [
+    'bento',
     'bento/utils',
     'bento/math/transformmatrix'
 ], function (
+    Bento,
     Utils,
     TransformMatrix
 ) {
@@ -19279,6 +19276,12 @@ bento.define('bento/renderers/canvas2d', [
             flush: function () {
                 if (context === original && pixelSize !== 1) {
                     renderer.restore();
+                }
+            },
+            updateSize: function () {
+                // prevent the canvas being blurry after resizing
+                if (Bento.getAntiAlias() === false) {
+                    Bento.setAntiAlias(false);
                 }
             }
         };
@@ -19668,6 +19671,7 @@ bento.define('bento/renderers/three', [
                 return false;
             }
         })();
+        var alpha = 1;
         var matrix = new TransformMatrix();
         var matrices = [];
         var renderer;
@@ -19713,8 +19717,13 @@ bento.define('bento/renderers/three', [
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
 
             //
-            render: function (object3d, z) {
-                // todo: attach to scene and remove everything during flush? or let components add/remove from scene?
+            render: function (data) {
+                var object3d = data.object3d;
+                var material = data.material;
+                var z = data.z;
+                
+                // todo: attach to scene and remove everything during flush? 
+                // or let components add/remove from scene? -> currently doing this option
                 object3d.matrixAutoUpdate = false;
                 object3d.matrix.set(
                     matrix.a, matrix.c, 0, matrix.tx,
@@ -19722,6 +19731,9 @@ bento.define('bento/renderers/three', [
                     0,        0,        1, z,
                     0,        0,        0, 1
                 );
+
+                // opacity
+                material.opacity = alpha;
             },
 
             begin: function () {},
@@ -19729,8 +19741,12 @@ bento.define('bento/renderers/three', [
                 renderer.render(scene, camera);
             },
             setColor: function () {},
-            getOpacity: function () {},
-            setOpacity: function () {},
+            getOpacity: function () {
+                return alpha;
+            },
+            setOpacity: function (value) {
+                alpha = value;
+            },
             createSurface: function () {},
             setContext: function () {},
             getContext: function () {
@@ -19741,12 +19757,15 @@ bento.define('bento/renderers/three', [
                 camera: null,
                 scene: null,
                 renderer: null,
+            },
+            updateSize: function () {
+                setupScene();
             }
         };
         var setupRenderer = function () {
             renderer = new window.THREE.WebGLRenderer(Utils.extend(settings, {
                 context: gl,
-                // antialias: true,
+                antialias: settings.antiAlias,
                 powerPreference: 'low-power',
                 /* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices
                  * Using highp precision in fragment shaders will prevent your content from working on some older mobile hardware.
@@ -19759,10 +19778,14 @@ bento.define('bento/renderers/three', [
             }));
         };
         var setupScene = function () {
-            scene = new window.THREE.Scene();
             var width = canvas.width / settings.pixelSize;
             var height = canvas.height / settings.pixelSize;
-            // camera  = new THREE.PerspectiveCamera(45 * (height / 320), width / height, 0.1, 200);
+            if (!scene) {
+                scene = new window.THREE.Scene();
+            }
+            if (camera) {
+                scene.remove(camera);
+            }
             camera = new window.THREE.OrthographicCamera(
                 0, // left
                 width, // right

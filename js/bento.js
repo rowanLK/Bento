@@ -215,17 +215,8 @@ bento.define('bento', [
         console.log('Game Resolution: ' + canvasDimension.width + ' x ' + canvasDimension.height);
 
         // final settings
-        if (renderer) {
-            if (renderer.name === 'canvas2d') {
-                // prevent the canvas being blurry after resizing
-                if (Bento.getAntiAlias() === false) {
-                    Bento.setAntiAlias(false);
-                }
-            } else if (renderer.name === 'pixi') {
-                // use the resize function on pixi
-                pixiRenderer = Bento.getRenderer().getPixiRenderer();
-                pixiRenderer.resize(canvas.width, canvas.height);
-            }
+        if (renderer && renderer.updateSize) {
+            renderer.updateSize();
         }
         // update input and canvas
         Bento.input.updateCanvas();
