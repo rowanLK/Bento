@@ -148,8 +148,10 @@ bento.define('bento', [
         // canvas2d and pixi are reserved names
         if (settings.renderer === 'canvas2d') {
             rendererName = 'bento/renderers/canvas2d';
-        } else if (settings.renderer === 'pixi') {
+        } else if (settings.renderer === 'pixi' || settings.renderer === 'pixijs' || settings.renderer === 'pixi.js') {
             rendererName = 'bento/renderers/pixi';
+        } else if (settings.renderer === 'three' || settings.renderer === 'threejs' || settings.renderer === 'three.js') {
+            rendererName = 'bento/renderers/three';
         } else if (settings.renderer === 'auto') {
             // auto renderer is deprecated! use canvas2d or pixi
             console.log('WARNING: auto renderer is deprecated. Please use canvas2d or pixi as renderers.');

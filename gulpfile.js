@@ -120,7 +120,7 @@ gulp.task('watch', function () {
     gulp.watch(
         ['js/**/*.js'], {
             interval: 1000
-        }, ['default']
+        }, gulp.series('default')
     );
 });
 

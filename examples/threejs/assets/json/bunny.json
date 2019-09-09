@@ -1,0 +1,15 @@
+{
+    "imageName": "bunnygirlsmall",
+    "frameWidth": 32,
+    "frameHeight": 32,
+    "originRelative": {
+        "x": 0.5,
+        "y": 0.5
+    },
+    "animations": {
+        "default": {
+            "speed": 0.1,
+            "frames": [0, 10, 11, 12]
+        }
+    }
+}
