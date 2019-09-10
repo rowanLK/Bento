@@ -9,7 +9,7 @@
 bento.define('bento/components/pixi/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/sprite'
+    'bento/components/canvas2d/sprite'
 ], function (Bento, Utils, Sprite) {
     'use strict';
     var PixiSprite = function (settings) {
@@ -54,7 +54,7 @@ bento.define('bento/components/pixi/sprite', [
         image = packedImage.image;
         if (!image.texture) {
             // initialize pixi baseTexture
-            image.texture = new window.PIXI.BaseTexture(image, this.scaleMode);
+            image.texture = PixiSprite.imageToTexture(packedImage, this.scaleMode);
             image.frame = new window.PIXI.Texture(image.texture);
         }
         texture = image.frame;
@@ -70,6 +70,11 @@ bento.define('bento/components/pixi/sprite', [
 
     PixiSprite.prototype.toString = function () {
         return '[object PixiSprite]';
+    };
+
+    PixiSprite.imageToTexture = function (image, antiAlias) {
+        var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;
+        return new window.PIXI.BaseTexture(imagePack.image, antiAlias);
     };
 
     return PixiSprite;

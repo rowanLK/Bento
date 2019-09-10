@@ -8,7 +8,7 @@
 bento.define('bento/components/three/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/sprite',
+    'bento/components/canvas2d/sprite',
     'bento/renderers/three'
 ], function (
     Bento,
@@ -17,6 +17,7 @@ bento.define('bento/components/three/sprite', [
     ThreeJsRenderer
 ) {
     'use strict';
+    var THREE = window.THREE;
     var ThreeSprite = function (settings) {
         if (!(this instanceof ThreeSprite)) {
             return new ThreeSprite(settings);
@@ -29,7 +30,7 @@ bento.define('bento/components/three/sprite', [
         this.geometry = null;
         this.texture = null;
         this.plane = null;
-        this.object3D = new window.THREE.Object3D();
+        this.object3D = new THREE.Object3D();
         this.autoAttach = Utils.getDefault(settings.autoAttach, true);
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
 
@@ -37,9 +38,10 @@ bento.define('bento/components/three/sprite', [
         this.lastFrame = null;
 
         // debugging
-        // var axesHelper = new window.THREE.AxesHelper( 1 );
+        // var axesHelper = new THREE.AxesHelper( 1 );
         // this.object3D.add(axesHelper);
 
+        // deprecated (using an external sprite as sprite), todo: clean up
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
 
@@ -48,22 +50,14 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype = Object.create(Sprite.prototype);
     ThreeSprite.prototype.constructor = ThreeSprite;
 
-    ThreeSprite.prototype.start = function (data) {
-        if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.add(this.object3D);
-        }
-    };
+    // ThreeSprite.prototype.start = function (data) {};
     ThreeSprite.prototype.destroy = function (data) {
-        if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.remove(this.object3D);
-        }
-
         // todo: memory management
         this.dispose();
     };
 
     ThreeSprite.prototype.setup = function (data) {
-        var spriteImage;
+        var packedImage;
         var threeTexture;
         var plane;
         var sprite = this.sprite || this;
@@ -75,22 +69,19 @@ bento.define('bento/components/three/sprite', [
             Sprite.prototype.setup.call(this, data);
         }
 
-        spriteImage = sprite.spriteImage;
+        packedImage = sprite.spriteImage;
 
         // check if we have an image and convert it to a texture
-        if (spriteImage) {
-            threeTexture = spriteImage.image.texture;
+        if (packedImage) {
+            threeTexture = packedImage.image.texture;
             if (!threeTexture) {
-                threeTexture = new window.THREE.Texture(spriteImage.image);
-                threeTexture.needsUpdate = true;
-                if (!this.antiAlias) {
-                    threeTexture.magFilter = window.THREE.NearestFilter;
-                    threeTexture.minFilter = window.THREE.NearestFilter;
-                }
-                spriteImage.image.texture = threeTexture;
+                // initialize texture for the first time
+                threeTexture = ThreeSprite.imageToTexture(packedImage, this.antiAlias);
+                packedImage.image.texture = threeTexture;
             }
             this.texture = threeTexture;
         } else {
+            // un-set
             this.texture = null;
         }
 
@@ -100,14 +91,14 @@ bento.define('bento/components/three/sprite', [
             this.dispose();
 
             // move this also to a image property?
-            this.material = new window.THREE.MeshBasicMaterial({
+            this.material = new THREE.MeshBasicMaterial({
                 map: this.texture,
                 color: 0xffffff,
-                // side: window.THREE.DoubleSide,
+                // side: THREE.DoubleSide,
                 alphaTest: Utils.getDefault(this.settings.alphaTest, ThreeSprite.alphaTest), // --> prevents glitchy clipping
                 transparent: true
             });
-            this.geometry = new window.THREE.PlaneGeometry(
+            this.geometry = new THREE.PlaneGeometry(
                 sprite.frameWidth,
                 sprite.frameHeight,
                 1,
@@ -119,7 +110,7 @@ bento.define('bento/components/three/sprite', [
                 this.plane = null;
             }
 
-            plane = new window.THREE.Mesh(this.geometry, this.material);
+            plane = new THREE.Mesh(this.geometry, this.material);
             this.plane = plane;
 
             // game specific?
@@ -131,12 +122,7 @@ bento.define('bento/components/three/sprite', [
 
             this.object3D.add(plane);
 
-            // origin
-            // take into account that threejs already assumes middle of the mesh to be origin
-            plane.position.x = (sprite.origin.x - sprite.frameWidth / 2);
-            plane.position.y = -(sprite.origin.y - sprite.frameHeight / 2); // reversed due to rotation
-
-            // var axesHelper = new window.THREE.AxesHelper(sprite.frameWidth);
+            // var axesHelper = new THREE.AxesHelper(sprite.frameWidth);
             // this.object3D.add(axesHelper);
         } else {
             // remove existing mesh
@@ -159,11 +145,18 @@ bento.define('bento/components/three/sprite', [
     };
 
     ThreeSprite.prototype.draw = function (data) {
-        // ThreeSprite is not responsible for drawing on screen, only calculating the UVs and positioning
+        // origin: to achieve this offset effect, we move the plane (child of the object3d)
+        // take into account that threejs already assumes middle of the mesh to be origin
+        var sprite = this.sprite || this;
+        var origin = sprite.origin;
+        var plane = this.plane;
+        plane.position.x = -(origin.x - sprite.frameWidth / 2);
+        plane.position.y = (origin.y - sprite.frameHeight / 2);
+
+        // move it to the render lsit
         data.renderer.render({
-            object3d: this.object3D,
-            material: this.material,
-            z: -this.parent.z || 0
+            object3D: this.object3D,
+            material: this.material
         });
     };
 
@@ -229,6 +222,22 @@ bento.define('bento/components/three/sprite', [
     };
 
     ThreeSprite.alphaTest = 0;
+
+    /**
+     * Converts imagePack to THREE.Texture
+     * @snippet Sprite.imageToTexture()|Texture from renderer
+Sprite.imageToTexture('${1:imageName}', ${2:false});
+     */
+    ThreeSprite.imageToTexture = function (image, antiAlias) {
+        var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;
+        var texture = new THREE.Texture(imagePack.image);
+        texture.needsUpdate = true;
+        if (!antiAlias) {
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+        }
+        return texture;
+    };
 
     return ThreeSprite;
 });

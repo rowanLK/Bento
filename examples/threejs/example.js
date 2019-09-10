@@ -6,7 +6,6 @@ bento.require([
     'bento/components/three/sprite',
     'bento/components/fill',
     'bento/components/clickable',
-    'bento/gui/text',
     'bento/tween',
     'bento/utils'
 ], function (
@@ -17,7 +16,6 @@ bento.require([
     Sprite,
     Fill,
     Clickable,
-    Text,
     Tween,
     Utils
 ) {
@@ -30,24 +28,20 @@ bento.require([
                 color: [1, 1, 1, 1]
             })]
         });
-        var text = new Text({
-            z: 1,
-            position: new Vector2(8, -4),
-            text: '1. Normal\n\n\n2. Scaled\n\n\n3. Rotating\n\n\n4. Scaling and rotating',
-            font: 'font',
-            fontSize: 16,
-            ySpacing: 3,
-            fontColor: '#ccc',
-            align: 'left'
-        });
+        // var text = new Text({
+        //     z: 1,
+        //     position: new Vector2(8, -4),
+        //     text: '1. Normal\n\n\n2. Scaled\n\n\n3. Rotating\n\n\n4. Scaling and rotating',
+        //     font: 'font',
+        //     fontSize: 16,
+        //     ySpacing: 3,
+        //     fontColor: '#ccc',
+        //     align: 'left'
+        // });
         var THREE = window.THREE;
 
         var geometry = new THREE.SphereGeometry(8, 32, 32);
-        var texture = new THREE.Texture(Bento.assets.getImage('luckykat').image);
-        texture.needsUpdate = true;
-        texture.magFilter = window.THREE.NearestFilter;
-        texture.minFilter = window.THREE.NearestFilter;
-
+        var texture = Sprite.imageToTexture('luckykat', false);
         var material = new THREE.MeshBasicMaterial({
             map: texture,
             color: 0xffffff
@@ -146,7 +140,7 @@ bento.require([
         });
 
         Bento.objects.attach(background);
-        Bento.objects.attach(text);
+        // Bento.objects.attach(text);
         Bento.objects.attach(normalBunny);
         Bento.objects.attach(stretchBunny);
         Bento.objects.attach(rotatingBunny);

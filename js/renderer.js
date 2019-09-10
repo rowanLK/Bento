@@ -27,7 +27,8 @@ bento.define('bento/renderer', [
             setOpacity: function () {},
             createSurface: function () {},
             setContext: function () {},
-            restoreContext: function () {}
+            restoreContext: function () {},
+            updateSize: function () {}
         };
         bento.require([rendererName], function (renderer) {
             Utils.extend(module, renderer(canvas, settings), true);

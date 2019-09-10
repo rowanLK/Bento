@@ -2881,6 +2881,462 @@ bento.define('bento', [
     return Bento;
 });
 /**
+
+ */
+bento.define('bento/components/canvas2d/sprite', [
+    'bento',
+    'bento/utils',
+    'bento/math/vector2'
+], function (
+    Bento,
+    Utils,
+    Vector2
+) {
+    'use strict';
+    var Sprite = function (settings) {
+        if (!(this instanceof Sprite)) {
+            return new Sprite(settings);
+        }
+        this.entity = null;
+        this.name = settings.name || 'sprite';
+        this.visible = true;
+        this.parent = null;
+        this.rootIndex = -1;
+
+        this.animationSettings = settings || {
+            frameCountX: 1,
+            frameCountY: 1
+        };
+
+        // sprite settings
+        this.spriteImage = null;
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.padding = 0;
+        this.origin = new Vector2(0, 0);
+
+        // keep a reference to the spritesheet name
+        this.currentSpriteSheet = '';
+
+        // drawing internals
+        this.sourceX = 0;
+        this.sourceY = 0;
+
+        // set to default
+        this.animations = {};
+        this.currentAnimation = null;
+        this.currentAnimationLength = 0;
+        this.currentFrame = 0;
+
+        this.onCompleteCallback = function () {};
+        this.setup(settings);
+    };
+    /**
+     * Sets up Sprite. This can be used to overwrite the settings object passed to the constructor.
+     * @function
+     * @instance
+     * @param {Object} settings - Settings object
+     * @name setup
+     * @snippet #Sprite.setup|spriteSheet
+setup({
+    spriteSheet: '${1}'
+});
+     * @snippet #Sprite.setup|imageName
+setup({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    frameCountX: ${4:1},
+    frameCountY: ${5:1},
+    animations: {
+        default: {
+            speed: 0,
+            frames: [0]
+        }
+    }
+});
+     */
+    Sprite.prototype.setup = function (settings) {
+        var self = this,
+            padding = 0,
+            spriteSheet;
+
+        if (settings && settings.spriteSheet) {
+            //load settings from animation JSON, and set the correct image
+            spriteSheet = Bento.assets.getSpriteSheet(settings.spriteSheet);
+
+            // remember the spritesheet name
+            this.currentSpriteSheet = settings.spriteSheet;
+
+            // settings is overwritten
+            settings = Utils.copyObject(spriteSheet.animation);
+            settings.image = spriteSheet.image;
+            if (settings.animation) {
+                settings.animations = {
+                    default: settings.animation
+                };
+            }
+        }
+
+        this.animationSettings = settings || this.animationSettings;
+        padding = this.animationSettings.padding || 0;
+
+        // add default animation
+        if (!this.animations['default']) {
+            if (!this.animationSettings.animations) {
+                this.animationSettings.animations = {};
+            }
+            if (!this.animationSettings.animations['default']) {
+                this.animationSettings.animations['default'] = {
+                    frames: [0]
+                };
+            }
+        }
+
+        // get image
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        if (!this.spriteImage) {
+            Utils.log("ERROR: something went wrong with loading the sprite.");
+            return;
+        }
+        // use frameWidth if specified (overrides frameCountX and frameCountY)
+        if (this.animationSettings.frameWidth) {
+            this.frameWidth = this.animationSettings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
+        } else {
+            this.frameCountX = this.animationSettings.frameCountX || 1;
+            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (this.animationSettings.frameHeight) {
+            this.frameHeight = this.animationSettings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
+        } else {
+            this.frameCountY = this.animationSettings.frameCountY || 1;
+            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        this.padding = this.animationSettings.padding || 0;
+
+        if (this.animationSettings.origin) {
+            this.origin.x = this.animationSettings.origin.x;
+            this.origin.y = this.animationSettings.origin.y;
+        } else if (this.animationSettings.originRelative) {
+            this.setOriginRelative(this.animationSettings.originRelative);
+        }
+
+        // set default
+        Utils.extend(this.animations, this.animationSettings.animations, true);
+        this.setAnimation('default');
+
+        this.updateEntity();
+    };
+
+    Sprite.prototype.updateEntity = function () {
+        if (!this.entity) {
+            return;
+        }
+
+        this.entity.dimension.x = -this.origin.x;
+        this.entity.dimension.y = -this.origin.y;
+        this.entity.dimension.width = this.frameWidth;
+        this.entity.dimension.height = this.frameHeight;
+    };
+
+    Sprite.prototype.attached = function (data) {
+        var animation,
+            animations = this.animationSettings.animations,
+            i = 0,
+            len = 0,
+            highestFrame = 0;
+
+        this.entity = data.entity;
+        // set dimension of entity object
+        this.updateEntity();
+
+        // check if the frames of animation go out of bounds
+        for (animation in animations) {
+            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
+                if (animations[animation].frames[i] > highestFrame) {
+                    highestFrame = animations[animation].frames[i];
+                }
+            }
+            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
+                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
+            }
+
+        }
+    };
+    /**
+     * Set component to a different animation. The animation won't change if it's already playing.
+     * @function
+     * @instance
+     * @param {String} name - Name of the animation.
+     * @param {Function} callback - Called when animation ends.
+     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
+     * @name setAnimation
+     * @snippet #Sprite.setAnimation|snippet
+setAnimation('${1:name}');
+     * @snippet #Sprite.setAnimation|callback
+setAnimation('${1:name}', function () {
+    $2
+});
+     */
+    Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!Sprite.suppressWarnings && !anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (!Sprite.suppressWarnings && this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
+            }
+        }
+    };
+    /**
+     * Bind another spritesheet to this sprite. The spritesheet won't change if it's already playing
+     * @function
+     * @instance
+     * @param {String} name - Name of the spritesheet.
+     * @param {Function} callback - Called when animation ends.
+     * @name setAnimation
+     * @snippet #Sprite.setSpriteSheet|snippet
+setSpriteSheet('${1:name}');
+     * @snippet #Sprite.setSpriteSheet|callback
+setSpriteSheet('${1:name}', function () {
+    $2
+});
+     */
+    Sprite.prototype.setSpriteSheet = function (name, callback) {
+        if (this.currentSpriteSheet === name) {
+            // already playing
+            return;
+        }
+        this.setup({
+            spriteSheet: name
+        });
+
+        this.onCompleteCallback = callback;
+    };
+    /**
+     * Returns the name of current animation playing
+     * @function
+     * @instance
+     * @returns {String} Name of the animation playing, null if not playing anything
+     * @name getAnimationName
+     * @snippet #Sprite.getAnimationName|String
+getAnimationName();
+     */
+    Sprite.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+    /**
+     * Set current animation to a certain frame
+     * @function
+     * @instance
+     * @param {Number} frameNumber - Frame number.
+     * @name setFrame
+     * @snippet #Sprite.getAnimationName|snippet
+setFrame(${1:number});
+     */
+    Sprite.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+    /**
+     * Get speed of the current animation.
+     * @function
+     * @instance
+     * @returns {Number} Speed of the current animation
+     * @name getCurrentSpeed
+     * @snippet #Sprite.getCurrentSpeed|Number
+getCurrentSpeed();
+     */
+    Sprite.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+    /**
+     * Set speed of the current animation.
+     * @function
+     * @instance
+     * @param {Number} speed - Speed at which the animation plays.
+     * @name setCurrentSpeed
+     * @snippet #Sprite.setCurrentSpeed|snippet
+setCurrentSpeed(${1:number});
+     */
+    Sprite.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+    /**
+     * Returns the current frame number
+     * @function
+     * @instance
+     * @returns {Number} frameNumber - Not necessarily a round number.
+     * @name getCurrentFrame
+     * @snippet #Sprite.getCurrentFrame|Number
+getCurrentFrame();
+     */
+    Sprite.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+    /**
+     * Returns the frame width
+     * @function
+     * @instance
+     * @returns {Number} width - Width of the image frame.
+     * @name getFrameWidth
+     * @snippet #Sprite.getFrameWidth|Number
+getFrameWidth();
+     */
+    Sprite.prototype.getFrameWidth = function () {
+        return this.frameWidth;
+    };
+    /**
+     * Returns the frame height
+     * @function
+     * @instance
+     * @returns {Number} height - Height of the image frame.
+     * @name getFrameHeight
+     * @snippet #Sprite.getFrameHeight|Number
+getFrameHeight();
+     */
+    Sprite.prototype.getFrameHeight = function () {
+        return this.frameHeight;
+    };
+    /**
+     * Sets the origin relatively (0...1), relative to the size of the frame.
+     * @function
+     * @param {Vector2} origin - Position of the origin (relative to upper left corner)
+     * @instance
+     * @name setOriginRelative
+     * @snippet #Sprite.setOriginRelative|snippet
+setOriginRelative(new Vector2(${1:0}, ${2:0}));
+     */
+    Sprite.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = originRelative.x * this.frameWidth;
+        this.origin.y = originRelative.y * this.frameHeight;
+    };
+    Sprite.prototype.update = function (data) {
+        var reachedEnd;
+        if (!this.currentAnimation) {
+            return;
+        }
+
+        // no need for update
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length >= this.currentFrame) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
+        }
+
+        reachedEnd = false;
+        this.currentFrame += (frameSpeed) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+            //don't repeat callback on non-looping animations
+            if (!this.currentAnimation.loop) {
+                this.onCompleteCallback = null;
+            }
+        }
+    };
+
+    Sprite.prototype.updateFrame = function () {
+        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        this.sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+    };
+
+    Sprite.prototype.draw = function (data) {
+        var entity = data.entity;
+
+        if (!this.currentAnimation || !this.visible) {
+            return;
+        }
+
+        this.updateFrame();
+
+        data.renderer.drawImage(
+            this.spriteImage,
+            this.sourceX,
+            this.sourceY,
+            this.frameWidth,
+            this.frameHeight,
+            (-this.origin.x) | 0,
+            (-this.origin.y) | 0,
+            this.frameWidth,
+            this.frameHeight
+        );
+    };
+    Sprite.prototype.toString = function () {
+        return '[object Sprite]';
+    };
+
+    /**
+     * Ignore warnings about invalid animation frames
+     * @instance
+     * @static
+     * @name suppressWarnings
+     */
+    Sprite.suppressWarnings = false;
+
+    return Sprite;
+});
+/**
  * Component that helps with detecting clicks on an entity. The component does not detect clicks when the game is paused
  * unless entity.updateWhenPaused is turned on.
  * <br>Exports: Constructor
@@ -3971,7 +4427,7 @@ bento.define('bento/components/nineslice', [
 bento.define('bento/components/pixi/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/sprite'
+    'bento/components/canvas2d/sprite'
 ], function (Bento, Utils, Sprite) {
     'use strict';
     var PixiSprite = function (settings) {
@@ -4016,7 +4472,7 @@ bento.define('bento/components/pixi/sprite', [
         image = packedImage.image;
         if (!image.texture) {
             // initialize pixi baseTexture
-            image.texture = new window.PIXI.BaseTexture(image, this.scaleMode);
+            image.texture = PixiSprite.imageToTexture(packedImage, this.scaleMode);
             image.frame = new window.PIXI.Texture(image.texture);
         }
         texture = image.frame;
@@ -4032,6 +4488,11 @@ bento.define('bento/components/pixi/sprite', [
 
     PixiSprite.prototype.toString = function () {
         return '[object PixiSprite]';
+    };
+
+    PixiSprite.imageToTexture = function (image, antiAlias) {
+        var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;
+        return new window.PIXI.BaseTexture(imagePack.image, antiAlias);
     };
 
     return PixiSprite;
@@ -4465,454 +4926,43 @@ Bento.objects.attach(entity);
 bento.define('bento/components/sprite', [
     'bento',
     'bento/utils',
-    'bento/math/vector2'
+    'bento/components/canvas2d/sprite',
+    'bento/components/pixi/sprite',
+    'bento/components/three/sprite'
 ], function (
     Bento,
     Utils,
-    Vector2
+    Canvas2DSprite,
+    PixiSprite,
+    ThreeSprite
 ) {
     'use strict';
+    // The sprite is always an inherited version of either canvas2d, pixi or three versions,
+    // but in order to know which one to pick, the renderer already needs to be set (which makes this operation a bit scary)
+    // That means this module should not be included anywhere before Bento.setup is called 
+    var renderer = Bento.getRenderer();
+    var Constructor = Canvas2DSprite;
     var Sprite = function (settings) {
         if (!(this instanceof Sprite)) {
             return new Sprite(settings);
         }
-        this.entity = null;
-        this.name = settings.name || 'sprite';
-        this.visible = true;
-        this.parent = null;
-        this.rootIndex = -1;
-
-        this.animationSettings = settings || {
-            frameCountX: 1,
-            frameCountY: 1
-        };
-
-        // sprite settings
-        this.spriteImage = null;
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-        this.padding = 0;
-        this.origin = new Vector2(0, 0);
-
-        // keep a reference to the spritesheet name
-        this.currentSpriteSheet = '';
-
-        // drawing internals
-        this.sourceX = 0;
-        this.sourceY = 0;
-
-        // set to default
-        this.animations = {};
-        this.currentAnimation = null;
-        this.currentAnimationLength = 0;
-        this.currentFrame = 0;
-
-        this.onCompleteCallback = function () {};
-        this.setup(settings);
+        Constructor.call(this, settings);
     };
-    /**
-     * Sets up Sprite. This can be used to overwrite the settings object passed to the constructor.
-     * @function
-     * @instance
-     * @param {Object} settings - Settings object
-     * @name setup
-     * @snippet #Sprite.setup|spriteSheet
-setup({
-    spriteSheet: '${1}'
-});
-     * @snippet #Sprite.setup|imageName
-setup({
-    imageName: '${1}',
-    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
-    frameCountX: ${4:1},
-    frameCountY: ${5:1},
-    animations: {
-        default: {
-            speed: 0,
-            frames: [0]
-        }
+
+    // pick the class
+    if (!renderer) {
+        console.warn('Warning: Sprite is included before renderer is set. Defaulting to canvas2d Sprite');
+    } else if (renderer.name === 'pixi') {
+        Constructor = PixiSprite;
+    } else if (renderer.name === 'three.js') {
+        Constructor = ThreeSprite;
     }
-});
-     */
-    Sprite.prototype.setup = function (settings) {
-        var self = this,
-            padding = 0,
-            spriteSheet;
+    // inherit from class
+    Sprite.prototype = Object.create(Constructor.prototype);
+    Sprite.prototype.constructor = Sprite;
 
-        if (settings && settings.spriteSheet) {
-            //load settings from animation JSON, and set the correct image
-            spriteSheet = Bento.assets.getSpriteSheet(settings.spriteSheet);
-
-            // remember the spritesheet name
-            this.currentSpriteSheet = settings.spriteSheet;
-
-            // settings is overwritten
-            settings = Utils.copyObject(spriteSheet.animation);
-            settings.image = spriteSheet.image;
-            if (settings.animation) {
-                settings.animations = {
-                    default: settings.animation
-                };
-            }
-        }
-
-        this.animationSettings = settings || this.animationSettings;
-        padding = this.animationSettings.padding || 0;
-
-        // add default animation
-        if (!this.animations['default']) {
-            if (!this.animationSettings.animations) {
-                this.animationSettings.animations = {};
-            }
-            if (!this.animationSettings.animations['default']) {
-                this.animationSettings.animations['default'] = {
-                    frames: [0]
-                };
-            }
-        }
-
-        // get image
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        if (!this.spriteImage) {
-            Utils.log("ERROR: something went wrong with loading the sprite.");
-            return;
-        }
-        // use frameWidth if specified (overrides frameCountX and frameCountY)
-        if (this.animationSettings.frameWidth) {
-            this.frameWidth = this.animationSettings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / this.frameWidth);
-        } else {
-            this.frameCountX = this.animationSettings.frameCountX || 1;
-            this.frameWidth = (this.spriteImage.width - padding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (this.animationSettings.frameHeight) {
-            this.frameHeight = this.animationSettings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.height / this.frameHeight);
-        } else {
-            this.frameCountY = this.animationSettings.frameCountY || 1;
-            this.frameHeight = (this.spriteImage.height - padding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        this.padding = this.animationSettings.padding || 0;
-
-        if (this.animationSettings.origin) {
-            this.origin.x = this.animationSettings.origin.x;
-            this.origin.y = this.animationSettings.origin.y;
-        } else if (this.animationSettings.originRelative) {
-            this.setOriginRelative(this.animationSettings.originRelative);
-        }
-
-        // set default
-        Utils.extend(this.animations, this.animationSettings.animations, true);
-        this.setAnimation('default');
-
-        this.updateEntity();
-    };
-
-    Sprite.prototype.updateEntity = function () {
-        if (!this.entity) {
-            return;
-        }
-
-        this.entity.dimension.x = -this.origin.x;
-        this.entity.dimension.y = -this.origin.y;
-        this.entity.dimension.width = this.frameWidth;
-        this.entity.dimension.height = this.frameHeight;
-    };
-
-    Sprite.prototype.attached = function (data) {
-        var animation,
-            animations = this.animationSettings.animations,
-            i = 0,
-            len = 0,
-            highestFrame = 0;
-
-        this.entity = data.entity;
-        // set dimension of entity object
-        this.updateEntity();
-
-        // check if the frames of animation go out of bounds
-        for (animation in animations) {
-            for (i = 0, len = animations[animation].frames.length; i < len; ++i) {
-                if (animations[animation].frames[i] > highestFrame) {
-                    highestFrame = animations[animation].frames[i];
-                }
-            }
-            if (!Sprite.suppressWarnings && highestFrame > this.frameCountX * this.frameCountY - 1) {
-                console.log("Warning: the frames in animation " + animation + " of " + (this.entity.name || this.entity.settings.name) + " are out of bounds. Can't use frame " + highestFrame + ".");
-            }
-
-        }
-    };
-    /**
-     * Set component to a different animation. The animation won't change if it's already playing.
-     * @function
-     * @instance
-     * @param {String} name - Name of the animation.
-     * @param {Function} callback - Called when animation ends.
-     * @param {Boolean} keepCurrentFrame - Prevents animation to jump back to frame 0
-     * @name setAnimation
-     * @snippet #Sprite.setAnimation|snippet
-setAnimation('${1:name}');
-     * @snippet #Sprite.setAnimation|callback
-setAnimation('${1:name}', function () {
-    $2
-});
-     */
-    Sprite.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!Sprite.suppressWarnings && !anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            this.currentAnimationLength = this.currentAnimation.frames.length;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-            if (!Sprite.suppressWarnings && this.currentAnimation.backTo > this.currentAnimationLength) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimationLength;
-            }
-        }
-    };
-    /**
-     * Bind another spritesheet to this sprite. The spritesheet won't change if it's already playing
-     * @function
-     * @instance
-     * @param {String} name - Name of the spritesheet.
-     * @param {Function} callback - Called when animation ends.
-     * @name setAnimation
-     * @snippet #Sprite.setSpriteSheet|snippet
-setSpriteSheet('${1:name}');
-     * @snippet #Sprite.setSpriteSheet|callback
-setSpriteSheet('${1:name}', function () {
-    $2
-});
-     */
-    Sprite.prototype.setSpriteSheet = function (name, callback) {
-        if (this.currentSpriteSheet === name) {
-            // already playing
-            return;
-        }
-        this.setup({
-            spriteSheet: name
-        });
-
-        this.onCompleteCallback = callback;
-    };
-    /**
-     * Returns the name of current animation playing
-     * @function
-     * @instance
-     * @returns {String} Name of the animation playing, null if not playing anything
-     * @name getAnimationName
-     * @snippet #Sprite.getAnimationName|String
-getAnimationName();
-     */
-    Sprite.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-    /**
-     * Set current animation to a certain frame
-     * @function
-     * @instance
-     * @param {Number} frameNumber - Frame number.
-     * @name setFrame
-     * @snippet #Sprite.getAnimationName|snippet
-setFrame(${1:number});
-     */
-    Sprite.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-    /**
-     * Get speed of the current animation.
-     * @function
-     * @instance
-     * @returns {Number} Speed of the current animation
-     * @name getCurrentSpeed
-     * @snippet #Sprite.getCurrentSpeed|Number
-getCurrentSpeed();
-     */
-    Sprite.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-    /**
-     * Set speed of the current animation.
-     * @function
-     * @instance
-     * @param {Number} speed - Speed at which the animation plays.
-     * @name setCurrentSpeed
-     * @snippet #Sprite.setCurrentSpeed|snippet
-setCurrentSpeed(${1:number});
-     */
-    Sprite.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-    /**
-     * Returns the current frame number
-     * @function
-     * @instance
-     * @returns {Number} frameNumber - Not necessarily a round number.
-     * @name getCurrentFrame
-     * @snippet #Sprite.getCurrentFrame|Number
-getCurrentFrame();
-     */
-    Sprite.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-    /**
-     * Returns the frame width
-     * @function
-     * @instance
-     * @returns {Number} width - Width of the image frame.
-     * @name getFrameWidth
-     * @snippet #Sprite.getFrameWidth|Number
-getFrameWidth();
-     */
-    Sprite.prototype.getFrameWidth = function () {
-        return this.frameWidth;
-    };
-    /**
-     * Returns the frame height
-     * @function
-     * @instance
-     * @returns {Number} height - Height of the image frame.
-     * @name getFrameHeight
-     * @snippet #Sprite.getFrameHeight|Number
-getFrameHeight();
-     */
-    Sprite.prototype.getFrameHeight = function () {
-        return this.frameHeight;
-    };
-    /**
-     * Sets the origin relatively (0...1), relative to the size of the frame.
-     * @function
-     * @param {Vector2} origin - Position of the origin (relative to upper left corner)
-     * @instance
-     * @name setOriginRelative
-     * @snippet #Sprite.setOriginRelative|snippet
-setOriginRelative(new Vector2(${1:0}, ${2:0}));
-     */
-    Sprite.prototype.setOriginRelative = function (originRelative) {
-        this.origin.x = originRelative.x * this.frameWidth;
-        this.origin.y = originRelative.y * this.frameHeight;
-    };
-    Sprite.prototype.update = function (data) {
-        var reachedEnd;
-        if (!this.currentAnimation) {
-            return;
-        }
-
-        // no need for update
-        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
-            return;
-        }
-
-        var frameSpeed = this.currentAnimation.speed || 1;
-        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length >= this.currentFrame) {
-            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
-        }
-
-        reachedEnd = false;
-        this.currentFrame += (frameSpeed) * data.speed;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-            //don't repeat callback on non-looping animations
-            if (!this.currentAnimation.loop) {
-                this.onCompleteCallback = null;
-            }
-        }
-    };
-
-    Sprite.prototype.updateFrame = function () {
-        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        var sourceFrame = this.currentAnimation.frames[frameIndex];
-        this.sourceX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.sourceY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
-    };
-
-    Sprite.prototype.draw = function (data) {
-        var entity = data.entity;
-
-        if (!this.currentAnimation || !this.visible) {
-            return;
-        }
-
-        this.updateFrame();
-
-        data.renderer.drawImage(
-            this.spriteImage,
-            this.sourceX,
-            this.sourceY,
-            this.frameWidth,
-            this.frameHeight,
-            (-this.origin.x) | 0,
-            (-this.origin.y) | 0,
-            this.frameWidth,
-            this.frameHeight
-        );
-    };
-    Sprite.prototype.toString = function () {
-        return '[object Sprite]';
-    };
-
-    /**
-     * Ignore warnings about invalid animation frames
-     * @instance
-     * @static
-     * @name suppressWarnings
-     */
-    Sprite.suppressWarnings = false;
-
+    // inherit helper function
+    Sprite.imageToTexture = Constructor.imageToTexture;
     return Sprite;
 });
 /**
@@ -4925,7 +4975,7 @@ setOriginRelative(new Vector2(${1:0}, ${2:0}));
 bento.define('bento/components/three/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/sprite',
+    'bento/components/canvas2d/sprite',
     'bento/renderers/three'
 ], function (
     Bento,
@@ -4934,6 +4984,7 @@ bento.define('bento/components/three/sprite', [
     ThreeJsRenderer
 ) {
     'use strict';
+    var THREE = window.THREE;
     var ThreeSprite = function (settings) {
         if (!(this instanceof ThreeSprite)) {
             return new ThreeSprite(settings);
@@ -4946,7 +4997,7 @@ bento.define('bento/components/three/sprite', [
         this.geometry = null;
         this.texture = null;
         this.plane = null;
-        this.object3D = new window.THREE.Object3D();
+        this.object3D = new THREE.Object3D();
         this.autoAttach = Utils.getDefault(settings.autoAttach, true);
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
 
@@ -4954,9 +5005,10 @@ bento.define('bento/components/three/sprite', [
         this.lastFrame = null;
 
         // debugging
-        // var axesHelper = new window.THREE.AxesHelper( 1 );
+        // var axesHelper = new THREE.AxesHelper( 1 );
         // this.object3D.add(axesHelper);
 
+        // deprecated (using an external sprite as sprite), todo: clean up
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
 
@@ -4965,22 +5017,14 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype = Object.create(Sprite.prototype);
     ThreeSprite.prototype.constructor = ThreeSprite;
 
-    ThreeSprite.prototype.start = function (data) {
-        if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.add(this.object3D);
-        }
-    };
+    // ThreeSprite.prototype.start = function (data) {};
     ThreeSprite.prototype.destroy = function (data) {
-        if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.remove(this.object3D);
-        }
-
         // todo: memory management
         this.dispose();
     };
 
     ThreeSprite.prototype.setup = function (data) {
-        var spriteImage;
+        var packedImage;
         var threeTexture;
         var plane;
         var sprite = this.sprite || this;
@@ -4992,22 +5036,19 @@ bento.define('bento/components/three/sprite', [
             Sprite.prototype.setup.call(this, data);
         }
 
-        spriteImage = sprite.spriteImage;
+        packedImage = sprite.spriteImage;
 
         // check if we have an image and convert it to a texture
-        if (spriteImage) {
-            threeTexture = spriteImage.image.texture;
+        if (packedImage) {
+            threeTexture = packedImage.image.texture;
             if (!threeTexture) {
-                threeTexture = new window.THREE.Texture(spriteImage.image);
-                threeTexture.needsUpdate = true;
-                if (!this.antiAlias) {
-                    threeTexture.magFilter = window.THREE.NearestFilter;
-                    threeTexture.minFilter = window.THREE.NearestFilter;
-                }
-                spriteImage.image.texture = threeTexture;
+                // initialize texture for the first time
+                threeTexture = ThreeSprite.imageToTexture(packedImage, this.antiAlias);
+                packedImage.image.texture = threeTexture;
             }
             this.texture = threeTexture;
         } else {
+            // un-set
             this.texture = null;
         }
 
@@ -5017,14 +5058,14 @@ bento.define('bento/components/three/sprite', [
             this.dispose();
 
             // move this also to a image property?
-            this.material = new window.THREE.MeshBasicMaterial({
+            this.material = new THREE.MeshBasicMaterial({
                 map: this.texture,
                 color: 0xffffff,
-                // side: window.THREE.DoubleSide,
+                // side: THREE.DoubleSide,
                 alphaTest: Utils.getDefault(this.settings.alphaTest, ThreeSprite.alphaTest), // --> prevents glitchy clipping
                 transparent: true
             });
-            this.geometry = new window.THREE.PlaneGeometry(
+            this.geometry = new THREE.PlaneGeometry(
                 sprite.frameWidth,
                 sprite.frameHeight,
                 1,
@@ -5036,7 +5077,7 @@ bento.define('bento/components/three/sprite', [
                 this.plane = null;
             }
 
-            plane = new window.THREE.Mesh(this.geometry, this.material);
+            plane = new THREE.Mesh(this.geometry, this.material);
             this.plane = plane;
 
             // game specific?
@@ -5048,12 +5089,7 @@ bento.define('bento/components/three/sprite', [
 
             this.object3D.add(plane);
 
-            // origin
-            // take into account that threejs already assumes middle of the mesh to be origin
-            plane.position.x = (sprite.origin.x - sprite.frameWidth / 2);
-            plane.position.y = -(sprite.origin.y - sprite.frameHeight / 2); // reversed due to rotation
-
-            // var axesHelper = new window.THREE.AxesHelper(sprite.frameWidth);
+            // var axesHelper = new THREE.AxesHelper(sprite.frameWidth);
             // this.object3D.add(axesHelper);
         } else {
             // remove existing mesh
@@ -5076,11 +5112,18 @@ bento.define('bento/components/three/sprite', [
     };
 
     ThreeSprite.prototype.draw = function (data) {
-        // ThreeSprite is not responsible for drawing on screen, only calculating the UVs and positioning
+        // origin: to achieve this offset effect, we move the plane (child of the object3d)
+        // take into account that threejs already assumes middle of the mesh to be origin
+        var sprite = this.sprite || this;
+        var origin = sprite.origin;
+        var plane = this.plane;
+        plane.position.x = -(origin.x - sprite.frameWidth / 2);
+        plane.position.y = (origin.y - sprite.frameHeight / 2);
+
+        // move it to the render lsit
         data.renderer.render({
-            object3d: this.object3D,
-            material: this.material,
-            z: -this.parent.z || 0
+            object3D: this.object3D,
+            material: this.material
         });
     };
 
@@ -5146,6 +5189,22 @@ bento.define('bento/components/three/sprite', [
     };
 
     ThreeSprite.alphaTest = 0;
+
+    /**
+     * Converts imagePack to THREE.Texture
+     * @snippet Sprite.imageToTexture()|Texture from renderer
+Sprite.imageToTexture('${1:imageName}', ${2:false});
+     */
+    ThreeSprite.imageToTexture = function (image, antiAlias) {
+        var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;
+        var texture = new THREE.Texture(imagePack.image);
+        texture.needsUpdate = true;
+        if (!antiAlias) {
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+        }
+        return texture;
+    };
 
     return ThreeSprite;
 });
@@ -19116,7 +19175,8 @@ bento.define('bento/renderer', [
             setOpacity: function () {},
             createSurface: function () {},
             setContext: function () {},
-            restoreContext: function () {}
+            restoreContext: function () {},
+            updateSize: function () {}
         };
         bento.require([rendererName], function (renderer) {
             Utils.extend(module, renderer(canvas, settings), true);
@@ -19705,6 +19765,7 @@ bento.define('bento/renderers/three', [
         var rotAroundX = new THREE.Matrix4();
         var renderer;
         var scenes = [];
+        var objectList = [];
         // main scene and camera
         var scene;
         var camera;
@@ -19745,37 +19806,45 @@ bento.define('bento/renderers/three', [
                 matrix.multiplyWith(transform.rotate(angle));
             },
 
-            // do not use with Three.js
+            // todo: implement these, but not recommended to use
             fillRect: function (color, x, y, w, h) {},
             fillCircle: function (color, x, y, radius) {},
             strokeRect: function (color, x, y, w, h) {},
             drawLine: function (color, ax, ay, bx, by, width) {},
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
 
-            //
+            begin: function () {
+                // remove the objects from main scene and restart
+                Utils.forEach(objectList, function (object3D) {
+                    scene.remove(object3D);
+                });
+                objectList = [];
+            },
             render: function (data) {
-                var object3d = data.object3d;
+                // render by adding object3d into the scene
+                var object3D = data.object3D;
                 var material = data.material;
-                var z = data.z;
+                var z = -objectList.length;
 
-                // todo: attach to scene and remove everything during flush? 
-                // or let components add/remove from scene? -> currently doing this option
-                object3d.matrixAutoUpdate = false;
-                // move the 2d matric into the 3d matrix, 
-                object3d.matrix.set(
+                // take over the world matrix
+                object3D.matrixAutoUpdate = false;
+                // move the 2d matrix into the 3d matrix, 
+                object3D.matrix.set(
                     matrix.a, matrix.c, 0, matrix.tx,
                     matrix.b, matrix.d, 0, matrix.ty,
                     0, 0, 1, z,
                     0, 0, 0, 1
                 );
                 // there's an additional Math.PI rotation around the x axis
-                object3d.matrix.multiply(rotAroundX);
+                object3D.matrix.multiply(rotAroundX);
 
                 // opacity
                 material.opacity = alpha;
-            },
 
-            begin: function () {},
+                // prepare to render
+                objectList.push(object3D);
+                scene.add(object3D);
+            },
             flush: function () {
                 // render scenes and its cameras
                 var i = 0,
@@ -19786,21 +19855,20 @@ bento.define('bento/renderers/three', [
                     for (j = 0; j < cameras.length; ++j) {
                         renderer.render(scene, cameras[j]);
                     }
-                }
+                }                
             },
-            setColor: function () {},
             getOpacity: function () {
                 return alpha;
             },
             setOpacity: function (value) {
                 alpha = value;
             },
-            createSurface: function () {},
-            setContext: function () {},
+            // createSurface: function () {},
+            // setContext: function () {},
+            // restoreContext: function () {},
             getContext: function () {
                 return gl;
             },
-            restoreContext: function () {},
             three: {
                 camera: null,
                 scene: null,

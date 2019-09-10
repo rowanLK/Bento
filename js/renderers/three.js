@@ -31,6 +31,7 @@ bento.define('bento/renderers/three', [
         var rotAroundX = new THREE.Matrix4();
         var renderer;
         var scenes = [];
+        var objectList = [];
         // main scene and camera
         var scene;
         var camera;
@@ -71,37 +72,45 @@ bento.define('bento/renderers/three', [
                 matrix.multiplyWith(transform.rotate(angle));
             },
 
-            // do not use with Three.js
+            // todo: implement these, but not recommended to use
             fillRect: function (color, x, y, w, h) {},
             fillCircle: function (color, x, y, radius) {},
             strokeRect: function (color, x, y, w, h) {},
             drawLine: function (color, ax, ay, bx, by, width) {},
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
 
-            //
+            begin: function () {
+                // remove the objects from main scene and restart
+                Utils.forEach(objectList, function (object3D) {
+                    scene.remove(object3D);
+                });
+                objectList = [];
+            },
             render: function (data) {
-                var object3d = data.object3d;
+                // render by adding object3d into the scene
+                var object3D = data.object3D;
                 var material = data.material;
-                var z = data.z;
+                var z = -objectList.length;
 
-                // todo: attach to scene and remove everything during flush? 
-                // or let components add/remove from scene? -> currently doing this option
-                object3d.matrixAutoUpdate = false;
-                // move the 2d matric into the 3d matrix, 
-                object3d.matrix.set(
+                // take over the world matrix
+                object3D.matrixAutoUpdate = false;
+                // move the 2d matrix into the 3d matrix, 
+                object3D.matrix.set(
                     matrix.a, matrix.c, 0, matrix.tx,
                     matrix.b, matrix.d, 0, matrix.ty,
                     0, 0, 1, z,
                     0, 0, 0, 1
                 );
                 // there's an additional Math.PI rotation around the x axis
-                object3d.matrix.multiply(rotAroundX);
+                object3D.matrix.multiply(rotAroundX);
 
                 // opacity
                 material.opacity = alpha;
-            },
 
-            begin: function () {},
+                // prepare to render
+                objectList.push(object3D);
+                scene.add(object3D);
+            },
             flush: function () {
                 // render scenes and its cameras
                 var i = 0,
@@ -112,21 +121,20 @@ bento.define('bento/renderers/three', [
                     for (j = 0; j < cameras.length; ++j) {
                         renderer.render(scene, cameras[j]);
                     }
-                }
+                }                
             },
-            setColor: function () {},
             getOpacity: function () {
                 return alpha;
             },
             setOpacity: function (value) {
                 alpha = value;
             },
-            createSurface: function () {},
-            setContext: function () {},
+            // createSurface: function () {},
+            // setContext: function () {},
+            // restoreContext: function () {},
             getContext: function () {
                 return gl;
             },
-            restoreContext: function () {},
             three: {
                 camera: null,
                 scene: null,
