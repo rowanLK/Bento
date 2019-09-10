@@ -29,15 +29,16 @@ bento.define('bento/components/three/sprite', [
         this.geometry = null;
         this.texture = null;
         this.plane = null;
-        this.container = new window.THREE.Object3D();
+        this.object3D = new window.THREE.Object3D();
         this.autoAttach = Utils.getDefault(settings.autoAttach, true);
+        this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
 
         // checking if frame changed
         this.lastFrame = null;
 
         // debugging
         // var axesHelper = new window.THREE.AxesHelper( 1 );
-        // this.container.add(axesHelper);
+        // this.object3D.add(axesHelper);
 
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
@@ -49,12 +50,12 @@ bento.define('bento/components/three/sprite', [
 
     ThreeSprite.prototype.start = function (data) {
         if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.add(this.container);
+            data.renderer.three.scene.add(this.object3D);
         }
     };
     ThreeSprite.prototype.destroy = function (data) {
         if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.remove(this.container);
+            data.renderer.three.scene.remove(this.object3D);
         }
 
         // todo: memory management
@@ -78,13 +79,15 @@ bento.define('bento/components/three/sprite', [
 
         // check if we have an image and convert it to a texture
         if (spriteImage) {
-            threeTexture = spriteImage.image.threeTexture;
+            threeTexture = spriteImage.image.texture;
             if (!threeTexture) {
                 threeTexture = new window.THREE.Texture(spriteImage.image);
                 threeTexture.needsUpdate = true;
-                threeTexture.magFilter = window.THREE.NearestFilter;
-                threeTexture.minFilter = window.THREE.NearestFilter;
-                spriteImage.threeTexture = threeTexture;
+                if (!this.antiAlias) {
+                    threeTexture.magFilter = window.THREE.NearestFilter;
+                    threeTexture.minFilter = window.THREE.NearestFilter;
+                }
+                spriteImage.image.texture = threeTexture;
             }
             this.texture = threeTexture;
         } else {
@@ -112,7 +115,7 @@ bento.define('bento/components/three/sprite', [
             );
             // remove existing mesh
             if (this.plane) {
-                this.container.remove(this.plane);
+                this.object3D.remove(this.plane);
                 this.plane = null;
             }
 
@@ -120,13 +123,13 @@ bento.define('bento/components/three/sprite', [
             this.plane = plane;
 
             // game specific?
-            this.plane.rotation.x = Math.PI; // makes the mesh stand up, note: local axis changes
+            // this.plane.rotation.x = Math.PI; // makes the mesh stand up, note: local axis changes
 
             this.lastFrame = sprite.currentFrame;
             sprite.updateFrame();
             this.updateUvs();
 
-            this.container.add(plane);
+            this.object3D.add(plane);
 
             // origin
             // take into account that threejs already assumes middle of the mesh to be origin
@@ -134,11 +137,11 @@ bento.define('bento/components/three/sprite', [
             plane.position.y = -(sprite.origin.y - sprite.frameHeight / 2); // reversed due to rotation
 
             // var axesHelper = new window.THREE.AxesHelper(sprite.frameWidth);
-            // this.container.add(axesHelper);
+            // this.object3D.add(axesHelper);
         } else {
             // remove existing mesh
             if (this.plane) {
-                this.container.remove(this.plane);
+                this.object3D.remove(this.plane);
                 this.plane = null;
             }
         }
@@ -158,7 +161,7 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype.draw = function (data) {
         // ThreeSprite is not responsible for drawing on screen, only calculating the UVs and positioning
         data.renderer.render({
-            object3d: this.container,
+            object3d: this.object3D,
             material: this.material,
             z: -this.parent.z || 0
         });
@@ -202,9 +205,9 @@ bento.define('bento/components/three/sprite', [
         Sprite.prototype.attached.call(this, data);
 
         // inherit name
-        this.container.name = this.parent.name + '.' + this.name;
+        this.object3D.name = this.parent.name + '.' + this.name;
         if (this.plane) {
-            this.plane.name = this.container.name + '.plane';
+            this.plane.name = this.object3D.name + '.plane';
         }
     };
 
@@ -213,14 +216,16 @@ bento.define('bento/components/three/sprite', [
             this.geometry.dispose();
             this.geometry = null;
         }
-
-        // not needed?
         if (this.material) {
             this.material.dispose();
             this.material = null;
         }
 
         // note: textures are not disposed, they are owned by the image objects and my be reused by other instances
+    };
+
+    ThreeSprite.prototype.toString = function () {
+        return '[object ThreeSprite]';
     };
 
     ThreeSprite.alphaTest = 0;

@@ -4946,15 +4946,16 @@ bento.define('bento/components/three/sprite', [
         this.geometry = null;
         this.texture = null;
         this.plane = null;
-        this.container = new window.THREE.Object3D();
+        this.object3D = new window.THREE.Object3D();
         this.autoAttach = Utils.getDefault(settings.autoAttach, true);
+        this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
 
         // checking if frame changed
         this.lastFrame = null;
 
         // debugging
         // var axesHelper = new window.THREE.AxesHelper( 1 );
-        // this.container.add(axesHelper);
+        // this.object3D.add(axesHelper);
 
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
@@ -4966,12 +4967,12 @@ bento.define('bento/components/three/sprite', [
 
     ThreeSprite.prototype.start = function (data) {
         if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.add(this.container);
+            data.renderer.three.scene.add(this.object3D);
         }
     };
     ThreeSprite.prototype.destroy = function (data) {
         if (this.autoAttach && data.renderer.three) {
-            data.renderer.three.scene.remove(this.container);
+            data.renderer.three.scene.remove(this.object3D);
         }
 
         // todo: memory management
@@ -4995,13 +4996,15 @@ bento.define('bento/components/three/sprite', [
 
         // check if we have an image and convert it to a texture
         if (spriteImage) {
-            threeTexture = spriteImage.image.threeTexture;
+            threeTexture = spriteImage.image.texture;
             if (!threeTexture) {
                 threeTexture = new window.THREE.Texture(spriteImage.image);
                 threeTexture.needsUpdate = true;
-                threeTexture.magFilter = window.THREE.NearestFilter;
-                threeTexture.minFilter = window.THREE.NearestFilter;
-                spriteImage.threeTexture = threeTexture;
+                if (!this.antiAlias) {
+                    threeTexture.magFilter = window.THREE.NearestFilter;
+                    threeTexture.minFilter = window.THREE.NearestFilter;
+                }
+                spriteImage.image.texture = threeTexture;
             }
             this.texture = threeTexture;
         } else {
@@ -5029,7 +5032,7 @@ bento.define('bento/components/three/sprite', [
             );
             // remove existing mesh
             if (this.plane) {
-                this.container.remove(this.plane);
+                this.object3D.remove(this.plane);
                 this.plane = null;
             }
 
@@ -5037,13 +5040,13 @@ bento.define('bento/components/three/sprite', [
             this.plane = plane;
 
             // game specific?
-            this.plane.rotation.x = Math.PI; // makes the mesh stand up, note: local axis changes
+            // this.plane.rotation.x = Math.PI; // makes the mesh stand up, note: local axis changes
 
             this.lastFrame = sprite.currentFrame;
             sprite.updateFrame();
             this.updateUvs();
 
-            this.container.add(plane);
+            this.object3D.add(plane);
 
             // origin
             // take into account that threejs already assumes middle of the mesh to be origin
@@ -5051,11 +5054,11 @@ bento.define('bento/components/three/sprite', [
             plane.position.y = -(sprite.origin.y - sprite.frameHeight / 2); // reversed due to rotation
 
             // var axesHelper = new window.THREE.AxesHelper(sprite.frameWidth);
-            // this.container.add(axesHelper);
+            // this.object3D.add(axesHelper);
         } else {
             // remove existing mesh
             if (this.plane) {
-                this.container.remove(this.plane);
+                this.object3D.remove(this.plane);
                 this.plane = null;
             }
         }
@@ -5075,7 +5078,7 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype.draw = function (data) {
         // ThreeSprite is not responsible for drawing on screen, only calculating the UVs and positioning
         data.renderer.render({
-            object3d: this.container,
+            object3d: this.object3D,
             material: this.material,
             z: -this.parent.z || 0
         });
@@ -5119,9 +5122,9 @@ bento.define('bento/components/three/sprite', [
         Sprite.prototype.attached.call(this, data);
 
         // inherit name
-        this.container.name = this.parent.name + '.' + this.name;
+        this.object3D.name = this.parent.name + '.' + this.name;
         if (this.plane) {
-            this.plane.name = this.container.name + '.plane';
+            this.plane.name = this.object3D.name + '.plane';
         }
     };
 
@@ -5130,14 +5133,16 @@ bento.define('bento/components/three/sprite', [
             this.geometry.dispose();
             this.geometry = null;
         }
-
-        // not needed?
         if (this.material) {
             this.material.dispose();
             this.material = null;
         }
 
         // note: textures are not disposed, they are owned by the image objects and my be reused by other instances
+    };
+
+    ThreeSprite.prototype.toString = function () {
+        return '[object ThreeSprite]';
     };
 
     ThreeSprite.alphaTest = 0;
@@ -8165,9 +8170,14 @@ bento.define('bento/managers/asset', [
                 if (img._dispose) {
                     img._dispose();
                 }
-                // pixi
-                if (img.texture && img.texture.destroy) {
-                    img.texture.destroy();
+                // pixi / three
+                if (img.texture) {
+                    if (img.texture.destroy) {
+                        img.texture.destroy();
+                    }
+                    if (img.texture.dispose) {
+                        img.texture.dispose();
+                    }
                 }
             };
 
@@ -13647,6 +13657,9 @@ bento.define('bento/canvas', [
                 if (obj.texture.destroy) {
                     obj.texture.destroy();
                 }
+                if (obj.texture.dispose) {
+                    obj.texture.dispose();
+                }
                 obj.texture = null;
             }
             return obj;
@@ -13684,6 +13697,9 @@ bento.define('bento/canvas', [
                 if (canvas.texture) {
                     if (canvas.texture.destroy) {
                         canvas.texture.destroy();
+                    }
+                    if (canvas.texture.dispose) {
+                        canvas.texture.dispose();
                     }
                     canvas.texture = null;
                 }
@@ -15895,6 +15911,9 @@ bento.define('bento/gui/text', [
                 if (canvas.texture && canvas.texture.destroy) {
                     canvas.texture.destroy();
                 }
+                if (canvas.texture && canvas.texture.dispose) {
+                    canvas.texture.dispose();
+                }
                 canvas.texture = null;
                 packedImage = new PackedImage(canvas);
                 sprite.setup({
@@ -16191,6 +16210,10 @@ bento.define('bento/gui/text', [
                     if (canvas.texture && canvas.texture.destroy) {
                         // destroy PixiJS texture
                         canvas.texture.destroy();
+                    }
+                    if (canvas.texture && canvas.texture.dispose) {
+                        // dispose ThreeJS texture
+                        canvas.texture.dispose();
                     }
                     canvas = null;
                     packedImage = null;
@@ -17615,6 +17638,10 @@ bento.define('bento/tiled', [
                                 if (canvas.texture && canvas.texture.destroy) {
                                     // destroy PixiJS texture
                                     canvas.texture.destroy();
+                                }
+                                if (canvas.texture && canvas.texture.dispose) {
+                                    // dispose ThreeJS texture
+                                    canvas.texture.dispose();
                                 }
                             }
                         });
@@ -19671,12 +19698,21 @@ bento.define('bento/renderers/three', [
                 return false;
             }
         })();
+        var THREE = window.THREE;
         var alpha = 1;
         var matrix = new TransformMatrix();
         var matrices = [];
+        var rotAroundX = new THREE.Matrix4();
         var renderer;
+        var scenes = [];
+        // main scene and camera
         var scene;
         var camera;
+        var mainScene = {
+            cameras: [],
+            scene: null
+        };
+        // module
         var bentoRenderer = {
             name: 'three.js',
             save: function () {
@@ -19721,16 +19757,19 @@ bento.define('bento/renderers/three', [
                 var object3d = data.object3d;
                 var material = data.material;
                 var z = data.z;
-                
+
                 // todo: attach to scene and remove everything during flush? 
                 // or let components add/remove from scene? -> currently doing this option
                 object3d.matrixAutoUpdate = false;
+                // move the 2d matric into the 3d matrix, 
                 object3d.matrix.set(
                     matrix.a, matrix.c, 0, matrix.tx,
                     matrix.b, matrix.d, 0, matrix.ty,
-                    0,        0,        1, z,
-                    0,        0,        0, 1
+                    0, 0, 1, z,
+                    0, 0, 0, 1
                 );
+                // there's an additional Math.PI rotation around the x axis
+                object3d.matrix.multiply(rotAroundX);
 
                 // opacity
                 material.opacity = alpha;
@@ -19738,7 +19777,16 @@ bento.define('bento/renderers/three', [
 
             begin: function () {},
             flush: function () {
-                renderer.render(scene, camera);
+                // render scenes and its cameras
+                var i = 0,
+                    j = 0;
+                var cameras;
+                for (i = 0; i < scenes.length; ++i) {
+                    cameras = scenes[i].cameras || [];
+                    for (j = 0; j < cameras.length; ++j) {
+                        renderer.render(scene, cameras[j]);
+                    }
+                }
             },
             setColor: function () {},
             getOpacity: function () {
@@ -19757,22 +19805,24 @@ bento.define('bento/renderers/three', [
                 camera: null,
                 scene: null,
                 renderer: null,
+                // scenes is an array of {cameras: [THREE.Camera], scene: THREE.Scene}
+                scenes: scenes
             },
             updateSize: function () {
                 setupScene();
             }
         };
         var setupRenderer = function () {
-            renderer = new window.THREE.WebGLRenderer(Utils.extend(settings, {
+            renderer = new THREE.WebGLRenderer(Utils.extend(settings, {
                 context: gl,
                 antialias: settings.antiAlias,
-                powerPreference: 'low-power',
+                powerPreference: settings.powerPreference || 'low-power',
                 /* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices
                  * Using highp precision in fragment shaders will prevent your content from working on some older mobile hardware.
                  * You can use mediump instead, but be aware that this often results in corrupted rendering due to lack of precision
                  * on most mobile devices, and the corruption is not going to be visible on a typical desktop computer.
                  */
-                precision: 'highp',
+                precision: settings.precision || 'highp',
                 /* if highp is not feasible use logarithmicDepthBuffer to resolve scaling issues */
                 // logarithmicDepthBuffer: true
             }));
@@ -19781,12 +19831,12 @@ bento.define('bento/renderers/three', [
             var width = canvas.width / settings.pixelSize;
             var height = canvas.height / settings.pixelSize;
             if (!scene) {
-                scene = new window.THREE.Scene();
+                scene = new THREE.Scene();
             }
             if (camera) {
                 scene.remove(camera);
             }
-            camera = new window.THREE.OrthographicCamera(
+            camera = new THREE.OrthographicCamera(
                 0, // left
                 width, // right
                 height, // top
@@ -19795,7 +19845,7 @@ bento.define('bento/renderers/three', [
                 10000 // far
             );
             // rotate camera in such a way that x axis is right and y axis is down
-            camera.lookAt(new window.THREE.Vector3(0, 0, 1));
+            camera.lookAt(new THREE.Vector3(0, 0, 1));
             camera.rotation.z = 0;
             camera.position.x = 0;
             camera.position.y = height;
@@ -19803,8 +19853,12 @@ bento.define('bento/renderers/three', [
             renderer.setViewport(0, 0, canvas.width, canvas.height);
             scene.add(camera); // this is needed to attach stuff to the camera
 
-            // TODO: remove this    
-            scene.background = new window.THREE.Color(0x000000);
+            // main scene only has 1 camera
+            mainScene.cameras = [camera];
+            mainScene.scene = scene;
+
+            // TODO: remove this
+            scene.background = new THREE.Color(0x000000);
 
             // expose camera and scene
             ThreeJsRenderer.camera = camera;
@@ -19815,13 +19869,20 @@ bento.define('bento/renderers/three', [
             bentoRenderer.three.renderer = renderer;
         };
 
-
-        if (canWebGl && Utils.isDefined(window.THREE)) {
+        if (canWebGl && Utils.isDefined(THREE)) {
+            // matrix that rotates Math.PI around the x axis
+            rotAroundX.set(
+                1, 0, 0, 0,
+                0, -1, 0, 0,
+                0, 0, -1, 0,
+                0, 0, 0, 1
+            );
             setupRenderer();
             setupScene();
-
+            // attach main scene
+            scenes.push(mainScene);
         } else {
-            if (!window.THREE) {
+            if (!THREE) {
                 console.log('WARNING: THREE library is missing, reverting to Canvas2D renderer');
             } else if (!canWebGl) {
                 console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');

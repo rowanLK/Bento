@@ -40,15 +40,46 @@ bento.require([
             fontColor: '#ccc',
             align: 'left'
         });
+        var THREE = window.THREE;
+
+        var geometry = new THREE.SphereGeometry(8, 32, 32);
+        var texture = new THREE.Texture(Bento.assets.getImage('luckykat').image);
+        texture.needsUpdate = true;
+        texture.magFilter = window.THREE.NearestFilter;
+        texture.minFilter = window.THREE.NearestFilter;
+
+        var material = new THREE.MeshBasicMaterial({
+            map: texture,
+            color: 0xffffff
+        });
+        var sphere = new THREE.Mesh(geometry, material);
 
         /*
          * Bunny 1: control bunny
          */
+        var bunnySprite = new Sprite(Bento.assets.getJson('bunny'));
         var normalBunny = new Entity({
             z: 1,
             name: 'normalBunny',
             components: [
-                new Sprite(Bento.assets.getJson('bunny'))
+                bunnySprite,
+                new Object({
+                    name: 'behavior',
+                    start: function (data) {
+                        bunnySprite.object3D.add(sphere);
+                    },
+                    destroy: function (data) {},
+                    update: function (data) {
+                        sphere.position.x = 32 * Math.sin(normalBunny.timer / 20);
+                        sphere.position.z = 32 * Math.cos(normalBunny.timer / 20);
+                        sphere.rotation.y += Math.PI / 60;
+
+                        // Note: the 3d object will transform with the Entity!
+                        // normalBunny.rotation += Utils.toRadian(1);
+                        // normalBunny.scale.x = (Math.sin(normalBunny.timer / 10));
+                    },
+                    draw: function (data) {}
+                })
             ],
             position: new Vector2(viewport.width / 2, 32)
         });

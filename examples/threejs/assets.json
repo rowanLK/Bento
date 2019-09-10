@@ -6,7 +6,8 @@
             "buttona": "buttona.png",
             "buttonb": "buttonb.png",
             "buttonl": "buttonl.png",
-            "buttonr": "buttonr.png"
+            "buttonr": "buttonr.png",
+            "luckykat": "luckykat.png"
         },
         "json": {
             "bunny": "bunny.json"

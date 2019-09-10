@@ -24,12 +24,21 @@ bento.define('bento/renderers/three', [
                 return false;
             }
         })();
+        var THREE = window.THREE;
         var alpha = 1;
         var matrix = new TransformMatrix();
         var matrices = [];
+        var rotAroundX = new THREE.Matrix4();
         var renderer;
+        var scenes = [];
+        // main scene and camera
         var scene;
         var camera;
+        var mainScene = {
+            cameras: [],
+            scene: null
+        };
+        // module
         var bentoRenderer = {
             name: 'three.js',
             save: function () {
@@ -74,16 +83,19 @@ bento.define('bento/renderers/three', [
                 var object3d = data.object3d;
                 var material = data.material;
                 var z = data.z;
-                
+
                 // todo: attach to scene and remove everything during flush? 
                 // or let components add/remove from scene? -> currently doing this option
                 object3d.matrixAutoUpdate = false;
+                // move the 2d matric into the 3d matrix, 
                 object3d.matrix.set(
                     matrix.a, matrix.c, 0, matrix.tx,
                     matrix.b, matrix.d, 0, matrix.ty,
-                    0,        0,        1, z,
-                    0,        0,        0, 1
+                    0, 0, 1, z,
+                    0, 0, 0, 1
                 );
+                // there's an additional Math.PI rotation around the x axis
+                object3d.matrix.multiply(rotAroundX);
 
                 // opacity
                 material.opacity = alpha;
@@ -91,7 +103,16 @@ bento.define('bento/renderers/three', [
 
             begin: function () {},
             flush: function () {
-                renderer.render(scene, camera);
+                // render scenes and its cameras
+                var i = 0,
+                    j = 0;
+                var cameras;
+                for (i = 0; i < scenes.length; ++i) {
+                    cameras = scenes[i].cameras || [];
+                    for (j = 0; j < cameras.length; ++j) {
+                        renderer.render(scene, cameras[j]);
+                    }
+                }
             },
             setColor: function () {},
             getOpacity: function () {
@@ -110,22 +131,24 @@ bento.define('bento/renderers/three', [
                 camera: null,
                 scene: null,
                 renderer: null,
+                // scenes is an array of {cameras: [THREE.Camera], scene: THREE.Scene}
+                scenes: scenes
             },
             updateSize: function () {
                 setupScene();
             }
         };
         var setupRenderer = function () {
-            renderer = new window.THREE.WebGLRenderer(Utils.extend(settings, {
+            renderer = new THREE.WebGLRenderer(Utils.extend(settings, {
                 context: gl,
                 antialias: settings.antiAlias,
-                powerPreference: 'low-power',
+                powerPreference: settings.powerPreference || 'low-power',
                 /* https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices
                  * Using highp precision in fragment shaders will prevent your content from working on some older mobile hardware.
                  * You can use mediump instead, but be aware that this often results in corrupted rendering due to lack of precision
                  * on most mobile devices, and the corruption is not going to be visible on a typical desktop computer.
                  */
-                precision: 'highp',
+                precision: settings.precision || 'highp',
                 /* if highp is not feasible use logarithmicDepthBuffer to resolve scaling issues */
                 // logarithmicDepthBuffer: true
             }));
@@ -134,12 +157,12 @@ bento.define('bento/renderers/three', [
             var width = canvas.width / settings.pixelSize;
             var height = canvas.height / settings.pixelSize;
             if (!scene) {
-                scene = new window.THREE.Scene();
+                scene = new THREE.Scene();
             }
             if (camera) {
                 scene.remove(camera);
             }
-            camera = new window.THREE.OrthographicCamera(
+            camera = new THREE.OrthographicCamera(
                 0, // left
                 width, // right
                 height, // top
@@ -148,7 +171,7 @@ bento.define('bento/renderers/three', [
                 10000 // far
             );
             // rotate camera in such a way that x axis is right and y axis is down
-            camera.lookAt(new window.THREE.Vector3(0, 0, 1));
+            camera.lookAt(new THREE.Vector3(0, 0, 1));
             camera.rotation.z = 0;
             camera.position.x = 0;
             camera.position.y = height;
@@ -156,8 +179,12 @@ bento.define('bento/renderers/three', [
             renderer.setViewport(0, 0, canvas.width, canvas.height);
             scene.add(camera); // this is needed to attach stuff to the camera
 
-            // TODO: remove this    
-            scene.background = new window.THREE.Color(0x000000);
+            // main scene only has 1 camera
+            mainScene.cameras = [camera];
+            mainScene.scene = scene;
+
+            // TODO: remove this
+            scene.background = new THREE.Color(0x000000);
 
             // expose camera and scene
             ThreeJsRenderer.camera = camera;
@@ -168,13 +195,20 @@ bento.define('bento/renderers/three', [
             bentoRenderer.three.renderer = renderer;
         };
 
-
-        if (canWebGl && Utils.isDefined(window.THREE)) {
+        if (canWebGl && Utils.isDefined(THREE)) {
+            // matrix that rotates Math.PI around the x axis
+            rotAroundX.set(
+                1, 0, 0, 0,
+                0, -1, 0, 0,
+                0, 0, -1, 0,
+                0, 0, 0, 1
+            );
             setupRenderer();
             setupScene();
-
+            // attach main scene
+            scenes.push(mainScene);
         } else {
-            if (!window.THREE) {
+            if (!THREE) {
                 console.log('WARNING: THREE library is missing, reverting to Canvas2D renderer');
             } else if (!canWebGl) {
                 console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');
