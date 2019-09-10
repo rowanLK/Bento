@@ -105,7 +105,7 @@ bento.define('bento/renderers/three', [
                 object3D.matrix.multiply(rotAroundX);
 
                 // opacity
-                material.opacity = alpha;
+                material.opacity *= alpha;
 
                 // prepare to render
                 objectList.push(object3D);
@@ -190,9 +190,6 @@ bento.define('bento/renderers/three', [
             // main scene only has 1 camera
             mainScene.cameras = [camera];
             mainScene.scene = scene;
-
-            // TODO: remove this
-            scene.background = new THREE.Color(0x000000);
 
             // expose camera and scene
             ThreeJsRenderer.camera = camera;

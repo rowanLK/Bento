@@ -1,5 +1,6 @@
 /**
  * Sprite component. Draws an animated sprite on screen at the entity's transform.
+ * Inherited class based on renderer.
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
@@ -97,8 +98,10 @@ bento.define('bento/components/sprite', [
         console.warn('Warning: Sprite is included before renderer is set. Defaulting to canvas2d Sprite');
     } else if (renderer.name === 'pixi') {
         Constructor = PixiSprite;
+        console.log('Using pixi sprite');
     } else if (renderer.name === 'three.js') {
         Constructor = ThreeSprite;
+        console.log('Using threejs sprite');
     }
     // inherit from class
     Sprite.prototype = Object.create(Constructor.prototype);

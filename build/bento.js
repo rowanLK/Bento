@@ -2280,6 +2280,8 @@ bento.define('bento', [
         // canvas2d and pixi are reserved names
         if (settings.renderer === 'canvas2d') {
             rendererName = 'bento/renderers/canvas2d';
+        } else if (settings.renderer === 'pixi3') {
+            rendererName = 'bento/renderers/pixi3';
         } else if (settings.renderer === 'pixi' || settings.renderer === 'pixijs' || settings.renderer === 'pixi.js') {
             rendererName = 'bento/renderers/pixi';
         } else if (settings.renderer === 'three' || settings.renderer === 'threejs' || settings.renderer === 'three.js') {
@@ -2881,7 +2883,98 @@ bento.define('bento', [
     return Bento;
 });
 /**
+ * Component that fills a rectangle with a color.
+ * <br>Exports: Constructor
+ * @module bento/components/canvas2d/fill
+ * @moduleName Canvas2DFill
+ */
+bento.define('bento/components/canvas2d/fill', [
+    'bento/utils',
+    'bento',
+    'bento/math/vector2'
+], function (
+    Utils,
+    Bento,
+    Vector2
+) {
+    'use strict';
+    var Fill = function (settings) {
+        if (!(this instanceof Fill)) {
+            return new Fill(settings);
+        }
+        var viewport = Bento.getViewport();
+        settings = settings || {};
+        this.parent = null;
+        this.rootIndex = -1;
+        this.name = settings.name || 'fill';
+        /**
+         * Color array
+         * @instance
+         * @name color
+         * @snippet #Fill.color|Array
+            color
+         */
+        this.color = settings.color || [0, 0, 0, 1];
+        while (this.color.length < 4) {
+            this.color.push(1);
+        }
+        /**
+         * Dimension/size of the rectangle to fill
+         * @instance
+         * @name dimension
+         * @snippet #Fill.dimension|Rectangle
+            dimension
+         */
+        this.dimension = settings.dimension || settings.size || settings.rectangle || viewport.getSize();
+        /**
+         * Origin of the fill size
+         * @instance
+         * @name origin
+         * @snippet #Fill.origin|Vector2
+            origin
+         */
+        this.origin = settings.origin || new Vector2(0, 0);
+        if (settings.originRelative) {
+            this.origin.x = this.dimension.width * settings.originRelative.x;
+            this.origin.y = this.dimension.height * settings.originRelative.y;
+        }
+    };
+    Fill.prototype.draw = function (data) {
+        var dimension = this.dimension;
+        var origin = this.origin;
+        data.renderer.fillRect(
+            this.color,
+            dimension.x - origin.x,
+            dimension.y - origin.y,
+            dimension.width,
+            dimension.height
+        );
+    };
+    /**
+     * Set origin relative to size
+     * @instance
+     * @function
+     * @name setOriginRelative
+     * @param {Vector2} originRelative - Vector2 with the origin relative to its dimension
+     * @snippet #Fill.setOriginRelative()|snippet
+        setOriginRelative(${1:new Vector2(0, 0)})
+     */
+    Fill.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = this.dimension.width * originRelative.x;
+        this.origin.y = this.dimension.height * originRelative.y;
+    };
+    Fill.prototype.toString = function () {
+        return '[object Fill]';
+    };
 
+    return Fill;
+});
+/**
+ * Original sprite implementation for 2d canvas
+ * <br>Exports: Constructor
+ * @module bento/components/canvas2d/sprite
+ * @moduleName Canvas2DSprite
+ * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/canvas2d/sprite', [
     'bento',
@@ -3778,7 +3871,7 @@ bento.define('bento/components/eventlistener', [
     };
 });
 /**
- * Component that fills a square.
+ * Component that fills a rectangle with a color.
  * <br>Exports: Constructor
  * @module bento/components/fill
  * @moduleName Fill
@@ -3799,81 +3892,41 @@ Fill({
 bento.define('bento/components/fill', [
     'bento/utils',
     'bento',
-    'bento/math/vector2'
+    'bento/math/vector2',
+    'bento/components/canvas2d/fill',
+    'bento/components/pixi/fill',
+    'bento/components/three/fill'
 ], function (
     Utils,
     Bento,
-    Vector2
+    Vector2,
+    Canvas2DFill,
+    PixiFill,
+    ThreeFill
 ) {
     'use strict';
+    // The fill is always an inherited version of either canvas2d, pixi or three versions,
+    // similar to Sprite
+    var renderer = Bento.getRenderer();
+    var Constructor = Canvas2DFill;
     var Fill = function (settings) {
         if (!(this instanceof Fill)) {
             return new Fill(settings);
         }
-        var viewport = Bento.getViewport();
-        settings = settings || {};
-        this.parent = null;
-        this.rootIndex = -1;
-        this.name = settings.name || 'fill';
-        /**
-         * Color array
-         * @instance
-         * @name color
-         * @snippet #Fill.color|Array
-            color
-         */
-        this.color = settings.color || [0, 0, 0, 1];
-        while (this.color.length < 4) {
-            this.color.push(1);
-        }
-        /**
-         * Dimension/size of the rectangle to fill
-         * @instance
-         * @name dimension
-         * @snippet #Fill.dimension|Rectangle
-            dimension
-         */
-        this.dimension = settings.dimension || settings.size || settings.rectangle || viewport.getSize();
-        /**
-         * Origin of the fill size
-         * @instance
-         * @name origin
-         * @snippet #Fill.origin|Vector2
-            origin
-         */
-        this.origin = settings.origin || new Vector2(0, 0);
-        if (settings.originRelative) {
-            this.origin.x = this.dimension.width * settings.originRelative.x;
-            this.origin.y = this.dimension.height * settings.originRelative.y;
-        }
+        Constructor.call(this, settings);
     };
-    Fill.prototype.draw = function (data) {
-        var dimension = this.dimension;
-        var origin = this.origin;
-        data.renderer.fillRect(
-            this.color,
-            dimension.x - origin.x,
-            dimension.y - origin.y,
-            dimension.width,
-            dimension.height
-        );
-    };
-    /**
-     * Set origin relative to size
-     * @instance
-     * @function
-     * @name setOriginRelative
-     * @param {Vector2} originRelative - Vector2 with the origin relative to its dimension
-     * @snippet #Fill.setOriginRelative()|snippet
-        setOriginRelative(${1:new Vector2(0, 0)})
-     */
-    Fill.prototype.setOriginRelative = function (originRelative) {
-        this.origin.x = this.dimension.width * originRelative.x;
-        this.origin.y = this.dimension.height * originRelative.y;
-    };
-    Fill.prototype.toString = function () {
-        return '[object Fill]';
-    };
+
+    // pick the class
+    if (!renderer) {
+        console.warn('Warning: Fill is included before renderer is set. Defaulting to canvas2d Fill');
+    } else if (renderer.name === 'pixi') {
+        Constructor = PixiFill;
+    } else if (renderer.name === 'three.js') {
+        Constructor = ThreeFill;
+    }
+    // inherit from class
+    Fill.prototype = Object.create(Constructor.prototype);
+    Fill.prototype.constructor = Fill;
 
     return Fill;
 });
@@ -4417,6 +4470,84 @@ bento.define('bento/components/nineslice', [
     return NineSlice;
 });
 /**
+ * Component that fills a rectangle using Pixi
+ * <br>Exports: Constructor
+ * @module bento/components/pixi/fill
+ * @moduleName PixiFill
+ */
+bento.define('bento/components/pixi/fill', [
+    'bento/utils',
+    'bento',
+    'bento/math/vector2',
+    'bento/components/canvas2d/fill'
+], function (
+    Utils,
+    Bento,
+    Vector2,
+    Canvas2DFill
+) {
+    'use strict';
+    var PIXI = window.PIXI;
+    var PixiFill = function (settings) {
+        if (!(this instanceof PixiFill)) {
+            return new PixiFill(settings);
+        }
+        Canvas2DFill.call(this, settings);
+        
+        this.graphics = new PIXI.Graphics();
+
+        // if this.dimension is edited, the fill should be redone
+        this.cacheDimension = null;
+
+        // start a fill
+        this.startFill();
+    };
+    PixiFill.prototype = Object.create(Canvas2DFill.prototype);
+    PixiFill.prototype.constructor = PixiFill;
+
+    PixiFill.prototype.startFill = function () {
+        var color = this.color;
+        var dimension = this.dimension;
+        var origin = this.origin;
+        var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+        var graphics = this.graphics;
+        graphics.clear();
+        graphics.beginFill(colorInt);
+        graphics.drawRect(
+            dimension.x - origin.x,
+            dimension.y - origin.y,
+            dimension.width,
+            dimension.height
+        );
+        graphics.endFill();
+
+        // cache dimension
+        this.cacheDimension = dimension.clone();
+    };
+    PixiFill.prototype.update = function (data) {
+        var dimension = this.dimension;
+        var cacheDimension = this.cacheDimension;
+        // update fill
+        if (
+            dimension.x !== cacheDimension.x ||
+            dimension.y !== cacheDimension.y || 
+            dimension.width !== cacheDimension.width ||
+            dimension.height !== cacheDimension.height
+        ) {
+            this.startFill();
+        }
+    };
+    PixiFill.prototype.draw = function (data) {
+        data.renderer.render(this.graphics);
+    };
+
+    PixiFill.prototype.toString = function () {
+        return '[object PixiFill]';
+    };
+
+    return PixiFill;
+});
+/**
  * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.
  * Useful if you want to use pixi features.
  * <br>Exports: Constructor
@@ -4457,7 +4588,7 @@ bento.define('bento/components/pixi/sprite', [
 
         // draw with pixi
         data.renderer.translate(-Math.round(this.origin.x), -Math.round(this.origin.y));
-        data.renderer.drawPixi(this.sprite);
+        data.renderer.render(this.sprite);
         data.renderer.translate(Math.round(this.origin.x), Math.round(this.origin.y));
     };
     PixiSprite.prototype.updateSprite = function (packedImage, sx, sy, sw, sh) {
@@ -4481,7 +4612,13 @@ bento.define('bento/components/pixi/sprite', [
         rectangle.y = packedImage.y + sy;
         rectangle.width = sw;
         rectangle.height = sh;
-        texture._updateUvs();
+        if (texture._updateUvs) {
+            texture._updateUvs();
+        } else if (texture.updateUvs) {
+            texture.updateUvs();
+        } else {
+            console.warn('Warning: Texture.updateUvs function not found');
+        }
 
         this.sprite.texture = texture;
     };
@@ -4857,6 +4994,7 @@ bento.define('bento/components/spine', [
 });
 /**
  * Sprite component. Draws an animated sprite on screen at the entity's transform.
+ * Inherited class based on renderer.
  * <br>Exports: Constructor
  * @module bento/components/sprite
  * @moduleName Sprite
@@ -4954,8 +5092,10 @@ bento.define('bento/components/sprite', [
         console.warn('Warning: Sprite is included before renderer is set. Defaulting to canvas2d Sprite');
     } else if (renderer.name === 'pixi') {
         Constructor = PixiSprite;
+        console.log('Using pixi sprite');
     } else if (renderer.name === 'three.js') {
         Constructor = ThreeSprite;
+        console.log('Using threejs sprite');
     }
     // inherit from class
     Sprite.prototype = Object.create(Constructor.prototype);
@@ -4966,9 +5106,127 @@ bento.define('bento/components/sprite', [
     return Sprite;
 });
 /**
+ * Component that fills a rectangle using Three.js
+ * <br>Exports: Constructor
+ * @module bento/components/three/fill
+ * @moduleName ThreeFill
+ */
+bento.define('bento/components/three/fill', [
+    'bento/utils',
+    'bento',
+    'bento/math/vector2',
+    'bento/components/canvas2d/fill'
+], function (
+    Utils,
+    Bento,
+    Vector2,
+    Canvas2DFill
+) {
+    'use strict';
+    var THREE = window.THREE;
+    var ThreeFill = function (settings) {
+        if (!(this instanceof ThreeFill)) {
+            return new ThreeFill(settings);
+        }
+        Canvas2DFill.call(this, settings);
+
+        this.material = null;
+        this.geometry = null;
+        this.plane = null;
+        this.object3D = new THREE.Object3D();
+        this.opacity;
+
+        // if this.dimension is edited, the fill should be redone
+        this.cacheDimension = null;
+    };
+    ThreeFill.prototype = Object.create(Canvas2DFill.prototype);
+    ThreeFill.prototype.constructor = ThreeFill;
+
+    ThreeFill.prototype.startFill = function () {
+        var dimension = this.dimension;
+        var origin = this.origin;
+        var color = this.color;
+        var colorInt = color[2] * 255 + (color[1] * 255 << 8) + (color[0] * 255 << 16);
+
+        // could be optimized by reusing the materials when updating dimension
+        this.dispose();
+        this.opacity = color[3]; // need to cache opacity, material's opacity is overwritten during draw
+        this.material = new THREE.MeshBasicMaterial({
+            color: colorInt,
+            opacity: color[3],
+            transparent: true
+        });
+        this.geometry = new THREE.PlaneGeometry(
+            dimension.width,
+            dimension.height,
+            1,
+            1
+        );
+        this.plane = new THREE.Mesh(this.geometry, this.material);
+        this.object3D.add(this.plane);
+
+        // cache dimension
+        this.cacheDimension = dimension.clone();
+    };
+    ThreeFill.prototype.update = function (data) {
+        var dimension = this.dimension;
+        var cacheDimension = this.cacheDimension;
+        // update fill
+        if (
+            dimension.width !== cacheDimension.width ||
+            dimension.height !== cacheDimension.height
+        ) {
+            this.startFill();
+        }
+    };
+    ThreeFill.prototype.draw = function (data) {
+        // origin: to achieve this offset effect, we move the plane (child of the object3d)
+        // take into account that threejs already assumes middle of the mesh to be origin
+        var dimension = this.dimension;
+        var origin = this.origin;
+        var plane = this.plane;
+        plane.position.x = dimension.x - (origin.x - dimension.width / 2);
+        plane.position.y = -dimension.y + (origin.y - dimension.height / 2);
+
+        this.material.opacity = this.opacity;
+
+        // move it to the render list
+        data.renderer.render({
+            object3D: this.object3D,
+            material: this.material
+        });
+    };
+    ThreeFill.prototype.start = function (data) {
+        this.startFill();
+    };
+    ThreeFill.prototype.destroy = function (data) {
+        this.dispose();
+    };
+    ThreeFill.prototype.dispose = function () {
+        if (this.geometry) {
+            this.geometry.dispose();
+            this.geometry = null;
+        }
+        if (this.material) {
+            this.material.dispose();
+            this.material = null;
+        }
+        if (this.plane) {
+            this.object3D.remove(this.plane);
+            this.plane = null;
+        }
+    };
+
+    ThreeFill.prototype.toString = function () {
+        return '[object ThreeFill]';
+    };
+
+    return ThreeFill;
+});
+/**
  * Sprite component with a three plane exposed. Must be used with three renderer.
  * <br>Exports: Constructor
- * @module bento/components/pixi/three
+ * @module bento/components/three/sprite
  * @moduleName ThreeSprite
  * @returns Returns a component object to be attached to an entity.
  */
@@ -5008,7 +5266,7 @@ bento.define('bento/components/three/sprite', [
         // var axesHelper = new THREE.AxesHelper( 1 );
         // this.object3D.add(axesHelper);
 
-        // deprecated (using an external sprite as sprite), todo: clean up
+        // DEPRECATED (using an external sprite as sprite), todo: clean this up
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
 
@@ -5120,7 +5378,10 @@ bento.define('bento/components/three/sprite', [
         plane.position.x = -(origin.x - sprite.frameWidth / 2);
         plane.position.y = (origin.y - sprite.frameHeight / 2);
 
-        // move it to the render lsit
+        // opacity will be overwritten by renderer
+        this.material.opacity = 1;
+
+        // move it to the render list
         data.renderer.render({
             object3D: this.object3D,
             material: this.material
@@ -5171,6 +5432,9 @@ bento.define('bento/components/three/sprite', [
         }
     };
 
+    /**
+     * (Internal) Clean up memory
+     */
     ThreeSprite.prototype.dispose = function () {
         if (this.geometry) {
             this.geometry.dispose();
@@ -5188,6 +5452,7 @@ bento.define('bento/components/three/sprite', [
         return '[object ThreeSprite]';
     };
 
+    // default alpha test
     ThreeSprite.alphaTest = 0;
 
     /**
@@ -19388,10 +19653,184 @@ bento.define('bento/renderers/canvas2d', [
     };
 });
 /**
- * Renderer using PIXI by GoodBoyDigital
+ * Renderer using PIXI (v5 or higher) by GoodBoyDigital
  * @moduleName PixiRenderer
  */
 bento.define('bento/renderers/pixi', [
+    'bento',
+    'bento/utils',
+    'bento/math/transformmatrix',
+    'bento/renderers/canvas2d'
+], function (
+    Bento,
+    Utils,
+    TransformMatrix,
+    Canvas2d
+) {
+    var PIXI = window.PIXI;
+    var PixiRenderer = function (canvas, settings) {
+        var gl;
+        var canWebGl = (function () {
+            // try making a canvas
+            try {
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!window.WebGLRenderingContext;
+            } catch (e) {
+                return false;
+            }
+        })();
+        var matrix;
+        var Matrix;
+        var matrices = [];
+        var alpha = 1;
+        var color = 0xFFFFFF;
+        var renderer;
+        var pixelSize = settings.pixelSize || 1;
+        var pixiMatrix = new PIXI.Matrix();
+        var stage = new PIXI.Container();
+        var pixiRenderer = {
+            name: 'pixi',
+            init: function () {
+
+            },
+            destroy: function () {},
+            save: function () {
+                matrices.push(matrix.clone());
+            },
+            restore: function () {
+                matrix = matrices.pop();
+            },
+            setTransform: function (a, b, c, d, tx, ty) {
+                matrix.a = a;
+                matrix.b = b;
+                matrix.c = c;
+                matrix.d = d;
+                matrix.tx = tx;
+                matrix.ty = ty;
+            },
+            getTransform: function () {
+                return matrix;
+            },
+            translate: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.translate(x, y));
+            },
+            scale: function (x, y) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.scale(x, y));
+            },
+            rotate: function (angle) {
+                var transform = new TransformMatrix();
+                matrix.multiplyWith(transform.rotate(angle));
+            },
+
+            // todo: implement these, but not recommended to use
+            fillRect: function (color, x, y, w, h) {
+                return;
+            },
+            fillCircle: function (color, x, y, radius) {
+                return;
+            },
+            strokeRect: function (color, x, y, w, h, lineWidth) {
+                return;
+            },
+            strokeCircle: function (color, x, y, radius, sAngle, eAngle, lineWidth) {
+                return;
+            },
+            drawLine: function (color, ax, ay, bx, by, width) {
+                return;
+            },
+            drawImage: function (packedImage, sx, sy, sw, sh, x, y, w, h) {
+                return;
+            },
+
+
+            begin: function () {
+                // reset stage
+                while (stage.children.length) {                    
+                    stage.removeChild(stage.children[0]);
+                }
+
+                // set pixelSize
+                if (pixelSize !== 1) {
+                    this.save();
+                    this.scale(pixelSize, pixelSize);
+                }
+            },
+            flush: function () {
+                // render entire stage
+                renderer.render(stage);
+
+                // restore pixelsize
+                if (pixelSize !== 1) {
+                    this.restore();
+                }
+            },
+            getOpacity: function () {
+                return alpha;
+            },
+            setOpacity: function (value) {
+                alpha = value;
+            },
+            render: function (displayObject) {
+                this.drawPixi(displayObject);
+            },
+            /*
+             * Pixi only feature: draws any pixi displayObject
+             */
+            drawPixi: function (displayObject) {
+                // set piximatrix to current transform matrix
+                pixiMatrix.a = matrix.a;
+                pixiMatrix.b = matrix.b;
+                pixiMatrix.c = matrix.c;
+                pixiMatrix.d = matrix.d;
+                pixiMatrix.tx = matrix.tx;
+                pixiMatrix.ty = matrix.ty;
+
+                stage.addChild(displayObject);
+                displayObject.transform.setFromMatrix(pixiMatrix);
+                displayObject.alpha = alpha;
+            },
+            getContext: function () {
+                return gl;
+            },
+            getPixiRenderer: function () {
+                return renderer;
+            },
+            // pixi specific: update the webgl view, needed if the canvas changed size
+            updateSize: function () {
+                renderer.resize(canvas.width, canvas.height);
+            }
+        };
+
+        if (canWebGl && Utils.isDefined(window.PIXI)) {
+            // init pixi
+            matrix = new TransformMatrix();
+            renderer = new PIXI.Renderer({
+                view: canvas,
+                width: canvas.width,
+                height: canvas.height,
+                backgroundColor: 0x000000,
+                clearBeforeRender: false,
+                antialias: Bento.getAntiAlias()
+            });
+            return pixiRenderer;
+        } else {
+            if (!window.PIXI) {
+                console.log('WARNING: PIXI library is missing, reverting to Canvas2D renderer');
+            } else if (!canWebGl) {
+                console.log('WARNING: WebGL not available, reverting to Canvas2D renderer');
+            }
+            return Canvas2d(canvas, settings);
+        }
+    };
+    return PixiRenderer;
+});
+/**
+ * Renderer using PIXI (v3 or lower) by GoodBoyDigital
+ * @moduleName PixiRenderer
+ */
+bento.define('bento/renderers/pixi3', [
     'bento',
     'bento/utils',
     'bento/math/transformmatrix',
@@ -19494,7 +19933,7 @@ bento.define('bento/renderers/pixi', [
             return graphics;
         };
         var renderer = {
-            name: 'pixi',
+            name: 'pixi3',
             init: function () {
 
             },
@@ -19839,7 +20278,7 @@ bento.define('bento/renderers/three', [
                 object3D.matrix.multiply(rotAroundX);
 
                 // opacity
-                material.opacity = alpha;
+                material.opacity *= alpha;
 
                 // prepare to render
                 objectList.push(object3D);
@@ -19924,9 +20363,6 @@ bento.define('bento/renderers/three', [
             // main scene only has 1 camera
             mainScene.cameras = [camera];
             mainScene.scene = scene;
-
-            // TODO: remove this
-            scene.background = new THREE.Color(0x000000);
 
             // expose camera and scene
             ThreeJsRenderer.camera = camera;

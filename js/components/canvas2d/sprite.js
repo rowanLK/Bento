@@ -1,5 +1,9 @@
 /**
-
+ * Original sprite implementation for 2d canvas
+ * <br>Exports: Constructor
+ * @module bento/components/canvas2d/sprite
+ * @moduleName Canvas2DSprite
+ * @returns Returns a component object to be attached to an entity.
  */
 bento.define('bento/components/canvas2d/sprite', [
     'bento',

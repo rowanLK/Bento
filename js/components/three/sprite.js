@@ -1,7 +1,7 @@
 /**
  * Sprite component with a three plane exposed. Must be used with three renderer.
  * <br>Exports: Constructor
- * @module bento/components/pixi/three
+ * @module bento/components/three/sprite
  * @moduleName ThreeSprite
  * @returns Returns a component object to be attached to an entity.
  */
@@ -41,7 +41,7 @@ bento.define('bento/components/three/sprite', [
         // var axesHelper = new THREE.AxesHelper( 1 );
         // this.object3D.add(axesHelper);
 
-        // deprecated (using an external sprite as sprite), todo: clean up
+        // DEPRECATED (using an external sprite as sprite), todo: clean this up
         this.sprite = settings.sprite;
         Sprite.call(this, settings);
 
@@ -153,7 +153,10 @@ bento.define('bento/components/three/sprite', [
         plane.position.x = -(origin.x - sprite.frameWidth / 2);
         plane.position.y = (origin.y - sprite.frameHeight / 2);
 
-        // move it to the render lsit
+        // opacity will be overwritten by renderer
+        this.material.opacity = 1;
+
+        // move it to the render list
         data.renderer.render({
             object3D: this.object3D,
             material: this.material
@@ -204,6 +207,9 @@ bento.define('bento/components/three/sprite', [
         }
     };
 
+    /**
+     * (Internal) Clean up memory
+     */
     ThreeSprite.prototype.dispose = function () {
         if (this.geometry) {
             this.geometry.dispose();
@@ -221,6 +227,7 @@ bento.define('bento/components/three/sprite', [
         return '[object ThreeSprite]';
     };
 
+    // default alpha test
     ThreeSprite.alphaTest = 0;
 
     /**

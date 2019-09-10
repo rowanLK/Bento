@@ -39,7 +39,7 @@ bento.define('bento/components/pixi/sprite', [
 
         // draw with pixi
         data.renderer.translate(-Math.round(this.origin.x), -Math.round(this.origin.y));
-        data.renderer.drawPixi(this.sprite);
+        data.renderer.render(this.sprite);
         data.renderer.translate(Math.round(this.origin.x), Math.round(this.origin.y));
     };
     PixiSprite.prototype.updateSprite = function (packedImage, sx, sy, sw, sh) {
@@ -63,7 +63,13 @@ bento.define('bento/components/pixi/sprite', [
         rectangle.y = packedImage.y + sy;
         rectangle.width = sw;
         rectangle.height = sh;
-        texture._updateUvs();
+        if (texture._updateUvs) {
+            texture._updateUvs();
+        } else if (texture.updateUvs) {
+            texture.updateUvs();
+        } else {
+            console.warn('Warning: Texture.updateUvs function not found');
+        }
 
         this.sprite.texture = texture;
     };

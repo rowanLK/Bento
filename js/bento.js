@@ -148,6 +148,8 @@ bento.define('bento', [
         // canvas2d and pixi are reserved names
         if (settings.renderer === 'canvas2d') {
             rendererName = 'bento/renderers/canvas2d';
+        } else if (settings.renderer === 'pixi3') {
+            rendererName = 'bento/renderers/pixi3';
         } else if (settings.renderer === 'pixi' || settings.renderer === 'pixijs' || settings.renderer === 'pixi.js') {
             rendererName = 'bento/renderers/pixi';
         } else if (settings.renderer === 'three' || settings.renderer === 'threejs' || settings.renderer === 'three.js') {
