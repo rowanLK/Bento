@@ -203,9 +203,14 @@ bento.define('bento/managers/asset', [
                 if (img._dispose) {
                     img._dispose();
                 }
-                // pixi
-                if (img.texture && img.texture.destroy) {
-                    img.texture.destroy();
+                // pixi / three
+                if (img.texture) {
+                    if (img.texture.destroy) {
+                        img.texture.destroy();
+                    }
+                    if (img.texture.dispose) {
+                        img.texture.dispose();
+                    }
                 }
             };
 

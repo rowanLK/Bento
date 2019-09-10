@@ -67,6 +67,9 @@ bento.define('bento/canvas', [
                 if (obj.texture.destroy) {
                     obj.texture.destroy();
                 }
+                if (obj.texture.dispose) {
+                    obj.texture.dispose();
+                }
                 obj.texture = null;
             }
             return obj;
@@ -104,6 +107,9 @@ bento.define('bento/canvas', [
                 if (canvas.texture) {
                     if (canvas.texture.destroy) {
                         canvas.texture.destroy();
+                    }
+                    if (canvas.texture.dispose) {
+                        canvas.texture.dispose();
                     }
                     canvas.texture = null;
                 }

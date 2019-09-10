@@ -566,6 +566,9 @@ bento.define('bento/gui/text', [
                 if (canvas.texture && canvas.texture.destroy) {
                     canvas.texture.destroy();
                 }
+                if (canvas.texture && canvas.texture.dispose) {
+                    canvas.texture.dispose();
+                }
                 canvas.texture = null;
                 packedImage = new PackedImage(canvas);
                 sprite.setup({
@@ -862,6 +865,10 @@ bento.define('bento/gui/text', [
                     if (canvas.texture && canvas.texture.destroy) {
                         // destroy PixiJS texture
                         canvas.texture.destroy();
+                    }
+                    if (canvas.texture && canvas.texture.dispose) {
+                        // dispose ThreeJS texture
+                        canvas.texture.dispose();
                     }
                     canvas = null;
                     packedImage = null;

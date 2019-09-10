@@ -246,6 +246,10 @@ bento.define('bento/tiled', [
                                     // destroy PixiJS texture
                                     canvas.texture.destroy();
                                 }
+                                if (canvas.texture && canvas.texture.dispose) {
+                                    // dispose ThreeJS texture
+                                    canvas.texture.dispose();
+                                }
                             }
                         });
                     }
