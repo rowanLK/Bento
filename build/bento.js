@@ -2883,6 +2883,468 @@ bento.define('bento', [
     return Bento;
 });
 /**
+ * Animated NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
+ * where the corners don't get deformed.
+ * <br>Exports: Constructor
+ * @module bento/components/canvas2d/animatednineslice
+ * @moduleName AnimatedNineSlice
+ * @snippet AnimatedNineSlice|constructor
+AnimatedNineSlice({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    width: ${4:32},
+    height: ${5:32}
+})
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - (Using image assets) Asset name for the image.
+ * @param {Vector2} settings.origin - Vector2 of origin
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
+ * @param {Vector2} settings.width - Width of the desired box
+ * @param {Vector2} settings.height - Height of the desired box
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between slices
+ * @param {Number} settings.framePaddding - Pixelsize between frames
+ * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ */
+bento.define('bento/components/canvas2d/animatednineslice', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween
+) {
+    'use strict';
+    /**
+     * Describe your settings object parameters
+     * @param {Object} settings
+     */
+    var NineSlice = function (settings) {
+        if (!(this instanceof NineSlice)) {
+            return new NineSlice(settings);
+        }
+        this.entity = null;
+        this.parent = null;
+        this.rootIndex = -1;
+        this.name = 'nineslice';
+        this.visible = true;
+        this.origin = new Vector2(0, 0);
+
+        // component settings
+        this._width = 0;
+        this._height = 0;
+        this._recalculateFlag = false;
+        this.frameX = 0;
+        this.frameY = 0;
+
+        // sprite settings
+        this.spriteImage = null;
+        this.padding = 0;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.framePadding = 0;
+
+        // drawing internals
+        this.sliceWidth = 0;
+        this.sliceHeight = 0;
+
+        //animation setttings
+        this.animations = {};
+        this.currentAnimation = null;
+        this.currentAnimationLength = 0;
+        this.currentFrame = 0;
+
+        this.onCompleteCallback = function () {};
+
+        this.settings = settings;
+        this.setup(settings);
+    };
+
+    NineSlice.prototype.setup = function (settings) {
+        var self = this;
+
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage && Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        if (!this.spriteImage) {
+            Utils.log("ERROR: something went wrong with loading the sprite.");
+            return;
+        }
+
+        this.padding = settings.padding || 0;
+        this.framePadding = settings.framePadding || 0;
+
+
+        this.frameWidth = this.spriteImage.width;
+        this.frameHeight = this.spriteImage.height;
+
+        if (settings.frameWidth) {
+            this.frameWidth = settings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / settings.frameWidth);
+        } else if (settings.frameCountX) {
+            this.frameCountX = settings.frameCountX;
+            this.frameWidth = (this.spriteImage.width - this.framePadding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (settings.frameHeight) {
+            this.frameHeight = settings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.width / settings.frameHeight);
+        } else if (settings.frameCountY) {
+            this.frameCountY = settings.frameCountY;
+            this.frameHeight = (this.spriteImage.height - this.framePadding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        if (this.spriteImage) {
+            this.sliceWidth = Math.floor((this.frameWidth - this.padding * 2) / 3);
+            this.sliceHeight = Math.floor((this.frameHeight - this.padding * 2) / 3);
+        }
+
+        if (settings.width) {
+            this._width = Math.max(settings.width || 0, 0);
+        } else if (settings.innerWidth) {
+            this._width = this.sliceWidth * 2 + Math.max(settings.innerWidth || 0, 0);
+        }
+
+        if (settings.height) {
+            this._height = Math.max(settings.height || 0, 0);
+        } else if (settings.innerHeight) {
+            this._height = this.sliceHeight * 2 + Math.max(settings.innerHeight || 0, 0);
+        }
+
+        if (this.settings.origin) {
+            this.origin.x = this.settings.origin.x;
+            this.origin.y = this.settings.origin.y;
+        } else if (this.settings.originRelative) {
+            this.setOriginRelative(this.settings.originRelative);
+        }
+
+        this.animations = settings.animations || {};
+        // add default animation
+        if (!this.animations['default']) {
+            this.animations['default'] = {
+                frames: [0]
+            };
+        }
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.x = -this.origin.x;
+            this.entity.dimension.y = -this.origin.y;
+            this.entity.dimension.width = this._width;
+            this.entity.dimension.height = this._height;
+        }
+        this.recalculateDimensions();
+
+        this.setAnimation('default');
+    };
+
+    NineSlice.prototype.updateEntity = function () {
+        if (!this.entity) return;
+        // set dimension of entity object
+        this.entity.dimension.x = -this.origin.x;
+        this.entity.dimension.y = -this.origin.y;
+        this.entity.dimension.width = this._width;
+        this.entity.dimension.height = this._height;
+    };
+
+    NineSlice.prototype.attached = function (data) {
+        this.entity = data.entity;
+
+        this.updateEntity();
+    };
+
+    NineSlice.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+
+        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
+            }
+        }
+    };
+
+    NineSlice.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+
+    NineSlice.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+
+    NineSlice.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+
+    NineSlice.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+
+    NineSlice.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+
+    Object.defineProperty(NineSlice.prototype, 'width', {
+        get: function () {
+            return this._width;
+        },
+        set: function (value) {
+            this._width = Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'height', {
+        get: function () {
+            return this._height;
+        },
+        set: function (value) {
+            this._height = Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerWidth', {
+        get: function () {
+            return Math.max(this._width - this.sliceWidth * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceWidth * 2;
+            this._width = this.sliceWidth * 2 + Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerHeight', {
+        get: function () {
+            return Math.max(this._height - this.sliceHeight * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceHeight * 2;
+            this._height = this.sliceHeight * 2 + Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    /**
+     * Sets the origin relatively (0...1), relative to the size of the frame.
+     * @function
+     * @param {Vector2} origin - Position of the origin (relative to upper left corner)
+     * @instance
+     * @name setOriginRelative
+     */
+    NineSlice.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = originRelative.x * this._width;
+        this.origin.y = originRelative.y * this._height;
+        this.settings.originRelative = originRelative.clone();
+    };
+
+    NineSlice.prototype.update = function (data) {
+        var reachedEnd;
+
+        if (this._recalculateFlag) {
+            this.recalculateDimensions();
+        }
+
+        if (!this.currentAnimation) {
+            return;
+        }
+
+        // no need for update
+        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
+        }
+
+        reachedEnd = false;
+        this.currentFrame += (frameSpeed) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd && this.onCompleteCallback) {
+            this.onCompleteCallback();
+            //don't repeat callback on non-looping animations
+            if (!this.currentAnimation.loop) {
+                this.onCompleteCallback = null;
+            }
+        }
+    };
+
+    NineSlice.prototype.recalculateDimensions = function () {
+        this._innerWidth = Math.round(Math.max(0, this._width - this.sliceWidth * 2));
+        this._innerHeight = Math.round(Math.max(0, this._height - this.sliceHeight * 2));
+
+        this._leftWidth = Math.min(this.sliceWidth, this._width / 2);
+        this.rightWidth = Math.min(this.sliceWidth, this._width - this._leftWidth);
+
+        this._topHeight = Math.min(this.sliceHeight, this._height / 2);
+        this._bottomHeight = Math.min(this.sliceHeight, this._height - this._topHeight);
+
+        if (this.settings.originRelative) {
+            // recalculate relative origin
+            this.origin.x = this.settings.originRelative.x * this._width;
+            this.origin.y = this.settings.originRelative.y * this._height;
+        }
+
+        if (this.entity) {
+            this.updateEntity();
+        }
+
+        this._recalculateFlag = false;
+    };
+
+    NineSlice.prototype.fillArea = function (renderer, slice, x, y, width, height) {
+        var sx = (this.sliceWidth + this.padding) * (slice % 3) + this.frameX;
+        var sy = (this.sliceHeight + this.padding) * Math.floor(slice / 3) + this.frameY;
+
+        if (width === 0 || height === 0) {
+            return;
+        }
+
+        if (!width) {
+            width = this.sliceWidth;
+        }
+        if (!height) {
+            height = this.sliceHeight;
+        }
+
+        renderer.drawImage(
+            this.spriteImage,
+            sx,
+            sy,
+            this.sliceWidth,
+            this.sliceHeight,
+            x | 0,
+            y | 0,
+            width,
+            height
+        );
+    };
+
+    NineSlice.prototype.updateFrame = function () {
+        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        this.frameX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.frameY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+    };
+
+    NineSlice.prototype.draw = function (data) {
+        var entity = data.entity;
+        var origin = this.origin;
+
+        if (this._width === 0 || this._height === 0) {
+            return;
+        }
+
+        this.updateFrame();
+
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
+
+        //top left corner
+        this.fillArea(data.renderer, 0, 0, 0, this._leftWidth, this._topHeight);
+        //top stretch
+        this.fillArea(data.renderer, 1, this._leftWidth, 0, this._innerWidth, this._topHeight);
+        //top right corner
+        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this._topHeight);
+
+        //left stretch
+        this.fillArea(data.renderer, 3, 0, this._topHeight, this._leftWidth, this._innerHeight);
+        //center stretch
+        this.fillArea(data.renderer, 4, this._leftWidth, this._topHeight, this._innerWidth, this._innerHeight);
+        //right stretch
+        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this._topHeight, this.rightWidth, this._innerHeight);
+
+        //bottom left corner
+        this.fillArea(data.renderer, 6, 0, this._height - this._bottomHeight, this._leftWidth, this._bottomHeight);
+        //bottom stretch
+        this.fillArea(data.renderer, 7, this._leftWidth, this._height - this._bottomHeight, this._innerWidth, this._bottomHeight);
+        //bottom right corner
+        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this._bottomHeight, this.rightWidth, this._bottomHeight);
+
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+
+    // Deprecated functions, added for compatibility
+    NineSlice.prototype.setWidth = function (value) {
+        this.width = value;
+    };
+    NineSlice.prototype.setHeight = function (value) {
+        this.height = value;
+    };
+
+    return NineSlice;
+});
+/**
  * Component that fills a rectangle with a color.
  * <br>Exports: Constructor
  * @module bento/components/canvas2d/fill
@@ -2968,6 +3430,364 @@ bento.define('bento/components/canvas2d/fill', [
     };
 
     return Fill;
+});
+/**
+ * Component that draws a Spine animation. A Spine asset must consist of a json, atlas and png with the same name. Developer must add
+ [spine-canvas.js]{@link https://raw.githubusercontent.com/EsotericSoftware/spine-runtimes/3.6/spine-ts/build/spine-canvas.js} manually.
+ * Note: made with canvas2d renderer in mind.
+ * Note about skins: Lazy loading can be turned on with Bento.assets.lazyLoadSpine = true before the assets are loaded. This is useful if the spine
+ * animations contains many skins and you want to prevent all of the skins to be preloaded. The asset manager will no longer manage the spine images.
+ * Instead can call Spine.cleanLazyLoadedImages() to remove all images.
+ * <br>Exports: Constructor
+ * @module bento/components/canvas2d/spine
+ * @moduleName Spine
+* @snippet Spine.snippet
+Spine({
+    spine: '${1}',
+    animation: '${2:idle}',
+    scale: ${3:1},
+    triangleRendering: false
+})
+ * @param {Object} settings - Settings
+ * @param {String} settings.spine - Name of the spine asset
+ * @param {String} settings.animation - Initial animation to play, defaults to 'default'
+ * @param {Function} settings.onEvent - Animation state callback
+ * @param {Function} settings.onComplete - Animation state callback
+ * @param {Function} settings.onStart - Animation state callback
+ * @param {Function} settings.onEnd - Animation state callback
+ * @returns Returns a component object to be attached to an entity.
+ */
+bento.define('bento/components/canvas2d/spine', [
+    'bento/utils',
+    'bento',
+    'bento/math/vector2'
+], function (
+    Utils,
+    Bento,
+    Vector2
+) {
+    'use strict';
+    /**
+     * Fake texture in case of lazy loading
+     */
+    var fakeTexture;
+    var getFakeTexture = function () {
+        var image;
+        if (!fakeTexture) {
+            image = new Image();
+            fakeTexture = new window.spine.FakeTexture(image);
+        }
+        return fakeTexture;
+    };
+    var lazyLoadedImages = {};
+    /**
+     * Get/load the asset for the spine sprite
+     */
+    var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
+        var skeletonDataOut;
+        var spineData = Bento.assets.getSpine(name);
+        var skinsPerImage = spineData.skinImages;
+        var spineAssetLoader = Bento.assets.getSpineLoader();
+        // returns the textures for an atlas
+        var textureLoader = function (path) {
+            var output = spineAssetLoader.get(spineData.path + path);
+            if (!output) {
+                // image may not be loaded (lazyloading spine), return a fake texture for now
+                output = getFakeTexture();
+
+                // do we need the image for this skin?
+                // Spine will otherwise attempt to load every image related to a TextureAtlas,
+                // we made the link between skins and images during the asset loading (see managers/asset.js)
+                if (skin === skinsPerImage[path]) {
+                    // load correct image asap
+                    lazyLoad(path);
+                }
+            }
+            return output;
+        };
+        var lazyLoad = function (path) {
+            // load the real texture now
+            spineAssetLoader.loadTexture(
+                spineData.path + path,
+                function (p, img) {
+                    // reload everything
+                    var newData = loadSkeletonData(name, initialAnimation, listeners, skin);
+                    // pass back to original data
+                    skeletonDataOut.skeleton = newData.skeleton;
+                    skeletonDataOut.state = newData.state;
+                    skeletonDataOut.bounds = bounds.skeleton;
+                    // alert the spine component that skeleton data is updated
+                    if (skeletonDataOut.onReload) {
+                        skeletonDataOut.onReload();
+                    }
+
+                    // save path
+                    lazyLoadedImages[p] = img;
+                },
+                function () {
+                    // error
+                }
+            );
+        };
+        // Load the texture atlas using name.atlas and name.png from the AssetManager.
+        // The function passed to TextureAtlas is used to resolve relative paths.
+        var atlas = new window.spine.TextureAtlas(spineData.atlas, textureLoader);
+
+        // Create a AtlasAttachmentLoader, which is specific to the WebGL backend.
+        var atlasLoader = new window.spine.AtlasAttachmentLoader(atlas);
+
+        // Create a SkeletonJson instance for parsing the .json file.
+        var skeletonJson = new window.spine.SkeletonJson(atlasLoader);
+
+        // Set the scale to apply during parsing, parse the file, and create a new skeleton.
+        var skeletonData = skeletonJson.readSkeletonData(spineData.skeleton);
+        var skeleton = new window.spine.Skeleton(skeletonData);
+        skeleton.flipY = true;
+        var bounds = calculateBounds(skeleton);
+        skeleton.setSkinByName(skin);
+
+        // Create an AnimationState, and set the initial animation in looping mode.
+        var animationState = new window.spine.AnimationState(new window.spine.AnimationStateData(skeleton.data));
+        animationState.setAnimation(0, initialAnimation, true);
+        animationState.addListener({
+            event: listeners.onEvent || function (trackIndex, event) {
+                // console.log("Event on track " + trackIndex + ": " + JSON.stringify(event));
+            },
+            complete: listeners.onComplete || function (trackIndex, loopCount) {
+                // console.log("Animation on track " + trackIndex + " completed, loop count: " + loopCount);
+            },
+            start: listeners.onStart || function (trackIndex) {
+                // console.log("Animation on track " + trackIndex + " started");
+            },
+            end: listeners.onEnd || function (trackIndex) {
+                // console.log("Animation on track " + trackIndex + " ended");
+            }
+        });
+
+        // Pack everything up and return to caller.
+        skeletonDataOut = {
+            skeleton: skeleton,
+            state: animationState,
+            bounds: bounds,
+            onReload: null
+        };
+        return skeletonDataOut;
+    };
+    var calculateBounds = function (skeleton) {
+        var data = skeleton.data;
+        skeleton.setToSetupPose();
+        skeleton.updateWorldTransform();
+        var offset = new window.spine.Vector2();
+        var size = new window.spine.Vector2();
+        skeleton.getBounds(offset, size, []);
+        return {
+            offset: offset,
+            size: size
+        };
+    };
+    var skeletonRenderer;
+    var debugRendering = false;
+
+    var Spine = function (settings) {
+        var name = settings.name || 'spine';
+        var spineName = settings.spineName || settings.spine;
+        var skin = settings.skin || 'default';
+        var currentAnimation = settings.animation || 'default';
+        var isLooping = true;
+        // animation state listeners
+        var onEvent = settings.onEvent;
+        var onComplete = settings.onComplete;
+        var onStart = settings.onStart;
+        var onEnd = settings.onEnd;
+        // enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
+        var useTriangleRendering = settings.triangleRendering || false;
+        var skeletonData;
+        var skeleton, state, bounds;
+        var currentAnimationSpeed = 1;
+        var entity;
+        // todo: investigate internal scaling
+        var scale = settings.scale || 1;
+        var component = {
+            name: name,
+            start: function (data) {
+                // load the skeleton data if that's not been done yet
+                if (!skeletonData) {
+                    skeletonData = loadSkeletonData(spineName, currentAnimation, {
+                        onEvent: onEvent,
+                        onComplete: function (trackIndex, loopCount) {
+                            if (onComplete) {
+                                onComplete(trackIndex, loopCount);
+                            }
+                        },
+                        onStart: onStart,
+                        onEnd: onEnd
+                    }, skin);
+                    skeleton = skeletonData.skeleton;
+                    state = skeletonData.state;
+                    bounds = skeletonData.bounds;
+
+                    // anticipate lazy load
+                    skeletonData.onReload = function () {
+                        // rebind data
+                        skeleton = skeletonData.skeleton;
+                        state = skeletonData.state;
+                        bounds = skeletonData.bounds;
+                        // apply previous state
+                        state.setAnimation(0, currentAnimation, isLooping);
+                        state.apply(skeleton);
+                    };
+                }
+                // initialize skeleton renderer
+                if (!skeletonRenderer) {
+                    skeletonRenderer = new window.spine.canvas.SkeletonRenderer(data.renderer.getContext());
+                    skeletonRenderer.debugRendering = debugRendering;
+                }
+                updateEntity();
+
+                if (!Utils.isNumber(scale)) {
+                    Utils.log('ERROR: scale must be a number');
+                    scale = 1;
+                }
+            },
+            destroy: function (data) {},
+            update: function (data) {
+                state.update(data.deltaT / 1000 * data.speed * currentAnimationSpeed);
+                state.apply(skeleton);
+            },
+            draw: function (data) {
+                // todo: investigate scaling
+                data.renderer.scale(scale, scale);
+                skeleton.updateWorldTransform();
+                skeletonRenderer.triangleRendering = useTriangleRendering;
+                skeletonRenderer.draw(skeleton);
+                data.renderer.scale(1 / scale, 1 / scale);
+            },
+            attached: function (data) {
+                entity = data.entity;
+            },
+            /**
+             * Set animation
+             * @function
+             * @instance
+             * @param {String} name - Name of animation
+             * @param {Function} [callback] - Callback on complete, will overwrite onEnd if set
+             * @param {Boolean} [loop] - Loop animation
+             * @name setAnimation
+             * @snippet #Spine.setAnimation|snippet
+                setAnimation('$1');
+             * @snippet #Spine.setAnimation|callback
+                setAnimation('$1', function () {
+                    $2
+                });
+             */
+            setAnimation: function (name, callback, loop) {
+                if (currentAnimation === name) {
+                    // already playing
+                    return;
+                }
+                // update current animation
+                currentAnimation = name;
+                // reset speed
+                currentAnimationSpeed = 1;
+                isLooping = Utils.getDefault(loop, true);
+                // apply animation
+                state.setAnimation(0, name, isLooping);
+                // set callback, even if undefined
+                onComplete = callback;
+                // apply the skeleton to avoid visual delay
+                state.apply(skeleton);
+            },
+            /**
+             * Get current animation name
+             * @function
+             * @instance
+             * @name getAnimation
+             * @snippet #Spine.getAnimation|String
+                getAnimation();
+             * @returns {String} Returns name of current animation.
+             */
+            getAnimationName: function () {
+                return currentAnimation;
+            },
+            /**
+             * Get speed of the current animation, relative to Spine's speed
+             * @function
+             * @instance
+             * @returns {Number} Speed of the current animation
+             * @name getCurrentSpeed
+             * @snippet #Spine.getCurrentSpeed|Number
+                getCurrentSpeed();
+             */
+            getCurrentSpeed: function () {
+                return currentAnimationSpeed;
+            },
+            /**
+             * Set speed of the current animation.
+             * @function
+             * @instance
+             * @param {Number} speed - Speed at which the animation plays.
+             * @name setCurrentSpeed
+             * @snippet #Spine.setCurrentSpeed|snippet
+                setCurrentSpeed(${1:number});
+             */
+            setCurrentSpeed: function (value) {
+                currentAnimationSpeed = value;
+            },
+            /**
+             * Exposes Spine skeleton data and animation state variables for manual manipulation
+             * @function
+             * @instance
+             * @name getSpineData
+             * @snippet #Spine.getSpineData|snippet
+                getSpineData();
+             */
+            getSpineData: function () {
+                return {
+                    skeletonData: skeleton,
+                    animationState: state
+                };
+            }
+        };
+        var updateEntity = function () {
+            if (!entity) {
+                return;
+            }
+
+            entity.dimension.x = bounds.offset.x * scale;
+            entity.dimension.y = bounds.offset.y * scale;
+            entity.dimension.width = bounds.size.x * scale;
+            entity.dimension.height = bounds.size.y * scale;
+        };
+        return component;
+    };
+
+    Spine.setDebugRendering = function (bool) {
+        if (skeletonRenderer) {
+            skeletonRenderer.debugRendering = bool;
+        }
+    };
+
+    Spine.cleanLazyLoadedImages = function () {
+        // clearing up memory
+        // don't call this during update loops! 
+        // no spine components should be alive when this is called, because all references will be invalid
+        var spineAssetLoader = Bento.assets.getSpineLoader();
+        Utils.forEach(lazyLoadedImages, function (image, imagePath, l, breakLoop) {
+            try {
+                spineAssetLoader.remove(imagePath);
+            } catch (e) {
+                Utils.log(e);
+            }
+
+            if (image.dispose) {
+                // alternatively we could not call dispose and let the garbage collector do its work
+                image.dispose();
+            }
+        });
+        lazyLoadedImages = [];
+    };
+
+    return Spine;
 });
 /**
  * Original sprite implementation for 2d canvas
@@ -4008,468 +4828,6 @@ bento.define('bento/components/modal', [
     };
 });
 /**
- * NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
- * where the corners don't get deformed.
- * <br>Exports: Constructor
- * @module bento/components/nineslice
- * @moduleName NineSlice
- * @snippet NineSlice|constructor
-NineSlice({
-    imageName: '${1}',
-    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
-    width: ${4:32},
-    height: ${5:32}
-})
- * @param {Object} settings - Settings
- * @param {String} settings.imageName - (Using image assets) Asset name for the image.
- * @param {Vector2} settings.origin - Vector2 of origin
- * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
- * @param {Vector2} settings.width - Width of the desired box
- * @param {Vector2} settings.height - Height of the desired box
- * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
- * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
- * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
- * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
- * @param {Number} settings.paddding - Pixelsize between slices
- * @param {Number} settings.framePaddding - Pixelsize between frames
- * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
- * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
- * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
- * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
- * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
- */
-bento.define('bento/components/nineslice', [
-    'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/entity',
-    'bento/eventsystem',
-    'bento/utils',
-    'bento/tween'
-], function (
-    Bento,
-    Vector2,
-    Rectangle,
-    Entity,
-    EventSystem,
-    Utils,
-    Tween
-) {
-    'use strict';
-    /**
-     * Describe your settings object parameters
-     * @param {Object} settings
-     */
-    var NineSlice = function (settings) {
-        if (!(this instanceof NineSlice)) {
-            return new NineSlice(settings);
-        }
-        this.entity = null;
-        this.parent = null;
-        this.rootIndex = -1;
-        this.name = 'nineslice';
-        this.visible = true;
-        this.origin = new Vector2(0, 0);
-
-        // component settings
-        this._width = 0;
-        this._height = 0;
-        this._recalculateFlag = false;
-        this.frameX = 0;
-        this.frameY = 0;
-
-        // sprite settings
-        this.spriteImage = null;
-        this.padding = 0;
-        this.frameWidth = 0;
-        this.frameHeight = 0;
-        this.frameCountX = 1;
-        this.frameCountY = 1;
-        this.framePadding = 0;
-
-        // drawing internals
-        this.sliceWidth = 0;
-        this.sliceHeight = 0;
-
-        //animation setttings
-        this.animations = {};
-        this.currentAnimation = null;
-        this.currentAnimationLength = 0;
-        this.currentFrame = 0;
-
-        this.onCompleteCallback = function () {};
-
-        this.settings = settings;
-        this.setup(settings);
-    };
-
-    NineSlice.prototype.setup = function (settings) {
-        var self = this;
-
-        if (settings.image) {
-            this.spriteImage = settings.image;
-        } else if (settings.imageName) {
-            // load from string
-            if (Bento.assets) {
-                this.spriteImage = Bento.assets.getImage(settings.imageName);
-            } else {
-                throw 'Bento asset manager not loaded';
-            }
-        } else if (settings.imageFromUrl) {
-            // load from url
-            if (!this.spriteImage && Bento.assets) {
-                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
-                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
-                    self.setup(settings);
-
-                    if (settings.onLoad) {
-                        settings.onLoad();
-                    }
-                });
-                // wait until asset is loaded and then retry
-                return;
-            }
-        } else {
-            // no image specified
-            return;
-        }
-        if (!this.spriteImage) {
-            Utils.log("ERROR: something went wrong with loading the sprite.");
-            return;
-        }
-
-        this.padding = settings.padding || 0;
-        this.framePadding = settings.framePadding || 0;
-
-
-        this.frameWidth = this.spriteImage.width;
-        this.frameHeight = this.spriteImage.height;
-
-        if (settings.frameWidth) {
-            this.frameWidth = settings.frameWidth;
-            this.frameCountX = Math.floor(this.spriteImage.width / settings.frameWidth);
-        } else if (settings.frameCountX) {
-            this.frameCountX = settings.frameCountX;
-            this.frameWidth = (this.spriteImage.width - this.framePadding * (this.frameCountX - 1)) / this.frameCountX;
-        }
-        if (settings.frameHeight) {
-            this.frameHeight = settings.frameHeight;
-            this.frameCountY = Math.floor(this.spriteImage.width / settings.frameHeight);
-        } else if (settings.frameCountY) {
-            this.frameCountY = settings.frameCountY;
-            this.frameHeight = (this.spriteImage.height - this.framePadding * (this.frameCountY - 1)) / this.frameCountY;
-        }
-
-        if (this.spriteImage) {
-            this.sliceWidth = Math.floor((this.frameWidth - this.padding * 2) / 3);
-            this.sliceHeight = Math.floor((this.frameHeight - this.padding * 2) / 3);
-        }
-
-        if (settings.width) {
-            this._width = Math.max(settings.width || 0, 0);
-        } else if (settings.innerWidth) {
-            this._width = this.sliceWidth * 2 + Math.max(settings.innerWidth || 0, 0);
-        }
-
-        if (settings.height) {
-            this._height = Math.max(settings.height || 0, 0);
-        } else if (settings.innerHeight) {
-            this._height = this.sliceHeight * 2 + Math.max(settings.innerHeight || 0, 0);
-        }
-
-        if (this.settings.origin) {
-            this.origin.x = this.settings.origin.x;
-            this.origin.y = this.settings.origin.y;
-        } else if (this.settings.originRelative) {
-            this.setOriginRelative(this.settings.originRelative);
-        }
-
-        this.animations = settings.animations || {};
-        // add default animation
-        if (!this.animations['default']) {
-            this.animations['default'] = {
-                frames: [0]
-            };
-        }
-
-        if (this.entity) {
-            // set dimension of entity object
-            this.entity.dimension.x = -this.origin.x;
-            this.entity.dimension.y = -this.origin.y;
-            this.entity.dimension.width = this._width;
-            this.entity.dimension.height = this._height;
-        }
-        this.recalculateDimensions();
-
-        this.setAnimation('default');
-    };
-
-    NineSlice.prototype.updateEntity = function () {
-        if (!this.entity) return;
-        // set dimension of entity object
-        this.entity.dimension.x = -this.origin.x;
-        this.entity.dimension.y = -this.origin.y;
-        this.entity.dimension.width = this._width;
-        this.entity.dimension.height = this._height;
-    };
-
-    NineSlice.prototype.attached = function (data) {
-        this.entity = data.entity;
-
-        this.updateEntity();
-    };
-
-    NineSlice.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
-        var anim = this.animations[name];
-        if (!anim) {
-            console.log('Warning: animation ' + name + ' does not exist.');
-            return;
-        }
-
-        if (anim && (this.currentAnimation !== anim || (this.onCompleteCallback !== null && Utils.isDefined(callback)))) {
-            if (!Utils.isDefined(anim.loop)) {
-                anim.loop = true;
-            }
-            if (!Utils.isDefined(anim.backTo)) {
-                anim.backTo = 0;
-            }
-            // set even if there is no callback
-            this.onCompleteCallback = callback;
-            this.currentAnimation = anim;
-            this.currentAnimation.name = name;
-            this.currentAnimationLength = this.currentAnimation.frames.length;
-            if (!keepCurrentFrame) {
-                this.currentFrame = 0;
-            }
-            if (this.currentAnimation.backTo > this.currentAnimationLength) {
-                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
-                this.currentAnimation.backTo = this.currentAnimationLength;
-            }
-        }
-    };
-
-    NineSlice.prototype.getAnimationName = function () {
-        return this.currentAnimation.name;
-    };
-
-    NineSlice.prototype.setFrame = function (frameNumber) {
-        this.currentFrame = frameNumber;
-    };
-
-    NineSlice.prototype.getCurrentSpeed = function () {
-        return this.currentAnimation.speed;
-    };
-
-    NineSlice.prototype.setCurrentSpeed = function (value) {
-        this.currentAnimation.speed = value;
-    };
-
-    NineSlice.prototype.getCurrentFrame = function () {
-        return this.currentFrame;
-    };
-
-    Object.defineProperty(NineSlice.prototype, 'width', {
-        get: function () {
-            return this._width;
-        },
-        set: function (value) {
-            this._width = Math.max(value, 0);
-            this._recalculateFlag = true;
-        }
-    });
-
-    Object.defineProperty(NineSlice.prototype, 'height', {
-        get: function () {
-            return this._height;
-        },
-        set: function (value) {
-            this._height = Math.max(value, 0);
-            this._recalculateFlag = true;
-        }
-    });
-
-    Object.defineProperty(NineSlice.prototype, 'innerWidth', {
-        get: function () {
-            return Math.max(this._width - this.sliceWidth * 2, 0);
-        },
-        set: function (value) {
-            value -= this.sliceWidth * 2;
-            this._width = this.sliceWidth * 2 + Math.max(value, 0);
-            this._recalculateFlag = true;
-        }
-    });
-
-    Object.defineProperty(NineSlice.prototype, 'innerHeight', {
-        get: function () {
-            return Math.max(this._height - this.sliceHeight * 2, 0);
-        },
-        set: function (value) {
-            value -= this.sliceHeight * 2;
-            this._height = this.sliceHeight * 2 + Math.max(value, 0);
-            this._recalculateFlag = true;
-        }
-    });
-
-    /**
-     * Sets the origin relatively (0...1), relative to the size of the frame.
-     * @function
-     * @param {Vector2} origin - Position of the origin (relative to upper left corner)
-     * @instance
-     * @name setOriginRelative
-     */
-    NineSlice.prototype.setOriginRelative = function (originRelative) {
-        this.origin.x = originRelative.x * this._width;
-        this.origin.y = originRelative.y * this._height;
-        this.settings.originRelative = originRelative.clone();
-    };
-
-    NineSlice.prototype.update = function (data) {
-        var reachedEnd;
-
-        if (this._recalculateFlag) {
-            this.recalculateDimensions();
-        }
-
-        if (!this.currentAnimation) {
-            return;
-        }
-
-        // no need for update
-        if (this.currentAnimationLength <= 1 || this.currentAnimation.speed === 0) {
-            return;
-        }
-
-        var frameSpeed = this.currentAnimation.speed || 1;
-        if (this.currentAnimation.frameSpeeds && this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
-            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
-        }
-
-        reachedEnd = false;
-        this.currentFrame += (frameSpeed) * data.speed;
-        if (this.currentAnimation.loop) {
-            while (this.currentFrame >= this.currentAnimation.frames.length) {
-                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
-                reachedEnd = true;
-            }
-        } else {
-            if (this.currentFrame >= this.currentAnimation.frames.length) {
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd && this.onCompleteCallback) {
-            this.onCompleteCallback();
-            //don't repeat callback on non-looping animations
-            if (!this.currentAnimation.loop) {
-                this.onCompleteCallback = null;
-            }
-        }
-    };
-
-    NineSlice.prototype.recalculateDimensions = function () {
-        this._innerWidth = Math.round(Math.max(0, this._width - this.sliceWidth * 2));
-        this._innerHeight = Math.round(Math.max(0, this._height - this.sliceHeight * 2));
-
-        this._leftWidth = Math.min(this.sliceWidth, this._width / 2);
-        this.rightWidth = Math.min(this.sliceWidth, this._width - this._leftWidth);
-
-        this._topHeight = Math.min(this.sliceHeight, this._height / 2);
-        this._bottomHeight = Math.min(this.sliceHeight, this._height - this._topHeight);
-
-        if (this.settings.originRelative) {
-            // recalculate relative origin
-            this.origin.x = this.settings.originRelative.x * this._width;
-            this.origin.y = this.settings.originRelative.y * this._height;
-        }
-
-        if (this.entity) {
-            this.updateEntity();
-        }
-
-        this._recalculateFlag = false;
-    };
-
-    NineSlice.prototype.fillArea = function (renderer, slice, x, y, width, height) {
-        var sx = (this.sliceWidth + this.padding) * (slice % 3) + this.frameX;
-        var sy = (this.sliceHeight + this.padding) * Math.floor(slice / 3) + this.frameY;
-
-        if (width === 0 || height === 0) {
-            return;
-        }
-
-        if (!width) {
-            width = this.sliceWidth;
-        }
-        if (!height) {
-            height = this.sliceHeight;
-        }
-
-        renderer.drawImage(
-            this.spriteImage,
-            sx,
-            sy,
-            this.sliceWidth,
-            this.sliceHeight,
-            x | 0,
-            y | 0,
-            width,
-            height
-        );
-    };
-
-    NineSlice.prototype.updateFrame = function () {
-        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
-        var sourceFrame = this.currentAnimation.frames[frameIndex];
-        this.frameX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
-        this.frameY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
-    };
-
-    NineSlice.prototype.draw = function (data) {
-        var entity = data.entity;
-        var origin = this.origin;
-
-        if (this._width === 0 || this._height === 0) {
-            return;
-        }
-
-        this.updateFrame();
-
-        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
-
-        //top left corner
-        this.fillArea(data.renderer, 0, 0, 0, this._leftWidth, this._topHeight);
-        //top stretch
-        this.fillArea(data.renderer, 1, this._leftWidth, 0, this._innerWidth, this._topHeight);
-        //top right corner
-        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this._topHeight);
-
-        //left stretch
-        this.fillArea(data.renderer, 3, 0, this._topHeight, this._leftWidth, this._innerHeight);
-        //center stretch
-        this.fillArea(data.renderer, 4, this._leftWidth, this._topHeight, this._innerWidth, this._innerHeight);
-        //right stretch
-        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this._topHeight, this.rightWidth, this._innerHeight);
-
-        //bottom left corner
-        this.fillArea(data.renderer, 6, 0, this._height - this._bottomHeight, this._leftWidth, this._bottomHeight);
-        //bottom stretch
-        this.fillArea(data.renderer, 7, this._leftWidth, this._height - this._bottomHeight, this._innerWidth, this._bottomHeight);
-        //bottom right corner
-        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this._bottomHeight, this.rightWidth, this._bottomHeight);
-
-        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
-    };
-
-    // Deprecated functions, added for compatibility
-    NineSlice.prototype.setWidth = function (value) {
-        this.width = value;
-    };
-    NineSlice.prototype.setHeight = function (value) {
-        this.height = value;
-    };
-
-    return NineSlice;
-});
-/**
  * Component that fills a rectangle using Pixi
  * <br>Exports: Constructor
  * @module bento/components/pixi/fill
@@ -4561,30 +4919,38 @@ bento.define('bento/components/pixi/sprite', [
     'bento/components/canvas2d/sprite'
 ], function (Bento, Utils, Sprite) {
     'use strict';
+    var PIXI = window.PIXI;
     var PixiSprite = function (settings) {
         if (!(this instanceof PixiSprite)) {
             return new PixiSprite(settings);
         }
         Sprite.call(this, settings);
-        this.sprite = new window.PIXI.Sprite();
-        this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? window.PIXI.SCALE_MODES.LINEAR : window.PIXI.SCALE_MODES.NEAREST);
+        this.sprite = new PIXI.Sprite();
+        this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
+        // checking if frame changed
+        this.lastFrame = null;
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
+        var currentFrame = Math.round(this.currentFrame);
 
         if (!this.currentAnimation || !this.visible) {
             return;
         }
-        this.updateFrame();
-        this.updateSprite(
-            this.spriteImage,
-            this.sourceX,
-            this.sourceY,
-            this.frameWidth,
-            this.frameHeight
-        );
+        if (this.lastFrame !== currentFrame) {
+            // prevent updating the uvs all the time
+            this.updateFrame();
+            this.updateSprite(
+                this.spriteImage,
+                this.sourceX,
+                this.sourceY,
+                this.frameWidth,
+                this.frameHeight
+            );
+            this.lastFrame = currentFrame;
+        }
 
         // draw with pixi
         data.renderer.translate(-Math.round(this.origin.x), -Math.round(this.origin.y));
@@ -4604,23 +4970,15 @@ bento.define('bento/components/pixi/sprite', [
         if (!image.texture) {
             // initialize pixi baseTexture
             image.texture = PixiSprite.imageToTexture(packedImage, this.scaleMode);
-            image.frame = new window.PIXI.Texture(image.texture);
-        }
-        texture = image.frame;
-        rectangle = texture._frame;
-        rectangle.x = packedImage.x + sx;
-        rectangle.y = packedImage.y + sy;
-        rectangle.width = sw;
-        rectangle.height = sh;
-        if (texture._updateUvs) {
-            texture._updateUvs();
-        } else if (texture.updateUvs) {
-            texture.updateUvs();
-        } else {
-            console.warn('Warning: Texture.updateUvs function not found');
         }
 
-        this.sprite.texture = texture;
+        var frame = new PIXI.Rectangle(
+            packedImage.x + sx,
+            packedImage.y + sy,
+            sw,
+            sh
+        );
+        this.sprite.texture = new PIXI.Texture(image.texture, frame);
     };
 
     PixiSprite.prototype.toString = function () {
@@ -4629,368 +4987,17 @@ bento.define('bento/components/pixi/sprite', [
 
     PixiSprite.imageToTexture = function (image, antiAlias) {
         var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;
-        return new window.PIXI.BaseTexture(imagePack.image, antiAlias);
+        var majorVersion = parseInt((PIXI.VERSION || '0.0.0').split('.')[0]);
+        var options = {};
+        if (majorVersion < 4) {
+            options = antiAlias;
+        } else {
+            options.scaleMode = antiAlias;
+        }
+        return new PIXI.BaseTexture(imagePack.image, options);
     };
 
     return PixiSprite;
-});
-/**
- * Component that draws a Spine animation. A Spine asset must consist of a json, atlas and png with the same name. Developer must add
- [spine-canvas.js]{@link https://raw.githubusercontent.com/EsotericSoftware/spine-runtimes/3.6/spine-ts/build/spine-canvas.js} manually.
- * Note: made with canvas2d renderer in mind.
- * Note about skins: Lazy loading can be turned on with Bento.assets.lazyLoadSpine = true before the assets are loaded. This is useful if the spine
- * animations contains many skins and you want to prevent all of the skins to be preloaded. The asset manager will no longer manage the spine images.
- * Instead can call Spine.cleanLazyLoadedImages() to remove all images.
- * <br>Exports: Constructor
- * @module bento/components/spine
- * @moduleName Spine
-* @snippet Spine.snippet
-Spine({
-    spine: '${1}',
-    animation: '${2:idle}',
-    scale: ${3:1},
-    triangleRendering: false
-})
- * @param {Object} settings - Settings
- * @param {String} settings.spine - Name of the spine asset
- * @param {String} settings.animation - Initial animation to play, defaults to 'default'
- * @param {Function} settings.onEvent - Animation state callback
- * @param {Function} settings.onComplete - Animation state callback
- * @param {Function} settings.onStart - Animation state callback
- * @param {Function} settings.onEnd - Animation state callback
- * @returns Returns a component object to be attached to an entity.
- */
-bento.define('bento/components/spine', [
-    'bento/utils',
-    'bento',
-    'bento/math/vector2'
-], function (
-    Utils,
-    Bento,
-    Vector2
-) {
-    'use strict';
-    /**
-     * Fake texture in case of lazy loading
-     */
-    var fakeTexture;
-    var getFakeTexture = function () {
-        var image;
-        if (!fakeTexture) {
-            image = new Image();
-            fakeTexture = new window.spine.FakeTexture(image);
-        }
-        return fakeTexture;
-    };
-    var lazyLoadedImages = {};
-    /**
-     * Get/load the asset for the spine sprite
-     */
-    var loadSkeletonData = function (name, initialAnimation, listeners, skin) {
-        var skeletonDataOut;
-        var spineData = Bento.assets.getSpine(name);
-        var skinsPerImage = spineData.skinImages;
-        var spineAssetLoader = Bento.assets.getSpineLoader();
-        // returns the textures for an atlas
-        var textureLoader = function (path) {
-            var output = spineAssetLoader.get(spineData.path + path);
-            if (!output) {
-                // image may not be loaded (lazyloading spine), return a fake texture for now
-                output = getFakeTexture();
-
-                // do we need the image for this skin?
-                // Spine will otherwise attempt to load every image related to a TextureAtlas,
-                // we made the link between skins and images during the asset loading (see managers/asset.js)
-                if (skin === skinsPerImage[path]) {
-                    // load correct image asap
-                    lazyLoad(path);
-                }
-            }
-            return output;
-        };
-        var lazyLoad = function (path) {
-            // load the real texture now
-            spineAssetLoader.loadTexture(
-                spineData.path + path,
-                function (p, img) {
-                    // reload everything
-                    var newData = loadSkeletonData(name, initialAnimation, listeners, skin);
-                    // pass back to original data
-                    skeletonDataOut.skeleton = newData.skeleton;
-                    skeletonDataOut.state = newData.state;
-                    skeletonDataOut.bounds = bounds.skeleton;
-                    // alert the spine component that skeleton data is updated
-                    if (skeletonDataOut.onReload) {
-                        skeletonDataOut.onReload();
-                    }
-
-                    // save path
-                    lazyLoadedImages[p] = img;
-                },
-                function () {
-                    // error
-                }
-            );
-        };
-        // Load the texture atlas using name.atlas and name.png from the AssetManager.
-        // The function passed to TextureAtlas is used to resolve relative paths.
-        var atlas = new window.spine.TextureAtlas(spineData.atlas, textureLoader);
-
-        // Create a AtlasAttachmentLoader, which is specific to the WebGL backend.
-        var atlasLoader = new window.spine.AtlasAttachmentLoader(atlas);
-
-        // Create a SkeletonJson instance for parsing the .json file.
-        var skeletonJson = new window.spine.SkeletonJson(atlasLoader);
-
-        // Set the scale to apply during parsing, parse the file, and create a new skeleton.
-        var skeletonData = skeletonJson.readSkeletonData(spineData.skeleton);
-        var skeleton = new window.spine.Skeleton(skeletonData);
-        skeleton.flipY = true;
-        var bounds = calculateBounds(skeleton);
-        skeleton.setSkinByName(skin);
-
-        // Create an AnimationState, and set the initial animation in looping mode.
-        var animationState = new window.spine.AnimationState(new window.spine.AnimationStateData(skeleton.data));
-        animationState.setAnimation(0, initialAnimation, true);
-        animationState.addListener({
-            event: listeners.onEvent || function (trackIndex, event) {
-                // console.log("Event on track " + trackIndex + ": " + JSON.stringify(event));
-            },
-            complete: listeners.onComplete || function (trackIndex, loopCount) {
-                // console.log("Animation on track " + trackIndex + " completed, loop count: " + loopCount);
-            },
-            start: listeners.onStart || function (trackIndex) {
-                // console.log("Animation on track " + trackIndex + " started");
-            },
-            end: listeners.onEnd || function (trackIndex) {
-                // console.log("Animation on track " + trackIndex + " ended");
-            }
-        });
-
-        // Pack everything up and return to caller.
-        skeletonDataOut = {
-            skeleton: skeleton,
-            state: animationState,
-            bounds: bounds,
-            onReload: null
-        };
-        return skeletonDataOut;
-    };
-    var calculateBounds = function (skeleton) {
-        var data = skeleton.data;
-        skeleton.setToSetupPose();
-        skeleton.updateWorldTransform();
-        var offset = new window.spine.Vector2();
-        var size = new window.spine.Vector2();
-        skeleton.getBounds(offset, size, []);
-        return {
-            offset: offset,
-            size: size
-        };
-    };
-    var skeletonRenderer;
-    var debugRendering = false;
-
-    var Spine = function (settings) {
-        var name = settings.name || 'spine';
-        var spineName = settings.spineName || settings.spine;
-        var skin = settings.skin || 'default';
-        var currentAnimation = settings.animation || 'default';
-        var isLooping = true;
-        // animation state listeners
-        var onEvent = settings.onEvent;
-        var onComplete = settings.onComplete;
-        var onStart = settings.onStart;
-        var onEnd = settings.onEnd;
-        // enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
-        var useTriangleRendering = settings.triangleRendering || false;
-        var skeletonData;
-        var skeleton, state, bounds;
-        var currentAnimationSpeed = 1;
-        var entity;
-        // todo: investigate internal scaling
-        var scale = settings.scale || 1;
-        var component = {
-            name: name,
-            start: function (data) {
-                // load the skeleton data if that's not been done yet
-                if (!skeletonData) {
-                    skeletonData = loadSkeletonData(spineName, currentAnimation, {
-                        onEvent: onEvent,
-                        onComplete: function (trackIndex, loopCount) {
-                            if (onComplete) {
-                                onComplete(trackIndex, loopCount);
-                            }
-                        },
-                        onStart: onStart,
-                        onEnd: onEnd
-                    }, skin);
-                    skeleton = skeletonData.skeleton;
-                    state = skeletonData.state;
-                    bounds = skeletonData.bounds;
-
-                    // anticipate lazy load
-                    skeletonData.onReload = function () {
-                        // rebind data
-                        skeleton = skeletonData.skeleton;
-                        state = skeletonData.state;
-                        bounds = skeletonData.bounds;
-                        // apply previous state
-                        state.setAnimation(0, currentAnimation, isLooping);
-                        state.apply(skeleton);
-                    };
-                }
-                // initialize skeleton renderer
-                if (!skeletonRenderer) {
-                    skeletonRenderer = new window.spine.canvas.SkeletonRenderer(data.renderer.getContext());
-                    skeletonRenderer.debugRendering = debugRendering;
-                }
-                updateEntity();
-
-                if (!Utils.isNumber(scale)) {
-                    Utils.log('ERROR: scale must be a number');
-                    scale = 1;
-                }
-            },
-            destroy: function (data) {},
-            update: function (data) {
-                state.update(data.deltaT / 1000 * data.speed * currentAnimationSpeed);
-                state.apply(skeleton);
-            },
-            draw: function (data) {
-                // todo: investigate scaling
-                data.renderer.scale(scale, scale);
-                skeleton.updateWorldTransform();
-                skeletonRenderer.triangleRendering = useTriangleRendering;
-                skeletonRenderer.draw(skeleton);
-                data.renderer.scale(1 / scale, 1 / scale);
-            },
-            attached: function (data) {
-                entity = data.entity;
-            },
-            /**
-             * Set animation
-             * @function
-             * @instance
-             * @param {String} name - Name of animation
-             * @param {Function} [callback] - Callback on complete, will overwrite onEnd if set
-             * @param {Boolean} [loop] - Loop animation
-             * @name setAnimation
-             * @snippet #Spine.setAnimation|snippet
-                setAnimation('$1');
-             * @snippet #Spine.setAnimation|callback
-                setAnimation('$1', function () {
-                    $2
-                });
-             */
-            setAnimation: function (name, callback, loop) {
-                if (currentAnimation === name) {
-                    // already playing
-                    return;
-                }
-                // update current animation
-                currentAnimation = name;
-                // reset speed
-                currentAnimationSpeed = 1;
-                isLooping = Utils.getDefault(loop, true);
-                // apply animation
-                state.setAnimation(0, name, isLooping);
-                // set callback, even if undefined
-                onComplete = callback;
-                // apply the skeleton to avoid visual delay
-                state.apply(skeleton);
-            },
-            /**
-             * Get current animation name
-             * @function
-             * @instance
-             * @name getAnimation
-             * @snippet #Spine.getAnimation|String
-                getAnimation();
-             * @returns {String} Returns name of current animation.
-             */
-            getAnimationName: function () {
-                return currentAnimation;
-            },
-            /**
-             * Get speed of the current animation, relative to Spine's speed
-             * @function
-             * @instance
-             * @returns {Number} Speed of the current animation
-             * @name getCurrentSpeed
-             * @snippet #Spine.getCurrentSpeed|Number
-                getCurrentSpeed();
-             */
-            getCurrentSpeed: function () {
-                return currentAnimationSpeed;
-            },
-            /**
-             * Set speed of the current animation.
-             * @function
-             * @instance
-             * @param {Number} speed - Speed at which the animation plays.
-             * @name setCurrentSpeed
-             * @snippet #Spine.setCurrentSpeed|snippet
-                setCurrentSpeed(${1:number});
-             */
-            setCurrentSpeed: function (value) {
-                currentAnimationSpeed = value;
-            },
-            /**
-             * Exposes Spine skeleton data and animation state variables for manual manipulation
-             * @function
-             * @instance
-             * @name getSpineData
-             * @snippet #Spine.getSpineData|snippet
-                getSpineData();
-             */
-            getSpineData: function () {
-                return {
-                    skeletonData: skeleton,
-                    animationState: state
-                };
-            }
-        };
-        var updateEntity = function () {
-            if (!entity) {
-                return;
-            }
-
-            entity.dimension.x = bounds.offset.x * scale;
-            entity.dimension.y = bounds.offset.y * scale;
-            entity.dimension.width = bounds.size.x * scale;
-            entity.dimension.height = bounds.size.y * scale;
-        };
-        return component;
-    };
-
-    Spine.setDebugRendering = function (bool) {
-        if (skeletonRenderer) {
-            skeletonRenderer.debugRendering = bool;
-        }
-    };
-
-    Spine.cleanLazyLoadedImages = function () {
-        // clearing up memory
-        // don't call this during update loops! 
-        // no spine components should be alive when this is called, because all references will be invalid
-        var spineAssetLoader = Bento.assets.getSpineLoader();
-        Utils.forEach(lazyLoadedImages, function (image, imagePath, l, breakLoop) {
-            try {
-                spineAssetLoader.remove(imagePath);
-            } catch (e) {
-                Utils.log(e);
-            }
-
-            if (image.dispose) {
-                // alternatively we could not call dispose and let the garbage collector do its work
-                image.dispose();
-            }
-        });
-        lazyLoadedImages = [];
-    };
-
-    return Spine;
 });
 /**
  * Sprite component. Draws an animated sprite on screen at the entity's transform.
@@ -5092,10 +5099,8 @@ bento.define('bento/components/sprite', [
         console.warn('Warning: Sprite is included before renderer is set. Defaulting to canvas2d Sprite');
     } else if (renderer.name === 'pixi') {
         Constructor = PixiSprite;
-        console.log('Using pixi sprite');
     } else if (renderer.name === 'three.js') {
         Constructor = ThreeSprite;
-        console.log('Using threejs sprite');
     }
     // inherit from class
     Sprite.prototype = Object.create(Constructor.prototype);
@@ -5134,7 +5139,7 @@ bento.define('bento/components/three/fill', [
         this.geometry = null;
         this.plane = null;
         this.object3D = new THREE.Object3D();
-        this.opacity;
+        this.opacity = 1;
 
         // if this.dimension is edited, the fill should be redone
         this.cacheDimension = null;
@@ -5266,8 +5271,6 @@ bento.define('bento/components/three/sprite', [
         // var axesHelper = new THREE.AxesHelper( 1 );
         // this.object3D.add(axesHelper);
 
-        // DEPRECATED (using an external sprite as sprite), todo: clean this up
-        this.sprite = settings.sprite;
         Sprite.call(this, settings);
 
         this.name = settings.name || 'threeSprite';
@@ -5285,16 +5288,10 @@ bento.define('bento/components/three/sprite', [
         var packedImage;
         var threeTexture;
         var plane;
-        var sprite = this.sprite || this;
 
-        if (this.sprite) {
-            // sprite already exists
-            sprite = this.sprite;
-        } else {
-            Sprite.prototype.setup.call(this, data);
-        }
+        Sprite.prototype.setup.call(this, data);
 
-        packedImage = sprite.spriteImage;
+        packedImage = this.spriteImage;
 
         // check if we have an image and convert it to a texture
         if (packedImage) {
@@ -5315,7 +5312,6 @@ bento.define('bento/components/three/sprite', [
             // dispose previous objects
             this.dispose();
 
-            // move this also to a image property?
             this.material = new THREE.MeshBasicMaterial({
                 map: this.texture,
                 color: 0xffffff,
@@ -5323,9 +5319,10 @@ bento.define('bento/components/three/sprite', [
                 alphaTest: Utils.getDefault(this.settings.alphaTest, ThreeSprite.alphaTest), // --> prevents glitchy clipping
                 transparent: true
             });
+            // possibly move this if user wants to edit target width and height to be drawn
             this.geometry = new THREE.PlaneGeometry(
-                sprite.frameWidth,
-                sprite.frameHeight,
+                this.frameWidth,
+                this.frameHeight,
                 1,
                 1
             );
@@ -5338,17 +5335,7 @@ bento.define('bento/components/three/sprite', [
             plane = new THREE.Mesh(this.geometry, this.material);
             this.plane = plane;
 
-            // game specific?
-            // this.plane.rotation.x = Math.PI; // makes the mesh stand up, note: local axis changes
-
-            this.lastFrame = sprite.currentFrame;
-            sprite.updateFrame();
-            this.updateUvs();
-
             this.object3D.add(plane);
-
-            // var axesHelper = new THREE.AxesHelper(sprite.frameWidth);
-            // this.object3D.add(axesHelper);
         } else {
             // remove existing mesh
             if (this.plane) {
@@ -5357,26 +5344,23 @@ bento.define('bento/components/three/sprite', [
             }
         }
     };
-    ThreeSprite.prototype.update = function (data) {
-        var sprite = this.sprite || this;
-        Sprite.prototype.update.call(sprite, data);
-
-        if (this.lastFrame !== sprite.currentFrame) {
-            // prevent updating the uvs all the time
-            sprite.updateFrame();
-            this.updateUvs();
-        }
-        this.lastFrame = sprite.currentFrame;
-    };
 
     ThreeSprite.prototype.draw = function (data) {
         // origin: to achieve this offset effect, we move the plane (child of the object3d)
         // take into account that threejs already assumes middle of the mesh to be origin
-        var sprite = this.sprite || this;
-        var origin = sprite.origin;
+        var origin = this.origin;
         var plane = this.plane;
-        plane.position.x = -(origin.x - sprite.frameWidth / 2);
-        plane.position.y = (origin.y - sprite.frameHeight / 2);
+        var currentFrame = Math.round(this.currentFrame);
+
+        if (this.lastFrame !== currentFrame) {
+            // prevent updating the uvs all the time
+            this.updateFrame();
+            this.updateUvs();
+            this.lastFrame = currentFrame;
+        }
+
+        plane.position.x = -(origin.x - this.frameWidth / 2);
+        plane.position.y = (origin.y - this.frameHeight / 2);
 
         // opacity will be overwritten by renderer
         this.material.opacity = 1;
@@ -5390,22 +5374,21 @@ bento.define('bento/components/three/sprite', [
 
     ThreeSprite.prototype.updateUvs = function () {
         //
-        var sprite = this.sprite || this;
-        var sourceX = sprite.sourceX;
-        var sourceY = sprite.sourceY;
-        var spriteImage = sprite.spriteImage;
+        var sourceX = this.sourceX;
+        var sourceY = this.sourceY;
+        var spriteImage = this.spriteImage;
         var image = spriteImage.image;
         var imageWidth = image.width;
         var imageHeight = image.height;
-        // var origin = sprite.origin; // -> what to do with this
+        // var origin = this.origin; // -> what to do with this
 
         var sx = sourceX + spriteImage.x;
         var sy = sourceY + spriteImage.y;
 
         var u = sx / imageWidth;
         var v = 1 - sy / imageHeight;
-        var w = sprite.frameWidth / imageWidth;
-        var h = sprite.frameHeight / imageHeight;
+        var w = this.frameWidth / imageWidth;
+        var h = this.frameHeight / imageHeight;
 
         var uvs;
 
@@ -14421,7 +14404,6 @@ bento.define('bento/gui/clickbutton', [
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/components/sprite',
-    'bento/components/nineslice',
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
@@ -14432,7 +14414,6 @@ bento.define('bento/gui/clickbutton', [
     Vector2,
     Rectangle,
     Sprite,
-    NineSlice,
     Clickable,
     Entity,
     Utils,
@@ -14464,20 +14445,7 @@ bento.define('bento/gui/clickbutton', [
             defaultAnimations.down.frames = [0];
         }
         var animations = settings.animations || defaultAnimations;
-        var nsSettings = settings.nineSliceSettings || null;
-        var nineSlice = !nsSettings ? null : new NineSlice({
-            image: settings.image,
-            imageName: settings.imageName,
-            originRelative: settings.originRelative || new Vector2(0.5, 0.5),
-            frameWidth: settings.frameWidth,
-            frameHeight: settings.frameHeight,
-            frameCountX: settings.frameCountX,
-            frameCountY: settings.frameCountY,
-            width: nsSettings.width,
-            height: nsSettings.height,
-            animations: animations
-        });
-        var sprite = nineSlice ? null : settings.sprite || new Sprite({
+        var sprite = settings.sprite || new Sprite({
             image: settings.image,
             imageName: settings.imageName,
             originRelative: settings.originRelative || new Vector2(0.5, 0.5),
@@ -14488,7 +14456,6 @@ bento.define('bento/gui/clickbutton', [
             frameCountY: settings.frameCountY,
             animations: animations
         });
-        var visualComponent = nineSlice || sprite;
         // workaround for pointerUp/onHoldEnd order of events
         var wasHoldingThis = false;
         var clickable = new Clickable({
@@ -14616,14 +14583,14 @@ bento.define('bento/gui/clickbutton', [
 
         // merge components array
         entitySettings.components = [
-            visualComponent,
+            sprite,
             clickable
         ].concat(settings.components || []);
 
         var setActive = function (bool) {
             active = bool;
 
-            animations = visualComponent.animations || animations;
+            animations = sprite.animations || animations;
 
             if (!active) {
                 if (ClickButton.currentlyPressing === entity) {
@@ -14640,7 +14607,7 @@ bento.define('bento/gui/clickbutton', [
         };
 
         var setAnimation = function (animation) {
-            visualComponent.setAnimation(animation);
+            sprite.setAnimation(animation);
         };
 
         var entity = new Entity(entitySettings).extend({
@@ -14692,24 +14659,6 @@ bento.define('bento/gui/clickbutton', [
              */
             isActive: function () {
                 return active;
-            },
-            /**
-             * Set the size of the clickbutton if it's using a nine slice
-             * @function
-             * @param {Number} width
-             * @param {Number} height
-             * @instance
-             * @name setNineSliceSize
-             */
-            setNineSliceSize: function (width, height) {
-                if (visualComponent.name !== 'nineslice') {
-                    console.warn("LK_WARN: Don't use setNineSliceSize if the clickbutton uses a sprite.");
-                    return;
-                }
-                nsSettings.width = width;
-                nsSettings.height = height;
-                visualComponent.width = width;
-                visualComponent.height = height;
             }
         });
 
@@ -20112,6 +20061,9 @@ bento.define('bento/renderers/pixi3', [
             /*
              * Pixi only feature: draws any pixi displayObject
              */
+            render: function (displayObject) {
+                this.drawPixi(displayObject);
+            },
             drawPixi: function (displayObject) {
                 // trick the renderer by setting our own parent
                 transformObject.worldTransform = matrix;

@@ -5,6 +5,12 @@
 * Add **Text.generateText(canvas)** which allows text to be drawn on an external canvas
 * Add *lineJoin* parameter to Text and setting the default to *round* instead of *miter*, making strokes on Text look better.
 * **Bento.objects.get()** and **Entity.getComponent()** have a 2nd callback in the case of not finding the child.
+* Moved pixi renderer to `"pixi3"` renderer, which is only compatible for pixi.js v3
+* Updated new `"pixi"` renderer , which is compatible for pixi.js v5 and higher. Note that this removes the `renderer.drawImage` and other draw options.
+* Added `"three.js"` renderer. Note that this renderer also has no `renderer.drawImage` and others available.
+* The new Renderer setup also required *Sprites* and other visual components to adhere to specific rendering rules. The old Sprite component is moved to `bento/components/canvas2d/sprite`. Sprite will now inherit one of the renderer-specific Sprite classes. This however, means that `bento/components/sprite` can not be included anywhere until `Bento.setup` is called (because this is where the renderer is chosen).
+* **NineSlice** is moved to `bento/components/canvas2d/animatednineslice` and **Spine** is moved to `bento/components/canvas2d/animatednineslice`. NineSlice will be re-implemented for the new `pixi` and `three` renderers. 
+* Removed NineSlice option from ClickButton (did anyone ever use this?)
 * Bugfix: the queries for cache busting were also added to base64 assets, which could break the *build-compact* option.
 * Bugfix: horizontal origin of Text did not take margin into account (PR #113).
 * Bugfix: PixiSprite did not take packed texture coordinates into account (PR #114).

@@ -27,7 +27,7 @@ bento.define('bento/components/three/fill', [
         this.geometry = null;
         this.plane = null;
         this.object3D = new THREE.Object3D();
-        this.opacity;
+        this.opacity = 1;
 
         // if this.dimension is edited, the fill should be redone
         this.cacheDimension = null;

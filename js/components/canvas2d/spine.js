@@ -6,7 +6,7 @@
  * animations contains many skins and you want to prevent all of the skins to be preloaded. The asset manager will no longer manage the spine images.
  * Instead can call Spine.cleanLazyLoadedImages() to remove all images.
  * <br>Exports: Constructor
- * @module bento/components/spine
+ * @module bento/components/canvas2d/spine
  * @moduleName Spine
 * @snippet Spine.snippet
 Spine({
@@ -24,7 +24,7 @@ Spine({
  * @param {Function} settings.onEnd - Animation state callback
  * @returns Returns a component object to be attached to an entity.
  */
-bento.define('bento/components/spine', [
+bento.define('bento/components/canvas2d/spine', [
     'bento/utils',
     'bento',
     'bento/math/vector2'

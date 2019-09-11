@@ -1,11 +1,11 @@
 /**
- * NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
+ * Animated NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
  * where the corners don't get deformed.
  * <br>Exports: Constructor
- * @module bento/components/nineslice
- * @moduleName NineSlice
- * @snippet NineSlice|constructor
-NineSlice({
+ * @module bento/components/canvas2d/animatednineslice
+ * @moduleName AnimatedNineSlice
+ * @snippet AnimatedNineSlice|constructor
+AnimatedNineSlice({
     imageName: '${1}',
     originRelative: new Vector2(${2:0.5}, ${3:0.5}),
     width: ${4:32},
@@ -29,7 +29,7 @@ NineSlice({
  * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
  * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  */
-bento.define('bento/components/nineslice', [
+bento.define('bento/components/canvas2d/animatednineslice', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',

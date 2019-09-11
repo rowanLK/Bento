@@ -35,7 +35,6 @@ bento.define('bento/gui/clickbutton', [
     'bento/math/vector2',
     'bento/math/rectangle',
     'bento/components/sprite',
-    'bento/components/nineslice',
     'bento/components/clickable',
     'bento/entity',
     'bento/utils',
@@ -46,7 +45,6 @@ bento.define('bento/gui/clickbutton', [
     Vector2,
     Rectangle,
     Sprite,
-    NineSlice,
     Clickable,
     Entity,
     Utils,
@@ -78,20 +76,7 @@ bento.define('bento/gui/clickbutton', [
             defaultAnimations.down.frames = [0];
         }
         var animations = settings.animations || defaultAnimations;
-        var nsSettings = settings.nineSliceSettings || null;
-        var nineSlice = !nsSettings ? null : new NineSlice({
-            image: settings.image,
-            imageName: settings.imageName,
-            originRelative: settings.originRelative || new Vector2(0.5, 0.5),
-            frameWidth: settings.frameWidth,
-            frameHeight: settings.frameHeight,
-            frameCountX: settings.frameCountX,
-            frameCountY: settings.frameCountY,
-            width: nsSettings.width,
-            height: nsSettings.height,
-            animations: animations
-        });
-        var sprite = nineSlice ? null : settings.sprite || new Sprite({
+        var sprite = settings.sprite || new Sprite({
             image: settings.image,
             imageName: settings.imageName,
             originRelative: settings.originRelative || new Vector2(0.5, 0.5),
@@ -102,7 +87,6 @@ bento.define('bento/gui/clickbutton', [
             frameCountY: settings.frameCountY,
             animations: animations
         });
-        var visualComponent = nineSlice || sprite;
         // workaround for pointerUp/onHoldEnd order of events
         var wasHoldingThis = false;
         var clickable = new Clickable({
@@ -230,14 +214,14 @@ bento.define('bento/gui/clickbutton', [
 
         // merge components array
         entitySettings.components = [
-            visualComponent,
+            sprite,
             clickable
         ].concat(settings.components || []);
 
         var setActive = function (bool) {
             active = bool;
 
-            animations = visualComponent.animations || animations;
+            animations = sprite.animations || animations;
 
             if (!active) {
                 if (ClickButton.currentlyPressing === entity) {
@@ -254,7 +238,7 @@ bento.define('bento/gui/clickbutton', [
         };
 
         var setAnimation = function (animation) {
-            visualComponent.setAnimation(animation);
+            sprite.setAnimation(animation);
         };
 
         var entity = new Entity(entitySettings).extend({
@@ -306,24 +290,6 @@ bento.define('bento/gui/clickbutton', [
              */
             isActive: function () {
                 return active;
-            },
-            /**
-             * Set the size of the clickbutton if it's using a nine slice
-             * @function
-             * @param {Number} width
-             * @param {Number} height
-             * @instance
-             * @name setNineSliceSize
-             */
-            setNineSliceSize: function (width, height) {
-                if (visualComponent.name !== 'nineslice') {
-                    console.warn("LK_WARN: Don't use setNineSliceSize if the clickbutton uses a sprite.");
-                    return;
-                }
-                nsSettings.width = width;
-                nsSettings.height = height;
-                visualComponent.width = width;
-                visualComponent.height = height;
             }
         });
 
