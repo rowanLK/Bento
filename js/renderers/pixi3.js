@@ -284,6 +284,9 @@ bento.define('bento/renderers/pixi3', [
             /*
              * Pixi only feature: draws any pixi displayObject
              */
+            render: function (displayObject) {
+                this.drawPixi(displayObject);
+            },
             drawPixi: function (displayObject) {
                 // trick the renderer by setting our own parent
                 transformObject.worldTransform = matrix;

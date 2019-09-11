@@ -12,30 +12,38 @@ bento.define('bento/components/pixi/sprite', [
     'bento/components/canvas2d/sprite'
 ], function (Bento, Utils, Sprite) {
     'use strict';
+    var PIXI = window.PIXI;
     var PixiSprite = function (settings) {
         if (!(this instanceof PixiSprite)) {
             return new PixiSprite(settings);
         }
         Sprite.call(this, settings);
-        this.sprite = new window.PIXI.Sprite();
-        this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? window.PIXI.SCALE_MODES.LINEAR : window.PIXI.SCALE_MODES.NEAREST);
+        this.sprite = new PIXI.Sprite();
+        this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
+        // checking if frame changed
+        this.lastFrame = null;
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
+        var currentFrame = Math.round(this.currentFrame);
 
         if (!this.currentAnimation || !this.visible) {
             return;
         }
-        this.updateFrame();
-        this.updateSprite(
-            this.spriteImage,
-            this.sourceX,
-            this.sourceY,
-            this.frameWidth,
-            this.frameHeight
-        );
+        if (this.lastFrame !== currentFrame) {
+            // prevent updating the uvs all the time
+            this.updateFrame();
+            this.updateSprite(
+                this.spriteImage,
+                this.sourceX,
+                this.sourceY,
+                this.frameWidth,
+                this.frameHeight
+            );
+            this.lastFrame = currentFrame;
+        }
 
         // draw with pixi
         data.renderer.translate(-Math.round(this.origin.x), -Math.round(this.origin.y));
@@ -55,23 +63,15 @@ bento.define('bento/components/pixi/sprite', [
         if (!image.texture) {
             // initialize pixi baseTexture
             image.texture = PixiSprite.imageToTexture(packedImage, this.scaleMode);
-            image.frame = new window.PIXI.Texture(image.texture);
-        }
-        texture = image.frame;
-        rectangle = texture._frame;
-        rectangle.x = packedImage.x + sx;
-        rectangle.y = packedImage.y + sy;
-        rectangle.width = sw;
-        rectangle.height = sh;
-        if (texture._updateUvs) {
-            texture._updateUvs();
-        } else if (texture.updateUvs) {
-            texture.updateUvs();
-        } else {
-            console.warn('Warning: Texture.updateUvs function not found');
         }
 
-        this.sprite.texture = texture;
+        var frame = new PIXI.Rectangle(
+            packedImage.x + sx,
+            packedImage.y + sy,
+            sw,
+            sh
+        );
+        this.sprite.texture = new PIXI.Texture(image.texture, frame);
     };
 
     PixiSprite.prototype.toString = function () {
@@ -80,7 +80,14 @@ bento.define('bento/components/pixi/sprite', [
 
     PixiSprite.imageToTexture = function (image, antiAlias) {
         var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;
-        return new window.PIXI.BaseTexture(imagePack.image, antiAlias);
+        var majorVersion = parseInt((PIXI.VERSION || '0.0.0').split('.')[0]);
+        var options = {};
+        if (majorVersion < 4) {
+            options = antiAlias;
+        } else {
+            options.scaleMode = antiAlias;
+        }
+        return new PIXI.BaseTexture(imagePack.image, options);
     };
 
     return PixiSprite;

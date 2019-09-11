@@ -61,6 +61,7 @@ bento.require([
                     name: 'behavior',
                     start: function (data) {
                         bunnySprite.object3D.add(sphere);
+                        data.renderer.three.scene.background = new THREE.Color(0x000000);
                     },
                     destroy: function (data) {},
                     update: function (data) {
