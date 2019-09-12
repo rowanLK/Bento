@@ -25,6 +25,12 @@ bento.define('bento/components/pixi/sprite', [
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
+    PixiSprite.prototype.start = function (data) {
+        data.renderer.pixi.stage.addChild(this.sprite);
+    };
+    PixiSprite.prototype.destroy = function (data) {
+        data.renderer.pixi.stage.removeChild(this.sprite);
+    };
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
         var currentFrame = Math.round(this.currentFrame);

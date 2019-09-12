@@ -30,15 +30,12 @@ bento.define('bento/renderers/three', [
         var matrices = [];
         var rotAroundX = new THREE.Matrix4();
         var renderer;
-        var scenes = [];
-        var objectList = [];
+        var sceneList = [];
+        var zIndex = 0;
         // main scene and camera
         var scene;
         var camera;
-        var mainScene = {
-            cameras: [],
-            scene: null
-        };
+        var mainSceneCamera = [scene, camera];
         // module
         var bentoRenderer = {
             name: 'three.js',
@@ -80,17 +77,12 @@ bento.define('bento/renderers/three', [
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
 
             begin: function () {
-                // remove the objects from main scene and restart
-                Utils.forEach(objectList, function (object3D) {
-                    scene.remove(object3D);
-                });
-                objectList = [];
+                zIndex = 0;
             },
             render: function (data) {
                 // render by adding object3d into the scene
                 var object3D = data.object3D;
                 var material = data.material;
-                var z = -objectList.length;
 
                 // take over the world matrix
                 object3D.matrixAutoUpdate = false;
@@ -98,7 +90,7 @@ bento.define('bento/renderers/three', [
                 object3D.matrix.set(
                     matrix.a, matrix.c, 0, matrix.tx,
                     matrix.b, matrix.d, 0, matrix.ty,
-                    0, 0, 1, z,
+                    0, 0, 1, -zIndex,
                     0, 0, 0, 1
                 );
                 // there's an additional Math.PI rotation around the x axis
@@ -107,21 +99,14 @@ bento.define('bento/renderers/three', [
                 // opacity
                 material.opacity *= alpha;
 
-                // prepare to render
-                objectList.push(object3D);
-                scene.add(object3D);
+                ++zIndex;
             },
             flush: function () {
-                // render scenes and its cameras
-                var i = 0,
-                    j = 0;
-                var cameras;
-                for (i = 0; i < scenes.length; ++i) {
-                    cameras = scenes[i].cameras || [];
-                    for (j = 0; j < cameras.length; ++j) {
-                        renderer.render(scene, cameras[j]);
-                    }
-                }                
+                // render sceneList and its cameras
+                var i = 0, l = sceneList.length;
+                for (i = 0; i < l; ++i) {
+                    renderer.render(sceneList[i][0], sceneList[i][1]);
+                }
             },
             getOpacity: function () {
                 return alpha;
@@ -139,8 +124,8 @@ bento.define('bento/renderers/three', [
                 camera: null,
                 scene: null,
                 renderer: null,
-                // scenes is an array of {cameras: [THREE.Camera], scene: THREE.Scene}
-                scenes: scenes
+                // sceneList is an array of scene/camera pairs [[THREE.Camera, THREE.Scene], ...]
+                sceneList: sceneList
             },
             updateSize: function () {
                 setupScene();
@@ -185,11 +170,10 @@ bento.define('bento/renderers/three', [
             camera.position.y = height;
 
             renderer.setViewport(0, 0, canvas.width, canvas.height);
-            scene.add(camera); // this is needed to attach stuff to the camera
 
-            // main scene only has 1 camera
-            mainScene.cameras = [camera];
-            mainScene.scene = scene;
+            // setup main scene and camera
+            mainSceneCamera[0] = scene;
+            mainSceneCamera[1] = camera;
 
             // expose camera and scene
             ThreeJsRenderer.camera = camera;
@@ -211,7 +195,7 @@ bento.define('bento/renderers/three', [
             setupRenderer();
             setupScene();
             // attach main scene
-            scenes.push(mainScene);
+            sceneList.push(mainSceneCamera);
         } else {
             if (!THREE) {
                 console.log('WARNING: THREE library is missing, reverting to Canvas2D renderer');

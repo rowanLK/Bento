@@ -48,9 +48,11 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype = Object.create(Sprite.prototype);
     ThreeSprite.prototype.constructor = ThreeSprite;
 
-    // ThreeSprite.prototype.start = function (data) {};
+    ThreeSprite.prototype.start = function (data) {
+        data.renderer.three.scene.add(this.object3D);
+    };
     ThreeSprite.prototype.destroy = function (data) {
-        // todo: memory management
+        data.renderer.three.scene.remove(this.object3D);
         this.dispose();
     };
 

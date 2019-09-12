@@ -91,10 +91,13 @@ bento.define('bento/components/three/fill', [
     };
     ThreeFill.prototype.start = function (data) {
         this.startFill();
+        data.renderer.three.scene.add(this.object3D);
     };
     ThreeFill.prototype.destroy = function (data) {
+        data.renderer.three.scene.remove(this.object3D);
         this.dispose();
     };
+    
     ThreeFill.prototype.dispose = function () {
         if (this.geometry) {
             this.geometry.dispose();

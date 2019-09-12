@@ -33,7 +33,12 @@ bento.define('bento/components/pixi/fill', [
     };
     PixiFill.prototype = Object.create(Canvas2DFill.prototype);
     PixiFill.prototype.constructor = PixiFill;
-
+    PixiFill.prototype.start = function (data) {
+        data.renderer.pixi.stage.addChild(this.graphics);
+    };
+    PixiFill.prototype.destroy = function (data) {
+        data.renderer.pixi.stage.removeChild(this.graphics);
+    };
     PixiFill.prototype.startFill = function () {
         var color = this.color;
         var dimension = this.dimension;

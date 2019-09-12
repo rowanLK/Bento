@@ -34,6 +34,7 @@ bento.define('bento/renderers/pixi', [
         var pixelSize = settings.pixelSize || 1;
         var pixiMatrix = new PIXI.Matrix();
         var stage = new PIXI.Container();
+        var zIndex = 0;
         var pixiRenderer = {
             name: 'pixi',
             init: function () {
@@ -93,10 +94,7 @@ bento.define('bento/renderers/pixi', [
 
             begin: function () {
                 // reset stage
-                while (stage.children.length) {                    
-                    stage.removeChild(stage.children[0]);
-                }
-
+                zIndex = 0;
                 // set pixelSize
                 if (pixelSize !== 1) {
                     this.save();
@@ -105,6 +103,7 @@ bento.define('bento/renderers/pixi', [
             },
             flush: function () {
                 // render entire stage
+                stage.sortChildren();
                 renderer.render(stage);
 
                 // restore pixelsize
@@ -133,7 +132,9 @@ bento.define('bento/renderers/pixi', [
                 pixiMatrix.tx = matrix.tx;
                 pixiMatrix.ty = matrix.ty;
 
-                stage.addChild(displayObject);
+                // stage.addChild(displayObject);
+                displayObject.zIndex = zIndex;
+                ++zIndex;
                 displayObject.transform.setFromMatrix(pixiMatrix);
                 displayObject.alpha = alpha;
             },
@@ -146,6 +147,10 @@ bento.define('bento/renderers/pixi', [
             // pixi specific: update the webgl view, needed if the canvas changed size
             updateSize: function () {
                 renderer.resize(canvas.width, canvas.height);
+            },
+            pixi: {
+                renderer: renderer,
+                stage: stage
             }
         };
 
@@ -160,6 +165,7 @@ bento.define('bento/renderers/pixi', [
                 clearBeforeRender: false,
                 antialias: Bento.getAntiAlias()
             });
+            stage.sortableChildren = true;
             return pixiRenderer;
         } else {
             if (!window.PIXI) {
