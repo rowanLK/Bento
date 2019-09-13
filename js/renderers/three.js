@@ -101,7 +101,12 @@ bento.define('bento/renderers/three', [
             flush: function () {
                 // render sceneList and its cameras
                 var i = 0, l = sceneList.length;
+                renderer.autoClear = (sceneList.length === 1);
+
                 for (i = 0; i < l; ++i) {
+                    if (i > 0) {
+                        renderer.clearDepth();
+                    }
                     renderer.render(sceneList[i][0], sceneList[i][1]);
                 }
             },
