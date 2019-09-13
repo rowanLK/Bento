@@ -20235,8 +20235,8 @@ bento.define('bento/renderers/three', [
                 // move the 2d matrix into the 3d matri
                 // note: additional Math.PI rotation around the x axis
                 object3D.matrix.set(
-                    matrix.a, matrix.c, 0, matrix.tx,
-                    -matrix.b, -matrix.d, 0, matrix.ty,
+                    matrix.a, -matrix.c, 0, matrix.tx,
+                    matrix.b, -matrix.d, 0, matrix.ty,
                     0, 0, -1, -zIndex,
                     0, 0, 0, 1
                 );
