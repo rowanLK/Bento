@@ -43,7 +43,7 @@ bento.define('bento/components/three/sprite', [
 
         Sprite.call(this, settings);
 
-        this.name = settings.name || 'threeSprite';
+        this.name = settings.name || 'sprite';
     };
     ThreeSprite.prototype = Object.create(Sprite.prototype);
     ThreeSprite.prototype.constructor = ThreeSprite;
