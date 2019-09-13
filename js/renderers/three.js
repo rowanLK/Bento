@@ -28,7 +28,6 @@ bento.define('bento/renderers/three', [
         var alpha = 1;
         var matrix = new TransformMatrix();
         var matrices = [];
-        var rotAroundX = new THREE.Matrix4();
         var renderer;
         var sceneList = [];
         var zIndex = 0;
@@ -86,16 +85,14 @@ bento.define('bento/renderers/three', [
 
                 // take over the world matrix
                 object3D.matrixAutoUpdate = false;
-                // move the 2d matrix into the 3d matrix, 
+                // move the 2d matrix into the 3d matri
+                // note: additional Math.PI rotation around the x axis
                 object3D.matrix.set(
                     matrix.a, matrix.c, 0, matrix.tx,
-                    matrix.b, matrix.d, 0, matrix.ty,
-                    0, 0, 1, -zIndex,
+                    -matrix.b, -matrix.d, 0, matrix.ty,
+                    0, 0, -1, -zIndex,
                     0, 0, 0, 1
                 );
-                // there's an additional Math.PI rotation around the x axis
-                object3D.matrix.multiply(rotAroundX);
-
                 // opacity
                 material.opacity *= alpha;
 
@@ -185,13 +182,6 @@ bento.define('bento/renderers/three', [
         };
 
         if (canWebGl && Utils.isDefined(THREE)) {
-            // matrix that rotates Math.PI around the x axis
-            rotAroundX.set(
-                1, 0, 0, 0,
-                0, -1, 0, 0,
-                0, 0, -1, 0,
-                0, 0, 0, 1
-            );
             setupRenderer();
             setupScene();
             // attach main scene
