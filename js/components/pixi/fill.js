@@ -1,8 +1,9 @@
 /**
- * Component that fills a rectangle using Pixi
+ * Component that fills a rectangle using the Pixi renderer
  * <br>Exports: Constructor
  * @module bento/components/pixi/fill
  * @moduleName PixiFill
+ * @extends {Canvas2DFill}
  */
 bento.define('bento/components/pixi/fill', [
     'bento/utils',

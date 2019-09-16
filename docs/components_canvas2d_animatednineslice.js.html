@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>components/canvas2d/animatednineslice.js - Documentation</title>
+
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+    <link type="text/css" rel="stylesheet" href="styles/bento.css">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><details><summary>bento</summary><a href="module-bento.html">bento</a><ul class='methods'><li data-type='method'><a href="module-bento.html#createCanvas">createCanvas</a></li><li data-type='method'><a href="module-bento.html#getAntiAlias">getAntiAlias</a></li><li data-type='method'><a href="module-bento.html#getCanvas">getCanvas</a></li><li data-type='method'><a href="module-bento.html#getGameData">getGameData</a></li><li data-type='method'><a href="module-bento.html#getGameSpeed">getGameSpeed</a></li><li data-type='method'><a href="module-bento.html#getRenderer">getRenderer</a></li><li data-type='method'><a href="module-bento.html#getSettings">getSettings</a></li><li data-type='method'><a href="module-bento.html#getViewport">getViewport</a></li><li data-type='method'><a href="module-bento.html#isDev">isDev</a></li><li data-type='method'><a href="module-bento.html#reload">reload</a></li><li data-type='method'><a href="module-bento.html#setAntiAlias">setAntiAlias</a></li><li data-type='method'><a href="module-bento.html#setGameSpeed">setGameSpeed</a></li><li data-type='method'><a href="module-bento.html#setup">setup</a></li></ul></details></li><li><details><summary>bento/autoresize</summary><a href="module-bento_autoresize.html">bento/autoresize</a></details></li><li><details><summary>bento/canvas</summary><a href="module-bento_canvas.html">bento/canvas</a><ul class='methods'><li data-type='method'><a href="module-bento_canvas.html#downloadImage">downloadImage</a></li><li data-type='method'><a href="module-bento_canvas.html#drawOnce">drawOnce</a></li><li data-type='method'><a href="module-bento_canvas.html#getBase64">getBase64</a></li><li data-type='method'><a href="module-bento_canvas.html#getCanvas">getCanvas</a></li><li data-type='method'><a href="module-bento_canvas.html#getContext">getContext</a></li></ul></details></li><li><details><summary>bento/components/canvas2d/animatednineslice</summary><a href="module-bento_components_canvas2d_animatednineslice.html">bento/components/canvas2d/animatednineslice</a><ul class='methods'><li data-type='method'><a href="module-bento_components_canvas2d_animatednineslice.html#setOriginRelative">setOriginRelative</a></li></ul></details></li><li><details><summary>bento/components/canvas2d/fill</summary><a href="module-bento_components_canvas2d_fill.html">bento/components/canvas2d/fill</a><ul class='methods'><li data-type='method'><a href="module-bento_components_canvas2d_fill.html#setOriginRelative">setOriginRelative</a></li></ul></details></li><li><details><summary>bento/components/canvas2d/spine</summary><a href="module-bento_components_canvas2d_spine.html">bento/components/canvas2d/spine</a><ul class='methods'><li data-type='method'><a href="module-bento_components_canvas2d_spine.html#getAnimation">getAnimation</a></li><li data-type='method'><a href="module-bento_components_canvas2d_spine.html#getCurrentSpeed">getCurrentSpeed</a></li><li data-type='method'><a href="module-bento_components_canvas2d_spine.html#getSpineData">getSpineData</a></li><li data-type='method'><a href="module-bento_components_canvas2d_spine.html#setAnimation">setAnimation</a></li><li data-type='method'><a href="module-bento_components_canvas2d_spine.html#setCurrentSpeed">setCurrentSpeed</a></li></ul></details></li><li><details><summary>bento/components/canvas2d/sprite</summary><a href="module-bento_components_canvas2d_sprite.html">bento/components/canvas2d/sprite</a><ul class='methods'><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#getAnimationName">getAnimationName</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#getCurrentFrame">getCurrentFrame</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#getCurrentSpeed">getCurrentSpeed</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#getFrameHeight">getFrameHeight</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#getFrameWidth">getFrameWidth</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#setAnimation">setAnimation</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#setAnimation">setAnimation</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#setCurrentSpeed">setCurrentSpeed</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#setFrame">setFrame</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#setOriginRelative">setOriginRelative</a></li><li data-type='method'><a href="module-bento_components_canvas2d_sprite.html#setup">setup</a></li></ul></details></li><li><details><summary>bento/components/clickable</summary><a href="module-bento_components_clickable.html">bento/components/clickable</a><ul class='methods'><li data-type='method'><a href="module-bento_components_clickable.html#isPaused">isPaused</a></li></ul></details></li><li><details><summary>bento/components/eventlistener</summary><a href="module-bento_components_eventlistener.html">bento/components/eventlistener</a></details></li><li><details><summary>bento/components/fill</summary><a href="module-bento_components_fill.html">bento/components/fill</a></details></li><li><details><summary>bento/components/modal</summary><a href="module-bento_components_modal.html">bento/components/modal</a></details></li><li><details><summary>bento/components/pixi/fill</summary><a href="module-bento_components_pixi_fill.html">bento/components/pixi/fill</a></details></li><li><details><summary>bento/components/pixi/sprite</summary><a href="module-bento_components_pixi_sprite.html">bento/components/pixi/sprite</a></details></li><li><details><summary>bento/components/sprite</summary><a href="module-bento_components_sprite.html">bento/components/sprite</a></details></li><li><details><summary>bento/components/three/fill</summary><a href="module-bento_components_three_fill.html">bento/components/three/fill</a></details></li><li><details><summary>bento/components/three/sprite</summary><a href="module-bento_components_three_sprite.html">bento/components/three/sprite</a></details></li><li><details><summary>bento/entity</summary><a href="module-bento_entity.html">bento/entity</a><ul class='methods'><li data-type='method'><a href="module-bento_entity.html#attach">attach</a></li><li data-type='method'><a href="module-bento_entity.html#collidesWith">collidesWith</a></li><li data-type='method'><a href="module-bento_entity.html#extend">extend</a></li><li data-type='method'><a href="module-bento_entity.html#getBoundingBox">getBoundingBox</a></li><li data-type='method'><a href="module-bento_entity.html#getComponent">getComponent</a></li><li data-type='method'><a href="module-bento_entity.html#getWorldPosition">getWorldPosition</a></li><li data-type='method'><a href="module-bento_entity.html#moveComponentTo">moveComponentTo</a></li><li data-type='method'><a href="module-bento_entity.html#remove">remove</a></li><li data-type='method'><a href="module-bento_entity.html#removeByName">removeByName</a></li><li data-type='method'><a href="module-bento_entity.html#removeSelf">removeSelf</a></li><li data-type='method'><a href="module-bento_entity.html#toComparablePosition">toComparablePosition</a></li><li data-type='method'><a href="module-bento_entity.html#toLocalPosition">toLocalPosition</a></li><li data-type='method'><a href="module-bento_entity.html#toWorldPosition">toWorldPosition</a></li></ul></details></li><li><details><summary>bento/eventsystem</summary><a href="module-bento_eventsystem.html">bento/eventsystem</a><ul class='methods'><li data-type='method'><a href="module-bento_eventsystem.html#clear">clear</a></li><li data-type='method'><a href="module-bento_eventsystem.html#fire">fire</a></li><li data-type='method'><a href="module-bento_eventsystem.html#off">off</a></li><li data-type='method'><a href="module-bento_eventsystem.html#on">on</a></li><li data-type='method'><a href="module-bento_eventsystem.html#stopPropagation">stopPropagation</a></li></ul></details></li><li><details><summary>bento/gui/centeredlist</summary><a href="module-bento_gui_centeredlist.html">bento/gui/centeredlist</a><ul class='methods'><li data-type='method'><a href="module-bento_gui_centeredlist.html#clear">clear</a></li><li data-type='method'><a href="module-bento_gui_centeredlist.html#get">get</a></li><li data-type='method'><a href="module-bento_gui_centeredlist.html#getIndex">getIndex</a></li><li data-type='method'><a href="module-bento_gui_centeredlist.html#iterate">iterate</a></li><li data-type='method'><a href="module-bento_gui_centeredlist.html#length">length</a></li><li data-type='method'><a href="module-bento_gui_centeredlist.html#removeItem">removeItem</a></li></ul></details></li><li><details><summary>bento/gui/clickbutton</summary><a href="module-bento_gui_clickbutton.html">bento/gui/clickbutton</a><ul class='methods'><li data-type='method'><a href="module-bento_gui_clickbutton.html#active">active</a></li><li data-type='method'><a href="module-bento_gui_clickbutton.html#doCallback">doCallback</a></li><li data-type='method'><a href="module-bento_gui_clickbutton.html#isActive">isActive</a></li><li data-type='method'><a href="module-bento_gui_clickbutton.html#mimicClick">mimicClick</a></li><li data-type='method'><a href="module-bento_gui_clickbutton.html#setActive">setActive</a></li></ul></details></li><li><details><summary>bento/gui/counter</summary><a href="module-bento_gui_counter.html">bento/gui/counter</a></details></li><li><details><summary>bento/gui/scrollinglist</summary><a href="module-bento_gui_scrollinglist.html">bento/gui/scrollinglist</a><ul class='methods'><li data-type='method'><a href="module-bento_gui_scrollinglist.html#active">active</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#addItem">addItem</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#cancel">cancel</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#didMove">didMove</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#forceTo">forceTo</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#get">get</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#getItems">getItems</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#getScroll">getScroll</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#getSelection">getSelection</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#getTotalSize">getTotalSize</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#isScrolling">isScrolling</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#iterate">iterate</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#length">length</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#removeItem">removeItem</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#setActive">setActive</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#setArea">setArea</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#setMaxOffset">setMaxOffset</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#setMinOffset">setMinOffset</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#setSpacing">setSpacing</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#snapTo">snapTo</a></li><li data-type='method'><a href="module-bento_gui_scrollinglist.html#stopSliding">stopSliding</a></li></ul></details></li><li><details><summary>bento/gui/text</summary><a href="module-bento_gui_text.html">bento/gui/text</a><ul class='methods'><li data-type='method'><a href="module-bento_gui_text.html#generateText">generateText</a></li><li data-type='method'><a href="module-bento_gui_text.html#getCanvas">getCanvas</a></li><li data-type='method'><a href="module-bento_gui_text.html#getEffectiveFontSize">getEffectiveFontSize</a></li><li data-type='method'><a href="module-bento_gui_text.html#getStrings">getStrings</a></li><li data-type='method'><a href="module-bento_gui_text.html#getText">getText</a></li><li data-type='method'><a href="module-bento_gui_text.html#setText">setText</a></li></ul></details></li><li><details><summary>bento/gui/togglebutton</summary><a href="module-bento_gui_togglebutton.html">bento/gui/togglebutton</a><ul class='methods'><li data-type='method'><a href="module-bento_gui_togglebutton.html#doCallback">doCallback</a></li><li data-type='method'><a href="module-bento_gui_togglebutton.html#isActive">isActive</a></li><li data-type='method'><a href="module-bento_gui_togglebutton.html#isToggled">isToggled</a></li><li data-type='method'><a href="module-bento_gui_togglebutton.html#mimicClick">mimicClick</a></li><li data-type='method'><a href="module-bento_gui_togglebutton.html#setActive">setActive</a></li><li data-type='method'><a href="module-bento_gui_togglebutton.html#toggle">toggle</a></li></ul></details></li><li><details><summary>bento/managers/asset</summary><a href="module-bento_managers_asset.html">bento/managers/asset</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_asset.html#getAssetGroups">getAssetGroups</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getAssets">getAssets</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getAudio">getAudio</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getImage">getImage</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getImageElement">getImageElement</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getJson">getJson</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getSpine">getSpine</a></li><li data-type='method'><a href="module-bento_managers_asset.html#getSpriteSheet">getSpriteSheet</a></li><li data-type='method'><a href="module-bento_managers_asset.html#hasAsset">hasAsset</a></li><li data-type='method'><a href="module-bento_managers_asset.html#load">load</a></li><li data-type='method'><a href="module-bento_managers_asset.html#loadAssetGroups">loadAssetGroups</a></li><li data-type='method'><a href="module-bento_managers_asset.html#loadAssetsJson">loadAssetsJson</a></li><li data-type='method'><a href="module-bento_managers_asset.html#loadAudioFromUrl">loadAudioFromUrl</a></li><li data-type='method'><a href="module-bento_managers_asset.html#loadImageFromUrl">loadImageFromUrl</a></li><li data-type='method'><a href="module-bento_managers_asset.html#loadJsonFromUrl">loadJsonFromUrl</a></li><li data-type='method'><a href="module-bento_managers_asset.html#reload">reload</a></li><li data-type='method'><a href="module-bento_managers_asset.html#reload">reload</a></li><li data-type='method'><a href="module-bento_managers_asset.html#unload">unload</a></li></ul></details></li><li><details><summary>bento/managers/audio</summary><a href="module-bento_managers_audio.html">bento/managers/audio</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_audio.html#getVolume">getVolume</a></li><li data-type='method'><a href="module-bento_managers_audio.html#isPlayingMusic">isPlayingMusic</a></li><li data-type='method'><a href="module-bento_managers_audio.html#muteMusic">muteMusic</a></li><li data-type='method'><a href="module-bento_managers_audio.html#muteSound">muteSound</a></li><li data-type='method'><a href="module-bento_managers_audio.html#playMusic">playMusic</a></li><li data-type='method'><a href="module-bento_managers_audio.html#playSound">playSound</a></li><li data-type='method'><a href="module-bento_managers_audio.html#preventSounds">preventSounds</a></li><li data-type='method'><a href="module-bento_managers_audio.html#setVolume">setVolume</a></li><li data-type='method'><a href="module-bento_managers_audio.html#stopAllMusic">stopAllMusic</a></li><li data-type='method'><a href="module-bento_managers_audio.html#stopAllSound">stopAllSound</a></li><li data-type='method'><a href="module-bento_managers_audio.html#stopMusic">stopMusic</a></li><li data-type='method'><a href="module-bento_managers_audio.html#stopSound">stopSound</a></li></ul></details></li><li><details><summary>bento/managers/input</summary><a href="module-bento_managers_input.html">bento/managers/input</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_input.html#getGamepadAxesLeft">getGamepadAxesLeft</a></li><li data-type='method'><a href="module-bento_managers_input.html#getGamepadAxesRight">getGamepadAxesRight</a></li><li data-type='method'><a href="module-bento_managers_input.html#getPointers">getPointers</a></li><li data-type='method'><a href="module-bento_managers_input.html#getRemoteAxes">getRemoteAxes</a></li><li data-type='method'><a href="module-bento_managers_input.html#isAnyGamepadButtonDown">isAnyGamepadButtonDown</a></li><li data-type='method'><a href="module-bento_managers_input.html#isAnyKeyDown">isAnyKeyDown</a></li><li data-type='method'><a href="module-bento_managers_input.html#isGamepadButtonDown">isGamepadButtonDown</a></li><li data-type='method'><a href="module-bento_managers_input.html#isGamepadButtonDown">isGamepadButtonDown</a></li><li data-type='method'><a href="module-bento_managers_input.html#isKeyDown">isKeyDown</a></li><li data-type='method'><a href="module-bento_managers_input.html#isRemoteButtonDown">isRemoteButtonDown</a></li><li data-type='method'><a href="module-bento_managers_input.html#resetPointers">resetPointers</a></li><li data-type='method'><a href="module-bento_managers_input.html#resume">resume</a></li><li data-type='method'><a href="module-bento_managers_input.html#setOffset">setOffset</a></li><li data-type='method'><a href="module-bento_managers_input.html#setRemoteExitOnMenuPress">setRemoteExitOnMenuPress</a></li><li data-type='method'><a href="module-bento_managers_input.html#stop">stop</a></li><li data-type='method'><a href="module-bento_managers_input.html#updateCanvas">updateCanvas</a></li></ul></details></li><li><details><summary>bento/managers/object</summary><a href="module-bento_managers_object.html">bento/managers/object</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_object.html#attach">attach</a></li><li data-type='method'><a href="module-bento_managers_object.html#count">count</a></li><li data-type='method'><a href="module-bento_managers_object.html#draw">draw</a></li><li data-type='method'><a href="module-bento_managers_object.html#get">get</a></li><li data-type='method'><a href="module-bento_managers_object.html#getByFamily">getByFamily</a></li><li data-type='method'><a href="module-bento_managers_object.html#getByName">getByName</a></li><li data-type='method'><a href="module-bento_managers_object.html#getObjects">getObjects</a></li><li data-type='method'><a href="module-bento_managers_object.html#isPaused">isPaused</a></li><li data-type='method'><a href="module-bento_managers_object.html#pause">pause</a></li><li data-type='method'><a href="module-bento_managers_object.html#remove">remove</a></li><li data-type='method'><a href="module-bento_managers_object.html#removeAll">removeAll</a></li><li data-type='method'><a href="module-bento_managers_object.html#resume">resume</a></li><li data-type='method'><a href="module-bento_managers_object.html#run">run</a></li><li data-type='method'><a href="module-bento_managers_object.html#setSortMode">setSortMode</a></li><li data-type='method'><a href="module-bento_managers_object.html#stop">stop</a></li><li data-type='method'><a href="module-bento_managers_object.html#update">update</a></li></ul></details></li><li><details><summary>bento/managers/savestate</summary><a href="module-bento_managers_savestate.html">bento/managers/savestate</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_savestate.html#add">add</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#clear">clear</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#getId">getId</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#getKeys">getKeys</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#getStorage">getStorage</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#isEmpty">isEmpty</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#load">load</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#remove">remove</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#save">save</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#setId">setId</a></li><li data-type='method'><a href="module-bento_managers_savestate.html#setStorage">setStorage</a></li></ul></details></li><li><details><summary>bento/managers/screen</summary><a href="module-bento_managers_screen.html">bento/managers/screen</a><ul class='methods'><li data-type='method'><a href="module-bento_managers_screen.html#add">add</a></li><li data-type='method'><a href="module-bento_managers_screen.html#getCurrentScreen">getCurrentScreen</a></li><li data-type='method'><a href="module-bento_managers_screen.html#hide">hide</a></li><li data-type='method'><a href="module-bento_managers_screen.html#reset">reset</a></li><li data-type='method'><a href="module-bento_managers_screen.html#show">show</a></li></ul></details></li><li><details><summary>bento/math/array2d</summary><a href="module-bento_math_array2d.html">bento/math/array2d</a><ul class='methods'><li data-type='method'><a href="module-bento_math_array2d.html#get">get</a></li><li data-type='method'><a href="module-bento_math_array2d.html#isArray2d">isArray2d</a></li><li data-type='method'><a href="module-bento_math_array2d.html#iterate">iterate</a></li><li data-type='method'><a href="module-bento_math_array2d.html#set">set</a></li></ul></details></li><li><details><summary>bento/math/polygon</summary><a href="module-bento_math_polygon.html">bento/math/polygon</a><ul class='methods'><li data-type='method'><a href="module-bento_math_polygon.html#clone">clone</a></li><li data-type='method'><a href="module-bento_math_polygon.html#getBoundingBox">getBoundingBox</a></li><li data-type='method'><a href="module-bento_math_polygon.html#hasPosition">hasPosition</a></li><li data-type='method'><a href="module-bento_math_polygon.html#intersect">intersect</a></li><li data-type='method'><a href="module-bento_math_polygon.html#isPolygon">isPolygon</a></li><li data-type='method'><a href="module-bento_math_polygon.html#offset">offset</a></li></ul></details></li><li><details><summary>bento/math/rectangle</summary><a href="module-bento_math_rectangle.html">bento/math/rectangle</a><ul class='methods'><li data-type='method'><a href="module-bento_math_rectangle.html#.copyInto">copyInto</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#clone">clone</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#copyInto">copyInto</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getCenter">getCenter</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getCorner">getCorner</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getExtents">getExtents</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getSize">getSize</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getX2">getX2</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#getY2">getY2</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#grow">grow</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#hasPosition">hasPosition</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#includePosition">includePosition</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#intersect">intersect</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#intersection">intersection</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#intersectsCircle">intersectsCircle</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#intersectsLine">intersectsLine</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#isRectangle">isRectangle</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#offset">offset</a></li><li data-type='method'><a href="module-bento_math_rectangle.html#union">union</a></li></ul></details></li><li><details><summary>bento/math/transformmatrix</summary><a href="module-bento_math_transformmatrix.html">bento/math/transformmatrix</a><ul class='methods'><li data-type='method'><a href="module-bento_math_transformmatrix.html#clone">clone</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#copyInto">copyInto</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#multiply">multiply</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#multiplyWith">multiplyWith</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#multiplyWithVector">multiplyWithVector</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#prepend">prepend</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#reset">reset</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#rotate">rotate</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#scale">scale</a></li><li data-type='method'><a href="module-bento_math_transformmatrix.html#translate">translate</a></li></ul></details></li><li><details><summary>bento/math/vector2</summary><a href="module-bento_math_vector2.html">bento/math/vector2</a><ul class='methods'><li data-type='method'><a href="module-bento_math_vector2.html#add">add</a></li><li data-type='method'><a href="module-bento_math_vector2.html#addTo">addTo</a></li><li data-type='method'><a href="module-bento_math_vector2.html#angle">angle</a></li><li data-type='method'><a href="module-bento_math_vector2.html#angleBetween">angleBetween</a></li><li data-type='method'><a href="module-bento_math_vector2.html#clone">clone</a></li><li data-type='method'><a href="module-bento_math_vector2.html#copyInto">copyInto</a></li><li data-type='method'><a href="module-bento_math_vector2.html#distance">distance</a></li><li data-type='method'><a href="module-bento_math_vector2.html#divide">divide</a></li><li data-type='method'><a href="module-bento_math_vector2.html#divideBy">divideBy</a></li><li data-type='method'><a href="module-bento_math_vector2.html#dotProduct">dotProduct</a></li><li data-type='method'><a href="module-bento_math_vector2.html#isCloserThan">isCloserThan</a></li><li data-type='method'><a href="module-bento_math_vector2.html#isFartherThan">isFartherThan</a></li><li data-type='method'><a href="module-bento_math_vector2.html#magnitude">magnitude</a></li><li data-type='method'><a href="module-bento_math_vector2.html#multiply">multiply</a></li><li data-type='method'><a href="module-bento_math_vector2.html#multiplyWith">multiplyWith</a></li><li data-type='method'><a href="module-bento_math_vector2.html#normalize">normalize</a></li><li data-type='method'><a href="module-bento_math_vector2.html#reflect">reflect</a></li><li data-type='method'><a href="module-bento_math_vector2.html#rotateDegree">rotateDegree</a></li><li data-type='method'><a href="module-bento_math_vector2.html#rotateRadian">rotateRadian</a></li><li data-type='method'><a href="module-bento_math_vector2.html#scalarMultiply">scalarMultiply</a></li><li data-type='method'><a href="module-bento_math_vector2.html#scalarMultiplyWith">scalarMultiplyWith</a></li><li data-type='method'><a href="module-bento_math_vector2.html#scale">scale</a></li><li data-type='method'><a href="module-bento_math_vector2.html#sqrMagnitude">sqrMagnitude</a></li><li data-type='method'><a href="module-bento_math_vector2.html#subtract">subtract</a></li><li data-type='method'><a href="module-bento_math_vector2.html#subtractFrom">subtractFrom</a></li><li data-type='method'><a href="module-bento_math_vector2.html#.copyInto">copyInto</a></li><li data-type='method'><a href="module-bento_math_vector2.html#.fromRotation">fromRotation</a></li></ul></details></li><li><details><summary>bento/objectpool</summary><a href="module-bento_objectpool.html">bento/objectpool</a><ul class='methods'><li data-type='method'><a href="module-bento_objectpool.html#~discard">discard</a></li><li data-type='method'><a href="module-bento_objectpool.html#~get">get</a></li></ul></details></li><li><details><summary>bento/packedimage</summary><a href="module-bento_packedimage.html">bento/packedimage</a></details></li><li><details><summary>bento/screen</summary><a href="module-bento_screen.html">bento/screen</a><ul class='methods'><li data-type='method'><a href="module-bento_screen.html#loadTiled">loadTiled</a></li><li data-type='method'><a href="module-bento_screen.html#onHide">onHide</a></li><li data-type='method'><a href="module-bento_screen.html#onShow">onShow</a></li></ul></details></li><li><details><summary>bento/sortedeventsystem</summary><a href="module-bento_sortedeventsystem.html">bento/sortedeventsystem</a><ul class='methods'><li data-type='method'><a href="module-bento_sortedeventsystem.html#off">off</a></li><li data-type='method'><a href="module-bento_sortedeventsystem.html#on">on</a></li></ul></details></li><li><details><summary>bento/tiled</summary><a href="module-bento_tiled.html">bento/tiled</a></details></li><li><details><summary>bento/tiledreader</summary><a href="module-bento_tiledreader.html">bento/tiledreader</a><ul class='methods'><li data-type='method'><a href="module-bento_tiledreader.html#read">read</a></li></ul></details></li><li><details><summary>bento/tween</summary><a href="module-bento_tween.html">bento/tween</a><ul class='methods'><li data-type='method'><a href="module-bento_tween.html#begin">begin</a></li><li data-type='method'><a href="module-bento_tween.html#pause">pause</a></li><li data-type='method'><a href="module-bento_tween.html#removeSelf">removeSelf</a></li><li data-type='method'><a href="module-bento_tween.html#resume">resume</a></li><li data-type='method'><a href="module-bento_tween.html#stop">stop</a></li></ul></details></li><li><details><summary>bento/utils</summary><a href="module-bento_utils.html">bento/utils</a><ul class='methods'><li data-type='method'><a href="module-bento_utils.html#approach">approach</a></li><li data-type='method'><a href="module-bento_utils.html#checksum">checksum</a></li><li data-type='method'><a href="module-bento_utils.html#clamp">clamp</a></li><li data-type='method'><a href="module-bento_utils.html#cloneJson">cloneJson</a></li><li data-type='method'><a href="module-bento_utils.html#copyObject">copyObject</a></li><li data-type='method'><a href="module-bento_utils.html#extend">extend</a></li><li data-type='method'><a href="module-bento_utils.html#forEach">forEach</a></li><li data-type='method'><a href="module-bento_utils.html#getDefault">getDefault</a></li><li data-type='method'><a href="module-bento_utils.html#getKeyLength">getKeyLength</a></li><li data-type='method'><a href="module-bento_utils.html#getRandom">getRandom</a></li><li data-type='method'><a href="module-bento_utils.html#getRandomFloat">getRandomFloat</a></li><li data-type='method'><a href="module-bento_utils.html#getRandomRange">getRandomRange</a></li><li data-type='method'><a href="module-bento_utils.html#getRandomRangeFloat">getRandomRangeFloat</a></li><li data-type='method'><a href="module-bento_utils.html#getScreenSize">getScreenSize</a></li><li data-type='method'><a href="module-bento_utils.html#isAmazonDevice">isAmazonDevice</a></li><li data-type='method'><a href="module-bento_utils.html#isAndroid">isAndroid</a></li><li data-type='method'><a href="module-bento_utils.html#isAndroidDevice">isAndroidDevice</a></li><li data-type='method'><a href="module-bento_utils.html#isApple">isApple</a></li><li data-type='method'><a href="module-bento_utils.html#isArray">isArray</a></li><li data-type='method'><a href="module-bento_utils.html#isBetween">isBetween</a></li><li data-type='method'><a href="module-bento_utils.html#isBoolean">isBoolean</a></li><li data-type='method'><a href="module-bento_utils.html#isCocoonJs">isCocoonJs</a></li><li data-type='method'><a href="module-bento_utils.html#isDefined">isDefined</a></li><li data-type='method'><a href="module-bento_utils.html#isDev">isDev</a></li><li data-type='method'><a href="module-bento_utils.html#isEmpty">isEmpty</a></li><li data-type='method'><a href="module-bento_utils.html#isFunction">isFunction</a></li><li data-type='method'><a href="module-bento_utils.html#isInt">isInt</a></li><li data-type='method'><a href="module-bento_utils.html#isIosDevice">isIosDevice</a></li><li data-type='method'><a href="module-bento_utils.html#isMobileBrowser">isMobileBrowser</a></li><li data-type='method'><a href="module-bento_utils.html#isNativeAndroid">isNativeAndroid</a></li><li data-type='method'><a href="module-bento_utils.html#isNativeIos">isNativeIos</a></li><li data-type='method'><a href="module-bento_utils.html#isNotEmpty">isNotEmpty</a></li><li data-type='method'><a href="module-bento_utils.html#isNumber">isNumber</a></li><li data-type='method'><a href="module-bento_utils.html#isObject">isObject</a></li><li data-type='method'><a href="module-bento_utils.html#isString">isString</a></li><li data-type='method'><a href="module-bento_utils.html#isUndefined">isUndefined</a></li><li data-type='method'><a href="module-bento_utils.html#log">log</a></li><li data-type='method'><a href="module-bento_utils.html#modulo">modulo</a></li><li data-type='method'><a href="module-bento_utils.html#pickRandom">pickRandom</a></li><li data-type='method'><a href="module-bento_utils.html#pickRandomFrom">pickRandomFrom</a></li><li data-type='method'><a href="module-bento_utils.html#removeFromArray">removeFromArray</a></li><li data-type='method'><a href="module-bento_utils.html#repeat">repeat</a></li><li data-type='method'><a href="module-bento_utils.html#setDev">setDev</a></li><li data-type='method'><a href="module-bento_utils.html#sign">sign</a></li><li data-type='method'><a href="module-bento_utils.html#toDegree">toDegree</a></li><li data-type='method'><a href="module-bento_utils.html#toRadian">toRadian</a></li></ul></details></li></ul><h3>Events</h3><ul><li><details><summary>bentoReload</summary><a href="module-bento.html#~event:bentoReload">bentoReload</a></details></li><li><details><summary>buttonDown</summary><a href="module-bento_managers_input.html#~event:buttonDown">buttonDown</a></details></li><li><details><summary>buttonUp</summary><a href="module-bento_managers_input.html#~event:buttonUp">buttonUp</a></details></li><li><details><summary>clickButton-destroy</summary><a href="module-bento_gui_clickbutton.html#~event:clickButton-destroy">clickButton-destroy</a></details></li><li><details><summary>clickButton-onButtonDown</summary><a href="module-bento_gui_clickbutton.html#~event:clickButton-onButtonDown">clickButton-onButtonDown</a></details></li><li><details><summary>clickButton-onButtonUp</summary><a href="module-bento_gui_clickbutton.html#~event:clickButton-onButtonUp">clickButton-onButtonUp</a></details></li><li><details><summary>clickButton-onClick</summary><a href="module-bento_gui_clickbutton.html#~event:clickButton-onClick">clickButton-onClick</a></details></li><li><details><summary>clickButton-start</summary><a href="module-bento_gui_clickbutton.html#~event:clickButton-start">clickButton-start</a></details></li><li><details><summary>cordova-activated</summary><a href="module-bento.html#~event:cordova-activated">cordova-activated</a></details></li><li><details><summary>cordova-backbutton</summary><a href="module-bento.html#~event:cordova-backbutton">cordova-backbutton</a></details></li><li><details><summary>cordova-menubutton</summary><a href="module-bento.html#~event:cordova-menubutton">cordova-menubutton</a></details></li><li><details><summary>cordova-pause</summary><a href="module-bento.html#~event:cordova-pause">cordova-pause</a></details></li><li><details><summary>cordova-resign</summary><a href="module-bento.html#~event:cordova-resign">cordova-resign</a></details></li><li><details><summary>cordova-resume</summary><a href="module-bento.html#~event:cordova-resume">cordova-resume</a></details></li><li><details><summary>cordova-searchbutton</summary><a href="module-bento.html#~event:cordova-searchbutton">cordova-searchbutton</a></details></li><li><details><summary>cordova-volumedownbutton</summary><a href="module-bento.html#~event:cordova-volumedownbutton">cordova-volumedownbutton</a></details></li><li><details><summary>cordova-volumeupbutton</summary><a href="module-bento.html#~event:cordova-volumeupbutton">cordova-volumeupbutton</a></details></li><li><details><summary>gamepadButtonDown</summary><a href="module-bento_managers_input.html#~event:gamepadButtonDown">gamepadButtonDown</a></details></li><li><details><summary>gamepadButtonUp</summary><a href="module-bento_managers_input.html#~event:gamepadButtonUp">gamepadButtonUp</a></details></li><li><details><summary>gamepadConnected</summary><a href="module-bento_managers_input.html#~event:gamepadConnected">gamepadConnected</a></details></li><li><details><summary>gamepadDisconnected</summary><a href="module-bento_managers_input.html#~event:gamepadDisconnected">gamepadDisconnected</a></details></li><li><details><summary>mouseDown-left</summary><a href="module-bento_managers_input.html#~event:mouseDown-left">mouseDown-left</a></details></li><li><details><summary>mouseDown-middle</summary><a href="module-bento_managers_input.html#~event:mouseDown-middle">mouseDown-middle</a></details></li><li><details><summary>mouseDown-right</summary><a href="module-bento_managers_input.html#~event:mouseDown-right">mouseDown-right</a></details></li><li><details><summary>pointerDown</summary><a href="module-bento_managers_input.html#~event:pointerDown">pointerDown</a></details></li><li><details><summary>pointerMove</summary><a href="module-bento_managers_input.html#~event:pointerMove">pointerMove</a></details></li><li><details><summary>pointerUp</summary><a href="module-bento_managers_input.html#~event:pointerUp">pointerUp</a></details></li><li><details><summary>postDraw</summary><a href="module-bento_managers_object.html#~event:postDraw">postDraw</a></details></li><li><details><summary>postDrawLoop</summary><a href="module-bento_managers_object.html#~event:postDrawLoop">postDrawLoop</a></details></li><li><details><summary>postUpdate</summary><a href="module-bento_managers_object.html#~event:postUpdate">postUpdate</a></details></li><li><details><summary>preDraw</summary><a href="module-bento_managers_object.html#~event:preDraw">preDraw</a></details></li><li><details><summary>preDrawLoop</summary><a href="module-bento_managers_object.html#~event:preDrawLoop">preDrawLoop</a></details></li><li><details><summary>preUpdate</summary><a href="module-bento_managers_object.html#~event:preUpdate">preUpdate</a></details></li><li><details><summary>resize</summary><a href="module-bento.html#~event:resize">resize</a></details></li><li><details><summary>screenHidden</summary><a href="module-bento_managers_screen.html#~event:screenHidden">screenHidden</a></details></li><li><details><summary>screenShown</summary><a href="module-bento_managers_screen.html#~event:screenShown">screenShown</a></details></li><li><details><summary>toggleButton-destroy</summary><a href="module-bento_gui_togglebutton.html#~event:toggleButton-destroy">toggleButton-destroy</a></details></li><li><details><summary>toggleButton-onToggle</summary><a href="module-bento_gui_togglebutton.html#~event:toggleButton-onToggle">toggleButton-onToggle</a></details></li><li><details><summary>toggleButton-start</summary><a href="module-bento_gui_togglebutton.html#~event:toggleButton-start">toggleButton-start</a></details></li><li><details><summary>toggleButton-toggle-down</summary><a href="module-bento_gui_togglebutton.html#~event:toggleButton-toggle-down">toggleButton-toggle-down</a></details></li><li><details><summary>toggleButton-toggle-up</summary><a href="module-bento_gui_togglebutton.html#~event:toggleButton-toggle-up">toggleButton-toggle-up</a></details></li><li><details><summary>touchcancel</summary><a href="module-bento_managers_input.html#~event:touchcancel">touchcancel</a></details></li><li><details><summary>tvPointerDown</summary><a href="module-bento_managers_input.html#~event:tvPointerDown">tvPointerDown</a></details></li><li><details><summary>tvPointerMove</summary><a href="module-bento_managers_input.html#~event:tvPointerMove">tvPointerMove</a></details></li><li><details><summary>tvPointerUp</summary><a href="module-bento_managers_input.html#~event:tvPointerUp">tvPointerUp</a></details></li></ul><h3>Global</h3><ul><li><a href="global.html#bento">bento</a></li><li><a href="global.html">bento define</a></li><li><a href="global.html">bento require</a></li></ul>
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">components/canvas2d/animatednineslice.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Animated NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
+ * where the corners don't get deformed.
+ * &lt;br>Exports: Constructor
+ * @module bento/components/canvas2d/animatednineslice
+ * @moduleName AnimatedNineSlice
+ * @snippet AnimatedNineSlice|constructor
+AnimatedNineSlice({
+    imageName: '${1}',
+    originRelative: new Vector2(${2:0.5}, ${3:0.5}),
+    width: ${4:32},
+    height: ${5:32}
+})
+ * @param {Object} settings - Settings
+ * @param {String} settings.imageName - (Using image assets) Asset name for the image.
+ * @param {Vector2} settings.origin - Vector2 of origin
+ * @param {Vector2} settings.originRelative - Vector2 of relative origin (relative to dimension size)
+ * @param {Vector2} settings.width - Width of the desired box
+ * @param {Vector2} settings.height - Height of the desired box
+ * @param {Number} settings.frameCountX - Number of animation frames horizontally (defaults to 1)
+ * @param {Number} settings.frameCountY - Number of animation frames vertically (defaults to 1)
+ * @param {Number} settings.frameWidth - Alternative for frameCountX, sets the width manually
+ * @param {Number} settings.frameHeight - Alternative for frameCountY, sets the height manually
+ * @param {Number} settings.paddding - Pixelsize between slices
+ * @param {Number} settings.framePaddding - Pixelsize between frames
+ * @param {Object} settings.animations - Only needed if an image asset) Object literal defining animations, the object literal keys are the animation names.
+ * @param {Boolean} settings.animations[...].loop - Whether the animation should loop (defaults to true)
+ * @param {Number} settings.animations[...].backTo - Loop back the animation to a certain frame (defaults to 0)
+ * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
+ * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
+ */
+bento.define('bento/components/canvas2d/animatednineslice', [
+    'bento',
+    'bento/math/vector2',
+    'bento/math/rectangle',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/utils',
+    'bento/tween'
+], function (
+    Bento,
+    Vector2,
+    Rectangle,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween
+) {
+    'use strict';
+    /**
+     * Describe your settings object parameters
+     * @param {Object} settings
+     */
+    var NineSlice = function (settings) {
+        if (!(this instanceof NineSlice)) {
+            return new NineSlice(settings);
+        }
+        this.entity = null;
+        this.parent = null;
+        this.rootIndex = -1;
+        this.name = 'nineslice';
+        this.visible = true;
+        this.origin = new Vector2(0, 0);
+
+        // component settings
+        this._width = 0;
+        this._height = 0;
+        this._recalculateFlag = false;
+        this.frameX = 0;
+        this.frameY = 0;
+
+        // sprite settings
+        this.spriteImage = null;
+        this.padding = 0;
+        this.frameWidth = 0;
+        this.frameHeight = 0;
+        this.frameCountX = 1;
+        this.frameCountY = 1;
+        this.framePadding = 0;
+
+        // drawing internals
+        this.sliceWidth = 0;
+        this.sliceHeight = 0;
+
+        //animation setttings
+        this.animations = {};
+        this.currentAnimation = null;
+        this.currentAnimationLength = 0;
+        this.currentFrame = 0;
+
+        this.onCompleteCallback = function () {};
+
+        this.settings = settings;
+        this.setup(settings);
+    };
+
+    NineSlice.prototype.setup = function (settings) {
+        var self = this;
+
+        if (settings.image) {
+            this.spriteImage = settings.image;
+        } else if (settings.imageName) {
+            // load from string
+            if (Bento.assets) {
+                this.spriteImage = Bento.assets.getImage(settings.imageName);
+            } else {
+                throw 'Bento asset manager not loaded';
+            }
+        } else if (settings.imageFromUrl) {
+            // load from url
+            if (!this.spriteImage &amp;&amp; Bento.assets) {
+                Bento.assets.loadImageFromUrl(settings.imageFromUrl, settings.imageFromUrl, function (err, asset) {
+                    self.spriteImage = Bento.assets.getImage(settings.imageFromUrl);
+                    self.setup(settings);
+
+                    if (settings.onLoad) {
+                        settings.onLoad();
+                    }
+                });
+                // wait until asset is loaded and then retry
+                return;
+            }
+        } else {
+            // no image specified
+            return;
+        }
+        if (!this.spriteImage) {
+            Utils.log("ERROR: something went wrong with loading the sprite.");
+            return;
+        }
+
+        this.padding = settings.padding || 0;
+        this.framePadding = settings.framePadding || 0;
+
+
+        this.frameWidth = this.spriteImage.width;
+        this.frameHeight = this.spriteImage.height;
+
+        if (settings.frameWidth) {
+            this.frameWidth = settings.frameWidth;
+            this.frameCountX = Math.floor(this.spriteImage.width / settings.frameWidth);
+        } else if (settings.frameCountX) {
+            this.frameCountX = settings.frameCountX;
+            this.frameWidth = (this.spriteImage.width - this.framePadding * (this.frameCountX - 1)) / this.frameCountX;
+        }
+        if (settings.frameHeight) {
+            this.frameHeight = settings.frameHeight;
+            this.frameCountY = Math.floor(this.spriteImage.width / settings.frameHeight);
+        } else if (settings.frameCountY) {
+            this.frameCountY = settings.frameCountY;
+            this.frameHeight = (this.spriteImage.height - this.framePadding * (this.frameCountY - 1)) / this.frameCountY;
+        }
+
+        if (this.spriteImage) {
+            this.sliceWidth = Math.floor((this.frameWidth - this.padding * 2) / 3);
+            this.sliceHeight = Math.floor((this.frameHeight - this.padding * 2) / 3);
+        }
+
+        if (settings.width) {
+            this._width = Math.max(settings.width || 0, 0);
+        } else if (settings.innerWidth) {
+            this._width = this.sliceWidth * 2 + Math.max(settings.innerWidth || 0, 0);
+        }
+
+        if (settings.height) {
+            this._height = Math.max(settings.height || 0, 0);
+        } else if (settings.innerHeight) {
+            this._height = this.sliceHeight * 2 + Math.max(settings.innerHeight || 0, 0);
+        }
+
+        if (this.settings.origin) {
+            this.origin.x = this.settings.origin.x;
+            this.origin.y = this.settings.origin.y;
+        } else if (this.settings.originRelative) {
+            this.setOriginRelative(this.settings.originRelative);
+        }
+
+        this.animations = settings.animations || {};
+        // add default animation
+        if (!this.animations['default']) {
+            this.animations['default'] = {
+                frames: [0]
+            };
+        }
+
+        if (this.entity) {
+            // set dimension of entity object
+            this.entity.dimension.x = -this.origin.x;
+            this.entity.dimension.y = -this.origin.y;
+            this.entity.dimension.width = this._width;
+            this.entity.dimension.height = this._height;
+        }
+        this.recalculateDimensions();
+
+        this.setAnimation('default');
+    };
+
+    NineSlice.prototype.updateEntity = function () {
+        if (!this.entity) return;
+        // set dimension of entity object
+        this.entity.dimension.x = -this.origin.x;
+        this.entity.dimension.y = -this.origin.y;
+        this.entity.dimension.width = this._width;
+        this.entity.dimension.height = this._height;
+    };
+
+    NineSlice.prototype.attached = function (data) {
+        this.entity = data.entity;
+
+        this.updateEntity();
+    };
+
+    NineSlice.prototype.setAnimation = function (name, callback, keepCurrentFrame) {
+        var anim = this.animations[name];
+        if (!anim) {
+            console.log('Warning: animation ' + name + ' does not exist.');
+            return;
+        }
+
+        if (anim &amp;&amp; (this.currentAnimation !== anim || (this.onCompleteCallback !== null &amp;&amp; Utils.isDefined(callback)))) {
+            if (!Utils.isDefined(anim.loop)) {
+                anim.loop = true;
+            }
+            if (!Utils.isDefined(anim.backTo)) {
+                anim.backTo = 0;
+            }
+            // set even if there is no callback
+            this.onCompleteCallback = callback;
+            this.currentAnimation = anim;
+            this.currentAnimation.name = name;
+            this.currentAnimationLength = this.currentAnimation.frames.length;
+            if (!keepCurrentFrame) {
+                this.currentFrame = 0;
+            }
+            if (this.currentAnimation.backTo > this.currentAnimationLength) {
+                console.log('Warning: animation ' + name + ' has a faulty backTo parameter');
+                this.currentAnimation.backTo = this.currentAnimationLength;
+            }
+        }
+    };
+
+    NineSlice.prototype.getAnimationName = function () {
+        return this.currentAnimation.name;
+    };
+
+    NineSlice.prototype.setFrame = function (frameNumber) {
+        this.currentFrame = frameNumber;
+    };
+
+    NineSlice.prototype.getCurrentSpeed = function () {
+        return this.currentAnimation.speed;
+    };
+
+    NineSlice.prototype.setCurrentSpeed = function (value) {
+        this.currentAnimation.speed = value;
+    };
+
+    NineSlice.prototype.getCurrentFrame = function () {
+        return this.currentFrame;
+    };
+
+    Object.defineProperty(NineSlice.prototype, 'width', {
+        get: function () {
+            return this._width;
+        },
+        set: function (value) {
+            this._width = Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'height', {
+        get: function () {
+            return this._height;
+        },
+        set: function (value) {
+            this._height = Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerWidth', {
+        get: function () {
+            return Math.max(this._width - this.sliceWidth * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceWidth * 2;
+            this._width = this.sliceWidth * 2 + Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    Object.defineProperty(NineSlice.prototype, 'innerHeight', {
+        get: function () {
+            return Math.max(this._height - this.sliceHeight * 2, 0);
+        },
+        set: function (value) {
+            value -= this.sliceHeight * 2;
+            this._height = this.sliceHeight * 2 + Math.max(value, 0);
+            this._recalculateFlag = true;
+        }
+    });
+
+    /**
+     * Sets the origin relatively (0...1), relative to the size of the frame.
+     * @function
+     * @param {Vector2} origin - Position of the origin (relative to upper left corner)
+     * @instance
+     * @name setOriginRelative
+     */
+    NineSlice.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = originRelative.x * this._width;
+        this.origin.y = originRelative.y * this._height;
+        this.settings.originRelative = originRelative.clone();
+    };
+
+    NineSlice.prototype.update = function (data) {
+        var reachedEnd;
+
+        if (this._recalculateFlag) {
+            this.recalculateDimensions();
+        }
+
+        if (!this.currentAnimation) {
+            return;
+        }
+
+        // no need for update
+        if (this.currentAnimationLength &lt;= 1 || this.currentAnimation.speed === 0) {
+            return;
+        }
+
+        var frameSpeed = this.currentAnimation.speed || 1;
+        if (this.currentAnimation.frameSpeeds &amp;&amp; this.currentAnimation.frameSpeeds.length - 1 >= this.currentFrame) {
+            frameSpeed *= this.currentAnimation.frameSpeeds[Math.floor(this.currentFrame)];
+        }
+
+        reachedEnd = false;
+        this.currentFrame += (frameSpeed) * data.speed;
+        if (this.currentAnimation.loop) {
+            while (this.currentFrame >= this.currentAnimation.frames.length) {
+                this.currentFrame -= this.currentAnimation.frames.length - this.currentAnimation.backTo;
+                reachedEnd = true;
+            }
+        } else {
+            if (this.currentFrame >= this.currentAnimation.frames.length) {
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd &amp;&amp; this.onCompleteCallback) {
+            this.onCompleteCallback();
+            //don't repeat callback on non-looping animations
+            if (!this.currentAnimation.loop) {
+                this.onCompleteCallback = null;
+            }
+        }
+    };
+
+    NineSlice.prototype.recalculateDimensions = function () {
+        this._innerWidth = Math.round(Math.max(0, this._width - this.sliceWidth * 2));
+        this._innerHeight = Math.round(Math.max(0, this._height - this.sliceHeight * 2));
+
+        this._leftWidth = Math.min(this.sliceWidth, this._width / 2);
+        this.rightWidth = Math.min(this.sliceWidth, this._width - this._leftWidth);
+
+        this._topHeight = Math.min(this.sliceHeight, this._height / 2);
+        this._bottomHeight = Math.min(this.sliceHeight, this._height - this._topHeight);
+
+        if (this.settings.originRelative) {
+            // recalculate relative origin
+            this.origin.x = this.settings.originRelative.x * this._width;
+            this.origin.y = this.settings.originRelative.y * this._height;
+        }
+
+        if (this.entity) {
+            this.updateEntity();
+        }
+
+        this._recalculateFlag = false;
+    };
+
+    NineSlice.prototype.fillArea = function (renderer, slice, x, y, width, height) {
+        var sx = (this.sliceWidth + this.padding) * (slice % 3) + this.frameX;
+        var sy = (this.sliceHeight + this.padding) * Math.floor(slice / 3) + this.frameY;
+
+        if (width === 0 || height === 0) {
+            return;
+        }
+
+        if (!width) {
+            width = this.sliceWidth;
+        }
+        if (!height) {
+            height = this.sliceHeight;
+        }
+
+        renderer.drawImage(
+            this.spriteImage,
+            sx,
+            sy,
+            this.sliceWidth,
+            this.sliceHeight,
+            x | 0,
+            y | 0,
+            width,
+            height
+        );
+    };
+
+    NineSlice.prototype.updateFrame = function () {
+        var frameIndex = Math.min(Math.floor(this.currentFrame), this.currentAnimation.frames.length - 1);
+        var sourceFrame = this.currentAnimation.frames[frameIndex];
+        this.frameX = (sourceFrame % this.frameCountX) * (this.frameWidth + this.padding);
+        this.frameY = Math.floor(sourceFrame / this.frameCountX) * (this.frameHeight + this.padding);
+    };
+
+    NineSlice.prototype.draw = function (data) {
+        var entity = data.entity;
+        var origin = this.origin;
+
+        if (this._width === 0 || this._height === 0) {
+            return;
+        }
+
+        this.updateFrame();
+
+        data.renderer.translate(-Math.round(origin.x), -Math.round(origin.y));
+
+        //top left corner
+        this.fillArea(data.renderer, 0, 0, 0, this._leftWidth, this._topHeight);
+        //top stretch
+        this.fillArea(data.renderer, 1, this._leftWidth, 0, this._innerWidth, this._topHeight);
+        //top right corner
+        this.fillArea(data.renderer, 2, this._width - this.rightWidth, 0, this.rightWidth, this._topHeight);
+
+        //left stretch
+        this.fillArea(data.renderer, 3, 0, this._topHeight, this._leftWidth, this._innerHeight);
+        //center stretch
+        this.fillArea(data.renderer, 4, this._leftWidth, this._topHeight, this._innerWidth, this._innerHeight);
+        //right stretch
+        this.fillArea(data.renderer, 5, this._width - this.rightWidth, this._topHeight, this.rightWidth, this._innerHeight);
+
+        //bottom left corner
+        this.fillArea(data.renderer, 6, 0, this._height - this._bottomHeight, this._leftWidth, this._bottomHeight);
+        //bottom stretch
+        this.fillArea(data.renderer, 7, this._leftWidth, this._height - this._bottomHeight, this._innerWidth, this._bottomHeight);
+        //bottom right corner
+        this.fillArea(data.renderer, 8, this._width - this.rightWidth, this._height - this._bottomHeight, this.rightWidth, this._bottomHeight);
+
+        data.renderer.translate(Math.round(origin.x), Math.round(origin.y));
+    };
+
+    // Deprecated functions, added for compatibility
+    NineSlice.prototype.setWidth = function (value) {
+        this.width = value;
+    };
+    NineSlice.prototype.setHeight = function (value) {
+        this.height = value;
+    };
+
+    return NineSlice;
+});</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> using the Minami theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/linenumber.js"></script>
+<script src="scripts/opennav.js"></script>
+</body>
+</html>

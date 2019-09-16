@@ -26,12 +26,41 @@ bento.define('bento/components/three/sprite', [
         this.settings = settings || {};
 
         // ThreeJS specific
+        /**
+         * ThreeJS material, used on this sprite
+         * @instance
+         * @name material
+         * @type {THREE.Material}
+         */
         this.material = null;
+        /**
+         * ThreeJS geometry, used on this sprite
+         * @instance
+         * @name geometry
+         * @type {THREE.PlaneGeometry}
+         */
         this.geometry = null;
+        /**
+         * Current ThreeJS texture, used on this sprite
+         * @instance
+         * @name texture
+         * @type {THREE.PlaneGeometry}
+         */
         this.texture = null;
-        this.plane = null;
+        /**
+         * Current ThreeJS mesh, used for the sprite
+         * @instance
+         * @name planeMesh
+         * @type {THREE.Mesh}
+         */
+        this.planeMesh = null;
+        /**
+         * Container object, use this to append any ThreeJS objects
+         * @instance
+         * @name object3D
+         * @type {THREE.Object3D}
+         */
         this.object3D = new THREE.Object3D();
-        this.autoAttach = Utils.getDefault(settings.autoAttach, true);
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
 
         // checking if frame changed
@@ -49,11 +78,40 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype.constructor = ThreeSprite;
 
     ThreeSprite.prototype.start = function (data) {
+        // add the parent object to the main scene
         data.renderer.three.scene.add(this.object3D);
     };
     ThreeSprite.prototype.destroy = function (data) {
+        // remove the parent object from the main scene
         data.renderer.three.scene.remove(this.object3D);
         this.dispose();
+    };
+    ThreeSprite.prototype.draw = function (data) {
+        // the draw function prepares the transforms and sets up origin position
+        var origin = this.origin;
+        var plane = this.planeMesh;
+        var currentFrame = Math.round(this.currentFrame);
+
+        if (this.lastFrame !== currentFrame) {
+            // prevent updating the uvs all the time
+            this.updateFrame();
+            this.updateUvs();
+            this.lastFrame = currentFrame;
+        }
+
+        // origin: to achieve this offset effect, we move the plane (child of the object3d)
+        // take into account that threejs already assumes middle of the mesh to be origin
+        plane.position.x = -(origin.x - this.frameWidth / 2);
+        plane.position.y = (origin.y - this.frameHeight / 2);
+
+        // opacity will be overwritten by renderer
+        this.material.opacity = 1;
+
+        // move it to the render list
+        data.renderer.render({
+            object3D: this.object3D,
+            material: this.material
+        });
     };
 
     ThreeSprite.prototype.setup = function (data) {
@@ -99,49 +157,22 @@ bento.define('bento/components/three/sprite', [
                 1
             );
             // remove existing mesh
-            if (this.plane) {
-                this.object3D.remove(this.plane);
-                this.plane = null;
+            if (this.planeMesh) {
+                this.object3D.remove(this.planeMesh);
+                this.planeMesh = null;
             }
 
             plane = new THREE.Mesh(this.geometry, this.material);
-            this.plane = plane;
+            this.planeMesh = plane;
 
             this.object3D.add(plane);
         } else {
             // remove existing mesh
-            if (this.plane) {
-                this.object3D.remove(this.plane);
-                this.plane = null;
+            if (this.planeMesh) {
+                this.object3D.remove(this.planeMesh);
+                this.planeMesh = null;
             }
         }
-    };
-
-    ThreeSprite.prototype.draw = function (data) {
-        // origin: to achieve this offset effect, we move the plane (child of the object3d)
-        // take into account that threejs already assumes middle of the mesh to be origin
-        var origin = this.origin;
-        var plane = this.plane;
-        var currentFrame = Math.round(this.currentFrame);
-
-        if (this.lastFrame !== currentFrame) {
-            // prevent updating the uvs all the time
-            this.updateFrame();
-            this.updateUvs();
-            this.lastFrame = currentFrame;
-        }
-
-        plane.position.x = -(origin.x - this.frameWidth / 2);
-        plane.position.y = (origin.y - this.frameHeight / 2);
-
-        // opacity will be overwritten by renderer
-        this.material.opacity = 1;
-
-        // move it to the render list
-        data.renderer.render({
-            object3D: this.object3D,
-            material: this.material
-        });
     };
 
     ThreeSprite.prototype.updateUvs = function () {
@@ -164,7 +195,7 @@ bento.define('bento/components/three/sprite', [
 
         var uvs;
 
-        if (this.geometry && this.plane) {
+        if (this.geometry && this.planeMesh) {
             uvs = this.geometry.faceVertexUvs[0];
             uvs[0][0].set(u, v);
             uvs[0][1].set(u, v - h);
@@ -182,8 +213,8 @@ bento.define('bento/components/three/sprite', [
 
         // inherit name
         this.object3D.name = this.parent.name + '.' + this.name;
-        if (this.plane) {
-            this.plane.name = this.object3D.name + '.plane';
+        if (this.planeMesh) {
+            this.planeMesh.name = this.object3D.name + '.plane';
         }
     };
 
@@ -210,10 +241,8 @@ bento.define('bento/components/three/sprite', [
     // default alpha test
     ThreeSprite.alphaTest = 0;
 
-    /**
+    /*
      * Converts imagePack to THREE.Texture
-     * @snippet Sprite.imageToTexture()|Texture from renderer
-Sprite.imageToTexture('${1:imageName}', ${2:false});
      */
     ThreeSprite.imageToTexture = function (image, antiAlias) {
         var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;

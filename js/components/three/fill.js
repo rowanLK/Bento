@@ -1,8 +1,9 @@
 /**
- * Component that fills a rectangle using Three.js
+ * Component that fills a rectangle using the ThreeJs renderer
  * <br>Exports: Constructor
  * @module bento/components/three/fill
  * @moduleName ThreeFill
+ * @extends {Canvas2DFill}
  */
 bento.define('bento/components/three/fill', [
     'bento/utils',

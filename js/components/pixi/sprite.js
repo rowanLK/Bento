@@ -1,7 +1,7 @@
 /**
- * Sprite component with a pixi sprite exposed. Must be used with pixi renderer.
- * Useful if you want to use pixi features.
+ * Sprite component using the pixi renderer.
  * <br>Exports: Constructor
+ * @extends {Canvas2DSprite}
  * @module bento/components/pixi/sprite
  * @moduleName PixiSprite
  * @returns Returns a component object to be attached to an entity.
@@ -18,6 +18,13 @@ bento.define('bento/components/pixi/sprite', [
             return new PixiSprite(settings);
         }
         Sprite.call(this, settings);
+
+        /**
+         * Pixi sprite, can be used to append other Pixi objects
+         * @instance
+         * @name sprite
+         * @type {PIXI.Sprite}
+         */
         this.sprite = new PIXI.Sprite();
         this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
         // checking if frame changed
@@ -26,9 +33,11 @@ bento.define('bento/components/pixi/sprite', [
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
     PixiSprite.prototype.start = function (data) {
+        // add the parent object to the main scene
         data.renderer.pixi.stage.addChild(this.sprite);
     };
     PixiSprite.prototype.destroy = function (data) {
+        // remove the parent object from the main scene
         data.renderer.pixi.stage.removeChild(this.sprite);
     };
     PixiSprite.prototype.draw = function (data) {
