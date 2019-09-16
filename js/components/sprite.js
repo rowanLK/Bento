@@ -85,27 +85,31 @@ bento.define('bento/components/sprite', [
     // but in order to know which one to pick, the renderer already needs to be set (which makes this operation a bit scary)
     // That means this module should not be included anywhere before Bento.setup is called 
     var renderer = Bento.getRenderer();
-    var Constructor = Canvas2DSprite;
     var Sprite = function (settings) {
         if (!(this instanceof Sprite)) {
             return new Sprite(settings);
         }
-        Constructor.call(this, settings);
+        Sprite.Constructor.call(this, settings);
+    };
+    Sprite.inheritFrom = function (Constructor) {
+        Sprite.Constructor = Constructor;
+        // inherit from class
+        Sprite.prototype = Object.create(Sprite.Constructor.prototype);
+        Sprite.prototype.constructor = Sprite;
+        // inherit helper function
+        Sprite.imageToTexture = Sprite.Constructor.imageToTexture;
     };
 
     // pick the class
     if (!renderer) {
-        console.warn('Warning: Sprite is included before renderer is set. Defaulting to canvas2d Sprite');
+        console.warn('Warning: Sprite is included before Bento.setup, defaulting to Canvas2dSprite. Call Sprite.inheritFrom if needed.');
+        Sprite.inheritFrom(Canvas2DSprite);
     } else if (renderer.name === 'pixi') {
-        Constructor = PixiSprite;
+        Sprite.inheritFrom(PixiSprite);
     } else if (renderer.name === 'three.js') {
-        Constructor = ThreeSprite;
+        Sprite.inheritFrom(ThreeSprite);
+    } else {
+        Sprite.inheritFrom(Canvas2DSprite);
     }
-    // inherit from class
-    Sprite.prototype = Object.create(Constructor.prototype);
-    Sprite.prototype.constructor = Sprite;
-
-    // inherit helper function
-    Sprite.imageToTexture = Constructor.imageToTexture;
     return Sprite;
 });
