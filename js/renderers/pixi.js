@@ -6,12 +6,16 @@ bento.define('bento/renderers/pixi', [
     'bento',
     'bento/utils',
     'bento/math/transformmatrix',
-    'bento/renderers/canvas2d'
+    'bento/renderers/canvas2d',
+    'bento/components/sprite',
+    'bento/components/pixi/sprite'
 ], function (
     Bento,
     Utils,
     TransformMatrix,
-    Canvas2d
+    Canvas2d,
+    Sprite,
+    PixiSprite
 ) {
     var PIXI = window.PIXI;
     var PixiRenderer = function (canvas, settings) {
@@ -166,6 +170,9 @@ bento.define('bento/renderers/pixi', [
                 antialias: Bento.getAntiAlias()
             });
             stage.sortableChildren = true;
+            
+            Sprite.inheritFrom(PixiSprite);
+
             return pixiRenderer;
         } else {
             if (!window.PIXI) {

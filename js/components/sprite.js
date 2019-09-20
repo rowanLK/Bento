@@ -70,15 +70,11 @@ Bento.objects.attach(entity);
 bento.define('bento/components/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/canvas2d/sprite',
-    'bento/components/pixi/sprite',
-    'bento/components/three/sprite'
+    'bento/components/canvas2d/sprite'
 ], function (
     Bento,
     Utils,
-    Canvas2DSprite,
-    PixiSprite,
-    ThreeSprite
+    Canvas2DSprite
 ) {
     'use strict';
     // The sprite is always an inherited version of either canvas2d, pixi or three versions,
@@ -100,16 +96,8 @@ bento.define('bento/components/sprite', [
         Sprite.imageToTexture = Sprite.Constructor.imageToTexture;
     };
 
-    // pick the class
-    if (!renderer) {
-        console.warn('Warning: Sprite is included before Bento.setup, defaulting to Canvas2dSprite. Call Sprite.inheritFrom if needed.');
-        Sprite.inheritFrom(Canvas2DSprite);
-    } else if (renderer.name === 'pixi') {
-        Sprite.inheritFrom(PixiSprite);
-    } else if (renderer.name === 'three.js') {
-        Sprite.inheritFrom(ThreeSprite);
-    } else {
-        Sprite.inheritFrom(Canvas2DSprite);
-    }
+    // defaults to Canvas2DSprite
+    Sprite.inheritFrom(Canvas2DSprite);
+
     return Sprite;
 });

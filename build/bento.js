@@ -2883,13 +2883,100 @@ bento.define('bento', [
     return Bento;
 });
 /**
+ * Component that fills a rectangle with a color.
+ * <br>Exports: Constructor
+ * @module bento/components/canvas2d/fill
+ * @moduleName Canvas2DFill
+ */
+bento.define('bento/components/canvas2d/fill', [
+    'bento/utils',
+    'bento',
+    'bento/math/vector2'
+], function (
+    Utils,
+    Bento,
+    Vector2
+) {
+    'use strict';
+    var Fill = function (settings) {
+        if (!(this instanceof Fill)) {
+            return new Fill(settings);
+        }
+        var viewport = Bento.getViewport();
+        settings = settings || {};
+        this.parent = null;
+        this.rootIndex = -1;
+        this.name = settings.name || 'fill';
+        /**
+         * Color array
+         * @instance
+         * @name color
+         * @snippet #Fill.color|Array
+            color
+         */
+        this.color = settings.color || [0, 0, 0, 1];
+        while (this.color.length < 4) {
+            this.color.push(1);
+        }
+        /**
+         * Dimension/size of the rectangle to fill
+         * @instance
+         * @name dimension
+         * @snippet #Fill.dimension|Rectangle
+            dimension
+         */
+        this.dimension = settings.dimension || settings.size || settings.rectangle || viewport.getSize();
+        /**
+         * Origin of the fill size
+         * @instance
+         * @name origin
+         * @snippet #Fill.origin|Vector2
+            origin
+         */
+        this.origin = settings.origin || new Vector2(0, 0);
+        if (settings.originRelative) {
+            this.origin.x = this.dimension.width * settings.originRelative.x;
+            this.origin.y = this.dimension.height * settings.originRelative.y;
+        }
+    };
+    Fill.prototype.draw = function (data) {
+        var dimension = this.dimension;
+        var origin = this.origin;
+        data.renderer.fillRect(
+            this.color,
+            dimension.x - origin.x,
+            dimension.y - origin.y,
+            dimension.width,
+            dimension.height
+        );
+    };
+    /**
+     * Set origin relative to size
+     * @instance
+     * @function
+     * @name setOriginRelative
+     * @param {Vector2} originRelative - Vector2 with the origin relative to its dimension
+     * @snippet #Fill.setOriginRelative()|snippet
+        setOriginRelative(${1:new Vector2(0, 0)})
+     */
+    Fill.prototype.setOriginRelative = function (originRelative) {
+        this.origin.x = this.dimension.width * originRelative.x;
+        this.origin.y = this.dimension.height * originRelative.y;
+    };
+    Fill.prototype.toString = function () {
+        return '[object Fill]';
+    };
+
+    return Fill;
+});
+/**
  * Animated NineSlice component, takes an image and slices it in 9 equal parts. This image can then be stretched as a box
  * where the corners don't get deformed.
  * <br>Exports: Constructor
- * @module bento/components/canvas2d/animatednineslice
- * @moduleName AnimatedNineSlice
- * @snippet AnimatedNineSlice|constructor
-AnimatedNineSlice({
+ * @module bento/components/canvas2d/nineslice
+ * @moduleName NineSlice
+ * @snippet NineSlice|constructor
+NineSlice({
     imageName: '${1}',
     originRelative: new Vector2(${2:0.5}, ${3:0.5}),
     width: ${4:32},
@@ -2913,7 +3000,7 @@ AnimatedNineSlice({
  * @param {Number} settings.animations[...].speed - Speed at which the animation is played. 1 is max speed (changes frame every tick). (defaults to 1)
  * @param {Array} settings.animations[...].frames - The frames that define the animation. The frames are counted starting from 0 (the top left)
  */
-bento.define('bento/components/canvas2d/animatednineslice', [
+bento.define('bento/components/canvas2d/nineslice', [
     'bento',
     'bento/math/vector2',
     'bento/math/rectangle',
@@ -3343,93 +3430,6 @@ bento.define('bento/components/canvas2d/animatednineslice', [
     };
 
     return NineSlice;
-});
-/**
- * Component that fills a rectangle with a color.
- * <br>Exports: Constructor
- * @module bento/components/canvas2d/fill
- * @moduleName Canvas2DFill
- */
-bento.define('bento/components/canvas2d/fill', [
-    'bento/utils',
-    'bento',
-    'bento/math/vector2'
-], function (
-    Utils,
-    Bento,
-    Vector2
-) {
-    'use strict';
-    var Fill = function (settings) {
-        if (!(this instanceof Fill)) {
-            return new Fill(settings);
-        }
-        var viewport = Bento.getViewport();
-        settings = settings || {};
-        this.parent = null;
-        this.rootIndex = -1;
-        this.name = settings.name || 'fill';
-        /**
-         * Color array
-         * @instance
-         * @name color
-         * @snippet #Fill.color|Array
-            color
-         */
-        this.color = settings.color || [0, 0, 0, 1];
-        while (this.color.length < 4) {
-            this.color.push(1);
-        }
-        /**
-         * Dimension/size of the rectangle to fill
-         * @instance
-         * @name dimension
-         * @snippet #Fill.dimension|Rectangle
-            dimension
-         */
-        this.dimension = settings.dimension || settings.size || settings.rectangle || viewport.getSize();
-        /**
-         * Origin of the fill size
-         * @instance
-         * @name origin
-         * @snippet #Fill.origin|Vector2
-            origin
-         */
-        this.origin = settings.origin || new Vector2(0, 0);
-        if (settings.originRelative) {
-            this.origin.x = this.dimension.width * settings.originRelative.x;
-            this.origin.y = this.dimension.height * settings.originRelative.y;
-        }
-    };
-    Fill.prototype.draw = function (data) {
-        var dimension = this.dimension;
-        var origin = this.origin;
-        data.renderer.fillRect(
-            this.color,
-            dimension.x - origin.x,
-            dimension.y - origin.y,
-            dimension.width,
-            dimension.height
-        );
-    };
-    /**
-     * Set origin relative to size
-     * @instance
-     * @function
-     * @name setOriginRelative
-     * @param {Vector2} originRelative - Vector2 with the origin relative to its dimension
-     * @snippet #Fill.setOriginRelative()|snippet
-        setOriginRelative(${1:new Vector2(0, 0)})
-     */
-    Fill.prototype.setOriginRelative = function (originRelative) {
-        this.origin.x = this.dimension.width * originRelative.x;
-        this.origin.y = this.dimension.height * originRelative.y;
-    };
-    Fill.prototype.toString = function () {
-        return '[object Fill]';
-    };
-
-    return Fill;
 });
 /**
  * Component that draws a Spine animation. A Spine asset must consist of a json, atlas and png with the same name. Developer must add
@@ -4828,10 +4828,11 @@ bento.define('bento/components/modal', [
     };
 });
 /**
- * Component that fills a rectangle using Pixi
+ * Component that fills a rectangle using the Pixi renderer
  * <br>Exports: Constructor
  * @module bento/components/pixi/fill
  * @moduleName PixiFill
+ * @extends {Canvas2DFill}
  */
 bento.define('bento/components/pixi/fill', [
     'bento/utils',
@@ -5091,15 +5092,11 @@ Bento.objects.attach(entity);
 bento.define('bento/components/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/canvas2d/sprite',
-    'bento/components/pixi/sprite',
-    'bento/components/three/sprite'
+    'bento/components/canvas2d/sprite'
 ], function (
     Bento,
     Utils,
-    Canvas2DSprite,
-    PixiSprite,
-    ThreeSprite
+    Canvas2DSprite
 ) {
     'use strict';
     // The sprite is always an inherited version of either canvas2d, pixi or three versions,
@@ -5121,24 +5118,17 @@ bento.define('bento/components/sprite', [
         Sprite.imageToTexture = Sprite.Constructor.imageToTexture;
     };
 
-    // pick the class
-    if (!renderer) {
-        console.warn('Warning: Sprite is included before renderer is set. Defaulting to canvas2d Sprite');
-        Sprite.inheritFrom(Canvas2DSprite);
-    } else if (renderer.name === 'pixi') {
-        Sprite.inheritFrom(PixiSprite);
-    } else if (renderer.name === 'three.js') {
-        Sprite.inheritFrom(ThreeSprite);
-    } else {
-        Sprite.inheritFrom(Canvas2DSprite);
-    }
+    // defaults to Canvas2DSprite
+    Sprite.inheritFrom(Canvas2DSprite);
+
     return Sprite;
 });
 /**
- * Component that fills a rectangle using Three.js
+ * Component that fills a rectangle using the ThreeJs renderer
  * <br>Exports: Constructor
  * @module bento/components/three/fill
  * @moduleName ThreeFill
+ * @extends {Canvas2DFill}
  */
 bento.define('bento/components/three/fill', [
     'bento/utils',
@@ -5265,13 +5255,11 @@ bento.define('bento/components/three/fill', [
 bento.define('bento/components/three/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/canvas2d/sprite',
-    'bento/renderers/three'
+    'bento/components/canvas2d/sprite'
 ], function (
     Bento,
     Utils,
-    Sprite,
-    ThreeJsRenderer
+    Sprite
 ) {
     'use strict';
     var THREE = window.THREE;
@@ -19667,12 +19655,16 @@ bento.define('bento/renderers/pixi', [
     'bento',
     'bento/utils',
     'bento/math/transformmatrix',
-    'bento/renderers/canvas2d'
+    'bento/renderers/canvas2d',
+    'bento/components/sprite',
+    'bento/components/pixi/sprite'
 ], function (
     Bento,
     Utils,
     TransformMatrix,
-    Canvas2d
+    Canvas2d,
+    Sprite,
+    PixiSprite
 ) {
     var PIXI = window.PIXI;
     var PixiRenderer = function (canvas, settings) {
@@ -19827,6 +19819,9 @@ bento.define('bento/renderers/pixi', [
                 antialias: Bento.getAntiAlias()
             });
             stage.sortableChildren = true;
+            
+            Sprite.inheritFrom(PixiSprite);
+
             return pixiRenderer;
         } else {
             if (!window.PIXI) {
@@ -20196,11 +20191,15 @@ bento.define('bento/renderers/pixi3', [
 bento.define('bento/renderers/three', [
     'bento/utils',
     'bento/math/transformmatrix',
-    'bento/renderers/canvas2d'
+    'bento/renderers/canvas2d',
+    'bento/components/three/sprite',
+    'bento/components/sprite'
 ], function (
     Utils,
     TransformMatrix,
-    Canvas2d
+    Canvas2d,
+    ThreeSprite,
+    Sprite
 ) {
     var ThreeJsRenderer = function (canvas, settings) {
         var gl;
@@ -20336,6 +20335,8 @@ bento.define('bento/renderers/three', [
                 /* if highp is not feasible use logarithmicDepthBuffer to resolve scaling issues */
                 // logarithmicDepthBuffer: true
             }));
+
+            Sprite.inheritFrom(ThreeSprite);
         };
         var setupScene = function () {
             var width = canvas.width / settings.pixelSize;

@@ -7,11 +7,15 @@
 bento.define('bento/renderers/three', [
     'bento/utils',
     'bento/math/transformmatrix',
-    'bento/renderers/canvas2d'
+    'bento/renderers/canvas2d',
+    'bento/components/three/sprite',
+    'bento/components/sprite'
 ], function (
     Utils,
     TransformMatrix,
-    Canvas2d
+    Canvas2d,
+    ThreeSprite,
+    Sprite
 ) {
     var ThreeJsRenderer = function (canvas, settings) {
         var gl;
@@ -147,6 +151,8 @@ bento.define('bento/renderers/three', [
                 /* if highp is not feasible use logarithmicDepthBuffer to resolve scaling issues */
                 // logarithmicDepthBuffer: true
             }));
+
+            Sprite.inheritFrom(ThreeSprite);
         };
         var setupScene = function () {
             var width = canvas.width / settings.pixelSize;

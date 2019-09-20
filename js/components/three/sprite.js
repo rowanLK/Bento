@@ -8,13 +8,11 @@
 bento.define('bento/components/three/sprite', [
     'bento',
     'bento/utils',
-    'bento/components/canvas2d/sprite',
-    'bento/renderers/three'
+    'bento/components/canvas2d/sprite'
 ], function (
     Bento,
     Utils,
-    Sprite,
-    ThreeJsRenderer
+    Sprite
 ) {
     'use strict';
     var THREE = window.THREE;
