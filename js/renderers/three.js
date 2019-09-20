@@ -80,13 +80,14 @@ bento.define('bento/renderers/three', [
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
 
             begin: function () {
+                var i, l, children = scene.children;
                 zIndex = 0;
+                // set everything invisible
+                for (i = 0, l = children.length; i < l; ++i) {
+                    children[i].visible = false;
+                }
             },
-            render: function (data) {
-                // render by adding object3d into the scene
-                var object3D = data.object3D;
-                var material = data.material;
-
+            render: function (object3D, material) {
                 // take over the world matrix
                 object3D.matrixAutoUpdate = false;
                 // move the 2d matrix into the 3d matri
@@ -99,6 +100,8 @@ bento.define('bento/renderers/three', [
                 );
                 // opacity
                 material.opacity *= alpha;
+                // show the object
+                object3D.visible = true;
 
                 ++zIndex;
             },

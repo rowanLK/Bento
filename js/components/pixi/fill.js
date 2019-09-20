@@ -25,6 +25,7 @@ bento.define('bento/components/pixi/fill', [
         Canvas2DFill.call(this, settings);
         
         this.graphics = new PIXI.Graphics();
+        this.graphics.visible = false;
 
         // if this.dimension is edited, the fill should be redone
         this.cacheDimension = null;

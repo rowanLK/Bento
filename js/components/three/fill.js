@@ -28,6 +28,7 @@ bento.define('bento/components/three/fill', [
         this.geometry = null;
         this.plane = null;
         this.object3D = new THREE.Object3D();
+        this.object3D.visible = false;
         this.opacity = 1;
 
         // if this.dimension is edited, the fill should be redone
@@ -85,10 +86,7 @@ bento.define('bento/components/three/fill', [
         this.material.opacity = this.opacity;
 
         // move it to the render list
-        data.renderer.render({
-            object3D: this.object3D,
-            material: this.material
-        });
+        data.renderer.render(this.object3D, this.material);
     };
     ThreeFill.prototype.start = function (data) {
         this.startFill();

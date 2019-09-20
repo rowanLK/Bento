@@ -59,6 +59,7 @@ bento.define('bento/components/three/sprite', [
          * @type {THREE.Object3D}
          */
         this.object3D = new THREE.Object3D();
+        this.object3D.visible = false;
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
 
         // checking if frame changed
@@ -106,10 +107,7 @@ bento.define('bento/components/three/sprite', [
         this.material.opacity = 1;
 
         // move it to the render list
-        data.renderer.render({
-            object3D: this.object3D,
-            material: this.material
-        });
+        data.renderer.render(this.object3D, this.material);
     };
 
     ThreeSprite.prototype.setup = function (data) {

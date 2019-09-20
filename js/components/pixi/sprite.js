@@ -26,6 +26,8 @@ bento.define('bento/components/pixi/sprite', [
          * @type {PIXI.Sprite}
          */
         this.sprite = new PIXI.Sprite();
+        this.sprite.visible = false;
+        
         this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
         // checking if frame changed
         this.lastFrame = null;

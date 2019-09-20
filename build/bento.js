@@ -4854,6 +4854,7 @@ bento.define('bento/components/pixi/fill', [
         Canvas2DFill.call(this, settings);
         
         this.graphics = new PIXI.Graphics();
+        this.graphics.visible = false;
 
         // if this.dimension is edited, the fill should be redone
         this.cacheDimension = null;
@@ -4939,6 +4940,8 @@ bento.define('bento/components/pixi/sprite', [
          * @type {PIXI.Sprite}
          */
         this.sprite = new PIXI.Sprite();
+        this.sprite.visible = false;
+        
         this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
         // checking if frame changed
         this.lastFrame = null;
@@ -5153,6 +5156,7 @@ bento.define('bento/components/three/fill', [
         this.geometry = null;
         this.plane = null;
         this.object3D = new THREE.Object3D();
+        this.object3D.visible = false;
         this.opacity = 1;
 
         // if this.dimension is edited, the fill should be redone
@@ -5210,10 +5214,7 @@ bento.define('bento/components/three/fill', [
         this.material.opacity = this.opacity;
 
         // move it to the render list
-        data.renderer.render({
-            object3D: this.object3D,
-            material: this.material
-        });
+        data.renderer.render(this.object3D, this.material);
     };
     ThreeFill.prototype.start = function (data) {
         this.startFill();
@@ -5306,6 +5307,7 @@ bento.define('bento/components/three/sprite', [
          * @type {THREE.Object3D}
          */
         this.object3D = new THREE.Object3D();
+        this.object3D.visible = false;
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
 
         // checking if frame changed
@@ -5353,10 +5355,7 @@ bento.define('bento/components/three/sprite', [
         this.material.opacity = 1;
 
         // move it to the render list
-        data.renderer.render({
-            object3D: this.object3D,
-            material: this.material
-        });
+        data.renderer.render(this.object3D, this.material);
     };
 
     ThreeSprite.prototype.setup = function (data) {
@@ -19746,6 +19745,7 @@ bento.define('bento/renderers/pixi', [
 
 
             begin: function () {
+                var i, l, children = stage.children;
                 // reset stage
                 zIndex = 0;
                 // set pixelSize
@@ -19753,6 +19753,12 @@ bento.define('bento/renderers/pixi', [
                     this.save();
                     this.scale(pixelSize, pixelSize);
                 }
+
+                // set everything invisible
+                for (i = 0, l = children.length; i < l; ++i) {
+                    children[i].visible = false;
+                }
+
             },
             flush: function () {
                 // render entire stage
@@ -19790,6 +19796,7 @@ bento.define('bento/renderers/pixi', [
                 ++zIndex;
                 displayObject.transform.setFromMatrix(pixiMatrix);
                 displayObject.alpha = alpha;
+                displayObject.visible = true;
             },
             getContext: function () {
                 return gl;
@@ -20264,13 +20271,14 @@ bento.define('bento/renderers/three', [
             drawImage: function (spriteImage, sx, sy, sw, sh, x, y, w, h) {},
 
             begin: function () {
+                var i, l, children = scene.children;
                 zIndex = 0;
+                // set everything invisible
+                for (i = 0, l = children.length; i < l; ++i) {
+                    children[i].visible = false;
+                }
             },
-            render: function (data) {
-                // render by adding object3d into the scene
-                var object3D = data.object3D;
-                var material = data.material;
-
+            render: function (object3D, material) {
                 // take over the world matrix
                 object3D.matrixAutoUpdate = false;
                 // move the 2d matrix into the 3d matri
@@ -20283,6 +20291,8 @@ bento.define('bento/renderers/three', [
                 );
                 // opacity
                 material.opacity *= alpha;
+                // show the object
+                object3D.visible = true;
 
                 ++zIndex;
             },

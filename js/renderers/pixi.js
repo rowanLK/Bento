@@ -97,6 +97,7 @@ bento.define('bento/renderers/pixi', [
 
 
             begin: function () {
+                var i, l, children = stage.children;
                 // reset stage
                 zIndex = 0;
                 // set pixelSize
@@ -104,6 +105,12 @@ bento.define('bento/renderers/pixi', [
                     this.save();
                     this.scale(pixelSize, pixelSize);
                 }
+
+                // set everything invisible
+                for (i = 0, l = children.length; i < l; ++i) {
+                    children[i].visible = false;
+                }
+
             },
             flush: function () {
                 // render entire stage
@@ -141,6 +148,7 @@ bento.define('bento/renderers/pixi', [
                 ++zIndex;
                 displayObject.transform.setFromMatrix(pixiMatrix);
                 displayObject.alpha = alpha;
+                displayObject.visible = true;
             },
             getContext: function () {
                 return gl;
