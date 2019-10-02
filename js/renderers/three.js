@@ -155,6 +155,8 @@ bento.define('bento/renderers/three', [
                 // logarithmicDepthBuffer: true
             }));
 
+            console.log('Three.js renderer: ' + THREE.REVISION);
+            // set up sprite using PixiSprites
             Sprite.inheritFrom(ThreeSprite);
         };
         var setupScene = function () {

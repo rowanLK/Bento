@@ -91,6 +91,12 @@ bento.define('bento/components/three/sprite', [
         var plane = this.planeMesh;
         var currentFrame = Math.round(this.currentFrame);
 
+        if (!this.currentAnimation || !this.visible || !this.spriteImage) {
+            // there is nothing to draw
+            this.object3D.visible = false;
+            return;
+        }
+
         if (this.lastFrame !== currentFrame) {
             // prevent updating the uvs all the time
             this.updateFrame();

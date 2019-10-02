@@ -3932,7 +3932,8 @@ setup({
                 return;
             }
         } else {
-            // no image specified
+            // no image specified or trying to un-set sprite
+            this.spriteImage = null;
             return;
         }
         if (!this.spriteImage) {
@@ -4960,7 +4961,8 @@ bento.define('bento/components/pixi/sprite', [
         var entity = data.entity;
         var currentFrame = Math.round(this.currentFrame);
 
-        if (!this.currentAnimation || !this.visible) {
+        if (!this.currentAnimation || !this.visible || !this.spriteImage) {
+            this.sprite.visible = false;
             return;
         }
         if (this.lastFrame !== currentFrame) {
@@ -5338,6 +5340,12 @@ bento.define('bento/components/three/sprite', [
         var origin = this.origin;
         var plane = this.planeMesh;
         var currentFrame = Math.round(this.currentFrame);
+
+        if (!this.currentAnimation || !this.visible || !this.spriteImage) {
+            // there is nothing to draw
+            this.object3D.visible = false;
+            return;
+        }
 
         if (this.lastFrame !== currentFrame) {
             // prevent updating the uvs all the time
@@ -19656,14 +19664,16 @@ bento.define('bento/renderers/pixi', [
     'bento/math/transformmatrix',
     'bento/renderers/canvas2d',
     'bento/components/sprite',
-    'bento/components/pixi/sprite'
+    'bento/components/pixi/sprite',
+    'bento/renderers/pixi3'
 ], function (
     Bento,
     Utils,
     TransformMatrix,
     Canvas2d,
     Sprite,
-    PixiSprite
+    PixiSprite,
+    Pixi3Renderer
 ) {
     var PIXI = window.PIXI;
     var PixiRenderer = function (canvas, settings) {
@@ -19813,8 +19823,21 @@ bento.define('bento/renderers/pixi', [
                 stage: stage
             }
         };
+        var versionRequirement = function () {
+            var version = PIXI.VERSION;
+            var major = parseInt(version.split('.')[0]);
+            if (major < 5) {
+                return false;
+            }
+            return true;
+        };
 
         if (canWebGl && Utils.isDefined(window.PIXI)) {
+            if (!versionRequirement()) {
+                console.log('WARNING: PIXI version too low. Reverting to pixi3 renderer');
+                return new Pixi3Renderer(canvas, settings);
+            }
+
             // init pixi
             matrix = new TransformMatrix();
             renderer = new PIXI.Renderer({
@@ -19827,6 +19850,7 @@ bento.define('bento/renderers/pixi', [
             });
             stage.sortableChildren = true;
             
+            // set up sprite using PixiSprites
             Sprite.inheritFrom(PixiSprite);
 
             return pixiRenderer;
@@ -20346,6 +20370,8 @@ bento.define('bento/renderers/three', [
                 // logarithmicDepthBuffer: true
             }));
 
+            console.log('Three.js renderer: ' + THREE.REVISION);
+            // set up sprite using PixiSprites
             Sprite.inheritFrom(ThreeSprite);
         };
         var setupScene = function () {

@@ -46,7 +46,8 @@ bento.define('bento/components/pixi/sprite', [
         var entity = data.entity;
         var currentFrame = Math.round(this.currentFrame);
 
-        if (!this.currentAnimation || !this.visible) {
+        if (!this.currentAnimation || !this.visible || !this.spriteImage) {
+            this.sprite.visible = false;
             return;
         }
         if (this.lastFrame !== currentFrame) {

@@ -141,7 +141,8 @@ setup({
                 return;
             }
         } else {
-            // no image specified
+            // no image specified or trying to un-set sprite
+            this.spriteImage = null;
             return;
         }
         if (!this.spriteImage) {

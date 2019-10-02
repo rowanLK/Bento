@@ -8,14 +8,16 @@ bento.define('bento/renderers/pixi', [
     'bento/math/transformmatrix',
     'bento/renderers/canvas2d',
     'bento/components/sprite',
-    'bento/components/pixi/sprite'
+    'bento/components/pixi/sprite',
+    'bento/renderers/pixi3'
 ], function (
     Bento,
     Utils,
     TransformMatrix,
     Canvas2d,
     Sprite,
-    PixiSprite
+    PixiSprite,
+    Pixi3Renderer
 ) {
     var PIXI = window.PIXI;
     var PixiRenderer = function (canvas, settings) {
@@ -165,8 +167,21 @@ bento.define('bento/renderers/pixi', [
                 stage: stage
             }
         };
+        var versionRequirement = function () {
+            var version = PIXI.VERSION;
+            var major = parseInt(version.split('.')[0]);
+            if (major < 5) {
+                return false;
+            }
+            return true;
+        };
 
         if (canWebGl && Utils.isDefined(window.PIXI)) {
+            if (!versionRequirement()) {
+                console.log('WARNING: PIXI version too low. Reverting to pixi3 renderer');
+                return new Pixi3Renderer(canvas, settings);
+            }
+
             // init pixi
             matrix = new TransformMatrix();
             renderer = new PIXI.Renderer({
@@ -179,6 +194,7 @@ bento.define('bento/renderers/pixi', [
             });
             stage.sortableChildren = true;
             
+            // set up sprite using PixiSprites
             Sprite.inheritFrom(PixiSprite);
 
             return pixiRenderer;
