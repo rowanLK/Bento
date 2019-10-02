@@ -1,6 +1,4 @@
-<h3 align="center">
-  <img style="max-width: 100%; max-height: 200px" src="http://www.heigames.com/bento-header.png" alt="Bento" />
-</h3>
+![Alt text](icons/bento-header.png?raw=true "Bento")
 
 # Bento Javascript Game Engine
 
