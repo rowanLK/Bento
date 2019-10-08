@@ -1,6 +1,7 @@
 /**
- * The Tween is an entity that performs an interpolation within a timeframe. The entity
- * removes itself after the tween ends.
+ * The Tween is an behavior that performs an interpolation within a timeframe. The behavior
+ * removes itself after the tween ends. It can also be used a behavior on an entity, in that case, spawn
+ * a Tween.TweenBehavior
  * Default tweens: linear, quadratic, squareroot, cubic, cuberoot, exponential, elastic, sin, cos
  * <br>Exports: Constructor
  * @module bento/tween
@@ -24,7 +25,7 @@
  * @param {Boolean} [settings.stay] - Never complete the tween (only use if you know what you're doing)
  * @param {Boolean} [settings.updateWhenPaused] - Continue tweening even when the game is paused (optional) NOTE: tweens automatically copy the current pause level if this is not set
  * @param {Boolean} [settings.ignoreGameSpeed] - Run tween at normal speed (optional)
- * @returns Entity
+ * @returns TweenBehavior
  * @snippet Tween|constructor
 Tween({
     from: ${1:0},
@@ -51,9 +52,12 @@ Tween({
 bento.define('bento/tween', [
     'bento',
     'bento/math/vector2',
-    'bento/utils',
-    'bento/entity'
-], function (Bento, Vector2, Utils, Entity) {
+    'bento/utils'
+], function (
+    Bento, 
+    Vector2, 
+    Utils
+) {
     'use strict';
     /**
      * Interpolations (3rd party)

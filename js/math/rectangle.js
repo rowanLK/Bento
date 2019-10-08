@@ -434,7 +434,23 @@ bento.define('bento/math/rectangle', [
     Rectangle.prototype.toString = function () {
         return '[object Rectangle]';
     };
-
+    /**
+     * Returns a Vector2 relative to the topleft corner of the Rectangle
+     * @function
+     * @returns {Vector2} Vector2 relative to the topleft corner of the Rectangle
+     * @instance
+     * @name getRelative
+     * @snippet #Rectangle.getRelative()|Vector2
+        getRelative(${1:0.5}, ${2:0.5})
+     */
+    Rectangle.prototype.getRelative = function (x, y) {
+        if (x.isVector2) {
+            // turn to numbers
+            y = x.y;
+            x = x.x;
+        }
+        return new Vector2(this.x + this.width * x, this.y + this.height * y);
+    };
     // ==== Static functions and properties ====
     /**
      * Copies values into another instance
