@@ -5152,6 +5152,7 @@ bento.define('bento/components/pixi/sprite', [
         this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
         // checking if frame changed
         this.lastFrame = null;
+        this.lastAnimation = null;
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
@@ -5166,12 +5167,13 @@ bento.define('bento/components/pixi/sprite', [
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
         var currentFrame = Math.round(this.currentFrame);
+        var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
             this.sprite.visible = false;
             return;
         }
-        if (this.lastFrame !== currentFrame) {
+        if (this.lastFrame !== currentFrame || this.lastAnimation !== currentAnimation) {
             // prevent updating the uvs all the time
             this.updateFrame();
             this.updateSprite(
@@ -5182,6 +5184,7 @@ bento.define('bento/components/pixi/sprite', [
                 this.frameHeight
             );
             this.lastFrame = currentFrame;
+            this.lastAnimation = currentAnimation;
         }
 
         // draw with pixi
@@ -5520,6 +5523,7 @@ bento.define('bento/components/three/sprite', [
 
         // checking if frame changed
         this.lastFrame = null;
+        this.lastAnimation = null;
 
         // debugging
         // var axesHelper = new THREE.AxesHelper( 1 );
@@ -5546,6 +5550,7 @@ bento.define('bento/components/three/sprite', [
         var origin = this.origin;
         var plane = this.planeMesh;
         var currentFrame = Math.round(this.currentFrame);
+        var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
             // there is nothing to draw
@@ -5553,11 +5558,12 @@ bento.define('bento/components/three/sprite', [
             return;
         }
 
-        if (this.lastFrame !== currentFrame) {
+        if (this.lastFrame !== currentFrame || this.lastAnimation !== currentAnimation) {
             // prevent updating the uvs all the time
             this.updateFrame();
             this.updateUvs();
             this.lastFrame = currentFrame;
+            this.lastAnimation = currentAnimation;
         }
 
         // origin: to achieve this offset effect, we move the plane (child of the object3d)
@@ -16023,6 +16029,7 @@ bento.define('bento/gui/text', [
         }*/
         var text = '';
         var linebreaks = true;
+        var linebreaksOnlyOnSpace = false;
         var maxWidth;
         var maxHeight;
         var fontWeight = 'normal';
@@ -16217,6 +16224,9 @@ bento.define('bento/gui/text', [
              */
             if (Utils.isDefined(textSettings.linebreaks)) {
                 linebreaks = textSettings.linebreaks;
+            }
+            if (Utils.isDefined(textSettings.linebreaksOnlyOnSpace)) {
+                linebreaksOnlyOnSpace = textSettings.linebreaksOnlyOnSpace;
             }
             if (Utils.isDefined(textSettings.maxWidth)) {
                 maxWidth = textSettings.maxWidth * sharpness;
@@ -16573,24 +16583,30 @@ bento.define('bento/gui/text', [
                             break;
                         }
                     }
-                    // find first space to split (if there are no spaces, we just split at our current position)
-                    spacePos = subString.lastIndexOf(' ');
-                    if (spacePos > 0 && spacePos != subString.length) {
-                        // set splitting position
-                        j += subString.length - spacePos;
-                    }
-                    // split the string into 2
-                    remainingString = singleString.slice(l - j, l);
-                    singleString = singleString.slice(0, l - j);
+                    if (!(linebreaksOnlyOnSpace && singleString.indexOf(' ') == -1 && singleString.indexOf('\u200b') == -1) ) {
+                        // find first space to split (if there are no spaces, we just split at our current position)
+                        spacePos = Math.max(subString.lastIndexOf(' '), subString.lastIndexOf('\u200b'));
+                        if (spacePos > 0 && spacePos != subString.length) {
+                            // set splitting position
+                            j += subString.length - spacePos;
+                        } else {
+                            if (linebreaksOnlyOnSpace) {
+                                j = 0;
+                            }
+                        }
+                        // split the string into 2
+                        remainingString = singleString.slice(l - j, l);
+                        singleString = singleString.slice(0, l - j);
 
-                    // remove first space in remainingString
-                    if (remainingString.charAt(0) === ' ') {
-                        remainingString = remainingString.slice(1);
-                    }
+                        // remove first space in remainingString
+                        if (remainingString.charAt(0) === ' ') {
+                            remainingString = remainingString.slice(1);
+                        }
 
-                    // the remaining string will be pushed into the array right after this one
-                    if (remainingString.length !== 0) {
-                        singleStrings.splice(i + 1, 0, remainingString);
+                        // the remaining string will be pushed into the array right after this one
+                        if (remainingString.length !== 0) {
+                            singleStrings.splice(i + 1, 0, remainingString);
+                        }
                     }
 
                     // set width correctly and proceed

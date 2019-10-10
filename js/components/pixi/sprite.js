@@ -31,6 +31,7 @@ bento.define('bento/components/pixi/sprite', [
         this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
         // checking if frame changed
         this.lastFrame = null;
+        this.lastAnimation = null;
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
@@ -45,12 +46,13 @@ bento.define('bento/components/pixi/sprite', [
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
         var currentFrame = Math.round(this.currentFrame);
+        var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
             this.sprite.visible = false;
             return;
         }
-        if (this.lastFrame !== currentFrame) {
+        if (this.lastFrame !== currentFrame || this.lastAnimation !== currentAnimation) {
             // prevent updating the uvs all the time
             this.updateFrame();
             this.updateSprite(
@@ -61,6 +63,7 @@ bento.define('bento/components/pixi/sprite', [
                 this.frameHeight
             );
             this.lastFrame = currentFrame;
+            this.lastAnimation = currentAnimation;
         }
 
         // draw with pixi
