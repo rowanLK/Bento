@@ -64,6 +64,7 @@ bento.define('bento/components/three/sprite', [
 
         // checking if frame changed
         this.lastFrame = null;
+        this.lastAnimation = null;
 
         // debugging
         // var axesHelper = new THREE.AxesHelper( 1 );
@@ -90,6 +91,7 @@ bento.define('bento/components/three/sprite', [
         var origin = this.origin;
         var plane = this.planeMesh;
         var currentFrame = Math.round(this.currentFrame);
+        var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
             // there is nothing to draw
@@ -97,11 +99,12 @@ bento.define('bento/components/three/sprite', [
             return;
         }
 
-        if (this.lastFrame !== currentFrame) {
+        if (this.lastFrame !== currentFrame || this.lastAnimation !== currentAnimation) {
             // prevent updating the uvs all the time
             this.updateFrame();
             this.updateUvs();
             this.lastFrame = currentFrame;
+            this.lastAnimation = currentAnimation;
         }
 
         // origin: to achieve this offset effect, we move the plane (child of the object3d)

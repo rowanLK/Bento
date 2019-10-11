@@ -5152,6 +5152,7 @@ bento.define('bento/components/pixi/sprite', [
         this.scaleMode = settings.scaleMode || (Bento.getAntiAlias() ? PIXI.SCALE_MODES.LINEAR : PIXI.SCALE_MODES.NEAREST);
         // checking if frame changed
         this.lastFrame = null;
+        this.lastAnimation = null;
     };
     PixiSprite.prototype = Object.create(Sprite.prototype);
     PixiSprite.prototype.constructor = PixiSprite;
@@ -5166,12 +5167,13 @@ bento.define('bento/components/pixi/sprite', [
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
         var currentFrame = Math.round(this.currentFrame);
+        var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
             this.sprite.visible = false;
             return;
         }
-        if (this.lastFrame !== currentFrame) {
+        if (this.lastFrame !== currentFrame || this.lastAnimation !== currentAnimation) {
             // prevent updating the uvs all the time
             this.updateFrame();
             this.updateSprite(
@@ -5182,6 +5184,7 @@ bento.define('bento/components/pixi/sprite', [
                 this.frameHeight
             );
             this.lastFrame = currentFrame;
+            this.lastAnimation = currentAnimation;
         }
 
         // draw with pixi
@@ -5520,6 +5523,7 @@ bento.define('bento/components/three/sprite', [
 
         // checking if frame changed
         this.lastFrame = null;
+        this.lastAnimation = null;
 
         // debugging
         // var axesHelper = new THREE.AxesHelper( 1 );
@@ -5546,6 +5550,7 @@ bento.define('bento/components/three/sprite', [
         var origin = this.origin;
         var plane = this.planeMesh;
         var currentFrame = Math.round(this.currentFrame);
+        var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
             // there is nothing to draw
@@ -5553,11 +5558,12 @@ bento.define('bento/components/three/sprite', [
             return;
         }
 
-        if (this.lastFrame !== currentFrame) {
+        if (this.lastFrame !== currentFrame || this.lastAnimation !== currentAnimation) {
             // prevent updating the uvs all the time
             this.updateFrame();
             this.updateUvs();
             this.lastFrame = currentFrame;
+            this.lastAnimation = currentAnimation;
         }
 
         // origin: to achieve this offset effect, we move the plane (child of the object3d)
@@ -7975,6 +7981,154 @@ bento.define('bento/lib/domready', [], function () {
 });
 
 /**
+ * Intercepts GLTF and FBX loader with base64 inline urls. Run this before GLTFLoader begins.
+ * When parsing a GLTF/FBX file, if a relative path to an asset is encountered, it will be replaced by a Base64 asset if one exists.
+ * This allows the loaders to work in compact builds.
+ * @moduleName InlineThreeLoaders
+ */
+bento.define('inlinethreeloaders', [
+    'bento/utils'
+], function (
+    Utils
+) {
+    'use strict';
+    var cache = {};
+    var InlineGltfLoader = function (AssetManager) {
+        if (!THREE.GLTFLoader) {
+            console.log('ERROR: there is no THREE.GLTFLoader');
+            return;
+        }
+        if (!THREE.GLTFParser) {
+            console.log('ERROR: GLTFParser is not exposed');
+            return;
+        }
+        var GLTFParser = THREE.GLTFParser;
+        // cache original functions
+        if (!cache.loadBuffer) {
+            cache.loadBuffer = GLTFParser.prototype.loadBuffer;
+        }
+        if (!cache.loadTexture) {
+            cache.loadTexture = GLTFParser.prototype.loadTexture;
+        }
+
+        // replace prototype
+        GLTFParser.prototype.loadBuffer = function (bufferIndex) {
+            var bufferDef = this.json.buffers[bufferIndex];
+            var path = this.options.path;
+            // check if there is an asset that's exactly this 
+            var assetsJson = AssetManager.getAssetGroups();
+            var comparison;
+
+            if (path) {
+                comparison = path + '/' + bufferDef.uri;
+            } else {
+                comparison = bufferDef.uri;
+            }
+            Utils.forEach(assetsJson, function (types, groupName) {
+                Utils.forEach(types, function (assetGroup, groupType) {
+                    Utils.forEach(assetGroup, function (value, key) {
+                        if (key === comparison) {
+                            if (value.startsWith('data:')) {
+                                // replace uri with base64
+                                bufferDef.uri = value;
+                            }
+                        }
+                    });
+                });
+            });
+
+
+            // call original function
+            return cache.loadBuffer.apply(this, arguments);
+        };
+        // replace prototype
+        GLTFParser.prototype.loadTexture = function (textureIndex) {
+            var textureDef = this.json.textures[textureIndex];
+            var textureExtensions = textureDef.extensions || {};
+            var source;
+            var path = this.options.path;
+            var comparison;
+
+            if (textureExtensions['MSFT_texture_dds']) {
+                source = this.json.images[textureExtensions['MSFT_texture_dds'].source];
+            } else {
+                source = this.json.images[textureDef.source];
+            }
+            if (path) {
+                comparison = path + '/' + source.uri;
+            } else {
+                comparison = source.uri;
+            }
+
+            // check if there is an asset that's exactly this 
+            var assetsJson = AssetManager.getAssetGroups();
+            Utils.forEach(assetsJson, function (types, groupName) {
+                Utils.forEach(types, function (assetGroup, groupType) {
+                    Utils.forEach(assetGroup, function (value, key) {
+                        if (key === comparison) {
+                            if (value.startsWith('data:')) {
+                                // replace uri with base64
+                                source.uri = value;
+                            }
+                        }
+                    });
+                });
+            });
+
+            // call original function
+            return cache.loadTexture.apply(this, arguments);
+        };
+    };
+    var InlineFbxLoader = function (AssetManager) {
+        if (!THREE.FBXLoader) {
+            console.log('ERROR: there is no THREE.FBXLoader');
+            return;
+        }
+        if (!THREE.FBXTreeParser) {
+            console.log('ERROR: FBXTreeParser is not exposed');
+            return;
+        }
+        var FBXTreeParser = THREE.FBXTreeParser;
+        // cache original functions
+        if (!cache.loadTextureFbx) {
+            cache.loadTextureFbx = FBXTreeParser.prototype.loadTexture;
+        }
+
+        // replace prototype
+        FBXTreeParser.prototype.loadTexture = function (textureNode, images) {
+            var fileName;
+            var children = this.connections.get(textureNode.id).children;
+
+            if (children !== undefined && children.length > 0 && images[children[0].ID] !== undefined) {
+
+                fileName = images[children[0].ID];
+
+                // check if there is an asset that's exactly this 
+                var assetsJson = AssetManager.getAssetGroups();
+                Utils.forEach(assetsJson, function (types, groupName) {
+                    Utils.forEach(types, function (assetGroup, groupType) {
+                        Utils.forEach(assetGroup, function (value, key) {
+                            if (key + '.png' === fileName) {
+                                if (value.startsWith('data:')) {
+                                    // replace uri with base64
+                                    images[children[0].ID] = value;
+                                }
+                            }
+                        });
+                    });
+                });
+            }
+
+            // call original function
+            return cache.loadTextureFbx.apply(this, arguments);
+        };
+    };
+    return {
+        gltf: InlineGltfLoader,
+        fbx: InlineFbxLoader
+    };
+});
+/**
  * Game loop implementation. Reason why this exists is because Loop.run(callback)
  * can be swapped out with a different implementation other than requestAnimationFrame.
  */
@@ -8566,13 +8720,15 @@ bento.define('bento/managers/asset', [
     'bento/packedimage',
     'bento/utils',
     'audia',
-    'lzstring'
+    'lzstring',
+    'inlinethreeloaders'
 ], function (
     EventSystem,
     PackedImage,
     Utils,
     Audia,
-    LZString
+    LZString,
+    InlineThreeLoaders
 ) {
     'use strict';
     return function (settings) {
@@ -8591,6 +8747,7 @@ bento.define('bento/managers/asset', [
             spritesheets: {},
             texturePacker: {},
             spine: {},
+            meshes: {},
 
             // packed
             'packed-images': {},
@@ -8767,9 +8924,6 @@ bento.define('bento/managers/asset', [
                     }
                 }
             };
-
-            // cocoon lazy load, might be useful some day?
-            // img.cocoonLazyLoad = true;
 
             img.addEventListener('load', function () {
                 callback(null, name, img);
@@ -9140,6 +9294,77 @@ bento.define('bento/managers/asset', [
                 }
             );
         };
+        var loadFBX = function (name, source, callback) {
+            if (Utils.isUndefined(THREE)) {
+                callback('loadFBX: THREE namespace not defined');
+                return;
+            }
+            if (Utils.isUndefined(THREE.FBXLoader)) {
+                callback('loadFBX: THREE.FBXLoader not defined');
+                return;
+            }
+            var fbxLoader = new THREE.FBXLoader();
+            fbxLoader.load(source, function (fbx) {
+                var i, mesh;
+                for (i in fbx.children) {
+                    mesh = fbx.children[i];
+                    if (
+                        mesh &&
+                        mesh.material &&
+                        mesh.material.emissiveIntensity &&
+                        !mesh.material.emissiveMap
+                    ) {
+                        mesh.material.emissiveMap = mesh.material.map;
+                    }
+                }
+                callback(null, name, fbx);
+            }, undefined, function (error) {
+                callback('loadFBX: ' + error);
+            });
+        };
+        var loadGLTF = function (name, source, callback) {
+            if (Utils.isUndefined(THREE)) {
+                callback('loadGLTF: THREE namespace not defined');
+                return;
+            }
+            if (Utils.isUndefined(THREE.GLTFLoader)) {
+                callback('loadGLTF: THREE.GLTFLoader not defined');
+                return;
+            }
+            var isBase64 = name.indexOf && name.indexOf('data:') === 0;
+            var assetPath;
+            if (isBase64) {
+                assetPath = '';
+            } else {
+                assetPath = source.split('/');
+                assetPath.pop();
+                assetPath = assetPath.join('/') + '/';
+            }
+            var gltfLoader = new THREE.GLTFLoader().setPath(assetPath);
+            var localPath = isBase64 ? name : source.replace(assetPath, '');
+
+            gltfLoader.load(localPath, function (gltf) {
+                gltf.scene.traverse(function (child) {
+                    if (
+                        child.isMesh &&
+                        child.material &&
+                        child.material.emissiveIntensity &&
+                        !child.material.emissiveMap
+                    ) {
+                        child.material.emissiveMap = child.material.map;
+                    }
+                });
+
+                gltf.scene.animations = gltf.animations;
+                if (isBase64) {
+                    callback(null, source, gltf.scene);
+                } else {
+                    callback(null, name, gltf.scene);
+                }
+            }, undefined, function (error) {
+                callback('loadGLTF: ' + error);
+            });
+        };
         /**
          * Loads asset groups (json files containing names and asset paths to load)
          * If the assetGroup parameter is passed to Bento.setup, this function will be
@@ -9294,18 +9519,31 @@ bento.define('bento/managers/asset', [
                     postLoad();
                 }
             };
-            var onLoadImage = function (err, name, image) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets.images[name] = image;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'image');
-                }
-                checkLoaded();
+            var makeLoadCallback = function (assetTable, assetKind) {
+                return function (err, name, object) {
+                    if (err) {
+                        Utils.log(err);
+                        return;
+                    }
+                    assetTable[name] = object;
+                    assetsLoaded += 1;
+                    if (Utils.isDefined(onLoaded)) {
+                        onLoaded(assetsLoaded, assetCount, name, assetKind);
+                    }
+                    checkLoaded();
+                    return true;
+                };
             };
+
+            var onLoadImage = makeLoadCallback(assets.images, 'image');
+            var onLoadJson = makeLoadCallback(assets.json, 'json');
+            var onLoadTTF = makeLoadCallback(assets.fonts, 'ttf');
+            var onLoadAudio = makeLoadCallback(assets.audio, 'audio');
+            var onLoadSpriteSheet = makeLoadCallback(assets.spritesheets, 'spriteSheet');
+            var onLoadSpine = makeLoadCallback(assets.spine, 'spine');
+            var onLoadFBX = makeLoadCallback(assets.meshes, 'fbx');
+            var onLoadGLTF = makeLoadCallback(assets.meshes, 'gltf');
+
             // DEPRECATED
             var onLoadPack = function (err, name, json) {
                 // TODO: fix texturepacker loading
@@ -9321,106 +9559,26 @@ bento.define('bento/managers/asset', [
                 }
                 checkLoaded();
             };
-            var onLoadJson = function (err, name, json) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets.json[name] = json;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'json');
-                }
-                checkLoaded();
-            };
-            var onLoadTTF = function (err, name, ttf) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets.fonts[name] = ttf;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'ttf');
-                }
-                checkLoaded();
-            };
-            var onLoadAudio = function (err, name, audio) {
-                if (err) {
-                    Utils.log(err);
-                } else {
-                    assets.audio[name] = audio;
-                }
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'audio');
-                }
-                checkLoaded();
-            };
-            var onLoadSpriteSheet = function (err, name, spriteSheet) {
-                if (err) {
-                    Utils.log(err);
-                } else {
-                    assets.spritesheets[name] = spriteSheet;
-                }
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheet');
-                }
-                checkLoaded();
-            };
-            var onLoadSpine = function (err, name, spine) {
-                if (err) {
-                    Utils.log(err);
-                } else {
-                    assets.spine[name] = spine;
-                }
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'spine');
-                }
-                checkLoaded();
-            };
+
             // packs
-            var onLoadImagePack = function (err, name, imagePack) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets['packed-images'][name] = imagePack;
-                toUnpack['packed-images'][name] = imagePack;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'imagePack');
-                }
-                checkLoaded();
+            var makeLoadPackCallback = function (packKey, assetKind) {
+                return function (err, name, pack) {
+                    if (err) {
+                        Utils.log(err);
+                        return;
+                    }
+                    assets[packKey][name] = pack;
+                    toUnpack[packKey][name] = pack;
+                    assetsLoaded += 1;
+                    if (Utils.isDefined(onLoaded)) {
+                        onLoaded(assetsLoaded, assetCount, name, assetKind);
+                    }
+                    checkLoaded();
+                };
             };
-            var onLoadJsonPack = function (err, name, json) {
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-                assets['packed-json'][name] = json;
-                toUnpack['packed-json'][name] = json;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'jsonPack');
-                }
-                checkLoaded();
-            };
-            var onLoadSpriteSheetPack = function (err, name, spriteSheetPack) {
-                if (err) {
-                    Utils.log(err);
-                    return;
-                }
-                assets['packed-spritesheets'][name] = spriteSheetPack;
-                toUnpack['packed-spritesheets'][name] = spriteSheetPack;
-                assetsLoaded += 1;
-                if (Utils.isDefined(onLoaded)) {
-                    onLoaded(assetsLoaded, assetCount, name, 'spriteSheetPack');
-                }
-                checkLoaded();
-            };
+            var onLoadImagePack = makeLoadPackCallback('packed-images', 'imagePack');
+            var onLoadJsonPack = makeLoadPackCallback('packed-json', 'jsonPack');
+            var onLoadSpriteSheetPack = makeLoadPackCallback('packed-spritesheets', 'spriteSheetPack');
 
             var readyForLoading = function (fn, asset, path, callback) {
                 toLoad.push({
@@ -9431,8 +9589,7 @@ bento.define('bento/managers/asset', [
                 });
             };
             var loadAllAssets = function () {
-                var i = 0,
-                    l;
+                var i, l;
                 var data;
                 for (i = 0, l = toLoad.length; i < l; ++i) {
                     data = toLoad[i];
@@ -9528,6 +9685,32 @@ bento.define('bento/managers/asset', [
                     }
                     readyForLoading(loadSpine, asset, path + 'spine/' + group.spine[asset], onLoadSpine);
                 }
+            }
+            // get fbx
+            if (Utils.isDefined(group.fbx)) {
+                assetCount += Utils.getKeyLength(group.fbx);
+                Utils.forEach(group.fbx, function (asset, key, l, breakLoop) {
+                    // only add meshes
+                    if (asset.indexOf('.fbx') > -1 || asset.indexOf('data:application/octet-stream') === 0) {
+                        readyForLoading(loadFBX, key, group.path === 'base64' ? asset : (group.path + 'fbx/' + asset), onLoadFBX);
+                    } else {
+                        // other files will be handled by GLTFLoader
+                        assetCount--;
+                    }
+                });
+            }
+            // get gltf
+            if (Utils.isDefined(group.gltf)) {
+                assetCount += Utils.getKeyLength(group.gltf);
+                Utils.forEach(group.gltf, function (asset, assetName, l, breakLoop) {
+                    // only add gltf files
+                    if (assetName.indexOf('.gltf') > -1) {
+                        readyForLoading(loadGLTF, group.path === 'base64' ? asset : assetName, group.path === 'base64' ? assetName : group.path + 'gltf/' + assetName, onLoadGLTF);
+                    } else {
+                        // bin and png are ignored for now (loaded by GLTFLoader)
+                        assetCount--;
+                    }
+                });
             }
 
             // packed assets
@@ -9864,6 +10047,24 @@ bento.define('bento/managers/asset', [
         var getSpineLoader = function (name) {
             return spineAssetLoader;
         };
+
+        /**
+         * Returns a previously loaded THREE.js mesh.
+         * Note, this gives the original instance. If you want a copy, use `THREE.SkeletonUtils.clone` or a wrapper function like `Onigiri.getMesh()`.
+         * @function
+         * @instance
+         * @param {String} name - Name of mesh
+         * @returns {Object} Mesh
+         * @name getMesh
+         */
+        var getMesh = function (name) {
+            var asset = assets.meshes[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Mesh " + name + " could not be found");
+            }
+            return asset;
+        };
+
         /**
          * Returns all assets
          * @function
@@ -10113,6 +10314,7 @@ bento.define('bento/managers/asset', [
             hasAsset: hasAsset,
             getSpine: getSpine,
             getSpineLoader: getSpineLoader,
+            getMesh: getMesh,
             forceHtml5Audio: function () {
                 Audia = Audia.getHtmlAudia();
             }
@@ -10137,6 +10339,16 @@ bento.define('bento/managers/asset', [
                     }
                 });
             });
+        }
+
+        // Override THREE's loaders if they are available.
+        if (THREE) {
+            if (THREE.FBXLoader) {
+                InlineThreeLoaders.fbx(manager);
+            }
+            if (THREE.GLTFLoader) {
+                InlineThreeLoaders.gltf(manager);
+            }
         }
 
         return manager;
@@ -16023,6 +16235,7 @@ bento.define('bento/gui/text', [
         }*/
         var text = '';
         var linebreaks = true;
+        var linebreaksOnlyOnSpace = false;
         var maxWidth;
         var maxHeight;
         var fontWeight = 'normal';
@@ -16217,6 +16430,9 @@ bento.define('bento/gui/text', [
              */
             if (Utils.isDefined(textSettings.linebreaks)) {
                 linebreaks = textSettings.linebreaks;
+            }
+            if (Utils.isDefined(textSettings.linebreaksOnlyOnSpace)) {
+                linebreaksOnlyOnSpace = textSettings.linebreaksOnlyOnSpace;
             }
             if (Utils.isDefined(textSettings.maxWidth)) {
                 maxWidth = textSettings.maxWidth * sharpness;
@@ -16573,24 +16789,30 @@ bento.define('bento/gui/text', [
                             break;
                         }
                     }
-                    // find first space to split (if there are no spaces, we just split at our current position)
-                    spacePos = subString.lastIndexOf(' ');
-                    if (spacePos > 0 && spacePos != subString.length) {
-                        // set splitting position
-                        j += subString.length - spacePos;
-                    }
-                    // split the string into 2
-                    remainingString = singleString.slice(l - j, l);
-                    singleString = singleString.slice(0, l - j);
+                    if (!(linebreaksOnlyOnSpace && singleString.indexOf(' ') == -1 && singleString.indexOf('\u200b') == -1) ) {
+                        // find first space to split (if there are no spaces, we just split at our current position)
+                        spacePos = Math.max(subString.lastIndexOf(' '), subString.lastIndexOf('\u200b'));
+                        if (spacePos > 0 && spacePos != subString.length) {
+                            // set splitting position
+                            j += subString.length - spacePos;
+                        } else {
+                            if (linebreaksOnlyOnSpace) {
+                                j = 0;
+                            }
+                        }
+                        // split the string into 2
+                        remainingString = singleString.slice(l - j, l);
+                        singleString = singleString.slice(0, l - j);
 
-                    // remove first space in remainingString
-                    if (remainingString.charAt(0) === ' ') {
-                        remainingString = remainingString.slice(1);
-                    }
+                        // remove first space in remainingString
+                        if (remainingString.charAt(0) === ' ') {
+                            remainingString = remainingString.slice(1);
+                        }
 
-                    // the remaining string will be pushed into the array right after this one
-                    if (remainingString.length !== 0) {
-                        singleStrings.splice(i + 1, 0, remainingString);
+                        // the remaining string will be pushed into the array right after this one
+                        if (remainingString.length !== 0) {
+                            singleStrings.splice(i + 1, 0, remainingString);
+                        }
                     }
 
                     // set width correctly and proceed
