@@ -12,13 +12,15 @@ bento.define('bento/managers/asset', [
     'bento/packedimage',
     'bento/utils',
     'audia',
-    'lzstring'
+    'lzstring',
+    'inlinethreeloaders'
 ], function (
     EventSystem,
     PackedImage,
     Utils,
     Audia,
-    LZString
+    LZString,
+    InlineThreeLoaders
 ) {
     'use strict';
     return function (settings) {
@@ -585,7 +587,6 @@ bento.define('bento/managers/asset', [
             );
         };
         var loadFBX = function (name, source, callback) {
-            var THREE = window.THREE;
             if (Utils.isUndefined(THREE)) {
                 callback('loadFBX: THREE namespace not defined');
                 return;
@@ -614,7 +615,6 @@ bento.define('bento/managers/asset', [
             });
         };
         var loadGLTF = function (name, source, callback) {
-            var THREE = window.THREE;
             if (Utils.isUndefined(THREE)) {
                 callback('loadGLTF: THREE namespace not defined');
                 return;
@@ -1631,6 +1631,16 @@ bento.define('bento/managers/asset', [
                     }
                 });
             });
+        }
+
+        // Override THREE's loaders if they are available.
+        if (THREE) {
+            if (THREE.FBXLoader) {
+                InlineThreeLoaders.fbx(manager);
+            }
+            if (THREE.GLTFLoader) {
+                InlineThreeLoaders.gltf(manager);
+            }
         }
 
         return manager;
