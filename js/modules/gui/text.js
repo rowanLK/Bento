@@ -408,6 +408,19 @@ bento.define('bento/gui/text', [
                     tempCtx.fillStyle = shadowColor;
                     tempCtx.fillText(strings[i].string, ~~x, ~~y + (navigator.isCocoonJS ? 0 : 0.5));
 
+                    // outer stroke
+                    if (!pixelStroke) {
+                        tempCtx.lineJoin = lineJoin;
+                        tempCtx.globalCompositeOperation = 'destination-over';
+                        for (j = lineWidth.length - 1; j >= 0; --j) {
+                            if (lineWidth[j] && !innerStroke[j]) {
+                                tempCtx.lineWidth = lineWidth[j] * 2;
+                                tempCtx.strokeStyle = strokeStyle[j];
+                                tempCtx.strokeText(strings[i].string, ~~x, ~~y);
+                            }
+                        }
+                    }
+
                     // draw it again on normal canvas
                     ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, shadowOffset.x, shadowOffset.y, tempCanvas.width, tempCanvas.height);
                 };
