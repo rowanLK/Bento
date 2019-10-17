@@ -3330,6 +3330,7 @@ bento.define('bento/components/eventlistener', [
 });
 /**
  * Component that fills a square.
+ * Uses a PIXI sprite under the hood, to avoid performance issues.
  * <br>Exports: Constructor
  * @module bento/components/fill
  * @moduleName Fill
@@ -3357,6 +3358,20 @@ bento.define('bento/components/fill', [
     Vector2
 ) {
     'use strict';
+    var PIXI = window.PIXI;
+
+    var texture = (function () {
+        var canvas = Bento.createCanvas();
+        canvas.width = 3;
+        canvas.height = 3;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        var baseTexture = PIXI.BaseTexture.fromCanvas(canvas, PIXI.SCALE_MODES.LINEAR);
+        var frame = new PIXI.Rectangle(1, 1, 1, 1);
+        return new PIXI.Texture(baseTexture, frame);
+    })();
+
     var Fill = function (settings) {
         if (!(this instanceof Fill)) {
             return new Fill(settings);
@@ -3365,6 +3380,7 @@ bento.define('bento/components/fill', [
         settings = settings || {};
         this.parent = null;
         this.rootIndex = -1;
+        this.sprite = new PIXI.Sprite(texture);
         this.name = settings.name || 'fill';
         /**
          * Color array
@@ -3401,13 +3417,21 @@ bento.define('bento/components/fill', [
     Fill.prototype.draw = function (data) {
         var dimension = this.dimension;
         var origin = this.origin;
-        data.renderer.fillRect(
-            this.color,
-            dimension.x - origin.x,
-            dimension.y - origin.y,
-            dimension.width,
-            dimension.height
-        );
+        var sprite = this.sprite;
+        var color = this.color;
+
+        sprite.tint = (color[0] * 255) << 16
+                    | (color[1] * 255) << 8
+                    | (color[2] * 255) << 0;
+
+        sprite.alpha = color[3];
+
+        sprite.x = dimension.x - origin.x;
+        sprite.y = dimension.y - origin.y;
+        sprite.width = dimension.width;
+        sprite.height = dimension.height;
+
+        data.renderer.drawPixi(this.sprite);
     };
     /**
      * Set origin relative to size
@@ -4028,8 +4052,8 @@ bento.define('bento/components/pixi/sprite', [
         }
         texture = image.frame;
         rectangle = texture._frame;
-        rectangle.x = sx;
-        rectangle.y = sy;
+        rectangle.x = packedImage.x + sx;
+        rectangle.y = packedImage.y + sy;
         rectangle.width = sw;
         rectangle.height = sh;
         texture._updateUvs();
@@ -15218,6 +15242,7 @@ bento.define('bento/gui/text', [
         var maxWidth;
         var maxHeight;
         var fontWeight = 'normal';
+        var linebreaksOnlyOnSpace = false;
         var gradient;
         var gradientColors = ['black', 'white'];
         var align = 'left';
@@ -15410,6 +15435,9 @@ bento.define('bento/gui/text', [
             if (Utils.isDefined(textSettings.linebreaks)) {
                 linebreaks = textSettings.linebreaks;
             }
+            if (Utils.isDefined(textSettings.linebreaksOnlyOnSpace)) {
+                linebreaksOnlyOnSpace = textSettings.linebreaksOnlyOnSpace;
+            }
             if (Utils.isDefined(textSettings.maxWidth)) {
                 maxWidth = textSettings.maxWidth * sharpness;
             }
@@ -15510,6 +15538,19 @@ bento.define('bento/gui/text', [
                     setContext(tempCtx);
                     tempCtx.fillStyle = shadowColor;
                     tempCtx.fillText(strings[i].string, ~~x, ~~y + (navigator.isCocoonJS ? 0 : 0.5));
+
+                    // outer stroke
+                    if (!pixelStroke) {
+                        tempCtx.lineJoin = lineJoin;
+                        tempCtx.globalCompositeOperation = 'destination-over';
+                        for (j = lineWidth.length - 1; j >= 0; --j) {
+                            if (lineWidth[j] && !innerStroke[j]) {
+                                tempCtx.lineWidth = lineWidth[j] * 2;
+                                tempCtx.strokeStyle = strokeStyle[j];
+                                tempCtx.strokeText(strings[i].string, ~~x, ~~y);
+                            }
+                        }
+                    }
 
                     // draw it again on normal canvas
                     ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, shadowOffset.x, shadowOffset.y, tempCanvas.width, tempCanvas.height);
@@ -15762,24 +15803,30 @@ bento.define('bento/gui/text', [
                             break;
                         }
                     }
-                    // find first space to split (if there are no spaces, we just split at our current position)
-                    spacePos = subString.lastIndexOf(' ');
-                    if (spacePos > 0 && spacePos != subString.length) {
-                        // set splitting position
-                        j += subString.length - spacePos;
-                    }
-                    // split the string into 2
-                    remainingString = singleString.slice(l - j, l);
-                    singleString = singleString.slice(0, l - j);
+                    if (!(linebreaksOnlyOnSpace && singleString.indexOf(' ') == -1 && singleString.indexOf('\u200b') == -1) ) {
+                        // find first space to split (if there are no spaces, we just split at our current position)
+                        spacePos = Math.max(subString.lastIndexOf(' '), subString.lastIndexOf('\u200b'));
+                        if (spacePos > 0 && spacePos != subString.length) {
+                            // set splitting position
+                            j += subString.length - spacePos;
+                        } else {
+                            if (linebreaksOnlyOnSpace) {
+                                j = 0;
+                            }
+                        }
+                        // split the string into 2
+                        remainingString = singleString.slice(l - j, l);
+                        singleString = singleString.slice(0, l - j);
 
-                    // remove first space in remainingString
-                    if (remainingString.charAt(0) === ' ') {
-                        remainingString = remainingString.slice(1);
-                    }
+                        // remove first space in remainingString
+                        if (remainingString.charAt(0) === ' ') {
+                            remainingString = remainingString.slice(1);
+                        }
 
-                    // the remaining string will be pushed into the array right after this one
-                    if (remainingString.length !== 0) {
-                        singleStrings.splice(i + 1, 0, remainingString);
+                        // the remaining string will be pushed into the array right after this one
+                        if (remainingString.length !== 0) {
+                            singleStrings.splice(i + 1, 0, remainingString);
+                        }
                     }
 
                     // set width correctly and proceed
@@ -18556,9 +18603,12 @@ bento.define('bento/tween', [
              * @snippet #Tween.begin|Tween
             begin();
              */
-            begin: function () {
+            begin: function (force) {
                 time = 0;
                 running = true;
+                if (force) {
+                    delayTimer = 0;
+                }
                 return tweenSubject;
             },
             /**

@@ -410,9 +410,12 @@ bento.define('bento/tween', [
              * @snippet #Tween.begin|Tween
             begin();
              */
-            begin: function () {
+            begin: function (force) {
                 time = 0;
                 running = true;
+                if (force) {
+                    delayTimer = 0;
+                }
                 return tweenSubject;
             },
             /**
