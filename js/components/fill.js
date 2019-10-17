@@ -1,5 +1,6 @@
 /**
  * Component that fills a square.
+ * Uses a PIXI sprite under the hood, to avoid performance issues.
  * <br>Exports: Constructor
  * @module bento/components/fill
  * @moduleName Fill
@@ -27,6 +28,20 @@ bento.define('bento/components/fill', [
     Vector2
 ) {
     'use strict';
+    var PIXI = window.PIXI;
+
+    var texture = (function () {
+        var canvas = Bento.createCanvas();
+        canvas.width = 3;
+        canvas.height = 3;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        var baseTexture = PIXI.BaseTexture.fromCanvas(canvas, PIXI.SCALE_MODES.LINEAR);
+        var frame = new PIXI.Rectangle(1, 1, 1, 1);
+        return new PIXI.Texture(baseTexture, frame);
+    })();
+
     var Fill = function (settings) {
         if (!(this instanceof Fill)) {
             return new Fill(settings);
@@ -35,6 +50,7 @@ bento.define('bento/components/fill', [
         settings = settings || {};
         this.parent = null;
         this.rootIndex = -1;
+        this.sprite = new PIXI.Sprite(texture);
         this.name = settings.name || 'fill';
         /**
          * Color array
@@ -71,13 +87,21 @@ bento.define('bento/components/fill', [
     Fill.prototype.draw = function (data) {
         var dimension = this.dimension;
         var origin = this.origin;
-        data.renderer.fillRect(
-            this.color,
-            dimension.x - origin.x,
-            dimension.y - origin.y,
-            dimension.width,
-            dimension.height
-        );
+        var sprite = this.sprite;
+        var color = this.color;
+
+        sprite.tint = (color[0] * 255) << 16
+                    | (color[1] * 255) << 8
+                    | (color[2] * 255) << 0;
+
+        sprite.alpha = color[3];
+
+        sprite.x = dimension.x - origin.x;
+        sprite.y = dimension.y - origin.y;
+        sprite.width = dimension.width;
+        sprite.height = dimension.height;
+
+        data.renderer.drawPixi(this.sprite);
     };
     /**
      * Set origin relative to size
