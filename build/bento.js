@@ -20578,7 +20578,9 @@ bento.define('bento/renderers/three', [
                     0, 0, 0, 1
                 );
                 // opacity
-                material.opacity *= alpha;
+                if (material) {
+                    material.opacity *= alpha;
+                }
                 // show the object
                 object3D.visible = true;
 
