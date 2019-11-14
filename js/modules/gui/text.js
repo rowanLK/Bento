@@ -284,7 +284,7 @@ bento.define('bento/gui/text', [
             if (Utils.isDefined(textSettings.shadow)) {
                 shadow = textSettings.shadow;
                 if (Utils.isDefined(textSettings.shadowOffset)) {
-                    shadowOffset = textSettings.shadowOffset.scalarMultiplyWith(sharpness);
+                    shadowOffset = textSettings.shadowOffset.scalarMultiply(sharpness);
                 } else {
                     if (shadow) {
                         // default is 1 pixel down
