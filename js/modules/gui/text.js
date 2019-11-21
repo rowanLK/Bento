@@ -123,6 +123,7 @@ bento.define('bento/gui/text', [
         var maxLineWidth = 0;
         var lineJoin = 'round';
         var strokeStyle = ['black'];
+        var strokeOffset = [new Vector2(0, 0)];
         var innerStroke = [false];
         var textBaseline = 'top';
         var pixelStroke = false;
@@ -251,6 +252,16 @@ bento.define('bento/gui/text', [
                     strokeStyle = [textSettings.strokeStyle];
                 } else {
                     strokeStyle = textSettings.strokeStyle;
+                }
+            }
+            if (Utils.isDefined(textSettings.strokeOffset)) {
+                if (!Utils.isArray(textSettings.strokeStyle)) {
+                    strokeOffset = [textSettings.strokeOffset.scalarMultiply(sharpness)];
+                } else {
+                    strokeOffset = [];
+                    Utils.forEach(textSettings.strokeOffset, function (offset) {
+                        strokeOffset.push(offset.scalarMultiply(sharpness));
+                    });
                 }
             }
             if (textSettings.innerStroke) {
@@ -546,7 +557,7 @@ bento.define('bento/gui/text', [
                     if (lineWidth[j] && innerStroke[j]) {
                         context.lineWidth = lineWidth[j] * 2;
                         context.strokeStyle = strokeStyle[j];
-                        context.strokeText(strings[i].string, ~~x, ~~y);
+                        context.strokeText(strings[i].string, ~~x + strokeOffset[j].x, ~~y + strokeOffset[j].y);
                     }
                 }
 
@@ -558,7 +569,7 @@ bento.define('bento/gui/text', [
                         if (lineWidth[j] && !innerStroke[j]) {
                             context.lineWidth = lineWidth[j] * 2;
                             context.strokeStyle = strokeStyle[j];
-                            context.strokeText(strings[i].string, ~~x, ~~y);
+                            context.strokeText(strings[i].string, ~~x + strokeOffset[j].x, ~~y + strokeOffset[j].y);
                         }
                     }
                 }
