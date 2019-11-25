@@ -38,7 +38,11 @@ bento.define('bento/renderers/three', [
         // main scene and camera
         var scene;
         var camera;
-        var mainSceneCamera = [scene, camera];
+        var mainSceneInfo = {
+            scene: null,
+            camera: null,
+            gamma: undefined,
+        };
         // module
         var bentoRenderer = {
             name: 'three.js',
@@ -110,13 +114,21 @@ bento.define('bento/renderers/three', [
             flush: function () {
                 // render sceneList and its cameras
                 var i = 0, l = sceneList.length;
+                var sceneInfo;
                 renderer.autoClear = (sceneList.length === 1);
 
                 for (i = 0; i < l; ++i) {
+                    sceneInfo = sceneList[i];
                     if (i > 0) {
                         renderer.clearDepth();
                     }
-                    renderer.render(sceneList[i][0], sceneList[i][1]);
+                    if (sceneInfo.gamma == null) {
+                        renderer.gammaOutput = false;
+                    } else {
+                        renderer.gammaOutput = true;
+                        renderer.gammaFactor = sceneInfo.gamma;
+                    }
+                    renderer.render(sceneInfo.scene, sceneInfo.camera);
                 }
             },
             getOpacity: function () {
@@ -135,7 +147,8 @@ bento.define('bento/renderers/three', [
                 camera: null,
                 scene: null,
                 renderer: null,
-                // sceneList is an array of scene/camera pairs [[THREE.Camera, THREE.Scene], ...]
+                
+                // array of objects, each with scene, camera and optional info such as gamma.
                 sceneList: sceneList
             },
             updateSize: function () {
@@ -187,8 +200,8 @@ bento.define('bento/renderers/three', [
             renderer.setViewport(0, 0, canvas.width, canvas.height);
 
             // setup main scene and camera
-            mainSceneCamera[0] = scene;
-            mainSceneCamera[1] = camera;
+            mainSceneInfo.scene = scene;
+            mainSceneInfo.camera = camera;
 
             // expose camera and scene
             ThreeJsRenderer.camera = camera;
@@ -203,7 +216,7 @@ bento.define('bento/renderers/three', [
             setupRenderer();
             setupScene();
             // attach main scene
-            sceneList.push(mainSceneCamera);
+            sceneList.push(mainSceneInfo);
         } else {
             if (!THREE) {
                 console.log('WARNING: THREE library is missing, reverting to Canvas2D renderer');
