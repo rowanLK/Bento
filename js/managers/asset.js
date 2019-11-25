@@ -1119,7 +1119,7 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} groupName - Name of asset group
-         * @param {Boolean} dispose - Should use Canvas+ dispose
+         * @param {Boolean} dispose - Should dispose of resources (defaults to true)
          * @name unload
          */
         var unload = function (groupName, dispose) {
@@ -1137,12 +1137,27 @@ bento.define('bento/managers/asset', [
                 if (typeof group !== "object") {
                     return;
                 }
+
+                var assetTypeGroup = assets[type];
+
+                if (type === 'gltf' || type === 'fbx') {
+                    // workaround for inconsistency in mesh directory names
+                    assetTypeGroup = assets['meshes'];
+                }
+                if (!assetTypeGroup) {
+                    // skip asset type for this group, because it's empty.
+                    return;
+                }
+
+                // Three.js textures, materials and geometry may be shared by multiple meshes.
+                // This dictionary ensures that each resource will be freed exactly once.
+                var disposeByUuid = {};
+
                 Utils.forEach(group, function (assetPath, name) {
                     // NOTE: from this point on there are a lot of manual checks etc.
                     // would be nicer to make unify the logic...
 
                     // find the corresponding asset from the assets object
-                    var assetTypeGroup = assets[type] || {};
                     var asset = assetTypeGroup[name];
                     var removePackedImage = function (packedImages) {
                         // find what it unpacked to
@@ -1192,6 +1207,25 @@ bento.define('bento/managers/asset', [
                             delete assets.json[key];
                         });
                     };
+                    var removeMesh = function (mesh) {
+                        mesh.traverse(function (object) {
+                            if (object.isMesh) {
+                                var geometry = object.geometry;
+                                var material = object.material;
+                                if (geometry) {
+                                    disposeByUuid[geometry.uuid] = geometry;
+                                }
+                                if (material) {
+                                    disposeByUuid[material.uuid] = material;
+                                    Utils.forEach(material, function (tex) {
+                                        if (tex && tex.isTexture) {
+                                            disposeByUuid[tex.uuid] = tex;
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    };
 
                     if (asset) {
                         // remove reference to it
@@ -1211,10 +1245,11 @@ bento.define('bento/managers/asset', [
                             removePackedSpriteSheet(asset);
                         } else if (type === 'packed-json') {
                             removePackedJson(asset);
+                        } else if (type === 'gltf' || type === 'fbx') {
+                            removeMesh(asset);
                         }
 
-                        // Canvas+ only: dispose if possible
-                        // https://blog.ludei.com/techniques-to-optimize-memory-use-in-ludeis-canvas-environment/
+                        // Dispose if possible
                         if (dispose) {
                             // image
                             if (asset.dispose) {
@@ -1233,6 +1268,12 @@ bento.define('bento/managers/asset', [
                         }
                     }
                 });
+
+                // Dispose all Three.js resources used by meshes in the group
+                Utils.forEach(disposeByUuid, function (resource, uuid) {
+                    resource.dispose();
+                });
+
             });
             // mark as unloaded
             loadedGroups[groupName] = false;
