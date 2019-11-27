@@ -1,5 +1,5 @@
 /**
- * Sprite component with a three plane exposed. Must be used with three renderer.
+ * Sprite component with a three mesh exposed. Must be used with three renderer.
  * <br>Exports: Constructor
  * @module bento/components/three/sprite
  * @moduleName ThreeSprite
@@ -16,6 +16,26 @@ bento.define('bento/components/three/sprite', [
 ) {
     'use strict';
     var THREE = window.THREE;
+
+    var positions = new Float32Array([
+         0.0,  0.0,  0.0,
+         1.0,  0.0,  0.0,
+         1.0,  1.0,  0.0,
+         0.0,  1.0,  0.0,
+    ]);
+    var uvs = new Float32Array([
+        0.0, 1.0,
+        1.0, 1.0,
+        1.0, 0.0,
+        0.0, 0.0,
+    ]);
+    var indices = new Uint16Array([
+        0, 1, 2,
+        2, 3, 0
+    ]);
+    var positionAttribute = new THREE.BufferAttribute(positions, 3);
+    var indexAttribute = new THREE.BufferAttribute(indices, 1);
+
     var ThreeSprite = function (settings) {
         if (!(this instanceof ThreeSprite)) {
             return new ThreeSprite(settings);
@@ -35,23 +55,23 @@ bento.define('bento/components/three/sprite', [
          * ThreeJS geometry, used on this sprite
          * @instance
          * @name geometry
-         * @type {THREE.PlaneGeometry}
+         * @type {THREE.BufferGeometry}
          */
         this.geometry = null;
         /**
          * Current ThreeJS texture, used on this sprite
          * @instance
          * @name texture
-         * @type {THREE.PlaneGeometry}
+         * @type {THREE.Texture}
          */
         this.texture = null;
         /**
          * Current ThreeJS mesh, used for the sprite
          * @instance
-         * @name planeMesh
+         * @name mesh
          * @type {THREE.Mesh}
          */
-        this.planeMesh = null;
+        this.mesh = null;
         /**
          * Container object, use this to append any ThreeJS objects
          * @instance
@@ -89,7 +109,7 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype.draw = function (data) {
         // the draw function prepares the transforms and sets up origin position
         var origin = this.origin;
-        var plane = this.planeMesh;
+        var mesh = this.mesh;
         var currentFrame = Math.round(this.currentFrame);
         var currentAnimation = this.currentAnimation;
 
@@ -107,10 +127,9 @@ bento.define('bento/components/three/sprite', [
             this.lastAnimation = currentAnimation;
         }
 
-        // origin: to achieve this offset effect, we move the plane (child of the object3d)
-        // take into account that threejs already assumes middle of the mesh to be origin
-        plane.position.x = -(origin.x - this.frameWidth / 2);
-        plane.position.y = (origin.y - this.frameHeight / 2);
+        // origin: to achieve this offset effect, we move the mesh (child of the object3d)
+        mesh.position.x = -origin.x;
+        mesh.position.y = origin.y - this.frameHeight;
 
         // opacity will be overwritten by renderer
         this.material.opacity = 1;
@@ -122,7 +141,7 @@ bento.define('bento/components/three/sprite', [
     ThreeSprite.prototype.setup = function (data) {
         var packedImage;
         var threeTexture;
-        var plane;
+        var mesh;
 
         Sprite.prototype.setup.call(this, data);
 
@@ -150,66 +169,63 @@ bento.define('bento/components/three/sprite', [
             this.material = new THREE.MeshBasicMaterial({
                 map: this.texture,
                 color: 0xffffff,
-                // side: THREE.DoubleSide,
                 alphaTest: Utils.getDefault(this.settings.alphaTest, ThreeSprite.alphaTest), // --> prevents glitchy clipping
                 transparent: true
             });
-            // possibly move this if user wants to edit target width and height to be drawn
-            this.geometry = new THREE.PlaneGeometry(
-                this.frameWidth,
-                this.frameHeight,
-                1,
-                1
-            );
+
+            this.geometry = new THREE.BufferGeometry();
+            this.geometry.setIndex(indexAttribute);
+            this.geometry.setAttribute('position', positionAttribute);
+            this.geometry.setAttribute('uv', new THREE.BufferAttribute(uvs.slice(), 2));
+
             // remove existing mesh
-            if (this.planeMesh) {
-                this.object3D.remove(this.planeMesh);
-                this.planeMesh = null;
+            if (this.mesh) {
+                this.object3D.remove(this.mesh);
+                this.mesh = null;
             }
 
-            plane = new THREE.Mesh(this.geometry, this.material);
-            this.planeMesh = plane;
+            mesh = new THREE.Mesh(this.geometry, this.material);
+            this.mesh = mesh;
 
-            this.object3D.add(plane);
+            this.object3D.add(mesh);
         } else {
             // remove existing mesh
-            if (this.planeMesh) {
-                this.object3D.remove(this.planeMesh);
-                this.planeMesh = null;
+            if (this.mesh) {
+                this.object3D.remove(this.mesh);
+                this.mesh = null;
             }
         }
     };
 
     ThreeSprite.prototype.updateUvs = function () {
-        //
         var sourceX = this.sourceX;
         var sourceY = this.sourceY;
         var spriteImage = this.spriteImage;
         var image = spriteImage.image;
         var imageWidth = image.width;
         var imageHeight = image.height;
-        // var origin = this.origin; // -> what to do with this
 
         var sx = sourceX + spriteImage.x;
         var sy = sourceY + spriteImage.y;
 
-        var u = sx / imageWidth;
-        var v = 1 - sy / imageHeight;
-        var w = this.frameWidth / imageWidth;
-        var h = this.frameHeight / imageHeight;
+        var u0 = sx / imageWidth;
+        var v0 = sy / imageHeight;
+        var u1 = u0 + this.frameWidth / imageWidth;
+        var v1 = v0 + this.frameHeight / imageHeight;
 
-        var uvs;
+        var uv, arr;
 
-        if (this.geometry && this.planeMesh) {
-            uvs = this.geometry.faceVertexUvs[0];
-            uvs[0][0].set(u, v);
-            uvs[0][1].set(u, v - h);
-            uvs[0][2].set(u + w, v);
-            uvs[1][0].set(u, v - h);
-            uvs[1][1].set(u + w, v - h);
-            uvs[1][2].set(u + w, v);
+        this.mesh.scale.x = this.frameWidth;
+        this.mesh.scale.y = this.frameHeight;
 
-            this.geometry.uvsNeedUpdate = true;
+        if (this.geometry && this.mesh) {
+            uv = this.geometry.attributes.uv;
+            arr = uv.array;
+            arr[0] = u0; arr[1] = v1;
+            arr[2] = u1; arr[3] = v1;
+            arr[4] = u1; arr[5] = v0;
+            arr[6] = u0; arr[7] = v0;
+            uv.needsUpdate = true;
         }
     };
 
@@ -218,8 +234,8 @@ bento.define('bento/components/three/sprite', [
 
         // inherit name
         this.object3D.name = this.parent.name + '.' + this.name;
-        if (this.planeMesh) {
-            this.planeMesh.name = this.object3D.name + '.plane';
+        if (this.mesh) {
+            this.mesh.name = this.object3D.name + '.mesh';
         }
     };
 
@@ -253,6 +269,7 @@ bento.define('bento/components/three/sprite', [
         var imagePack = Utils.isString(image) ? Bento.assets.getImage(image) : image;
         var texture = new THREE.Texture(imagePack.image);
         texture.needsUpdate = true;
+        texture.flipY = false;
         if (!antiAlias) {
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
