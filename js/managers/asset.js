@@ -624,17 +624,27 @@ bento.define('bento/managers/asset', [
                 return;
             }
             var isBase64 = name.indexOf && name.indexOf('data:') === 0;
-            var assetPath;
-            if (isBase64) {
-                assetPath = '';
-            } else {
-                assetPath = source.split('/');
-                assetPath.pop();
-                assetPath = assetPath.join('/') + '/';
+            
+            var assetPath = source.split('/');
+            assetPath.pop();
+            assetPath = assetPath.join('/');
+            if (assetPath !== '') {
+                assetPath += '/';
             }
-            var gltfLoader = new THREE.GLTFLoader().setPath(assetPath);
-            var localPath = isBase64 ? name : source.replace(assetPath, '');
 
+            // use a custom manager with extra fields assigned to it
+            // (to be picked up by the modified GLTFLoader)
+            var manager = new THREE.LoadingManager();
+            manager.isBase64 = isBase64;
+            manager.assetPath = assetPath;
+
+            var gltfLoader = new THREE.GLTFLoader(manager).setPath('');
+            if (!isBase64) {
+                gltfLoader.setPath(assetPath);
+            }
+
+            var localPath = isBase64 ? name : source.replace(assetPath, '');
+            
             gltfLoader.load(localPath, function (gltf) {
                 gltf.scene.traverse(function (child) {
                     if (

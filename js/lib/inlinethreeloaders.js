@@ -33,15 +33,18 @@ bento.define('inlinethreeloaders', [
         GLTFParser.prototype.loadBuffer = function (bufferIndex) {
             var bufferDef = this.json.buffers[bufferIndex];
             var path = this.options.path;
+            var manager = this.options.manager;
+
             // check if there is an asset that's exactly this 
             var assetsJson = AssetManager.getAssetGroups();
             var comparison;
 
-            if (path) {
-                comparison = path + '/' + bufferDef.uri;
+            if (!manager.isBase64) {
+                comparison = path + (path.endsWith('/') ? '' : '/') + bufferDef.uri;
             } else {
-                comparison = bufferDef.uri;
+                comparison = manager.assetPath + bufferDef.uri;
             }
+
             Utils.forEach(assetsJson, function (types, groupName) {
                 Utils.forEach(types, function (assetGroup, groupType) {
                     Utils.forEach(assetGroup, function (value, key) {
@@ -65,6 +68,7 @@ bento.define('inlinethreeloaders', [
             var textureExtensions = textureDef.extensions || {};
             var source;
             var path = this.options.path;
+            var manager = this.options.manager;
             var comparison;
 
             if (textureExtensions['MSFT_texture_dds']) {
@@ -72,10 +76,11 @@ bento.define('inlinethreeloaders', [
             } else {
                 source = this.json.images[textureDef.source];
             }
-            if (path) {
-                comparison = path + '/' + source.uri;
+
+            if (!manager.isBase64) {
+                comparison = path + (path.endsWith('/') ? '' : '/') + source.uri;
             } else {
-                comparison = source.uri;
+                comparison = manager.assetPath + source.uri;
             }
 
             // check if there is an asset that's exactly this 
