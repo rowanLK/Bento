@@ -245,41 +245,54 @@ bento.define('bento/tween', [
     });
 
     /**
-     * Generate an interpolation function based on ease and type of start/end values (Numbers or Vector2)
+     * Generate an interpolation function based on ease name
      */
-    var generateInterpolation = function (ease, startVal, endVal) {
-        // generate the correct interpolation function
+    var generateInterpolation = function (ease) {
         var fn = interpolations[ease];
-        if (startVal.isVector2 && endVal.isVector2) {
-            // as vectors
-            if (fn) {
-                return function (s, e, t, alpha, beta) {
-                    return new Vector2(
-                        fn(s.x, e.x, t, alpha, beta),
-                        fn(s.y, e.y, t, alpha, beta)
-                    );
-                };
-            } else {
-                fn = robbertPenner[ease];
-                return function (s, e, t, alpha, beta) {
-                    return new Vector2(
-                        fn(t, s.x, e.x - s.x, 1),
-                        fn(t, s.y, e.y - s.y, 1)
-                    );
-                };
-            }
+        if (fn) {
+            return fn;
         } else {
-            // number output
-            if (fn) {
-                return function (s, e, t, alpha, beta) {
-                    return fn(s, e, t, alpha, beta);
-                };
-            } else {
-                fn = robbertPenner[ease];
-                return function (s, e, t, alpha, beta) {
-                    return fn(t, s, e - s, 1);
-                };
-            }
+            fn = robbertPenner[ease];
+            return function (s, e, t, alpha, beta) {
+                return fn(t, s, e - s, 1);
+            };
+        }
+    };
+
+    /**
+     * Create a wrapper update function to allow tweening of vectors and quaternions
+     */
+    var generateUpdate = function (onUpdate, startVal, endVal) {
+        var start, end, val;
+        if (startVal.isVector2 && endVal.isVector2) {
+            start = startVal.clone();
+            end = endVal.clone();
+            val = start.clone();
+            return function (v, t) {
+                val.x = end.x * v + start.x * (1-v);
+                val.y = end.y * v + start.y * (1-v);
+                onUpdate(val, t);
+            };
+        } else if (startVal.isVector3 && endVal.isVector3) {
+            start = startVal.clone();
+            end = endVal.clone();
+            val = start.clone();
+            return function (v, t) {
+                val.x = end.x * v + start.x * (1-v);
+                val.y = end.y * v + start.y * (1-v);
+                val.z = end.z * v + start.z * (1-v);
+                onUpdate(val, t);
+            };
+        } else if (startVal.isQuaternion && endVal.isQuaternion) {
+            start = startVal.clone();
+            end = endVal.clone();
+            val = start.clone();
+            return function (v, t) {
+                window.THREE.Quaternion.slerp(start, end, val, v);
+                onUpdate(val, t);
+            };
+        } else {
+            console.warn('Cannot tween between values', startVal, endVal);
         }
     };
 
@@ -322,14 +335,21 @@ bento.define('bento/tween', [
         var autoResumeTimer = -1;
         // either the tweenBehavior or its parent entity
         var tweenSubject;
-        // interpolation funciton to be generated
-        var interpolate = generateInterpolation(ease, startVal, endVal);
+        var interpolate = generateInterpolation(ease);
+
+        // wrap update when working with objects such as vectors
+        if (onUpdate && (typeof startVal !== 'number' || typeof endVal !== 'number')) {
+            onUpdate = onUpdate && generateUpdate(onUpdate, startVal, endVal);
+            startVal = 0;
+            endVal = 1;
+        }
+
         var tweenBehavior = new Object({
             z: 0,
             name: 'tweenBehavior',
             start: function (data) {
                 if (onCreate) {
-                    onCreate.apply(tweenSubject);
+                    onCreate.call(tweenSubject);
                 }
             },
             update: function (data) {
@@ -348,13 +368,13 @@ bento.define('bento/tween', [
                     }
                     // run onUpdate before start
                     if (applyOnDelay && onUpdate) {
-                        onUpdate.apply(tweenSubject, [interpolate(
+                        onUpdate.call(tweenSubject, interpolate(
                             startVal,
                             endVal,
                             0,
                             alpha,
                             beta
-                        ), 0]);
+                        ), 0);
                     }
                     return;
                 }
@@ -367,33 +387,33 @@ bento.define('bento/tween', [
                 if (!hasStarted) {
                     hasStarted = true;
                     if (onStart) {
-                        onStart.apply(tweenSubject);
+                        onStart.call(tweenSubject);
                     }
                 }
                 // run update
                 if (onUpdate) {
-                    onUpdate.apply(tweenSubject, [interpolate(
+                    onUpdate.call(tweenSubject, interpolate(
                         startVal,
                         endVal,
                         time / deltaT,
                         alpha,
                         beta
-                    ), time]);
+                    ), time);
                 }
                 // end
                 if (time >= deltaT && !stay) {
                     if (time > deltaT && onUpdate) {
                         //the tween didn't end neatly, so run onUpdate once more with a t of 1
-                        onUpdate.apply(tweenSubject, [interpolate(
+                        onUpdate.call(tweenSubject, interpolate(
                             startVal,
                             endVal,
                             1,
                             alpha,
                             beta
-                        ), time]);
+                        ), time);
                     }
                     if (onComplete) {
-                        onComplete.apply(tweenSubject);
+                        onComplete.call(tweenSubject);
                     }
 
                     tweenBehavior.removeSelf();

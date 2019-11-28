@@ -16250,6 +16250,7 @@ bento.define('bento/gui/text', [
         var maxLineWidth = 0;
         var lineJoin = 'round';
         var strokeStyle = ['black'];
+        var strokeOffset = [new Vector2(0, 0)];
         var innerStroke = [false];
         var textBaseline = 'top';
         var pixelStroke = false;
@@ -16380,6 +16381,16 @@ bento.define('bento/gui/text', [
                     strokeStyle = textSettings.strokeStyle;
                 }
             }
+            if (Utils.isDefined(textSettings.strokeOffset)) {
+                if (!Utils.isArray(textSettings.strokeStyle)) {
+                    strokeOffset = [textSettings.strokeOffset.scalarMultiply(sharpness)];
+                } else {
+                    strokeOffset = [];
+                    Utils.forEach(textSettings.strokeOffset, function (offset) {
+                        strokeOffset.push(offset.scalarMultiply(sharpness));
+                    });
+                }
+            }
             if (textSettings.innerStroke) {
                 if (!Utils.isArray(textSettings.innerStroke)) {
                     innerStroke = [textSettings.innerStroke];
@@ -16411,7 +16422,7 @@ bento.define('bento/gui/text', [
             if (Utils.isDefined(textSettings.shadow)) {
                 shadow = textSettings.shadow;
                 if (Utils.isDefined(textSettings.shadowOffset)) {
-                    shadowOffset = textSettings.shadowOffset.scalarMultiplyWith(sharpness);
+                    shadowOffset = textSettings.shadowOffset.scalarMultiply(sharpness);
                 } else {
                     if (shadow) {
                         // default is 1 pixel down
@@ -16673,7 +16684,7 @@ bento.define('bento/gui/text', [
                     if (lineWidth[j] && innerStroke[j]) {
                         context.lineWidth = lineWidth[j] * 2;
                         context.strokeStyle = strokeStyle[j];
-                        context.strokeText(strings[i].string, ~~x, ~~y);
+                        context.strokeText(strings[i].string, ~~x + strokeOffset[j].x, ~~y + strokeOffset[j].y);
                     }
                 }
 
@@ -16685,7 +16696,7 @@ bento.define('bento/gui/text', [
                         if (lineWidth[j] && !innerStroke[j]) {
                             context.lineWidth = lineWidth[j] * 2;
                             context.strokeStyle = strokeStyle[j];
-                            context.strokeText(strings[i].string, ~~x, ~~y);
+                            context.strokeText(strings[i].string, ~~x + strokeOffset[j].x, ~~y + strokeOffset[j].y);
                         }
                     }
                 }
@@ -17180,6 +17191,7 @@ bento.define('bento/gui/text', [
 
     return Text;
 });
+
 /**
  * An entity that behaves like a toggle button.
  * <br>Exports: Constructor
@@ -20784,7 +20796,9 @@ bento.define('bento/renderers/three', [
                     0, 0, 0, 1
                 );
                 // opacity
-                material.opacity *= alpha;
+                if (material) {
+                    material.opacity *= alpha;
+                }
                 // show the object
                 object3D.visible = true;
 

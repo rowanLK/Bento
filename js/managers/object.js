@@ -99,6 +99,15 @@ bento.define('bento/managers/object', [
 
             lastFrameTime = time;
 
+            if (!isRunning) {
+                /**
+                 * Fired at the end of the frame on which Bento.objects.stop() was called.
+                 * This can be useful to clean up on hot-reload, before the new screen is shown.
+                 * @event bentoStop
+                 */
+                EventSystem.fire('bentoStop');
+            }
+
             Loop.run(mainLoop);
         };
         var currentObject; // the current object being processed in the main loop
