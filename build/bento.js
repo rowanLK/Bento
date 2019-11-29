@@ -2694,8 +2694,8 @@ bento.define('bento', [
                     // restart the mainloop
                     Bento.objects.run();
                     /**
-                     * Fired when using Bento's quick reload feature
-                     * @event bentoReload 
+                     * Fired when using Bento's quick reload feature, <em>after</em> the new screen was shown.
+                     * @event bentoReload
                      */
                     EventSystem.fire('bentoReload', {});
                 }
@@ -4831,26 +4831,20 @@ EventListener({
  * @param {String} settings.name - Component name, defaults to 'eventListener'
  * @param {String} settings.eventName - Event name to listen to
  * @param {Boolean} settings.ignorePause - Listen to events even if entity is paused
+ * @param {Boolean} settings.global - Make this a top-level event listener, which will be removed before hot reload
  * @param {Function} settings.onEvent - Event callback
  */
 bento.define('bento/components/eventlistener', [
     'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/entity',
     'bento/eventsystem',
-    'bento/utils',
-    'bento/tween'
+    'bento/utils'
 ], function (
     Bento,
-    Vector2,
-    Rectangle,
-    Entity,
     EventSystem,
-    Utils,
-    Tween
+    Utils
 ) {
     'use strict';
+
     var isPaused = function (entity) {
         var rootPause = 0;
         if (!Bento.objects || !entity) {
@@ -4866,23 +4860,33 @@ bento.define('bento/components/eventlistener', [
         return rootPause < Bento.objects.isPaused();
     };
     return function (settings) {
-        var viewport = Bento.getViewport();
         var componentName = settings.name || 'eventListener';
         var eventName = settings.eventName;
         var ignorePause = settings.ignorePause || false;
+        var global = settings.global || false;
         var onEvent = settings.callback || settings.onEvent || function () {};
         var entity;
         var component = {
             name: componentName,
+            global: global,
             start: function (data) {
                 if (!eventName) {
                     Utils.log('WARNING: eventName is not defined! Using component name as event name');
                     eventName = componentName;
                 }
                 EventSystem.on(eventName, ignorePause ? onEvent : wrapperCallback);
+                if (global) {
+                    if (!component.isAdded) {
+                        Utils.log('Global event listener should be added via Bento.objects.attach');
+                    }
+                    EventSystem.on('bentoStop', removeCallback);
+                }
             },
             destroy: function (data) {
                 EventSystem.off(eventName, ignorePause ? onEvent : wrapperCallback);
+                if (global) {
+                    EventSystem.off('bentoStop', removeCallback);
+                }
             },
             attached: function (data) {
                 entity = data.entity;
@@ -4893,6 +4897,9 @@ bento.define('bento/components/eventlistener', [
             if (!isPaused(entity)) {
                 onEvent(data);
             }
+        };
+        var removeCallback = function () {
+            Bento.objects.remove(component);
         };
         return component;
     };
@@ -7981,154 +7988,6 @@ bento.define('bento/lib/domready', [], function () {
 });
 
 /**
- * Intercepts GLTF and FBX loader with base64 inline urls. Run this before GLTFLoader begins.
- * When parsing a GLTF/FBX file, if a relative path to an asset is encountered, it will be replaced by a Base64 asset if one exists.
- * This allows the loaders to work in compact builds.
- * @moduleName InlineThreeLoaders
- */
-bento.define('inlinethreeloaders', [
-    'bento/utils'
-], function (
-    Utils
-) {
-    'use strict';
-    var cache = {};
-    var InlineGltfLoader = function (AssetManager) {
-        if (!THREE.GLTFLoader) {
-            console.log('ERROR: there is no THREE.GLTFLoader');
-            return;
-        }
-        if (!THREE.GLTFParser) {
-            console.log('ERROR: GLTFParser is not exposed');
-            return;
-        }
-        var GLTFParser = THREE.GLTFParser;
-        // cache original functions
-        if (!cache.loadBuffer) {
-            cache.loadBuffer = GLTFParser.prototype.loadBuffer;
-        }
-        if (!cache.loadTexture) {
-            cache.loadTexture = GLTFParser.prototype.loadTexture;
-        }
-
-        // replace prototype
-        GLTFParser.prototype.loadBuffer = function (bufferIndex) {
-            var bufferDef = this.json.buffers[bufferIndex];
-            var path = this.options.path;
-            // check if there is an asset that's exactly this 
-            var assetsJson = AssetManager.getAssetGroups();
-            var comparison;
-
-            if (path) {
-                comparison = path + '/' + bufferDef.uri;
-            } else {
-                comparison = bufferDef.uri;
-            }
-            Utils.forEach(assetsJson, function (types, groupName) {
-                Utils.forEach(types, function (assetGroup, groupType) {
-                    Utils.forEach(assetGroup, function (value, key) {
-                        if (key === comparison) {
-                            if (value.startsWith('data:')) {
-                                // replace uri with base64
-                                bufferDef.uri = value;
-                            }
-                        }
-                    });
-                });
-            });
-
-
-            // call original function
-            return cache.loadBuffer.apply(this, arguments);
-        };
-        // replace prototype
-        GLTFParser.prototype.loadTexture = function (textureIndex) {
-            var textureDef = this.json.textures[textureIndex];
-            var textureExtensions = textureDef.extensions || {};
-            var source;
-            var path = this.options.path;
-            var comparison;
-
-            if (textureExtensions['MSFT_texture_dds']) {
-                source = this.json.images[textureExtensions['MSFT_texture_dds'].source];
-            } else {
-                source = this.json.images[textureDef.source];
-            }
-            if (path) {
-                comparison = path + '/' + source.uri;
-            } else {
-                comparison = source.uri;
-            }
-
-            // check if there is an asset that's exactly this 
-            var assetsJson = AssetManager.getAssetGroups();
-            Utils.forEach(assetsJson, function (types, groupName) {
-                Utils.forEach(types, function (assetGroup, groupType) {
-                    Utils.forEach(assetGroup, function (value, key) {
-                        if (key === comparison) {
-                            if (value.startsWith('data:')) {
-                                // replace uri with base64
-                                source.uri = value;
-                            }
-                        }
-                    });
-                });
-            });
-
-            // call original function
-            return cache.loadTexture.apply(this, arguments);
-        };
-    };
-    var InlineFbxLoader = function (AssetManager) {
-        if (!THREE.FBXLoader) {
-            console.log('ERROR: there is no THREE.FBXLoader');
-            return;
-        }
-        if (!THREE.FBXTreeParser) {
-            console.log('ERROR: FBXTreeParser is not exposed');
-            return;
-        }
-        var FBXTreeParser = THREE.FBXTreeParser;
-        // cache original functions
-        if (!cache.loadTextureFbx) {
-            cache.loadTextureFbx = FBXTreeParser.prototype.loadTexture;
-        }
-
-        // replace prototype
-        FBXTreeParser.prototype.loadTexture = function (textureNode, images) {
-            var fileName;
-            var children = this.connections.get(textureNode.id).children;
-
-            if (children !== undefined && children.length > 0 && images[children[0].ID] !== undefined) {
-
-                fileName = images[children[0].ID];
-
-                // check if there is an asset that's exactly this 
-                var assetsJson = AssetManager.getAssetGroups();
-                Utils.forEach(assetsJson, function (types, groupName) {
-                    Utils.forEach(types, function (assetGroup, groupType) {
-                        Utils.forEach(assetGroup, function (value, key) {
-                            if (key + '.png' === fileName) {
-                                if (value.startsWith('data:')) {
-                                    // replace uri with base64
-                                    images[children[0].ID] = value;
-                                }
-                            }
-                        });
-                    });
-                });
-            }
-
-            // call original function
-            return cache.loadTextureFbx.apply(this, arguments);
-        };
-    };
-    return {
-        gltf: InlineGltfLoader,
-        fbx: InlineFbxLoader
-    };
-});
-/**
  * Game loop implementation. Reason why this exists is because Loop.run(callback)
  * can be swapped out with a different implementation other than requestAnimationFrame.
  */
@@ -8707,6 +8566,69 @@ bento.define('bento/lib/requestanimationframe', [], function () {
     return window.requestAnimationFrame;
 });
 /**
+ * Create a LoadingManager to be passed to GLTFLoader / FBXLoader
+ * These are used to rewrite URLs of local buffer/texture resources.
+ * e.g. if a relative path to a resource is encountered, we can find an
+ *  appropriate Base64 URI from assets.json and supply that instead.
+ */
+bento.define('threeloadingmanager', [
+    'bento/utils'
+], function (
+    Utils
+) {
+    'use strict';
+
+    var THREE = window.THREE;
+
+    // Patch this Three function so that it doesn't mess up data URIs
+    var extractUrlBase = THREE.LoaderUtils.extractUrlBase;
+    THREE.LoaderUtils.extractUrlBase = function (url) {
+        if (url.startsWith('data:')) {
+            return '';
+        } else {
+            return extractUrlBase(url);
+        }
+    };
+    
+    return function (group, meshKind, assetPath, log) {
+
+        var manager = new THREE.LoadingManager();
+
+        // Note: if additional logic is needed, we can override the loaders like this:
+        // manager.addHandler(/\.gltf$/i, gltfLoader);
+        // manager.addHandler(/\.png$/i, textureLoader);
+        // manager.addHandler(/\.bin$/i, bufferLoader);
+
+        manager.setURLModifier(function (url) {
+            if (url.startsWith('data:')) {
+                // Base64 URI
+                return url;
+            } else if (url.startsWith('assets/')) {
+                // We already have the full path to an asset
+                return url;
+            } else {
+                // Find an asset in the group by name
+                var assetName = assetPath + url;
+                var resources = group[meshKind];
+
+                // Remove extension for FBX resources, but not for GLTF ones
+                if (meshKind !== 'gltf') assetName = assetName.split('.')[0];
+                
+                var realUrl = resources ? resources[assetName] : null;
+                if (realUrl) {
+                    return realUrl;
+                } else {
+                    Utils.log('Failed to find ' + meshKind + ' resource: ' + assetName);
+                    return url;
+                }
+            }
+        });
+
+        return manager;
+    };
+
+});
+/**
  * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
  * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which
  * assets to load, and where to find them.
@@ -8721,14 +8643,14 @@ bento.define('bento/managers/asset', [
     'bento/utils',
     'audia',
     'lzstring',
-    'inlinethreeloaders'
+    'threeloadingmanager'
 ], function (
     EventSystem,
     PackedImage,
     Utils,
     Audia,
     LZString,
-    InlineThreeLoaders
+    ThreeLoadingManager
 ) {
     'use strict';
     return function (settings) {
@@ -8756,6 +8678,7 @@ bento.define('bento/managers/asset', [
         };
         var spineAssetLoader;
         var tempSpineImage;
+        var currentlyLoadingGroup; // to help ThreeLoadingManager find the path to a buffer or texture when loading resources from Base64
         /**
          * (Down)Load asset types
          */
@@ -9303,7 +9226,14 @@ bento.define('bento/managers/asset', [
                 callback('loadFBX: THREE.FBXLoader not defined');
                 return;
             }
-            var fbxLoader = new THREE.FBXLoader();
+
+            var assetPath = name.split('/');
+            assetPath.pop();
+            assetPath = assetPath.join('/');
+            if (assetPath !== '') assetPath += '/';
+
+            var manager = new ThreeLoadingManager(currentlyLoadingGroup, 'fbx', assetPath);
+            var fbxLoader = new THREE.FBXLoader(manager);
             fbxLoader.load(source, function (fbx) {
                 var i, mesh;
                 for (i in fbx.children) {
@@ -9331,19 +9261,16 @@ bento.define('bento/managers/asset', [
                 callback('loadGLTF: THREE.GLTFLoader not defined');
                 return;
             }
-            var isBase64 = name.indexOf && name.indexOf('data:') === 0;
-            var assetPath;
-            if (isBase64) {
-                assetPath = '';
-            } else {
-                assetPath = source.split('/');
-                assetPath.pop();
-                assetPath = assetPath.join('/') + '/';
-            }
-            var gltfLoader = new THREE.GLTFLoader().setPath(assetPath);
-            var localPath = isBase64 ? name : source.replace(assetPath, '');
 
-            gltfLoader.load(localPath, function (gltf) {
+            var assetPath = name.split('/');
+            assetPath.pop();
+            assetPath = assetPath.join('/');
+            if (assetPath !== '') assetPath += '/';
+
+            var manager = new ThreeLoadingManager(currentlyLoadingGroup, 'gltf', assetPath);
+            var gltfLoader = new THREE.GLTFLoader(manager);
+
+            gltfLoader.load(source, function (gltf) {
                 gltf.scene.traverse(function (child) {
                     if (
                         child.isMesh &&
@@ -9356,11 +9283,7 @@ bento.define('bento/managers/asset', [
                 });
 
                 gltf.scene.animations = gltf.animations;
-                if (isBase64) {
-                    callback(null, source, gltf.scene);
-                } else {
-                    callback(null, name, gltf.scene);
-                }
+                callback(null, name, gltf.scene);
             }, undefined, function (error) {
                 callback('loadGLTF: ' + error);
             });
@@ -9414,6 +9337,7 @@ bento.define('bento/managers/asset', [
          */
         var load = function (groupName, onReady, onLoaded) {
             var group = assetGroups[groupName];
+            currentlyLoadingGroup = group;
             var asset;
             var assetsLoaded = 0;
             var assetCount = 0;
@@ -9689,12 +9613,12 @@ bento.define('bento/managers/asset', [
             // get fbx
             if (Utils.isDefined(group.fbx)) {
                 assetCount += Utils.getKeyLength(group.fbx);
-                Utils.forEach(group.fbx, function (asset, key, l, breakLoop) {
+                Utils.forEach(group.fbx, function (asset, assetName, l, breakLoop) {
                     // only add meshes
                     if (asset.indexOf('.fbx') > -1 || asset.indexOf('data:application/octet-stream') === 0) {
-                        readyForLoading(loadFBX, key, group.path === 'base64' ? asset : (group.path + 'fbx/' + asset), onLoadFBX);
+                        readyForLoading(loadFBX, assetName, group.path === 'base64' ? asset : (group.path + 'fbx/' + asset), onLoadFBX);
                     } else {
-                        // other files will be handled by GLTFLoader
+                        // other files will be handled by FBXLoader
                         assetCount--;
                     }
                 });
@@ -9705,7 +9629,7 @@ bento.define('bento/managers/asset', [
                 Utils.forEach(group.gltf, function (asset, assetName, l, breakLoop) {
                     // only add gltf files
                     if (assetName.indexOf('.gltf') > -1) {
-                        readyForLoading(loadGLTF, group.path === 'base64' ? asset : assetName, group.path === 'base64' ? assetName : group.path + 'gltf/' + assetName, onLoadGLTF);
+                        readyForLoading(loadGLTF, assetName, group.path === 'base64' ? asset : group.path + 'gltf/' + assetName, onLoadGLTF);
                     } else {
                         // bin and png are ignored for now (loaded by GLTFLoader)
                         assetCount--;
@@ -9737,6 +9661,8 @@ bento.define('bento/managers/asset', [
 
             // load all assets
             loadAllAssets();
+            
+            currentlyLoadingGroup = null;
 
             return assetCount;
         };
@@ -9827,7 +9753,7 @@ bento.define('bento/managers/asset', [
          * @function
          * @instance
          * @param {String} groupName - Name of asset group
-         * @param {Boolean} dispose - Should use Canvas+ dispose
+         * @param {Boolean} dispose - Should dispose of resources (defaults to true)
          * @name unload
          */
         var unload = function (groupName, dispose) {
@@ -9845,12 +9771,27 @@ bento.define('bento/managers/asset', [
                 if (typeof group !== "object") {
                     return;
                 }
+
+                var assetTypeGroup = assets[type];
+
+                if (type === 'gltf' || type === 'fbx') {
+                    // workaround for inconsistency in mesh directory names
+                    assetTypeGroup = assets['meshes'];
+                }
+                if (!assetTypeGroup) {
+                    // skip asset type for this group, because it's empty.
+                    return;
+                }
+
+                // Three.js textures, materials and geometry may be shared by multiple meshes.
+                // This dictionary ensures that each resource will be freed exactly once.
+                var disposeByUuid = {};
+
                 Utils.forEach(group, function (assetPath, name) {
                     // NOTE: from this point on there are a lot of manual checks etc.
                     // would be nicer to make unify the logic...
 
                     // find the corresponding asset from the assets object
-                    var assetTypeGroup = assets[type] || {};
                     var asset = assetTypeGroup[name];
                     var removePackedImage = function (packedImages) {
                         // find what it unpacked to
@@ -9900,6 +9841,25 @@ bento.define('bento/managers/asset', [
                             delete assets.json[key];
                         });
                     };
+                    var removeMesh = function (mesh) {
+                        mesh.traverse(function (object) {
+                            if (object.isMesh) {
+                                var geometry = object.geometry;
+                                var material = object.material;
+                                if (geometry) {
+                                    disposeByUuid[geometry.uuid] = geometry;
+                                }
+                                if (material) {
+                                    disposeByUuid[material.uuid] = material;
+                                    Utils.forEach(material, function (tex) {
+                                        if (tex && tex.isTexture) {
+                                            disposeByUuid[tex.uuid] = tex;
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    };
 
                     if (asset) {
                         // remove reference to it
@@ -9919,10 +9879,11 @@ bento.define('bento/managers/asset', [
                             removePackedSpriteSheet(asset);
                         } else if (type === 'packed-json') {
                             removePackedJson(asset);
+                        } else if (type === 'gltf' || type === 'fbx') {
+                            removeMesh(asset);
                         }
 
-                        // Canvas+ only: dispose if possible
-                        // https://blog.ludei.com/techniques-to-optimize-memory-use-in-ludeis-canvas-environment/
+                        // Dispose if possible
                         if (dispose) {
                             // image
                             if (asset.dispose) {
@@ -9941,6 +9902,12 @@ bento.define('bento/managers/asset', [
                         }
                     }
                 });
+
+                // Dispose all Three.js resources used by meshes in the group
+                Utils.forEach(disposeByUuid, function (resource, uuid) {
+                    resource.dispose();
+                });
+
             });
             // mark as unloaded
             loadedGroups[groupName] = false;
@@ -10339,16 +10306,6 @@ bento.define('bento/managers/asset', [
                     }
                 });
             });
-        }
-
-        // Override THREE's loaders if they are available.
-        if (THREE) {
-            if (THREE.FBXLoader) {
-                InlineThreeLoaders.fbx(manager);
-            }
-            if (THREE.GLTFLoader) {
-                InlineThreeLoaders.gltf(manager);
-            }
         }
 
         return manager;
@@ -11673,6 +11630,15 @@ bento.define('bento/managers/object', [
             draw(data);
 
             lastFrameTime = time;
+
+            if (!isRunning) {
+                /**
+                 * Fired at the end of the frame on which Bento.objects.stop() was called.
+                 * This can be useful to clean up on hot-reload, before the new screen is shown.
+                 * @event bentoStop
+                 */
+                EventSystem.fire('bentoStop');
+            }
 
             Loop.run(mainLoop);
         };
@@ -19444,41 +19410,54 @@ bento.define('bento/tween', [
     });
 
     /**
-     * Generate an interpolation function based on ease and type of start/end values (Numbers or Vector2)
+     * Generate an interpolation function based on ease name
      */
-    var generateInterpolation = function (ease, startVal, endVal) {
-        // generate the correct interpolation function
+    var generateInterpolation = function (ease) {
         var fn = interpolations[ease];
-        if (startVal.isVector2 && endVal.isVector2) {
-            // as vectors
-            if (fn) {
-                return function (s, e, t, alpha, beta) {
-                    return new Vector2(
-                        fn(s.x, e.x, t, alpha, beta),
-                        fn(s.y, e.y, t, alpha, beta)
-                    );
-                };
-            } else {
-                fn = robbertPenner[ease];
-                return function (s, e, t, alpha, beta) {
-                    return new Vector2(
-                        fn(t, s.x, e.x - s.x, 1),
-                        fn(t, s.y, e.y - s.y, 1)
-                    );
-                };
-            }
+        if (fn) {
+            return fn;
         } else {
-            // number output
-            if (fn) {
-                return function (s, e, t, alpha, beta) {
-                    return fn(s, e, t, alpha, beta);
-                };
-            } else {
-                fn = robbertPenner[ease];
-                return function (s, e, t, alpha, beta) {
-                    return fn(t, s, e - s, 1);
-                };
-            }
+            fn = robbertPenner[ease];
+            return function (s, e, t, alpha, beta) {
+                return fn(t, s, e - s, 1);
+            };
+        }
+    };
+
+    /**
+     * Create a wrapper update function to allow tweening of vectors and quaternions
+     */
+    var generateUpdate = function (onUpdate, startVal, endVal) {
+        var start, end, val;
+        if (startVal.isVector2 && endVal.isVector2) {
+            start = startVal.clone();
+            end = endVal.clone();
+            val = start.clone();
+            return function (v, t) {
+                val.x = end.x * v + start.x * (1-v);
+                val.y = end.y * v + start.y * (1-v);
+                onUpdate(val, t);
+            };
+        } else if (startVal.isVector3 && endVal.isVector3) {
+            start = startVal.clone();
+            end = endVal.clone();
+            val = start.clone();
+            return function (v, t) {
+                val.x = end.x * v + start.x * (1-v);
+                val.y = end.y * v + start.y * (1-v);
+                val.z = end.z * v + start.z * (1-v);
+                onUpdate(val, t);
+            };
+        } else if (startVal.isQuaternion && endVal.isQuaternion) {
+            start = startVal.clone();
+            end = endVal.clone();
+            val = start.clone();
+            return function (v, t) {
+                window.THREE.Quaternion.slerp(start, end, val, v);
+                onUpdate(val, t);
+            };
+        } else {
+            console.warn('Cannot tween between values', startVal, endVal);
         }
     };
 
@@ -19521,14 +19500,21 @@ bento.define('bento/tween', [
         var autoResumeTimer = -1;
         // either the tweenBehavior or its parent entity
         var tweenSubject;
-        // interpolation funciton to be generated
-        var interpolate = generateInterpolation(ease, startVal, endVal);
+        var interpolate = generateInterpolation(ease);
+
+        // wrap update when working with objects such as vectors
+        if (onUpdate && (typeof startVal !== 'number' || typeof endVal !== 'number')) {
+            onUpdate = onUpdate && generateUpdate(onUpdate, startVal, endVal);
+            startVal = 0;
+            endVal = 1;
+        }
+
         var tweenBehavior = new Object({
             z: 0,
             name: 'tweenBehavior',
             start: function (data) {
                 if (onCreate) {
-                    onCreate.apply(tweenSubject);
+                    onCreate.call(tweenSubject);
                 }
             },
             update: function (data) {
@@ -19547,13 +19533,13 @@ bento.define('bento/tween', [
                     }
                     // run onUpdate before start
                     if (applyOnDelay && onUpdate) {
-                        onUpdate.apply(tweenSubject, [interpolate(
+                        onUpdate.call(tweenSubject, interpolate(
                             startVal,
                             endVal,
                             0,
                             alpha,
                             beta
-                        ), 0]);
+                        ), 0);
                     }
                     return;
                 }
@@ -19566,33 +19552,33 @@ bento.define('bento/tween', [
                 if (!hasStarted) {
                     hasStarted = true;
                     if (onStart) {
-                        onStart.apply(tweenSubject);
+                        onStart.call(tweenSubject);
                     }
                 }
                 // run update
                 if (onUpdate) {
-                    onUpdate.apply(tweenSubject, [interpolate(
+                    onUpdate.call(tweenSubject, interpolate(
                         startVal,
                         endVal,
                         time / deltaT,
                         alpha,
                         beta
-                    ), time]);
+                    ), time);
                 }
                 // end
                 if (time >= deltaT && !stay) {
                     if (time > deltaT && onUpdate) {
                         //the tween didn't end neatly, so run onUpdate once more with a t of 1
-                        onUpdate.apply(tweenSubject, [interpolate(
+                        onUpdate.call(tweenSubject, interpolate(
                             startVal,
                             endVal,
                             1,
                             alpha,
                             beta
-                        ), time]);
+                        ), time);
                     }
                     if (onComplete) {
-                        onComplete.apply(tweenSubject);
+                        onComplete.call(tweenSubject);
                     }
 
                     tweenBehavior.removeSelf();
@@ -20735,7 +20721,11 @@ bento.define('bento/renderers/three', [
         // main scene and camera
         var scene;
         var camera;
-        var mainSceneCamera = [scene, camera];
+        var mainSceneInfo = {
+            scene: null,
+            camera: null,
+            gamma: undefined,
+        };
         // module
         var bentoRenderer = {
             name: 'three.js',
@@ -20807,13 +20797,21 @@ bento.define('bento/renderers/three', [
             flush: function () {
                 // render sceneList and its cameras
                 var i = 0, l = sceneList.length;
+                var sceneInfo;
                 renderer.autoClear = (sceneList.length === 1);
 
                 for (i = 0; i < l; ++i) {
+                    sceneInfo = sceneList[i];
                     if (i > 0) {
                         renderer.clearDepth();
                     }
-                    renderer.render(sceneList[i][0], sceneList[i][1]);
+                    if (sceneInfo.gamma == null) {
+                        renderer.gammaOutput = false;
+                    } else {
+                        renderer.gammaOutput = true;
+                        renderer.gammaFactor = sceneInfo.gamma;
+                    }
+                    renderer.render(sceneInfo.scene, sceneInfo.camera);
                 }
             },
             getOpacity: function () {
@@ -20832,7 +20830,8 @@ bento.define('bento/renderers/three', [
                 camera: null,
                 scene: null,
                 renderer: null,
-                // sceneList is an array of scene/camera pairs [[THREE.Camera, THREE.Scene], ...]
+                
+                // array of objects, each with scene, camera and optional info such as gamma.
                 sceneList: sceneList
             },
             updateSize: function () {
@@ -20884,8 +20883,8 @@ bento.define('bento/renderers/three', [
             renderer.setViewport(0, 0, canvas.width, canvas.height);
 
             // setup main scene and camera
-            mainSceneCamera[0] = scene;
-            mainSceneCamera[1] = camera;
+            mainSceneInfo.scene = scene;
+            mainSceneInfo.camera = camera;
 
             // expose camera and scene
             ThreeJsRenderer.camera = camera;
@@ -20900,7 +20899,7 @@ bento.define('bento/renderers/three', [
             setupRenderer();
             setupScene();
             // attach main scene
-            sceneList.push(mainSceneCamera);
+            sceneList.push(mainSceneInfo);
         } else {
             if (!THREE) {
                 console.log('WARNING: THREE library is missing, reverting to Canvas2D renderer');
