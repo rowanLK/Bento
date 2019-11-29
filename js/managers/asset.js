@@ -13,14 +13,14 @@ bento.define('bento/managers/asset', [
     'bento/utils',
     'audia',
     'lzstring',
-    'inlinethreeloaders'
+    'threeloadingmanager'
 ], function (
     EventSystem,
     PackedImage,
     Utils,
     Audia,
     LZString,
-    InlineThreeLoaders
+    ThreeLoadingManager
 ) {
     'use strict';
     return function (settings) {
@@ -48,6 +48,7 @@ bento.define('bento/managers/asset', [
         };
         var spineAssetLoader;
         var tempSpineImage;
+        var currentlyLoadingGroup; // to help ThreeLoadingManager find the path to a buffer or texture when loading resources from Base64
         /**
          * (Down)Load asset types
          */
@@ -595,7 +596,14 @@ bento.define('bento/managers/asset', [
                 callback('loadFBX: THREE.FBXLoader not defined');
                 return;
             }
-            var fbxLoader = new THREE.FBXLoader();
+
+            var assetPath = name.split('/');
+            assetPath.pop();
+            assetPath = assetPath.join('/');
+            if (assetPath !== '') assetPath += '/';
+
+            var manager = new ThreeLoadingManager(currentlyLoadingGroup, 'fbx', assetPath);
+            var fbxLoader = new THREE.FBXLoader(manager);
             fbxLoader.load(source, function (fbx) {
                 var i, mesh;
                 for (i in fbx.children) {
@@ -623,29 +631,16 @@ bento.define('bento/managers/asset', [
                 callback('loadGLTF: THREE.GLTFLoader not defined');
                 return;
             }
-            var isBase64 = name.indexOf && name.indexOf('data:') === 0;
-            
-            var assetPath = source.split('/');
+
+            var assetPath = name.split('/');
             assetPath.pop();
             assetPath = assetPath.join('/');
-            if (assetPath !== '') {
-                assetPath += '/';
-            }
+            if (assetPath !== '') assetPath += '/';
 
-            // use a custom manager with extra fields assigned to it
-            // (to be picked up by the modified GLTFLoader)
-            var manager = new THREE.LoadingManager();
-            manager.isBase64 = isBase64;
-            manager.assetPath = assetPath;
+            var manager = new ThreeLoadingManager(currentlyLoadingGroup, 'gltf', assetPath);
+            var gltfLoader = new THREE.GLTFLoader(manager);
 
-            var gltfLoader = new THREE.GLTFLoader(manager).setPath('');
-            if (!isBase64) {
-                gltfLoader.setPath(assetPath);
-            }
-
-            var localPath = isBase64 ? name : source.replace(assetPath, '');
-            
-            gltfLoader.load(localPath, function (gltf) {
+            gltfLoader.load(source, function (gltf) {
                 gltf.scene.traverse(function (child) {
                     if (
                         child.isMesh &&
@@ -658,11 +653,7 @@ bento.define('bento/managers/asset', [
                 });
 
                 gltf.scene.animations = gltf.animations;
-                if (isBase64) {
-                    callback(null, source, gltf.scene);
-                } else {
-                    callback(null, name, gltf.scene);
-                }
+                callback(null, name, gltf.scene);
             }, undefined, function (error) {
                 callback('loadGLTF: ' + error);
             });
@@ -716,6 +707,7 @@ bento.define('bento/managers/asset', [
          */
         var load = function (groupName, onReady, onLoaded) {
             var group = assetGroups[groupName];
+            currentlyLoadingGroup = group;
             var asset;
             var assetsLoaded = 0;
             var assetCount = 0;
@@ -991,12 +983,12 @@ bento.define('bento/managers/asset', [
             // get fbx
             if (Utils.isDefined(group.fbx)) {
                 assetCount += Utils.getKeyLength(group.fbx);
-                Utils.forEach(group.fbx, function (asset, key, l, breakLoop) {
+                Utils.forEach(group.fbx, function (asset, assetName, l, breakLoop) {
                     // only add meshes
                     if (asset.indexOf('.fbx') > -1 || asset.indexOf('data:application/octet-stream') === 0) {
-                        readyForLoading(loadFBX, key, group.path === 'base64' ? asset : (group.path + 'fbx/' + asset), onLoadFBX);
+                        readyForLoading(loadFBX, assetName, group.path === 'base64' ? asset : (group.path + 'fbx/' + asset), onLoadFBX);
                     } else {
-                        // other files will be handled by GLTFLoader
+                        // other files will be handled by FBXLoader
                         assetCount--;
                     }
                 });
@@ -1007,7 +999,7 @@ bento.define('bento/managers/asset', [
                 Utils.forEach(group.gltf, function (asset, assetName, l, breakLoop) {
                     // only add gltf files
                     if (assetName.indexOf('.gltf') > -1) {
-                        readyForLoading(loadGLTF, group.path === 'base64' ? asset : assetName, group.path === 'base64' ? assetName : group.path + 'gltf/' + assetName, onLoadGLTF);
+                        readyForLoading(loadGLTF, assetName, group.path === 'base64' ? asset : group.path + 'gltf/' + assetName, onLoadGLTF);
                     } else {
                         // bin and png are ignored for now (loaded by GLTFLoader)
                         assetCount--;
@@ -1039,6 +1031,8 @@ bento.define('bento/managers/asset', [
 
             // load all assets
             loadAllAssets();
+            
+            currentlyLoadingGroup = null;
 
             return assetCount;
         };
@@ -1682,16 +1676,6 @@ bento.define('bento/managers/asset', [
                     }
                 });
             });
-        }
-
-        // Override THREE's loaders if they are available.
-        if (THREE) {
-            if (THREE.FBXLoader) {
-                InlineThreeLoaders.fbx(manager);
-            }
-            if (THREE.GLTFLoader) {
-                InlineThreeLoaders.gltf(manager);
-            }
         }
 
         return manager;
