@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>components/three/fill.js - Documentation</title>
+    <title>components/spritecontainer.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -29,7 +29,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">components/three/fill.js</h1>
+    <h1 class="page-title">components/spritecontainer.js</h1>
     
 
     
@@ -40,124 +40,202 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Component that fills a rectangle using the ThreeJs renderer
+ * Convenience Entity wrapper for Sprites.
+ * 
+ * This component is useful for games with HD graphics. Sets a desired width and/or height without needing to scale manually and without needing
+ * to scale the parent entity (which could otherwise result in weird parent/child transforms). 
+ * Added benefit of setting a desired width/height is that the rendererd size is independent of the original image's dimensions 
+ * allowing you to upscale or downscale the original resolution of an image. It is also useful to use the SpriteContainer's transforms,
+ * particularly offsetting a sprite using the SpriteContainer's position property.
+ *
+ * Setting one dimension as null will automatically scale the other dimension according to the original image's aspect ratio.
+ *
  * &lt;br>Exports: Constructor
- * @module bento/components/three/fill
- * @moduleName ThreeFill
- * @extends {Canvas2DFill}
+ * @module bento/components/spritecontainer
+ * @moduleName SpriteContainer
+
+ * @param {Object} settings - See Sprite's settings object!
+ * @moduleName SpriteContainer
+ * @snippet SpriteContainer|imageName
+SpriteContainer({
+    width: ${1:32},
+    height: ${2:null},
+    imageName: '${3}',
+    position: new Vector2(${4:0}, ${5:0}),
+    originRelative: new Vector2(${6:0.5}, ${7:0.5}),
+    frameCountX: ${8:1},
+    frameCountY: ${9:1},
+    animations: {
+        default: {
+            speed: 0,
+            frames: [0]
+        }
+    }
+})
+ * @snippet SpriteContainer|spriteSheet
+SpriteContainer({
+    width: ${1:32},
+    height: ${2:null},
+    spriteSheet: '${3}',
+    position: new Vector2(${4:0}, ${5:0})
+})
  */
-bento.define('bento/components/three/fill', [
-    'bento/utils',
+
+bento.define('bento/components/spritecontainer', [
     'bento',
     'bento/math/vector2',
-    'bento/components/canvas2d/fill'
+    'bento/math/rectangle',
+    'bento/components/sprite',
+    'bento/entity',
+    'bento/utils',
+    'bento/tween'
 ], function (
-    Utils,
     Bento,
     Vector2,
-    Canvas2DFill
+    Rectangle,
+    Sprite,
+    Entity,
+    Utils,
+    Tween
 ) {
     'use strict';
-    var THREE = window.THREE;
-    var ThreeFill = function (settings) {
-        if (!(this instanceof ThreeFill)) {
-            return new ThreeFill(settings);
-        }
-        Canvas2DFill.call(this, settings);
+    var SpriteContainer = function (settings) {
+        /**
+         * Dimensions
+         */
+        var width = settings.width || null;
+        var height = settings.height || null;
+        var setupDimensions = function () {
+            var ratio;
+            var parent = container.parent;
+            var parentDimension = parent ? parent.dimension : new Rectangle(0, 0, 0, 0);
+            var hasWidth = !Utils.isEmpty(width);
+            var hasHeight = !Utils.isEmpty(height);
 
-        this.material = null;
-        this.geometry = null;
-        this.plane = null;
-        this.object3D = new THREE.Object3D();
-        this.object3D.visible = false;
-        this.opacity = 1;
+            // get aspect ratio from original width / height
+            ratio = sprite.frameWidth / sprite.frameHeight || 1; // beware of dividing by 0
 
-        // if this.dimension is edited, the fill should be redone
-        this.cacheDimension = null;
-    };
-    ThreeFill.prototype = Object.create(Canvas2DFill.prototype);
-    ThreeFill.prototype.constructor = ThreeFill;
+            // container's parent dimension will become the desired dimension
+            if (hasWidth) {
+                container.scale.x = width / sprite.frameWidth;
+                parentDimension.width = width;
+            }
+            if (hasHeight) {
+                container.scale.y = height / sprite.frameHeight;
+                parentDimension.height = height;
+            }
+            // one of parameters was not given: scale other dimension using same ratio
+            if (!hasWidth) {
+                container.scale.x = container.scale.y;
+                parentDimension.width = height * ratio;
+            }
+            if (!hasHeight) {
+                container.scale.y = container.scale.x;
+                parentDimension.height = width / ratio;
+            }
+            // both parameters are not passed: use original image width and height
+            if (!hasWidth &amp;&amp; !hasHeight) {
+                // reset scale to 1
+                container.scale.x = 1;
+                container.scale.y = 1;
+                parentDimension.width = sprite.frameWidth;
+                parentDimension.height = sprite.frameHeight;
+            }
 
-    ThreeFill.prototype.startFill = function () {
-        var dimension = this.dimension;
-        var origin = this.origin;
-        var color = this.color;
-        var colorInt = color[2] * 255 + (color[1] * 255 &lt;&lt; 8) + (color[0] * 255 &lt;&lt; 16);
-
-        // could be optimized by reusing the materials when updating dimension
-        this.dispose();
-        this.opacity = color[3]; // need to cache opacity, material's opacity is overwritten during draw
-        this.material = new THREE.MeshBasicMaterial({
-            color: colorInt,
-            opacity: color[3],
-            transparent: true
+            // set x/y offset in dimension
+            parentDimension.x = -sprite.origin.x * container.scale.x;
+            parentDimension.y = -sprite.origin.y * container.scale.y;
+        };
+        /**
+         * Sprite and container
+         */
+        var sprite = new Sprite(Utils.extend(settings, {
+            originRelative: settings.originRelative || new Vector2(0.5, 0.5)
+        }, true));
+        var container = new Entity({
+            name: settings.name || 'spriteContainer',
+            position: settings.position,
+            rotation: settings.rotation,
+            alpha: settings.alpha,
+            visible: settings.visible,
+            components: [
+                sprite,
+                new Object({
+                    name: 'behavior',
+                    start: function (data) {
+                        setupDimensions();
+                    }
+                })
+            ]
+        }).extend({
+            /**
+             * Exposes original sprite component
+             * @instance
+             * @name sprite
+             * @snippet #SpriteContainer.sprite|Sprite
+                sprite
+             */
+            sprite: sprite,
+            /**
+             * Re-setup sprite (includes width and height parameters).
+             * @instance
+             * @function
+             * @name setup
+             * 
+             * @snippet #SpriteContainer.setup|Snippet
+                setup
+             */
+            setup: function (data) {
+                sprite.setup(Utils.extend(data, {
+                    originRelative: data.originRelative || new Vector2(0.5, 0.5)
+                }, true));
+                
+                // width and height should be passed again
+                width = data.width || null;
+                height = data.height || null;
+                setupDimensions();
+            }
         });
-        this.geometry = new THREE.PlaneGeometry(
-            dimension.width,
-            dimension.height,
-            1,
-            1
-        );
-        this.plane = new THREE.Mesh(this.geometry, this.material);
-        this.object3D.add(this.plane);
 
-        // cache dimension
-        this.cacheDimension = dimension.clone();
-    };
-    ThreeFill.prototype.update = function (data) {
-        var dimension = this.dimension;
-        var cacheDimension = this.cacheDimension;
-        // update fill
-        if (
-            dimension.width !== cacheDimension.width ||
-            dimension.height !== cacheDimension.height
-        ) {
-            this.startFill();
-        }
-    };
-    ThreeFill.prototype.draw = function (data) {
-        // origin: to achieve this offset effect, we move the plane (child of the object3d)
-        // take into account that threejs already assumes middle of the mesh to be origin
-        var dimension = this.dimension;
-        var origin = this.origin;
-        var plane = this.plane;
-        plane.position.x = dimension.x - (origin.x - dimension.width / 2);
-        plane.position.y = -dimension.y + (origin.y - dimension.height / 2);
+        /**
+         * Desired width. If null, the x scale is set automatically according to the image's aspect ratio. 
+         * @instance
+         * @default null
+         * @name width
 
-        this.material.opacity = this.opacity;
+         * @snippet #SpriteContainer.width|Number
+            width
+         */
+        Object.defineProperty(container, 'width', {
+            get: function () {
+                return width;
+            },
+            set: function (value) {
+                width = value;
+                setupDimensions();
+            }
+        });
+        /**
+         * Desired height. If null, the y scale is set automatically according to the image's aspect ratio. 
+         * @instance
+         * @default null
+         * @name height
+         * @snippet #SpriteContainer.height|Number
+            height
+         */
+        Object.defineProperty(container, 'height', {
+            get: function () {
+                return height;
+            },
+            set: function (value) {
+                height = value;
+                setupDimensions();
+            }
+        });
 
-        // move it to the render list
-        data.renderer.render(this.object3D, this.material);
+        return container;
     };
-    ThreeFill.prototype.start = function (data) {
-        this.startFill();
-        data.renderer.three.scene.add(this.object3D);
-    };
-    ThreeFill.prototype.destroy = function (data) {
-        data.renderer.three.scene.remove(this.object3D);
-        this.dispose();
-    };
-    
-    ThreeFill.prototype.dispose = function () {
-        if (this.geometry) {
-            this.geometry.dispose();
-            this.geometry = null;
-        }
-        if (this.material) {
-            this.material.dispose();
-            this.material = null;
-        }
-        if (this.plane) {
-            this.object3D.remove(this.plane);
-            this.plane = null;
-        }
-    };
-
-    ThreeFill.prototype.toString = function () {
-        return '[object ThreeFill]';
-    };
-
-    return ThreeFill;
+    return SpriteContainer;
 });</code></pre>
         </article>
     </section>

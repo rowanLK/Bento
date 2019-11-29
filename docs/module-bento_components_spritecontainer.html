@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>components/three/fill.js - Documentation</title>
+    <title>bento/components/spritecontainer - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -29,138 +29,472 @@
 
 <div id="main">
     
-    <h1 class="page-title">components/three/fill.js</h1>
+    <h1 class="page-title">bento/components/spritecontainer</h1>
     
 
     
 
 
 
+
+<section>
+
+<header>
     
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>/**
- * Component that fills a rectangle using the ThreeJs renderer
- * &lt;br>Exports: Constructor
- * @module bento/components/three/fill
- * @moduleName ThreeFill
- * @extends {Canvas2DFill}
- */
-bento.define('bento/components/three/fill', [
-    'bento/utils',
-    'bento',
-    'bento/math/vector2',
-    'bento/components/canvas2d/fill'
-], function (
-    Utils,
-    Bento,
-    Vector2,
-    Canvas2DFill
-) {
-    'use strict';
-    var THREE = window.THREE;
-    var ThreeFill = function (settings) {
-        if (!(this instanceof ThreeFill)) {
-            return new ThreeFill(settings);
-        }
-        Canvas2DFill.call(this, settings);
-
-        this.material = null;
-        this.geometry = null;
-        this.plane = null;
-        this.object3D = new THREE.Object3D();
-        this.object3D.visible = false;
-        this.opacity = 1;
-
-        // if this.dimension is edited, the fill should be redone
-        this.cacheDimension = null;
-    };
-    ThreeFill.prototype = Object.create(Canvas2DFill.prototype);
-    ThreeFill.prototype.constructor = ThreeFill;
-
-    ThreeFill.prototype.startFill = function () {
-        var dimension = this.dimension;
-        var origin = this.origin;
-        var color = this.color;
-        var colorInt = color[2] * 255 + (color[1] * 255 &lt;&lt; 8) + (color[0] * 255 &lt;&lt; 16);
-
-        // could be optimized by reusing the materials when updating dimension
-        this.dispose();
-        this.opacity = color[3]; // need to cache opacity, material's opacity is overwritten during draw
-        this.material = new THREE.MeshBasicMaterial({
-            color: colorInt,
-            opacity: color[3],
-            transparent: true
-        });
-        this.geometry = new THREE.PlaneGeometry(
-            dimension.width,
-            dimension.height,
-            1,
-            1
-        );
-        this.plane = new THREE.Mesh(this.geometry, this.material);
-        this.object3D.add(this.plane);
-
-        // cache dimension
-        this.cacheDimension = dimension.clone();
-    };
-    ThreeFill.prototype.update = function (data) {
-        var dimension = this.dimension;
-        var cacheDimension = this.cacheDimension;
-        // update fill
-        if (
-            dimension.width !== cacheDimension.width ||
-            dimension.height !== cacheDimension.height
-        ) {
-            this.startFill();
-        }
-    };
-    ThreeFill.prototype.draw = function (data) {
-        // origin: to achieve this offset effect, we move the plane (child of the object3d)
-        // take into account that threejs already assumes middle of the mesh to be origin
-        var dimension = this.dimension;
-        var origin = this.origin;
-        var plane = this.plane;
-        plane.position.x = dimension.x - (origin.x - dimension.width / 2);
-        plane.position.y = -dimension.y + (origin.y - dimension.height / 2);
-
-        this.material.opacity = this.opacity;
-
-        // move it to the render list
-        data.renderer.render(this.object3D, this.material);
-    };
-    ThreeFill.prototype.start = function (data) {
-        this.startFill();
-        data.renderer.three.scene.add(this.object3D);
-    };
-    ThreeFill.prototype.destroy = function (data) {
-        data.renderer.three.scene.remove(this.object3D);
-        this.dispose();
-    };
+        
+            
+        
     
-    ThreeFill.prototype.dispose = function () {
-        if (this.geometry) {
-            this.geometry.dispose();
-            this.geometry = null;
-        }
-        if (this.material) {
-            this.material.dispose();
-            this.material = null;
-        }
-        if (this.plane) {
-            this.object3D.remove(this.plane);
-            this.plane = null;
-        }
-    };
+</header>
 
-    ThreeFill.prototype.toString = function () {
-        return '[object ThreeFill]';
-    };
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description">Convenience Entity wrapper for Sprites.
 
-    return ThreeFill;
-});</code></pre>
-        </article>
-    </section>
+This component is useful for games with HD graphics. Sets a desired width and/or height without needing to scale manually and without needing
+to scale the parent entity (which could otherwise result in weird parent/child transforms). 
+Added benefit of setting a desired width/height is that the rendererd size is independent of the original image's dimensions 
+allowing you to upscale or downscale the original resolution of an image. It is also useful to use the SpriteContainer's transforms,
+particularly offsetting a sprite using the SpriteContainer's position property.
+
+Setting one dimension as null will automatically scale the other dimension according to the original image's aspect ratio.
+
+<br>Exports: Constructor</div>
+        
+
+        
+            
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>settings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">See Sprite's settings object!</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_spritecontainer.js.html">components/spritecontainer.js</a>, <a href="components_spritecontainer.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+     
+
+    
+
+    
+        <h3 class="subsection-title">Members</h3>
+
+        
+            
+<h4 class="name" id="height"><span class="type-signature"></span>height<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Desired height. If null, the y scale is set automatically according to the image's aspect ratio.
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-default">Default Value:</dt>
+    <dd class="tag-default"><ul class="dummy">
+            <li>null</li>
+        </ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_spritecontainer.js.html">components/spritecontainer.js</a>, <a href="components_spritecontainer.js.html#line177">line 177</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="sprite"><span class="type-signature"></span>sprite<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Exposes original sprite component
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_spritecontainer.js.html">components/spritecontainer.js</a>, <a href="components_spritecontainer.js.html#line130">line 130</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="width"><span class="type-signature"></span>width<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Desired width. If null, the x scale is set automatically according to the image's aspect ratio.
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-default">Default Value:</dt>
+    <dd class="tag-default"><ul class="dummy">
+            <li>null</li>
+        </ul></dd>
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_spritecontainer.js.html">components/spritecontainer.js</a>, <a href="components_spritecontainer.js.html#line159">line 159</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="setup"><span class="type-signature"></span>setup<span class="signature">()</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    Re-setup sprite (includes width and height parameters).
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="components_spritecontainer.js.html">components/spritecontainer.js</a>, <a href="components_spritecontainer.js.html#line138">line 138</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
 
 
 

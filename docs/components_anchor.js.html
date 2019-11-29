@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>components/three/fill.js - Documentation</title>
+    <title>components/anchor.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -29,7 +29,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">components/three/fill.js</h1>
+    <h1 class="page-title">components/anchor.js</h1>
     
 
     
@@ -40,124 +40,210 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Component that fills a rectangle using the ThreeJs renderer
+ * Anchor component. This component is particularly useful for placing UI elements on screen, especially
+ * with games having both portrait an.
+ * Uses 2 positions, 1 relative in screen space &lt;(0,0) to (1,1)>, and one absolute. 
+ * Whenever the viewport changes it dimensions, it recalculates the desired position for its parent
+ *
+ * If something should have a (-40, 20) offset from the middle-right of the screen, pass
+ * @example
+{
+    relative : new Vector2(1, 0.5),
+    offset : new Vector2(-40, 20)
+}
+ * For custom needs, it's also possible to use the onResize callback (which is called after setting the positions)
+ *
+ * Note that this function sets the position of the parent entity
+ * 
+ * @snippet Anchor|Single-Orientation
+Anchor({
+    relative: new Vector2(${1:0.5}, ${2:0.5}),
+    offset: new Vector2(${3:0}, ${4:0}),
+    onResize: function (isPortrait) {}
+})
+ * @snippet Anchor|Multi-Orientation
+Anchor({
+    portrait: {
+        relative: new Vector2(${1:0.5}, ${2:0.5}),
+        offset: new Vector2(${3:0}, ${4:0}),
+    },
+    landscape: {
+        relative: new Vector2(${5:0.5}, ${6:0.5}),
+        offset: new Vector2(${7:0}, ${8:0}),
+    },
+    onResize: function (isPortrait) {}
+})
  * &lt;br>Exports: Constructor
- * @module bento/components/three/fill
- * @moduleName ThreeFill
- * @extends {Canvas2DFill}
+ * @module bento/components/anchor
+ * @moduleName Anchor
+ * @param {Object} settings - Settings
+ * @param {Vector2} settings.relative - Vector2 position relative to topleft corner
+ * @param {Vector2} settings.offset - Absolute Vector2 position
+ * @param {Function} settings.onResize - Callback after game resizes or rotates
  */
-bento.define('bento/components/three/fill', [
-    'bento/utils',
+bento.define('bento/components/anchor', [
     'bento',
     'bento/math/vector2',
-    'bento/components/canvas2d/fill'
+    'bento/math/rectangle',
+    'bento/entity',
+    'bento/eventsystem',
+    'bento/utils',
+    'bento/tween'
 ], function (
-    Utils,
     Bento,
     Vector2,
-    Canvas2DFill
+    Rectangle,
+    Entity,
+    EventSystem,
+    Utils,
+    Tween
 ) {
     'use strict';
-    var THREE = window.THREE;
-    var ThreeFill = function (settings) {
-        if (!(this instanceof ThreeFill)) {
-            return new ThreeFill(settings);
+    var Anchor = function (settings) {
+        var onResize = settings.onResize;
+        var offset = settings.offset || new Vector2(0, 0);
+        var relative = settings.relative || new Vector2(0, 0);
+        var landscape = {
+            offset: settings.landscape ? (settings.landscape.offset || offset) : offset,
+            relative: settings.landscape ? (settings.landscape.relative || relative) : relative
+        };
+        var portrait = {
+            offset: settings.portrait ? (settings.portrait.offset || offset) : offset,
+            relative: settings.portrait ? (settings.portrait.relative || relative) : relative
+        };
+        var resetPosition = function () {
+            var safeZone = Anchor.getSafeZone();
+            var orientation = Anchor.isPortrait() ? portrait : landscape;
+            entity.position.x = safeZone.x + orientation.relative.x * safeZone.width + orientation.offset.x;
+            entity.position.y = safeZone.y + orientation.relative.y * safeZone.height + orientation.offset.y;
+
+            if (onResize) {
+                onResize.call(component, Anchor.isPortrait());
+            }
+        };
+        var entity;
+        var component = {
+            name: 'anchor',
+            start: function (data) {
+                EventSystem.on('resize', resetPosition);
+                resetPosition();
+            },
+            destroy: function (data) {
+                EventSystem.off('resize', resetPosition);
+            },
+            attached: function (data) {
+                entity = data.entity;
+            },
+            resetPosition: resetPosition
+        };
+        return component;
+    };
+    /**
+     * Returns true if orientation is portrait
+     * @snippet Anchor.isPortrait()|Boolean
+     * @instance
+     * @function
+     * @name isPortrait
+     */
+    Anchor.isPortrait = function () {
+        var viewport = Bento.getViewport();
+        return viewport.width &lt; viewport.height;
+    };
+    /**
+     * Safe zone is the area inside the viewport that is considered
+     * safe from any notches, rounded corners and others.
+     * @snippet Anchor.getSafeZone()|Rectangle
+     * @instance
+     * @function
+     * @param {Boolean} withViewportOffset - Should offset with viewport x and y?
+     * @name getSafeZone
+     */
+    Anchor.getSafeZone = function (withViewportOffset) {
+        // retrieve safezone
+        var viewport = Bento.getViewport();
+        var height = viewport.height;
+        var width = viewport.width;
+
+        var insets = Anchor.getInsets();
+        var safeZone, safeHeight, safeWidth;
+
+        // turn insets into Rectangle
+        safeHeight = height - insets.top - insets.bottom;
+        safeWidth = width - insets.left - insets.right;
+        safeZone = new Rectangle(insets.left, insets.top, safeWidth, safeHeight);
+
+        if (withViewportOffset) {
+            safeZone.x += viewport.x;
+            safeZone.y += viewport.y;
         }
-        Canvas2DFill.call(this, settings);
-
-        this.material = null;
-        this.geometry = null;
-        this.plane = null;
-        this.object3D = new THREE.Object3D();
-        this.object3D.visible = false;
-        this.opacity = 1;
-
-        // if this.dimension is edited, the fill should be redone
-        this.cacheDimension = null;
+        return safeZone;
     };
-    ThreeFill.prototype = Object.create(Canvas2DFill.prototype);
-    ThreeFill.prototype.constructor = ThreeFill;
+    /**
+     * Get screen safe area insets (due to notches and rounded corners etc)
+     * @function
+     * @instance
+     * @name getInsets
+     * @returns {Object} Object with top, left, right and bottom insets
+     */
+    Anchor.getInsets = function () {
+        var screenSize = Utils.getScreenSize();
+        var viewport = Bento.getViewport();
+        var overrides = Anchor.insetOverrides;
+        var insets = {
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0
+        };
+        // retrieve safezone insets with css
+        if (document &amp;&amp; document.documentElement &amp;&amp; window &amp;&amp; window.getComputedStyle) {
+            insets.top = window.getComputedStyle(document.documentElement).getPropertyValue("--sat");
+            insets.right = window.getComputedStyle(document.documentElement).getPropertyValue("--sar");
+            insets.bottom = window.getComputedStyle(document.documentElement).getPropertyValue("--sab");
+            insets.left = window.getComputedStyle(document.documentElement).getPropertyValue("--sal");
 
-    ThreeFill.prototype.startFill = function () {
-        var dimension = this.dimension;
-        var origin = this.origin;
-        var color = this.color;
-        var colorInt = color[2] * 255 + (color[1] * 255 &lt;&lt; 8) + (color[0] * 255 &lt;&lt; 16);
-
-        // could be optimized by reusing the materials when updating dimension
-        this.dispose();
-        this.opacity = color[3]; // need to cache opacity, material's opacity is overwritten during draw
-        this.material = new THREE.MeshBasicMaterial({
-            color: colorInt,
-            opacity: color[3],
-            transparent: true
-        });
-        this.geometry = new THREE.PlaneGeometry(
-            dimension.width,
-            dimension.height,
-            1,
-            1
-        );
-        this.plane = new THREE.Mesh(this.geometry, this.material);
-        this.object3D.add(this.plane);
-
-        // cache dimension
-        this.cacheDimension = dimension.clone();
-    };
-    ThreeFill.prototype.update = function (data) {
-        var dimension = this.dimension;
-        var cacheDimension = this.cacheDimension;
-        // update fill
-        if (
-            dimension.width !== cacheDimension.width ||
-            dimension.height !== cacheDimension.height
-        ) {
-            this.startFill();
+            insets.top = parseInt(insets.top) / screenSize.height * viewport.height;
+            insets.bottom = parseInt(insets.bottom) / screenSize.height * viewport.height;
+            insets.left = parseInt(insets.left) / screenSize.width * viewport.width;
+            insets.right = parseInt(insets.right) / screenSize.width * viewport.width;
         }
-    };
-    ThreeFill.prototype.draw = function (data) {
-        // origin: to achieve this offset effect, we move the plane (child of the object3d)
-        // take into account that threejs already assumes middle of the mesh to be origin
-        var dimension = this.dimension;
-        var origin = this.origin;
-        var plane = this.plane;
-        plane.position.x = dimension.x - (origin.x - dimension.width / 2);
-        plane.position.y = -dimension.y + (origin.y - dimension.height / 2);
 
-        this.material.opacity = this.opacity;
-
-        // move it to the render list
-        data.renderer.render(this.object3D, this.material);
-    };
-    ThreeFill.prototype.start = function (data) {
-        this.startFill();
-        data.renderer.three.scene.add(this.object3D);
-    };
-    ThreeFill.prototype.destroy = function (data) {
-        data.renderer.three.scene.remove(this.object3D);
-        this.dispose();
-    };
-    
-    ThreeFill.prototype.dispose = function () {
-        if (this.geometry) {
-            this.geometry.dispose();
-            this.geometry = null;
+        // use overrides if available
+        if (overrides.top !== null) {
+            insets.top = overrides.top;
         }
-        if (this.material) {
-            this.material.dispose();
-            this.material = null;
+        if (overrides.bottom !== null) {
+            insets.bottom = overrides.bottom;
         }
-        if (this.plane) {
-            this.object3D.remove(this.plane);
-            this.plane = null;
+        if (overrides.left !== null) {
+            insets.left = overrides.left;
         }
+        if (overrides.right !== null) {
+            insets.right = overrides.right;
+        }
+
+        return insets;
+    };
+    /**
+     * For testing purposes, it's possible to override the insets
+     * @instance
+     * @name insetOverrides
+     */
+    Anchor.insetOverrides = {
+        top: null,
+        left: null,
+        right: null,
+        bottom: null
     };
 
-    ThreeFill.prototype.toString = function () {
-        return '[object ThreeFill]';
-    };
-
-    return ThreeFill;
+    // apply env properties
+    if (document &amp;&amp; document.documentElement &amp;&amp; window &amp;&amp; window.getComputedStyle) {
+        document.documentElement.style.setProperty('--sat', 'env(safe-area-inset-top)');
+        document.documentElement.style.setProperty('--sar', 'env(safe-area-inset-right)');
+        document.documentElement.style.setProperty('--sab', 'env(safe-area-inset-bottom)');
+        document.documentElement.style.setProperty('--sal', 'env(safe-area-inset-left)');
+    }
+    return Anchor;
 });</code></pre>
         </article>
     </section>
