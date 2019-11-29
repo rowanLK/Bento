@@ -23,11 +23,17 @@ bento.define('bento/components/three/sprite', [
          1.0,  1.0,  0.0,
          0.0,  1.0,  0.0,
     ]);
-    var uvs = new Float32Array([
+    var defaultUvs = new Float32Array([
         0.0, 1.0,
         1.0, 1.0,
         1.0, 0.0,
         0.0, 0.0,
+    ]);
+    var flippedUvs = new Float32Array([
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
     ]);
     var indices = new Uint16Array([
         0, 1, 2,
@@ -142,6 +148,7 @@ bento.define('bento/components/three/sprite', [
         var packedImage;
         var threeTexture;
         var mesh;
+        var uvs;
 
         Sprite.prototype.setup.call(this, data);
 
@@ -172,6 +179,8 @@ bento.define('bento/components/three/sprite', [
                 alphaTest: Utils.getDefault(this.settings.alphaTest, ThreeSprite.alphaTest), // --> prevents glitchy clipping
                 transparent: true
             });
+
+            uvs = (this.texture.flipY ? flippedUvs : defaultUvs);
 
             this.geometry = new THREE.BufferGeometry();
             this.geometry.setIndex(indexAttribute);
@@ -214,6 +223,11 @@ bento.define('bento/components/three/sprite', [
         var v1 = v0 + this.frameHeight / imageHeight;
 
         var uv, arr;
+
+        if (this.texture && this.texture.flipY) {
+            v0 = 1 - v0;
+            v1 = 1 - v1;
+        }
 
         this.mesh.scale.x = this.frameWidth;
         this.mesh.scale.y = this.frameHeight;
