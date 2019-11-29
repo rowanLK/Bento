@@ -17,26 +17,20 @@ EventListener({
  * @param {String} settings.name - Component name, defaults to 'eventListener'
  * @param {String} settings.eventName - Event name to listen to
  * @param {Boolean} settings.ignorePause - Listen to events even if entity is paused
+ * @param {Boolean} settings.global - Make this a top-level event listener, which will be removed before hot reload
  * @param {Function} settings.onEvent - Event callback
  */
 bento.define('bento/components/eventlistener', [
     'bento',
-    'bento/math/vector2',
-    'bento/math/rectangle',
-    'bento/entity',
     'bento/eventsystem',
-    'bento/utils',
-    'bento/tween'
+    'bento/utils'
 ], function (
     Bento,
-    Vector2,
-    Rectangle,
-    Entity,
     EventSystem,
-    Utils,
-    Tween
+    Utils
 ) {
     'use strict';
+
     var isPaused = function (entity) {
         var rootPause = 0;
         if (!Bento.objects || !entity) {
@@ -52,23 +46,33 @@ bento.define('bento/components/eventlistener', [
         return rootPause < Bento.objects.isPaused();
     };
     return function (settings) {
-        var viewport = Bento.getViewport();
         var componentName = settings.name || 'eventListener';
         var eventName = settings.eventName;
         var ignorePause = settings.ignorePause || false;
+        var global = settings.global || false;
         var onEvent = settings.callback || settings.onEvent || function () {};
         var entity;
         var component = {
             name: componentName,
+            global: global,
             start: function (data) {
                 if (!eventName) {
                     Utils.log('WARNING: eventName is not defined! Using component name as event name');
                     eventName = componentName;
                 }
                 EventSystem.on(eventName, ignorePause ? onEvent : wrapperCallback);
+                if (global) {
+                    if (!component.isAdded) {
+                        Utils.log('Global event listener should be added via Bento.objects.attach');
+                    }
+                    EventSystem.on('bentoStop', removeCallback);
+                }
             },
             destroy: function (data) {
                 EventSystem.off(eventName, ignorePause ? onEvent : wrapperCallback);
+                if (global) {
+                    EventSystem.off('bentoStop', removeCallback);
+                }
             },
             attached: function (data) {
                 entity = data.entity;
@@ -79,6 +83,9 @@ bento.define('bento/components/eventlistener', [
             if (!isPaused(entity)) {
                 onEvent(data);
             }
+        };
+        var removeCallback = function () {
+            Bento.objects.remove(component);
         };
         return component;
     };

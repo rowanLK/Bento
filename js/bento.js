@@ -562,8 +562,8 @@ bento.define('bento', [
                     // restart the mainloop
                     Bento.objects.run();
                     /**
-                     * Fired when using Bento's quick reload feature
-                     * @event bentoReload 
+                     * Fired when using Bento's quick reload feature, <em>after</em> the new screen was shown.
+                     * @event bentoReload
                      */
                     EventSystem.fire('bentoReload', {});
                 }
