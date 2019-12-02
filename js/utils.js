@@ -986,6 +986,70 @@ Utils.extend(${1:baseObject}, ${2:extendedObject}, false, function (prop) {
         log: function (msg) {
             console.error(msg);
         },
+
+        /**
+         * Gets a value safely from an object literal without crashing.
+         * @example
+         * var dataObject = {
+         *     users: {
+         *         data: [{
+         *             value: 1234
+         *         }]
+         *     }
+         * };
+         * 
+         * Utils.getSafe(dataObject, ['users', 'data', 0, 'value'], null);
+         * // or
+         * Utils.getSafe(dataObject, 'users.data[0].value', null);
+         * 
+         * @function
+         * @instance
+         * @param {Object/Array} dataObject - Data object or array to access
+         * @param {Array/String} keys - Array of property keys or formatted as String
+         * @param {Value} [defaultValue] - Default value to return if one of the keys does not exist
+         * @name getSafe
+         * @snippet Utils.getSafe|ByArray
+        Utils.getSafe(${1:object}, ['$2'], ${3:defaultValue})
+         * @snippet Utils.getSafe|ByString
+        Utils.getSafe(${1:object}, '${2}', ${3:defaultValue})
+         */
+        getSafe: function (object, keys, defaultValue) {
+            var emptyObj = {};
+            var propertyKeys = keys; // assuming keys = array
+            var i, l = propertyKeys.length;
+            var value = object;
+
+            // parse keys from string
+            if (Utils.isString(propertyKeys)) {
+                // remove starting . or [ and trailing ]
+                if (keys.startsWith('.')) {
+                    keys = keys.slice(1);
+                }
+                if (keys.startsWith('[')) {
+                    keys = keys.slice(1);
+                }
+                if (keys.endsWith(']')) {
+                    keys = keys.slice(0, -1);
+                }
+                // remove all apastrophes and quotes
+                keys = keys.replace(/\'|\"/g, '');
+
+                // split into array by . or ][ or [ or ]. or ]
+                propertyKeys = keys.split(/\.|\]\[|\[|\].|\]/);
+                l = propertyKeys.length;
+            }
+
+            for (i = 0; i < l; ++i) {
+                value = value[propertyKeys[i]] || emptyObj;
+                // add warnings when property is not found?
+            }
+
+            if (value === emptyObj) {
+                // failed
+                return defaultValue;
+            }
+            return value;
+        },
         /**
          * @function
          * @instance
