@@ -1,18 +1,18 @@
 /**
  * Anchor component. This component is particularly useful for placing UI elements on screen, especially
- * with games having both portrait an.
- * Uses 2 positions, 1 relative in screen space <(0,0) to (1,1)>, and one absolute. 
+ * with games having both portrait and landscape mode. Uses 2 position inputs: 1 relative in 
+ * screen space <(0,0) to (1,1)>, and one absolute (called offset). 
  * Whenever the viewport changes it dimensions, it recalculates the desired position for its parent
  *
- * If something should have a (-40, 20) offset from the middle-right of the screen, pass
  * @example
+// If something should have a (-40, 20) offset from the middle-right of the screen, pass:
 {
     relative : new Vector2(1, 0.5),
     offset : new Vector2(-40, 20)
 }
  * For custom needs, it's also possible to use the onResize callback (which is called after setting the positions)
  *
- * Note that this function sets the position of the parent entity
+ * Note that this component directly sets the position of the parent entity.
  * 
  * @snippet Anchor|Single-Orientation
 Anchor({
