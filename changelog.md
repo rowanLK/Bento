@@ -1,6 +1,20 @@
 # Changelog
 
-## 1.2.6
+## 1.2.7
+
+* Add **Anchor** component
+* Add **SpriteContainer** component
+* Add **Utils.getSafe** function to safely retrieve values deep within object literals 
+* Asset manager now includes FBX and GLTF meshes support (dependency: Three.js's FBXLoader and GLTFLoader respectively)
+* Bugfix: PixiSprite and ThreeSprite could have the uvs cached when changing animationS
+* **Text.linebreaksOnlyOnSpace** feature (PR #116)
+* Bugfix: shadow offset in Text would get mutated after applying settings (PR #119)
+* **Tweens** support **Vector3D** and **Quaternions** (PR #120)
+* Able to set gamma per scene/camera (PR #121)
+* Global event listeners (PR #122)
+* Sprites can handle *flipY* values in THREE.Texture + Sprites use THREE.BufferGeometry (PR #123)
+
+## 1.2.6 (beta)
 
 * Add **Text.generateText(canvas)** which allows text to be drawn on an external canvas
 * Add *lineJoin* parameter to Text and setting the default to *round* instead of *miter*, making strokes on Text look better.

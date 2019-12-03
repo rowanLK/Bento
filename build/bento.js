@@ -2489,7 +2489,7 @@ bento.define('bento', [
      */
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.2.6',
+        version: '1.2.7',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -5410,6 +5410,7 @@ bento.define('bento/components/spritecontainer', [
          */
         var width = settings.width || null;
         var height = settings.height || null;
+        var scale = settings.scale;
         var setupDimensions = function () {
             var ratio;
             var parent = container.parent;
@@ -5440,9 +5441,13 @@ bento.define('bento/components/spritecontainer', [
             }
             // both parameters are not passed: use original image width and height
             if (!hasWidth && !hasHeight) {
-                // reset scale to 1
-                container.scale.x = 1;
-                container.scale.y = 1;
+                // reset scale
+                if (!scale) {
+                    container.scale.x = 1;
+                    container.scale.y = 1;
+                } else {
+                    container.scale = scale;
+                }
                 parentDimension.width = sprite.frameWidth;
                 parentDimension.height = sprite.frameHeight;
             }
@@ -5461,6 +5466,7 @@ bento.define('bento/components/spritecontainer', [
             z: settings.z,
             name: settings.name || 'spriteContainer',
             position: settings.position,
+            scale: settings.scale,
             rotation: settings.rotation,
             alpha: settings.alpha,
             visible: settings.visible,
@@ -5504,6 +5510,8 @@ bento.define('bento/components/spritecontainer', [
                 // width and height should be passed again
                 width = data.width || null;
                 height = data.height || null;
+                scale = data.scale || scale;
+
                 setupDimensions();
             }
         });
@@ -22393,6 +22401,70 @@ Utils.extend(${1:baseObject}, ${2:extendedObject}, false, function (prop) {
          */
         log: function (msg) {
             console.error(msg);
+        },
+
+        /**
+         * Gets a value safely from an object literal without crashing.
+         * @example
+         * var dataObject = {
+         *     users: {
+         *         data: [{
+         *             value: 1234
+         *         }]
+         *     }
+         * };
+         * 
+         * Utils.getSafe(dataObject, ['users', 'data', 0, 'value'], null);
+         * // or
+         * Utils.getSafe(dataObject, 'users.data[0].value', null);
+         * 
+         * @function
+         * @instance
+         * @param {Object/Array} dataObject - Data object or array to access
+         * @param {Array/String} keys - Array of property keys or formatted as String
+         * @param {Value} [defaultValue] - Default value to return if one of the keys does not exist
+         * @name getSafe
+         * @snippet Utils.getSafe|ByArray
+        Utils.getSafe(${1:object}, ['$2'], ${3:defaultValue})
+         * @snippet Utils.getSafe|ByString
+        Utils.getSafe(${1:object}, '${2}', ${3:defaultValue})
+         */
+        getSafe: function (object, keys, defaultValue) {
+            var emptyObj = {};
+            var propertyKeys = keys; // assuming keys = array
+            var i, l = propertyKeys.length;
+            var value = object;
+
+            // parse keys from string
+            if (Utils.isString(propertyKeys)) {
+                // remove starting . or [ and trailing ]
+                if (keys.startsWith('.')) {
+                    keys = keys.slice(1);
+                }
+                if (keys.startsWith('[')) {
+                    keys = keys.slice(1);
+                }
+                if (keys.endsWith(']')) {
+                    keys = keys.slice(0, -1);
+                }
+                // remove all apastrophes and quotes
+                keys = keys.replace(/\'|\"/g, '');
+
+                // split into array by . or ][ or [ or ]. or ]
+                propertyKeys = keys.split(/\.|\]\[|\[|\].|\]/);
+                l = propertyKeys.length;
+            }
+
+            for (i = 0; i < l; ++i) {
+                value = value[propertyKeys[i]] || emptyObj;
+                // add warnings when property is not found?
+            }
+
+            if (value === emptyObj) {
+                // failed
+                return defaultValue;
+            }
+            return value;
         },
         /**
          * @function
