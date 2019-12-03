@@ -2489,7 +2489,7 @@ bento.define('bento', [
      */
     var Bento = {
         // version is updated by build, edit package.json
-        version: '1.2.7',
+        version: '1.2.71',
         /**
          * Setup game. Initializes all Bento managers.
          * @name setup
@@ -8863,7 +8863,7 @@ bento.define('threeloadingmanager', [
 
                 // Remove extension for FBX resources, but not for GLTF ones
                 if (meshKind !== 'gltf') assetName = assetName.split('.')[0];
-                
+
                 var realUrl = resources ? resources[assetName] : null;
                 if (realUrl) {
                     return realUrl;
@@ -8878,6 +8878,7 @@ bento.define('threeloadingmanager', [
     };
 
 });
+
 /**
  * Manager that loads and controls assets. Can be accessed through Bento.assets namespace.
  * Assets MUST be loaded through assetGroups (for now). An assetgroup is a json file that indicates which

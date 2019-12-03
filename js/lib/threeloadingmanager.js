@@ -53,7 +53,7 @@ bento.define('threeloadingmanager', [
 
                 // Remove extension for FBX resources, but not for GLTF ones
                 if (meshKind !== 'gltf') assetName = assetName.split('.')[0];
-                
+
                 var realUrl = resources ? resources[assetName] : null;
                 if (realUrl) {
                     return realUrl;
