@@ -13,6 +13,12 @@ bento.define('threeloadingmanager', [
 
     var THREE = window.THREE;
 
+    // Quick fix to prevent crashes when THREE doesn't exist
+    if (!Utils.isDefined(THREE)) {
+        console.warn('ThreeLoadingManager not used due to the THREE namespace not existing.');
+        return;
+    }
+
     // Patch this Three function so that it doesn't mess up data URIs
     var extractUrlBase = THREE.LoaderUtils.extractUrlBase;
     THREE.LoaderUtils.extractUrlBase = function (url) {
@@ -22,7 +28,7 @@ bento.define('threeloadingmanager', [
             return extractUrlBase(url);
         }
     };
-    
+
     return function (group, meshKind, assetPath, log) {
 
         var manager = new THREE.LoadingManager();
@@ -46,7 +52,7 @@ bento.define('threeloadingmanager', [
 
                 // Remove extension for FBX resources, but not for GLTF ones
                 if (meshKind !== 'gltf') assetName = assetName.split('.')[0];
-                
+
                 var realUrl = resources ? resources[assetName] : null;
                 if (realUrl) {
                     return realUrl;

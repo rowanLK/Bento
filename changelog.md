@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.71
+
+* Hotfix for ThreeLoadingManager that causes Bento to crash on boot when THREE is not present
+
 ## 1.2.7
 
 * Add **Anchor** component
