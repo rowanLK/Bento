@@ -11,25 +11,26 @@ bento.define('threeloadingmanager', [
 ) {
     'use strict';
 
-    var THREE = window.THREE;
+    var hasPatched = false;
 
-    // Quick fix to prevent crashes when THREE doesn't exist
-    if (!Utils.isDefined(THREE)) {
-        console.warn('ThreeLoadingManager not used due to the THREE namespace not existing.');
-        return;
-    }
-
-    // Patch this Three function so that it doesn't mess up data URIs
-    var extractUrlBase = THREE.LoaderUtils.extractUrlBase;
-    THREE.LoaderUtils.extractUrlBase = function (url) {
-        if (url.startsWith('data:')) {
-            return '';
-        } else {
-            return extractUrlBase(url);
-        }
+    var patchLoaderUtils = function () {
+        // Fix this Three function so that it doesn't mess up data URIs
+        var extractUrlBase = THREE.LoaderUtils.extractUrlBase;
+        THREE.LoaderUtils.extractUrlBase = function (url) {
+            if (url.startsWith('data:')) {
+                return '';
+            } else {
+                return extractUrlBase(url);
+            }
+        };
     };
 
     return function (group, meshKind, assetPath, log) {
+
+        if (!hasPatched) {
+            patchLoaderUtils();
+            hasPatched = true;
+        }
 
         var manager = new THREE.LoadingManager();
 
