@@ -45,7 +45,7 @@ bento.define('bento/components/pixi/sprite', [
     };
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
-        var currentFrame = Math.round(this.currentFrame);
+        var currentFrame = Math.floor(this.currentFrame);
         var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {

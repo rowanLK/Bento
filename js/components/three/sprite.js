@@ -116,7 +116,7 @@ bento.define('bento/components/three/sprite', [
         // the draw function prepares the transforms and sets up origin position
         var origin = this.origin;
         var mesh = this.mesh;
-        var currentFrame = Math.round(this.currentFrame);
+        var currentFrame = Math.floor(this.currentFrame);
         var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
