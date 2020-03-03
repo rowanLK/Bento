@@ -333,20 +333,20 @@ bento.define('bento', [
                  */
                 EventSystem.fire('cordova-searchbutton', evt);
             }, false);
-            document.addEventListener('volumedownbutton', function (evt) {
-                /**
-                 * (Android only) The event fires when the user presses the volume down button.
-                 * @event cordova-volumedownbutton 
-                 */
-                EventSystem.fire('cordova-volumedownbutton', evt);
-            }, false);
-            document.addEventListener('volumeupbutton', function (evt) {
-                /**
-                 * (Android only) The event fires when the user presses the volume down button.
-                 * @event cordova-volumeupbutton 
-                 */
-                EventSystem.fire('cordova-volumeupbutton', evt);
-            }, false);
+            // document.addEventListener('volumedownbutton', function (evt) {
+            //     /**
+            //      * (Android only) The event fires when the user presses the volume down button.
+            //      * @event cordova-volumedownbutton 
+            //      */
+            //     EventSystem.fire('cordova-volumedownbutton', evt);
+            // }, false);
+            // document.addEventListener('volumeupbutton', function (evt) {
+            //     /**
+            //      * (Android only) The event fires when the user presses the volume down button.
+            //      * @event cordova-volumeupbutton 
+            //      */
+            //     EventSystem.fire('cordova-volumeupbutton', evt);
+            // }, false);
             document.addEventListener('activated', function (evt) {
                 /**
                  * (Windows only) The event fires when Windows Runtime activation has occurred.
