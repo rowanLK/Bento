@@ -87,6 +87,7 @@ bento.define('bento/components/three/sprite', [
         this.object3D = new THREE.Object3D();
         this.object3D.visible = false;
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
+        this.targetScene = settings.scene || Bento.getRenderer().three.scene;
 
         // checking if frame changed
         this.lastFrame = null;
@@ -105,11 +106,11 @@ bento.define('bento/components/three/sprite', [
 
     ThreeSprite.prototype.start = function (data) {
         // add the parent object to the main scene
-        data.renderer.three.scene.add(this.object3D);
+        this.targetScene.add(this.object3D);
     };
     ThreeSprite.prototype.destroy = function (data) {
         // remove the parent object from the main scene
-        data.renderer.three.scene.remove(this.object3D);
+        this.targetScene.remove(this.object3D);
         this.dispose();
     };
     ThreeSprite.prototype.draw = function (data) {

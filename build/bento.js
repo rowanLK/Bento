@@ -2884,19 +2884,19 @@ bento.define('bento', [
 });
 /**
  * Anchor component. This component is particularly useful for placing UI elements on screen, especially
- * with games having both portrait an.
- * Uses 2 positions, 1 relative in screen space <(0,0) to (1,1)>, and one absolute. 
+ * with games having both portrait and landscape mode. Uses 2 position inputs: 1 relative in 
+ * screen space <(0,0) to (1,1)>, and one absolute (called offset). 
  * Whenever the viewport changes it dimensions, it recalculates the desired position for its parent
  *
- * If something should have a (-40, 20) offset from the middle-right of the screen, pass
  * @example
+// If something should have a (-40, 20) offset from the middle-right of the screen, pass:
 {
     relative : new Vector2(1, 0.5),
     offset : new Vector2(-40, 20)
 }
  * For custom needs, it's also possible to use the onResize callback (which is called after setting the positions)
  *
- * Note that this function sets the position of the parent entity
+ * Note that this component directly sets the position of the parent entity.
  * 
  * @snippet Anchor|Single-Orientation
 Anchor({
@@ -5173,7 +5173,7 @@ bento.define('bento/components/pixi/sprite', [
     };
     PixiSprite.prototype.draw = function (data) {
         var entity = data.entity;
-        var currentFrame = Math.round(this.currentFrame);
+        var currentFrame = Math.floor(this.currentFrame);
         var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
@@ -5765,6 +5765,7 @@ bento.define('bento/components/three/sprite', [
         this.object3D = new THREE.Object3D();
         this.object3D.visible = false;
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
+        this.targetScene = settings.scene || Bento.getRenderer().three.scene;
 
         // checking if frame changed
         this.lastFrame = null;
@@ -5783,18 +5784,18 @@ bento.define('bento/components/three/sprite', [
 
     ThreeSprite.prototype.start = function (data) {
         // add the parent object to the main scene
-        data.renderer.three.scene.add(this.object3D);
+        this.targetScene.add(this.object3D);
     };
     ThreeSprite.prototype.destroy = function (data) {
         // remove the parent object from the main scene
-        data.renderer.three.scene.remove(this.object3D);
+        this.targetScene.remove(this.object3D);
         this.dispose();
     };
     ThreeSprite.prototype.draw = function (data) {
         // the draw function prepares the transforms and sets up origin position
         var origin = this.origin;
         var mesh = this.mesh;
-        var currentFrame = Math.round(this.currentFrame);
+        var currentFrame = Math.floor(this.currentFrame);
         var currentAnimation = this.currentAnimation;
 
         if (!this.currentAnimation || !this.visible || !this.spriteImage) {
