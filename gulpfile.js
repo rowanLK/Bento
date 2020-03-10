@@ -57,7 +57,7 @@ gulp.task('min', function () {
     // place code for your default task here
     return gulp.src([
             'js/**/main.js',
-            'js/lib/lzstring.js',
+            'js/lib/lz-string.js',
             'js/lib/audia.js',
             'js/**/*.js',
             '!js/lib/bento-require.js'
@@ -75,7 +75,7 @@ gulp.task('amdless', function () {
     // place code for your default task here
     return gulp.src([
             'js/**/main.js',
-            'js/lib/lzstring.js',
+            'js/lib/lz-string.js',
             'js/lib/audia.js',
             'js/**/*.js',
             '!js/lib/bento-require.js'
@@ -84,6 +84,8 @@ gulp.task('amdless', function () {
         .pipe(addsrc.prepend('js/lib/bento-require.js'))
         // output bento.js
         .pipe(concat('bento-amdless.js'))
+        .pipe(uglify())
+        .pipe(rename('bento-amdless.min.js'))
         .pipe(gulp.dest('build'));
 });
 
