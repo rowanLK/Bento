@@ -95,6 +95,14 @@ bento.define('bento/components/pixi/sprite', [
         this.sprite.texture = new PIXI.Texture(image.texture, frame);
     };
 
+    PixiSprite.prototype.setup = function (data) {
+        Sprite.prototype.setup.call(this, data);
+        
+        // reset frame cache
+        this.lastFrame = null;
+        this.lastAnimation = null;
+    };
+
     PixiSprite.prototype.toString = function () {
         return '[object PixiSprite]';
     };

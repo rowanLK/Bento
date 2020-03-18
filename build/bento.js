@@ -5223,6 +5223,14 @@ bento.define('bento/components/pixi/sprite', [
         this.sprite.texture = new PIXI.Texture(image.texture, frame);
     };
 
+    PixiSprite.prototype.setup = function (data) {
+        Sprite.prototype.setup.call(this, data);
+        
+        // reset frame cache
+        this.lastFrame = null;
+        this.lastAnimation = null;
+    };
+
     PixiSprite.prototype.toString = function () {
         return '[object PixiSprite]';
     };
@@ -5764,6 +5772,7 @@ bento.define('bento/components/three/sprite', [
          */
         this.object3D = new THREE.Object3D();
         this.object3D.visible = false;
+        this.color = Utils.getDefault(settings.color, 0xffffff);
         this.antiAlias = Utils.getDefault(settings.antiAlias, Bento.getAntiAlias());
         this.targetScene = settings.scene || Bento.getRenderer().three.scene;
 
@@ -5854,7 +5863,7 @@ bento.define('bento/components/three/sprite', [
 
             this.material = new THREE.MeshBasicMaterial({
                 map: this.texture,
-                color: 0xffffff,
+                color: this.color,
                 alphaTest: Utils.getDefault(this.settings.alphaTest, ThreeSprite.alphaTest), // --> prevents glitchy clipping
                 transparent: true
             });
@@ -5883,6 +5892,10 @@ bento.define('bento/components/three/sprite', [
                 this.mesh = null;
             }
         }
+
+        // reset frame cache
+        this.lastFrame = null;
+        this.lastAnimation = null;
     };
 
     ThreeSprite.prototype.updateUvs = function () {
