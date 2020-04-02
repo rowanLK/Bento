@@ -210,6 +210,11 @@ bento.define('bento/renderers/three', [
             bentoRenderer.three.scene = scene;
             ThreeJsRenderer.renderer = renderer;
             bentoRenderer.three.renderer = renderer;
+
+            // turn off checkShaderErrors for production
+            if (renderer.debug) {
+                renderer.debug.checkShaderErrors = Utils.isDev();
+            }
         };
 
         if (canWebGl && Utils.isDefined(THREE)) {

@@ -2520,6 +2520,9 @@ bento.define('bento', [
          * @param {Function} settings.onComplete - Called when game is loaded
          */
         setup: function (settings, callback) {
+            dev = settings.dev || false;
+            Utils.setDev(dev);
+
             callback = callback || settings.onComplete || settings.onLoad;
             bentoSettings = settings;
             settings.pixelSize = settings.pixelSize || 1;
@@ -2540,8 +2543,6 @@ bento.define('bento', [
                 }
                 setupCanvas(settings);
                 setupRenderer(settings, function () {
-                    dev = settings.dev || false;
-                    Utils.setDev(dev);
                     if (settings.responsiveResize) {
                         if (settings.responsiveResize === true) {
                             settings.responsiveResize = {};
@@ -21158,6 +21159,11 @@ bento.define('bento/renderers/three', [
             bentoRenderer.three.scene = scene;
             ThreeJsRenderer.renderer = renderer;
             bentoRenderer.three.renderer = renderer;
+
+            // turn off checkShaderErrors for production
+            if (renderer.debug) {
+                renderer.debug.checkShaderErrors = Utils.isDev();
+            }
         };
 
         if (canWebGl && Utils.isDefined(THREE)) {
