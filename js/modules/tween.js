@@ -271,7 +271,7 @@ bento.define('bento/tween', [
             return function (v, t) {
                 val.x = end.x * v + start.x * (1-v);
                 val.y = end.y * v + start.y * (1-v);
-                onUpdate(val, t);
+                onUpdate.call(this, val, t);
             };
         } else if (startVal.isVector3 && endVal.isVector3) {
             start = startVal.clone();
@@ -281,7 +281,7 @@ bento.define('bento/tween', [
                 val.x = end.x * v + start.x * (1-v);
                 val.y = end.y * v + start.y * (1-v);
                 val.z = end.z * v + start.z * (1-v);
-                onUpdate(val, t);
+                onUpdate.call(this, val, t);
             };
         } else if (startVal.isQuaternion && endVal.isQuaternion) {
             start = startVal.clone();
@@ -289,7 +289,7 @@ bento.define('bento/tween', [
             val = start.clone();
             return function (v, t) {
                 window.THREE.Quaternion.slerp(start, end, val, v);
-                onUpdate(val, t);
+                onUpdate.call(this, val, t);
             };
         } else {
             console.warn('Cannot tween between values', startVal, endVal);
