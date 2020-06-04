@@ -8935,6 +8935,7 @@ bento.define('bento/managers/asset', [
             spritesheets: {},
             texturePacker: {},
             spine: {},
+            spine3d: {},
             meshes: {},
 
             // packed
@@ -9483,6 +9484,100 @@ bento.define('bento/managers/asset', [
                 }
             );
         };
+        var loadSpine3d = function (name, source, callback) {
+            var spine3d = {
+                image: null,
+                json: null,
+                atlas: null,
+            };
+
+            var checkForCompletion = function () {
+                if (spine3d.image !== null && spine3d.json !== null && spine3d.atlas !== null) {
+                    callback(null, name, spine3d);
+                }
+            };
+            var loadAtlas = function (name, source, callback) {
+                // source is a base64 string -> parse immediately instead of doing the xhr request
+                if (source.indexOf('data:application/atlas;base64,') === 0) {
+                    var decoded;
+                    if (window.decodeB64) {
+                        decoded = window.decodeB64(source.replace('data:application/atlas;base64,', ''));
+                    } else {
+                        decoded = window.atob(source.replace('data:application/atlas;base64,', ''));
+                    }
+                    callback(null, name, decoded);
+                    return;
+                }
+
+                var xhr = new window.XMLHttpRequest();
+                if (xhr.overrideMimeType) {
+                    xhr.overrideMimeType("text/html");
+                }
+                xhr.open('GET', source + (useQueries ? '?t=' + now : ''), true);
+                xhr.onerror = function () {
+                    callback('Error: loading Spine Atlas ' + source);
+                };
+                xhr.ontimeout = function () {
+                    callback('Timeout: loading Spine Atlas ' + source);
+                };
+                xhr.onreadystatechange = function () {
+                    var response;
+                    if (xhr.readyState === 4) {
+                        if ((xhr.status === 304) || (xhr.status === 200) || ((xhr.status === 0) && xhr.responseText)) {
+                            response = xhr.responseText;
+                            callback(null, name, response);
+                        } else {
+                            callback('Error: State ' + xhr.readyState + ' ' + source);
+                        }
+                    }
+                };
+                xhr.send(null);
+            };
+
+            var sourcePng;
+            var sourceJson;
+            var sourceAtlas;
+
+            // source can be an object with 2 base64 strings
+            if (source.json) {
+                sourcePng = source.png;
+                sourceJson = source.json;
+                sourceAtlas = source.atlas;
+            } else {
+                sourcePng = source + '.png';
+                sourceJson = source + '.json';
+                sourceAtlas = source + '.atlas';
+            }
+
+            loadJSON(name, sourceJson, function (err, name, json) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spine3d.json = json;
+                spine3d.jsonRaw = JSON.stringify(json);
+                checkForCompletion();
+            });
+
+            loadImage(name, sourcePng, function (err, name, img) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spine3d.image = PackedImage(img);
+                checkForCompletion();
+            });
+
+            loadAtlas(name, sourceAtlas, function (err, name, atlas) {
+                if (err) {
+                    callback(err, name, null);
+                    return;
+                }
+                spine3d.atlas = atlas;
+                checkForCompletion();
+            });
+
+        };
         var loadFBX = function (name, source, callback) {
             if (Utils.isUndefined(THREE)) {
                 callback('loadFBX: THREE namespace not defined');
@@ -9731,6 +9826,7 @@ bento.define('bento/managers/asset', [
             var onLoadAudio = makeLoadCallback(assets.audio, 'audio');
             var onLoadSpriteSheet = makeLoadCallback(assets.spritesheets, 'spriteSheet');
             var onLoadSpine = makeLoadCallback(assets.spine, 'spine');
+            var onLoadSpine3d = makeLoadCallback(assets.spine3d, 'spine3d');
             var onLoadFBX = makeLoadCallback(assets.meshes, 'fbx');
             var onLoadGLTF = makeLoadCallback(assets.meshes, 'gltf');
 
@@ -9874,6 +9970,16 @@ bento.define('bento/managers/asset', [
                         continue;
                     }
                     readyForLoading(loadSpine, asset, path + 'spine/' + group.spine[asset], onLoadSpine);
+                }
+            }
+            // get spine3d
+            if (Utils.isDefined(group.spine3d)) {
+                assetCount += Utils.getKeyLength(group.spine3d);
+                for (asset in group.spine3d) {
+                    if (!group.spine3d.hasOwnProperty(asset)) {
+                        continue;
+                    }
+                    readyForLoading(loadSpine3d, asset, path + 'spine3d/' + group.spine3d[asset], onLoadSpine3d);
                 }
             }
             // get fbx
@@ -19702,7 +19808,7 @@ bento.define('bento/tween', [
             return function (v, t) {
                 val.x = end.x * v + start.x * (1-v);
                 val.y = end.y * v + start.y * (1-v);
-                onUpdate(val, t);
+                onUpdate.call(this, val, t);
             };
         } else if (startVal.isVector3 && endVal.isVector3) {
             start = startVal.clone();
@@ -19712,7 +19818,7 @@ bento.define('bento/tween', [
                 val.x = end.x * v + start.x * (1-v);
                 val.y = end.y * v + start.y * (1-v);
                 val.z = end.z * v + start.z * (1-v);
-                onUpdate(val, t);
+                onUpdate.call(this, val, t);
             };
         } else if (startVal.isQuaternion && endVal.isQuaternion) {
             start = startVal.clone();
@@ -19720,7 +19826,7 @@ bento.define('bento/tween', [
             val = start.clone();
             return function (v, t) {
                 window.THREE.Quaternion.slerp(start, end, val, v);
-                onUpdate(val, t);
+                onUpdate.call(this, val, t);
             };
         } else {
             console.warn('Cannot tween between values', startVal, endVal);
