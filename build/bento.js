@@ -9486,13 +9486,16 @@ bento.define('bento/managers/asset', [
         };
         var loadSpine3d = function (name, source, callback) {
             var spine3d = {
-                image: null,
+                images: {},
+                imageCount: 0,
                 json: null,
                 atlas: null,
             };
+            var loading = 0;
+            var sourcePath = source.substring(0, source.length - name.length);
 
             var checkForCompletion = function () {
-                if (spine3d.image !== null && spine3d.json !== null && spine3d.atlas !== null) {
+                if (spine3d.imageCount >= loading && spine3d.json !== null && spine3d.atlas !== null) {
                     callback(null, name, spine3d);
                 }
             };
@@ -9534,17 +9537,17 @@ bento.define('bento/managers/asset', [
                 xhr.send(null);
             };
 
-            var sourcePng;
+            // var sourcePng;
             var sourceJson;
             var sourceAtlas;
 
             // source can be an object with 2 base64 strings
             if (source.json) {
-                sourcePng = source.png;
+                // sourcePng = source.png;
                 sourceJson = source.json;
                 sourceAtlas = source.atlas;
             } else {
-                sourcePng = source + '.png';
+                // sourcePng = source + '.png';
                 sourceJson = source + '.json';
                 sourceAtlas = source + '.atlas';
             }
@@ -9559,24 +9562,37 @@ bento.define('bento/managers/asset', [
                 checkForCompletion();
             });
 
-            loadImage(name, sourcePng, function (err, name, img) {
-                if (err) {
-                    callback(err, name, null);
-                    return;
-                }
-                spine3d.image = PackedImage(img);
-                checkForCompletion();
-            });
-
             loadAtlas(name, sourceAtlas, function (err, name, atlas) {
                 if (err) {
                     callback(err, name, null);
                     return;
                 }
                 spine3d.atlas = atlas;
+                readAtlas(atlas);
                 checkForCompletion();
             });
 
+            var readAtlas = function (atlas) {
+                var atlasLines = atlas.split(/\r\n|\r|\n/);
+                var imagePaths = [];
+                atlasLines.forEach(function(line) {
+                    if(line.includes('.png')) {
+                        imagePaths.push(line);
+                    }
+                });
+                loading = imagePaths.length;
+                imagePaths.forEach(function(sourcePng) {
+                    loadImage(name, sourcePath + sourcePng, function (err, name, img) {
+                        if (err) {
+                            callback(err, name, null);
+                            return;
+                        }
+                        spine3d.images[name + '.png'] = PackedImage(img);
+                        spine3d.imageCount++;
+                        checkForCompletion();
+                    });
+                });
+            };
         };
         var loadFBX = function (name, source, callback) {
             if (Utils.isUndefined(THREE)) {
@@ -10387,6 +10403,23 @@ bento.define('bento/managers/asset', [
             return spineAssetLoader;
         };
 
+
+        /**
+         * Returns the assets need to load a Spine object
+         * @function
+         * @instance
+         * @param {String} name - Name of Spine object
+         * @returns {Object} Spine object
+         * @name getSpine3D
+         */
+        var getSpine3D = function (name) {
+            var asset = assets.spine3d[name];
+            if (!Utils.isDefined(asset)) {
+                Utils.log("ERROR: Spine assets " + name + " could not be found");
+            }
+            return asset;
+        };
+
         /**
          * Returns a previously loaded THREE.js mesh.
          * Note, this gives the original instance. If you want a copy, use `THREE.SkeletonUtils.clone` or a wrapper function like `Onigiri.getMesh()`.
@@ -10652,6 +10685,7 @@ bento.define('bento/managers/asset', [
             getAssetGroups: getAssetGroups,
             hasAsset: hasAsset,
             getSpine: getSpine,
+            getSpine3D: getSpine3D,
             getSpineLoader: getSpineLoader,
             getMesh: getMesh,
             forceHtml5Audio: function () {
