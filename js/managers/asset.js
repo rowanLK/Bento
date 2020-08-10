@@ -593,10 +593,16 @@ bento.define('bento/managers/asset', [
                 images: {},
                 imageCount: 0,
                 json: null,
+                jsonRaw: null,
                 atlas: null,
             };
             var loading = 0;
-            var sourcePath = source.substring(0, source.length - name.length);
+            var sourcePath = (function () {
+                // remove the final part
+                var paths = source.split('/');
+                paths.splice(-1, 1);
+                return paths.join('/') + '/';
+            })();
 
             var checkForCompletion = function () {
                 if (spine3d.imageCount >= loading && spine3d.json !== null && spine3d.atlas !== null) {
@@ -686,7 +692,7 @@ bento.define('bento/managers/asset', [
                 });
                 loading = imagePaths.length;
                 imagePaths.forEach(function(sourcePng) {
-                    loadImage(name, sourcePath + sourcePng, function (err, name, img) {
+                    loadImage(sourcePng, sourcePath + sourcePng, function (err, name, img) {
                         if (err) {
                             callback(err, name, null);
                             return;

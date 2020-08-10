@@ -9582,7 +9582,7 @@ bento.define('bento/managers/asset', [
                 });
                 loading = imagePaths.length;
                 imagePaths.forEach(function(sourcePng) {
-                    loadImage(name, sourcePath + sourcePng, function (err, name, img) {
+                    loadImage(sourcePng, sourcePath + sourcePng, function (err, name, img) {
                         if (err) {
                             callback(err, name, null);
                             return;
